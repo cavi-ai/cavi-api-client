@@ -50,11 +50,15 @@ export {
   CAVI_CONTROL_API_ENDPOINTS,
   GATEWAY_API_ENDPOINTS,
   GATEWAY_API_ENDPOINT_TEMPLATES,
+  GATEWAY_MEDIA_API_BASE_PATH,
+  GATEWAY_MEDIA_API_ENDPOINTS,
   GATEWAY_PROBE_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
+  HERMES_MEDIA_API_ENDPOINTS,
   LIBRARY_API_BASE_PATH,
   LIBRARY_API_ENDPOINTS,
+  OPENCLAW_MEDIA_API_ENDPOINTS,
   OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
 } from "./contracts/paths.js";
@@ -80,7 +84,25 @@ export {
 } from "./core/gateway/client.js";
 
 export {
+  GatewayMediaApiClient,
+  GATEWAY_MEDIA_KINDS,
+  type GatewayMediaApiClientOptions,
+  type GatewayMediaAsset,
+  type GatewayMediaAssetRequest,
+  type GatewayMediaClient,
+  type GatewayMediaEndpointMap,
+  type GatewayMediaGenerateInput,
+  type GatewayMediaGenerateRequest,
+  type GatewayMediaGenerationResult,
+  type GatewayMediaJsonValue,
+  type GatewayMediaKind,
+  type GatewayMediaProvider,
+  type GatewayMediaProviderList,
+} from "./core/gateway/media.js";
+
+export {
   createGatewayApiClient,
+  createGatewayMediaClient,
   GATEWAY_PROVIDER_ENV_KEYS,
   resolveGatewayProviderKind,
   type GatewayProviderEnv,
@@ -120,6 +142,9 @@ export {
   type HermesCapabilities,
   type HermesRunStatus,
 } from "./providers/hermes/client.js";
+
+export { HermesMediaApiClient } from "./providers/hermes/media.js";
+export { OpenClawMediaApiClient } from "./providers/openclaw/media.js";
 
 export {
   HERMES_HTTP_API_ENV_ALIASES,
@@ -178,7 +203,49 @@ export {
   type LibraryIngestSource,
 } from "./cavi/library/client.js";
 
+export {
+  LIBRARY_CLIP_DEFAULT_TEAM,
+  LIBRARY_CLIP_ENDPOINT,
+  LIBRARY_CLIP_HEALTH_ENDPOINT,
+  LIBRARY_CLIP_LOGS_ENDPOINT,
+  LIBRARY_CLIP_SCHEMA_ENDPOINT,
+  LIBRARY_CLIP_SOURCE_TAG,
+  buildLibraryClipPayload,
+  buildLibraryClipSchemaSnapshot,
+  buildLibraryManualFileClipInput,
+  postLibraryClip,
+  requestLibraryClipDiagnostics,
+  type LibraryClipDiagnosticsCheck,
+  type LibraryClipDiagnosticsLog,
+  type LibraryClipDiagnosticsSnapshot,
+  type LibraryClipInput,
+  type LibraryClipRequest,
+  type LibraryClipResult,
+  type LibraryClipSchemaField,
+  type LibraryClipSchemaSnapshot,
+  type LibraryClipTransport,
+  type LibraryManualFileClipInput,
+} from "./cavi/library/clip.js";
+
 export { PortalApiClient, type PortalApiClientOptions } from "./cavi/portal/client.js";
+
+export {
+  MACHINE_TTS_PATH,
+  MACHINE_TTS_PROVIDERS_PATH,
+  buildMachineTtsVoiceOptions,
+  createMachineTtsAgentVoiceAssignment,
+  getMachineTtsProviderLabel,
+  requestMachineTtsAudio,
+  requestMachineTtsProviders,
+  type MachineTtsAgentVoiceAssignment,
+  type MachineTtsAudioTransport,
+  type MachineTtsBlobRequester,
+  type MachineTtsDashboardVoiceLike,
+  type MachineTtsJsonRequester,
+  type MachineTtsProviderLike,
+  type MachineTtsProviderVoiceLike,
+  type MachineTtsVoiceOption,
+} from "./cavi/portal/machine-tts.js";
 
 export { SURFACE_CONTRACTS, type GatewayMode, type SurfaceContract } from "./contracts/surfaces.js";
 export { resolvePath } from "./contracts/resolve.js";
@@ -187,17 +254,37 @@ export {
   DEFAULT_TEAM_MEMBER_ID,
   DEFAULT_TEAM_ROUTE_KEYS,
   TEAM_MANIFEST_VERSION,
+  TEAM_ACTION_INPUT_MODES,
+  TEAM_ACTION_OUTPUT_MODES,
   createDefaultTeamManifest,
+  findTeamActionContract,
   findTeamManifestMember,
   findTeamManifestTeam,
   normalizeTeamManifest,
+  resolveTeamActionApiPath,
+  resolveTeamActionContract,
   resolveTeamRoutePath,
   resolveTeamWorkspaceApiPath,
   resolveTeamWorkspacePath,
   type CreateDefaultTeamManifestOptions,
   type DefaultTeamRouteKey,
+  type ResolveTeamActionContractOptions,
   type ResolveTeamRoutePathOptions,
   type ResolveTeamWorkspacePathOptions,
+  type TeamActionArtifact,
+  type TeamActionArtifactContract,
+  type TeamActionContract,
+  type TeamActionHttpMethod,
+  type TeamActionInputContract,
+  type TeamActionInputMode,
+  type TeamActionJsonValue,
+  type TeamActionOutputContract,
+  type TeamActionOutputMode,
+  type TeamActionParamContract,
+  type TeamActionParamType,
+  type TeamActionResponse,
+  type TeamActionResponseBase,
+  type TeamActionRouteContract,
   type TeamManifest,
   type TeamManifestIdentity,
   type TeamManifestMember,

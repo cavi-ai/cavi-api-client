@@ -1,3 +1,4 @@
+import { GATEWAY_MEDIA_API_ENDPOINTS } from "./paths.js";
 import { resolveTeamRoutePath } from "./team-manifest.js";
 
 export type GatewayMode = "legacy" | "canonical";
@@ -162,6 +163,42 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     owner: "method-man",
     note: "Dashboard/TUI JSON-RPC websocket path for chat, sessions, logs, and health snapshots.",
   },
+  "gateway.mediaProviders": {
+    key: "gateway.mediaProviders",
+    method: "GET",
+    canonicalPath: () => GATEWAY_MEDIA_API_ENDPOINTS.providers(),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native media provider inventory shared by audio, video, and music generation.",
+  },
+  "gateway.mediaAudioGenerate": {
+    key: "gateway.mediaAudioGenerate",
+    method: "POST",
+    canonicalPath: () => GATEWAY_MEDIA_API_ENDPOINTS.generate("audio"),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native audio generation route implemented by Hermes and OpenClaw media clients.",
+  },
+  "gateway.mediaVideoGenerate": {
+    key: "gateway.mediaVideoGenerate",
+    method: "POST",
+    canonicalPath: () => GATEWAY_MEDIA_API_ENDPOINTS.generate("video"),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native video generation route implemented by Hermes and OpenClaw media clients.",
+  },
+  "gateway.mediaMusicGenerate": {
+    key: "gateway.mediaMusicGenerate",
+    method: "POST",
+    canonicalPath: () => GATEWAY_MEDIA_API_ENDPOINTS.generate("music"),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native music generation route implemented by Hermes and OpenClaw media clients.",
+  },
   "hermes.runs": {
     key: "hermes.runs",
     method: "POST",
@@ -232,6 +269,19 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     owner: "gateway/team contract",
     note: "Agnostic whitelisted team workspace route; callers should validate paths against the team manifest.",
   },
+  "team.action": {
+    key: "team.action",
+    method: "POST",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("action", {
+        teamId: raw(params, "teamId"),
+        actionId: raw(params, "actionId"),
+      }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic team action route derived from a manifest action contract.",
+  },
   "team.agent.config": {
     key: "team.agent.config",
     method: "GET",
@@ -244,6 +294,20 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     degradation: "hard",
     owner: "gateway/team contract",
     note: "Agnostic team member config route derived from the team manifest identity.",
+  },
+  "team.agent.action": {
+    key: "team.agent.action",
+    method: "POST",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("agent.action", {
+        teamId: raw(params, "teamId"),
+        agentId: raw(params, "agentId"),
+        actionId: raw(params, "actionId"),
+      }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic team member action route derived from a manifest action contract.",
   },
   "team.agent.workspace": {
     key: "team.agent.workspace",

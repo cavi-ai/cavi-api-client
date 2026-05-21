@@ -5,6 +5,7 @@ import { resolveHermesHttpApiConfigFromEnv } from "./providers/hermes/env-config
 import {
   appendHttpQuery,
   CAVI_CONTROL_API_ENDPOINTS,
+  GATEWAY_MEDIA_API_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
   LIBRARY_API_ENDPOINTS,
@@ -13,16 +14,23 @@ import {
 } from "./contracts/paths";
 import {
   GatewayApiClient,
+  GatewayMediaApiClient,
+  GATEWAY_MEDIA_KINDS,
+  HermesMediaApiClient,
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
+  OpenClawMediaApiClient,
   PORTAL_DASHBOARD_IDS,
   createContractGap,
   createDefaultTeamManifest,
+  createGatewayMediaClient,
   getMobileGatewayEndpointPath,
   normalizeTeamManifest,
   portalDashboardPath,
   resolveOperatorTaskDispatchPath,
   SURFACE_CONTRACTS,
   resolvePath,
+  resolveTeamActionApiPath,
+  resolveTeamActionContract,
   resolveTeamRoutePath,
   resolveTeamWorkspaceApiPath,
   resolveTeamWorkspacePath,
@@ -109,6 +117,20 @@ describe("agnostic HTTP API client package", () => {
     expect(HERMES_API_ENDPOINTS.runApproval("run/1")).toBe("/v1/runs/run%2F1/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.runApproval).toBe("/v1/runs/{run_id}/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.ecgSharedFiles).toBe("/api/v1/files?agent={agent}&folder={folder}");
+    expect(GATEWAY_MEDIA_KINDS).toEqual(["audio", "video", "music"]);
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.providers()).toBe("/v1/media/providers");
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.providers("audio")).toBe(
+      "/v1/media/audio/providers",
+    );
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.generate("music")).toBe(
+      "/v1/media/music/generate",
+    );
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.job("video", "job/a b")).toBe(
+      "/v1/media/video/jobs/job%2Fa%20b",
+    );
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.asset("asset/a b")).toBe(
+      "/v1/media/assets/asset%2Fa%20b",
+    );
     expect(OPERATOR_DISPATCH_ENDPOINTS.operatorEvents).toBe("/operator/events");
     expect(OPERATOR_DISPATCH_ENDPOINTS.taskReceiptsTemplate).toBe(
       "/cavi-control/api/tasks/{taskId}/receipts",
@@ -156,6 +178,15 @@ describe("agnostic HTTP API client package", () => {
       teamId: "research",
       agentId: "scout/a",
     })).toBe("/api/teams/research/agents/scout%2Fa/config");
+    expect(resolvePath("team.action", "canonical", {
+      teamId: "machine",
+      actionId: "joke/dark",
+    })).toBe("/api/teams/machine/actions/joke%2Fdark");
+    expect(resolvePath("team.agent.action", "canonical", {
+      teamId: "machine",
+      agentId: "chris/a",
+      actionId: "joke",
+    })).toBe("/api/teams/machine/agents/chris%2Fa/actions/joke");
     expect(resolvePath("team.workspace", "canonical", {
       teamId: "research",
       workspacePath: "research/complete",
@@ -179,6 +210,16 @@ describe("agnostic HTTP API client package", () => {
     );
     expect(resolvePath("cavi.operator.taskDiscourse", "canonical", { taskId: "task/a b" })).toBe(
       "/api/plugins/cavi-control/operator/tasks/task%2Fa%20b/discourse",
+    );
+    expect(resolvePath("gateway.mediaProviders", "canonical")).toBe("/v1/media/providers");
+    expect(resolvePath("gateway.mediaAudioGenerate", "canonical")).toBe(
+      "/v1/media/audio/generate",
+    );
+    expect(resolvePath("gateway.mediaVideoGenerate", "canonical")).toBe(
+      "/v1/media/video/generate",
+    );
+    expect(resolvePath("gateway.mediaMusicGenerate", "canonical")).toBe(
+      "/v1/media/music/generate",
     );
 
     expect(SURFACE_CONTRACTS["frontDoor.ideaList"]?.method).toBe("GET");
@@ -241,6 +282,15 @@ describe("agnostic HTTP API client package", () => {
     );
     expect(getMobileGatewayEndpointPath("teamAgentWorkspace", "canonical")).toBe(
       "/api/teams/research/agents/scout/workspace/media/images",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayMediaAudio", "canonical")).toBe(
+      "/v1/media/audio/generate",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayMediaVideo", "canonical")).toBe(
+      "/v1/media/video/generate",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayMediaMusic", "canonical")).toBe(
+      "/v1/media/music/generate",
     );
     expect(MOBILE_GATEWAY_ENDPOINT_CONTRACTS.machineComedyRun.hermesPath).toBe("/v1/runs");
     expect(createContractGap("preflightCapabilities", "missing auth")).toEqual({
@@ -308,6 +358,144 @@ describe("agnostic HTTP API client package", () => {
     expect(() => resolveTeamWorkspacePath(team!, "secrets/tokens")).toThrow(
       /not whitelisted/u,
     );
+  });
+
+  it("merges team action contracts from manifest, team, and agent overrides", () => {
+    const manifest = normalizeTeamManifest({
+      version: 1,
+      actions: [
+        {
+          id: "joke",
+          input: {
+            mode: "command",
+            command: "/joke",
+            params: [
+              { key: "topic", type: "string", required: true },
+              { key: "dark", type: "boolean", default: false },
+            ],
+          },
+          output: {
+            mode: "markdown",
+            contentType: "text/markdown",
+          },
+          defaults: {
+            dark: false,
+            long: false,
+          },
+          capabilities: ["comedy.write"],
+        },
+      ],
+      teams: [
+        {
+          id: "machine",
+          actions: [
+            {
+              id: "joke",
+              input: {
+                params: [
+                  { key: "dark", default: true },
+                  { key: "audience", type: "string", default: "degens" },
+                ],
+              },
+              defaults: {
+                long: true,
+              },
+            },
+          ],
+          members: [
+            {
+              id: "chris",
+              actions: [
+                {
+                  id: "joke",
+                  output: {
+                    mode: "json",
+                    contentType: "application/json",
+                    schema: {
+                      type: "object",
+                      required: ["setup", "punchline"],
+                    },
+                  },
+                  defaults: {
+                    dark: true,
+                    style: "degen",
+                  },
+                  metadata: {
+                    persona: "meme-agent",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const action = resolveTeamActionContract(manifest, "machine", "joke", {
+      memberId: "chris",
+    });
+
+    expect(action).toMatchObject({
+      id: "joke",
+      input: {
+        mode: "command",
+        command: "/joke",
+      },
+      output: {
+        mode: "json",
+        contentType: "application/json",
+        schema: {
+          type: "object",
+          required: ["setup", "punchline"],
+        },
+      },
+      defaults: {
+        dark: true,
+        long: true,
+        style: "degen",
+      },
+      metadata: {
+        persona: "meme-agent",
+      },
+    });
+    expect(action.capabilities).toEqual(["comedy.write"]);
+    expect(action.input?.params?.map((param) => param.key)).toEqual([
+      "topic",
+      "dark",
+      "audience",
+    ]);
+    expect(action.input?.params?.find((param) => param.key === "dark")).toMatchObject({
+      key: "dark",
+      type: "boolean",
+      default: true,
+    });
+    expect(resolveTeamActionApiPath(manifest, "machine", "joke", {
+      memberId: "chris",
+    })).toBe("/api/teams/machine/agents/chris/actions/joke");
+
+    const disabledManifest = normalizeTeamManifest({
+      version: 1,
+      actions: [{ id: "render" }],
+      teams: [
+        {
+          id: "machine",
+          members: [
+            {
+              id: "chris",
+              actions: [{ id: "render", enabled: false }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(resolveTeamActionContract(disabledManifest, "machine", "render", {
+      memberId: "chris",
+    }).enabled).toBe(false);
+    expect(() =>
+      resolveTeamActionApiPath(disabledManifest, "machine", "render", {
+        memberId: "chris",
+      }),
+    ).toThrow(/disabled/u);
   });
 
   it("throws for unknown surface and missing required path params", () => {
@@ -501,5 +689,107 @@ describe("agnostic HTTP API client package", () => {
       metadata: { mobileMessageId: "msg-1" },
       attachments: [{ name: "note.txt", mimeType: "text/plain", dataBase64: "aGVsbG8=" }],
     });
+  });
+
+  it("uses one gateway media interface across generic, Hermes, and OpenClaw providers", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = String(url);
+      if (requestUrl.endsWith("/v1/media/audio/providers")) {
+        return new Response(
+          JSON.stringify({
+            providers: [{ id: "voice-lab", kind: "audio", configured: true }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/music/generate")) {
+        return new Response(
+          JSON.stringify({
+            id: "media_1",
+            kind: "music",
+            status: "queued",
+            metadata: { accepted: true },
+          }),
+          { status: 202 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/video/jobs/job%2Fa%20b")) {
+        return new Response(
+          JSON.stringify({
+            id: "job/a b",
+            kind: "video",
+            status: "running",
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/assets/asset%2Fa%20b")) {
+        return new Response("asset-bytes", {
+          status: 200,
+          headers: { "Content-Type": "audio/mpeg" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "ok", init }), { status: 200 });
+    });
+    const generic = new GatewayMediaApiClient({
+      baseUrl: "https://gateway.example",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const hermes = createGatewayMediaClient(
+      { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
+      { provider: "hermes" },
+    );
+    const openclaw = createGatewayMediaClient(
+      { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
+      { provider: "openclaw" },
+    );
+
+    expect(generic.surface).toBe("gateway-media-api");
+    expect(hermes).toBeInstanceOf(HermesMediaApiClient);
+    expect(hermes.surface).toBe("hermes-media-api");
+    expect(openclaw).toBeInstanceOf(OpenClawMediaApiClient);
+    expect(openclaw.surface).toBe("openclaw-media-api");
+    await expect(generic.listMediaProviders("audio")).resolves.toEqual({
+      providers: [{ id: "voice-lab", kind: "audio", configured: true }],
+    });
+    await expect(hermes.generateMusic({
+      input: "lofi market open loop",
+      options: { bpm: 90 },
+    }, "media-1")).resolves.toMatchObject({
+      id: "media_1",
+      kind: "music",
+      status: "queued",
+    });
+    await expect(openclaw.getMediaJob("video", "job/a b")).resolves.toMatchObject({
+      id: "job/a b",
+      kind: "video",
+      status: "running",
+    });
+    const asset = await generic.getMediaAsset("asset/a b", { accept: "audio/mpeg" });
+
+    expect(await asset.text()).toBe("asset-bytes");
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
+      "https://gateway.example/v1/media/audio/providers",
+      "https://gateway.example/v1/media/music/generate",
+      "https://gateway.example/v1/media/video/jobs/job%2Fa%20b",
+      "https://gateway.example/v1/media/assets/asset%2Fa%20b",
+    ]);
+    expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        input: "lofi market open loop",
+        options: { bpm: 90 },
+        kind: "music",
+      }),
+    });
+    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "Idempotency-Key": "media-1",
+    });
+    expect(fetchImpl.mock.calls[3]?.[1]?.headers).toMatchObject({
+      Accept: "audio/mpeg",
+    });
+    expect(() =>
+      generic.generateMedia({ kind: "image" as never, input: "cover art" }),
+    ).toThrow(/unsupported media kind/u);
   });
 });

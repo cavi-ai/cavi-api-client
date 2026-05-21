@@ -26,13 +26,13 @@ import type {
   RoutingMatrixSnapshot,
 } from "../../domain/index.js";
 import {
-  mockAgentRuns,
-  mockIncidents,
-  mockOverview,
-  mockRoutingMatrix,
-  mockRunDetailForKey,
-  mockCostHistory,
-} from "../../fallbacks/mock-data/index.js";
+  fallbackAgentRuns,
+  fallbackIncidents,
+  fallbackOverview,
+  fallbackRoutingMatrix,
+  fallbackRunDetailForKey,
+  fallbackCostHistory,
+} from "../../fallbacks/snapshots/index.js";
 import {
   API_COST_HISTORY,
   describeHttpContract,
@@ -530,7 +530,7 @@ export function createGatewayWsLoaders(deps: {
         area: "overview",
         expectedContract: "WS sessions.list + sessions.usage + health.snapshot",
         note: "Cavi Control overview via WebSocket unavailable",
-        fallback: mockOverview,
+        fallback: fallbackOverview,
         run: async () => {
           const [listRes, usageRes, healthRes] = await Promise.all([
             loadSessionsListRaw({
@@ -570,7 +570,7 @@ export function createGatewayWsLoaders(deps: {
         area: "agent-runs",
         expectedContract: "WS sessions.list + sessions.usage",
         note: "Cavi Control runs via WebSocket unavailable",
-        fallback: mockAgentRuns,
+        fallback: fallbackAgentRuns,
         run: async () => {
           const [listRes, usageRes] = await Promise.all([
             loadSessionsListRaw({
@@ -599,7 +599,7 @@ export function createGatewayWsLoaders(deps: {
         expectedContract:
           "WS sessions.usage + sessions.list + sessions.preview",
         note: "Cavi Control run detail via WebSocket unavailable",
-        fallback: mockRunDetailForKey(key),
+        fallback: fallbackRunDetailForKey(key),
         run: async () => {
           const [usageRes, previewRes] = await Promise.all([
             loadSessionsUsageRaw({
@@ -652,7 +652,7 @@ export function createGatewayWsLoaders(deps: {
         area: "routing-matrix",
         expectedContract: "WS sessions.usage",
         note: "Cavi Control routing via WebSocket unavailable",
-        fallback: mockRoutingMatrix,
+        fallback: fallbackRoutingMatrix,
         run: async () => {
           const end = new Date();
           const start = new Date(Date.now() - windowDays * 86_400_000);
@@ -671,7 +671,7 @@ export function createGatewayWsLoaders(deps: {
         area: "incidents",
         expectedContract: "WS logs.tail + sessions.list",
         note: "Cavi Control incidents via WebSocket unavailable",
-        fallback: mockIncidents,
+        fallback: fallbackIncidents,
         run: async () => {
           const [logsRes, listRes] = await Promise.all([
             loadLogsTailRaw({
@@ -696,7 +696,7 @@ export function createGatewayWsLoaders(deps: {
         area: "cost-history",
         expectedContract: describeHttpContract("GET", API_COST_HISTORY),
         note: "Cost history endpoint unavailable",
-        fallback: mockCostHistory(range),
+        fallback: fallbackCostHistory(range),
         run: async () => {
           return await requestJson<CostHistorySnapshot>(
             withQuery(API_COST_HISTORY, { range }),

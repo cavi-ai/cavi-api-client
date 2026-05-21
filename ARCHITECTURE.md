@@ -25,7 +25,8 @@ src/
   react/
   compat/
     martina/
-  test-support/
+  __tests__/
+    fixtures/
   index.ts
 ```
 
@@ -43,8 +44,8 @@ package exports, and are not built. They are preserved only under
 - `react/**` may import from `core/gateway/**` and React only.
 - `compat/**` owns explicit compatibility domains such as Martina. It is not a
   dumping ground for stale root import paths.
-- `cavi/fallbacks/**` contains runtime fallback snapshots used by degraded gateway flows.
-- `test-support/**` contains test-only fixtures and helpers. Production modules must not depend on it and it is not part of the build include.
+- `cavi/fallbacks/snapshots/**` contains runtime fallback snapshots used by degraded gateway flows. These are production fallback data, not test mocks.
+- `__tests__/fixtures/**` contains test-only fixtures and helpers. Production modules must not depend on it and it is not part of the build include.
 
 ## CAVI Boundary
 
@@ -54,10 +55,20 @@ CAVI must not duplicate:
 
 - HTTP client implementation
 - gateway RPC implementation
+- gateway media interfaces for audio, video, or music
 - route resolver logic
 - static team registry defaults
 
 CAVI should call shared core methods and shared contract helpers.
+
+## Gateway Media
+
+Audio, video, and music are core gateway features. The shared interface lives in
+`src/core/gateway/media.ts`; provider-specific clients live under
+`src/providers/hermes/**` and `src/providers/openclaw/**`. Product surfaces such
+as Machine TTS may remain as compatibility helpers, but new media generation
+should use `GatewayMediaApiClient` or `createGatewayMediaClient` so Hermes and
+OpenClaw stay behind the same contract.
 
 ## Registry Model
 

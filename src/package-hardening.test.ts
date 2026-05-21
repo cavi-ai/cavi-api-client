@@ -5,14 +5,18 @@ import { describe, expect, it } from "vitest";
 import {
   GATEWAY_PROVIDER_ENV_KEYS,
   GatewayApiClient,
+  GatewayMediaApiClient,
   HERMES_HTTP_API_ENV_ALIASES,
   HERMES_HTTP_API_ENV_KEYS,
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   HermesApiClient,
+  HermesMediaApiClient,
+  OpenClawMediaApiClient,
   SURFACE_CONTRACTS,
   TEAM_REGISTRY_CONFIG,
   createGatewayApiClient,
+  createGatewayMediaClient,
   createHermesTeamRegistry,
   createOpenClawTeamRegistry,
   requireRepoRoot,
@@ -171,7 +175,10 @@ function rel(filePath: string): string {
 
 function selfScannedSources(): string[] {
   return [PACKAGE_JSON, ...walkFiles(SRC_ROOT)].filter(
-    (filePath) => rel(filePath) !== HARDENING_TEST_PATH,
+    (filePath) => {
+      const relative = rel(filePath);
+      return relative !== HARDENING_TEST_PATH && !isTestOnlySource(relative);
+    },
   );
 }
 
@@ -191,8 +198,12 @@ function legacySourceFiles(): string[] {
 function productionSourceFiles(): string[] {
   return walkFiles(SRC_ROOT).filter((filePath) => {
     const relative = rel(filePath);
-    return !/\.test\.tsx?$/u.test(relative) && !relative.startsWith("src/test-support/");
+    return !isTestOnlySource(relative);
   });
+}
+
+function isTestOnlySource(relative: string): boolean {
+  return /\.test\.tsx?$/u.test(relative) || relative.startsWith("src/__tests__/");
 }
 
 describe("package hardening", () => {
@@ -222,7 +233,7 @@ describe("package hardening", () => {
     const offenders = walkFiles(SRC_ROOT)
       .filter((filePath) => {
         const relative = rel(filePath);
-        if (/\.test\.tsx?$/u.test(relative)) {
+        if (isTestOnlySource(relative)) {
           return false;
         }
         const baseName = path.basename(filePath);
@@ -244,7 +255,7 @@ describe("package hardening", () => {
     const offenders = walkFiles(SRC_ROOT)
       .filter((filePath) => {
         const relative = rel(filePath);
-        if (/\.test\.tsx?$/u.test(relative)) {
+        if (isTestOnlySource(relative)) {
           return false;
         }
         const baseName = path.basename(filePath);
@@ -309,6 +320,8 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
     expect(compatLegacyTargets).toEqual([]);
     expect(packageJson.files).toContain("!dist/test-support");
+    expect(packageJson.files).toContain("!dist/__tests__");
+    expect(packageJson.files).toContain("!dist/cavi/fallbacks/mock-data");
   });
 
   it("points the package root at canonical implementation folders", () => {
@@ -336,9 +349,18 @@ describe("package hardening", () => {
     expect(read(CORE_HTTP_TYPES)).not.toContain("hermes-api-server");
   });
 
-  it("keeps production code independent from test-support fixtures", () => {
+  it("keeps production code independent from test fixtures", () => {
     const offenders = productionSourceFiles()
-      .filter((filePath) => /from\s+["'][^"']*test-support\//u.test(read(filePath)))
+      .filter((filePath) => /from\s+["'][^"']*(?:test-support|__tests__)\//u.test(read(filePath)))
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps runtime CAVI fallbacks out of mock-data paths", () => {
+    const offenders = productionSourceFiles()
+      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => /fallbacks\/mock-data/u.test(read(filePath)))
       .map(rel);
 
     expect(offenders).toEqual([]);
@@ -370,6 +392,7 @@ describe("package hardening", () => {
     expect(tsconfig.include).not.toContain("src/**/*.ts");
     expect(tsconfig.include).not.toContain("src/**/*.tsx");
     expect(tsconfig.include).not.toContain("src/compat/**/*.ts");
+    expect(tsconfig.exclude).toContain("src/__tests__/**");
     expect(tsconfig.exclude).toContain("quarantine/**");
   });
 
@@ -444,9 +467,12 @@ describe("package hardening", () => {
     const fetchImpl = (() =>
       Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))) as typeof fetch;
     const client = new GatewayApiClient({ baseUrl: "https://gateway.example", fetchImpl });
+    const media = new GatewayMediaApiClient({ baseUrl: "https://gateway.example", fetchImpl });
 
     expect(client.surface).toBe("gateway-api");
     expect(client.endpoints.runs).toBe("/v1/runs");
+    expect(media.surface).toBe("gateway-media-api");
+    expect(media.endpoints.generate("audio")).toBe("/v1/media/audio/generate");
   });
 
   it("selects gateway implementations by explicit provider or env", () => {
@@ -460,6 +486,14 @@ describe("package hardening", () => {
       { baseUrl: "https://gateway.example", fetchImpl },
       { env: { CAVI_GATEWAY_PROVIDER: "openclaw" } },
     );
+    const hermesMedia = createGatewayMediaClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "hermes" },
+    );
+    const openclawMedia = createGatewayMediaClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "openclaw" },
+    );
 
     expect(resolveGatewayProviderKind({ env: { GATEWAY_PROVIDER: "generic" } })).toBe("gateway");
     expect(GATEWAY_PROVIDER_ENV_KEYS).toEqual(["CAVI_GATEWAY_PROVIDER", "GATEWAY_PROVIDER"]);
@@ -471,6 +505,10 @@ describe("package hardening", () => {
     expect(hermes.surface).toBe("hermes-api-server");
     expect(openclaw).toBeInstanceOf(GatewayApiClient);
     expect(openclaw.surface).toBe("openclaw-api");
+    expect(hermesMedia).toBeInstanceOf(HermesMediaApiClient);
+    expect(hermesMedia.surface).toBe("hermes-media-api");
+    expect(openclawMedia).toBeInstanceOf(OpenClawMediaApiClient);
+    expect(openclawMedia.surface).toBe("openclaw-media-api");
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {

@@ -4,11 +4,38 @@ export const DEFAULT_TEAM_ID = "default" as const;
 export const DEFAULT_TEAM_MEMBER_ID = "default-agent" as const;
 
 export const DEFAULT_TEAM_ROUTE_KEYS = ["kanban", "runs", "config", "workspace"] as const;
+export const TEAM_ACTION_INPUT_MODES = ["command", "json", "text"] as const;
+export const TEAM_ACTION_OUTPUT_MODES = [
+  "artifact",
+  "json",
+  "markdown",
+  "text",
+] as const;
 
 export type TeamManifestVersion = typeof TEAM_MANIFEST_VERSION;
 export type DefaultTeamRouteKey = (typeof DEFAULT_TEAM_ROUTE_KEYS)[number];
+export type TeamActionInputMode = (typeof TEAM_ACTION_INPUT_MODES)[number];
+export type TeamActionOutputMode = (typeof TEAM_ACTION_OUTPUT_MODES)[number];
+export type TeamActionHttpMethod = "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
+export type TeamActionParamType =
+  | "boolean"
+  | "enum"
+  | "file"
+  | "json"
+  | "number"
+  | "string";
+export type TeamActionJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly TeamActionJsonValue[]
+  | { readonly [key: string]: TeamActionJsonValue };
+
 export type TeamRouteKey =
   | DefaultTeamRouteKey
+  | "action"
+  | "agent.action"
   | "agent.config"
   | "agent.workspace"
   | (string & {});
@@ -36,10 +63,101 @@ export type TeamWorkspaceConfig = {
   paths?: readonly TeamWorkspacePathEntry[] | null;
 };
 
+export type TeamActionParamContract = {
+  key: string;
+  type?: TeamActionParamType | null;
+  required?: boolean | null;
+  default?: TeamActionJsonValue;
+  values?: readonly string[] | null;
+  aliases?: readonly string[] | null;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionInputContract = {
+  mode?: TeamActionInputMode | null;
+  command?: string | null;
+  params?: readonly TeamActionParamContract[] | null;
+  schema?: Record<string, unknown> | null;
+  examples?: readonly string[] | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionArtifactContract = {
+  key: string;
+  contentType?: string | null;
+  path?: string | null;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionOutputContract = {
+  mode?: TeamActionOutputMode | null;
+  contentType?: string | null;
+  schema?: Record<string, unknown> | null;
+  artifacts?: readonly TeamActionArtifactContract[] | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionRouteContract = {
+  method?: TeamActionHttpMethod | null;
+  surfaceKey?: string | null;
+  path?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionContract = {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  enabled?: boolean | null;
+  route?: TeamActionRouteContract | null;
+  input?: TeamActionInputContract | null;
+  output?: TeamActionOutputContract | null;
+  defaults?: Record<string, TeamActionJsonValue> | null;
+  capabilities?: readonly string[] | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionArtifact = {
+  key: string;
+  contentType?: string | null;
+  path?: string | null;
+  url?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionResponseBase = {
+  actionId?: string | null;
+  teamId?: string | null;
+  memberId?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type TeamActionResponse =
+  | (TeamActionResponseBase & {
+      kind: "artifact";
+      artifacts: readonly TeamActionArtifact[];
+      data?: TeamActionJsonValue;
+    })
+  | (TeamActionResponseBase & {
+      kind: "json";
+      data: TeamActionJsonValue;
+    })
+  | (TeamActionResponseBase & {
+      kind: "markdown";
+      markdown: string;
+    })
+  | (TeamActionResponseBase & {
+      kind: "text";
+      text: string;
+    });
+
 export type TeamManifestMember = {
   id: string;
   identity?: TeamManifestIdentity | null;
   workspace?: TeamWorkspaceConfig | null;
+  actions?: readonly TeamActionContract[] | null;
   capabilities?: readonly string[] | null;
   metadata?: Record<string, unknown> | null;
 };
@@ -54,6 +172,7 @@ export type TeamManifestTeam = {
   identity?: TeamManifestIdentity | null;
   members?: readonly TeamManifestMember[] | null;
   workspace?: TeamWorkspaceConfig | null;
+  actions?: readonly TeamActionContract[] | null;
   capabilities?: readonly string[] | null;
   routes?: readonly TeamManifestRouteConfig[] | null;
   metadata?: Record<string, unknown> | null;
@@ -61,6 +180,7 @@ export type TeamManifestTeam = {
 
 export type TeamManifest = {
   version: TeamManifestVersion;
+  actions?: readonly TeamActionContract[] | null;
   teams: readonly TeamManifestTeam[];
 };
 
@@ -73,11 +193,16 @@ export type CreateDefaultTeamManifestOptions = {
 
 export type ResolveTeamRoutePathOptions = {
   teamId: string;
+  actionId?: string | null;
   agentId?: string | null;
   workspacePath?: string | null;
 };
 
 export type ResolveTeamWorkspacePathOptions = {
+  memberId?: string | null;
+};
+
+export type ResolveTeamActionContractOptions = {
   memberId?: string | null;
 };
 
@@ -111,6 +236,253 @@ function uniqueStrings(values: readonly string[] | null | undefined): string[] {
     result.push(trimmed);
   }
   return result;
+}
+
+function hasOwn(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function normalizeActionInputMode(
+  value: TeamActionInputMode | null | undefined,
+): TeamActionInputMode | null {
+  const mode = nonEmpty(value);
+  if (!mode) {
+    return null;
+  }
+  if (!TEAM_ACTION_INPUT_MODES.includes(mode as TeamActionInputMode)) {
+    throw new Error(`team manifest: invalid action input mode "${mode}"`);
+  }
+  return mode as TeamActionInputMode;
+}
+
+function normalizeActionOutputMode(
+  value: TeamActionOutputMode | null | undefined,
+): TeamActionOutputMode | null {
+  const mode = nonEmpty(value);
+  if (!mode) {
+    return null;
+  }
+  if (!TEAM_ACTION_OUTPUT_MODES.includes(mode as TeamActionOutputMode)) {
+    throw new Error(`team manifest: invalid action output mode "${mode}"`);
+  }
+  return mode as TeamActionOutputMode;
+}
+
+function normalizeActionParamType(
+  value: TeamActionParamType | null | undefined,
+): TeamActionParamType | null {
+  const type = nonEmpty(value);
+  if (!type) {
+    return null;
+  }
+  switch (type) {
+    case "boolean":
+    case "enum":
+    case "file":
+    case "json":
+    case "number":
+    case "string":
+      return type;
+    default:
+      throw new Error(`team manifest: invalid action param type "${type}"`);
+  }
+}
+
+function normalizeActionHttpMethod(
+  value: TeamActionHttpMethod | null | undefined,
+): TeamActionHttpMethod | null {
+  const method = nonEmpty(value)?.toUpperCase();
+  if (!method) {
+    return null;
+  }
+  switch (method) {
+    case "DELETE":
+    case "GET":
+    case "PATCH":
+    case "POST":
+    case "PUT":
+      return method;
+    default:
+      throw new Error(`team manifest: invalid action route method "${method}"`);
+  }
+}
+
+function normalizeActionDefaults(
+  defaults: Record<string, TeamActionJsonValue> | null | undefined,
+): Record<string, TeamActionJsonValue> | null {
+  if (!defaults) {
+    return null;
+  }
+  const normalized: Record<string, TeamActionJsonValue> = {};
+  for (const [key, value] of Object.entries(defaults)) {
+    const normalizedKey = nonEmpty(key);
+    if (normalizedKey) {
+      normalized[normalizedKey] = value;
+    }
+  }
+  return Object.keys(normalized).length ? normalized : null;
+}
+
+function normalizeActionParamContract(
+  param: TeamActionParamContract,
+): TeamActionParamContract {
+  return {
+    key: requiredText(param.key, "action param key"),
+    ...(normalizeActionParamType(param.type)
+      ? { type: normalizeActionParamType(param.type) }
+      : {}),
+    ...(param.required !== undefined && param.required !== null
+      ? { required: Boolean(param.required) }
+      : {}),
+    ...(hasOwn(param, "default") ? { default: param.default } : {}),
+    values: uniqueStrings(param.values),
+    aliases: uniqueStrings(param.aliases),
+    ...(nonEmpty(param.description)
+      ? { description: nonEmpty(param.description) }
+      : {}),
+    ...(param.metadata ? { metadata: param.metadata } : {}),
+  };
+}
+
+function normalizeActionParams(
+  params: readonly TeamActionParamContract[] | null | undefined,
+): TeamActionParamContract[] {
+  const seen = new Set<string>();
+  const normalized: TeamActionParamContract[] = [];
+  for (const param of params ?? []) {
+    const entry = normalizeActionParamContract(param);
+    if (seen.has(entry.key)) {
+      throw new Error(`team manifest: duplicate action param "${entry.key}"`);
+    }
+    seen.add(entry.key);
+    normalized.push(entry);
+  }
+  return normalized;
+}
+
+function normalizeActionInputContract(
+  input: TeamActionInputContract | null | undefined,
+): TeamActionInputContract | null {
+  if (!input) {
+    return null;
+  }
+  return {
+    ...(normalizeActionInputMode(input.mode)
+      ? { mode: normalizeActionInputMode(input.mode) }
+      : {}),
+    ...(nonEmpty(input.command) ? { command: nonEmpty(input.command) } : {}),
+    params: normalizeActionParams(input.params),
+    ...(input.schema ? { schema: input.schema } : {}),
+    examples: uniqueStrings(input.examples),
+    ...(input.metadata ? { metadata: input.metadata } : {}),
+  };
+}
+
+function normalizeActionArtifactContract(
+  artifact: TeamActionArtifactContract,
+): TeamActionArtifactContract {
+  return {
+    key: requiredText(artifact.key, "action artifact key"),
+    ...(nonEmpty(artifact.contentType)
+      ? { contentType: nonEmpty(artifact.contentType) }
+      : {}),
+    ...(nonEmpty(artifact.path) ? { path: nonEmpty(artifact.path) } : {}),
+    ...(nonEmpty(artifact.description)
+      ? { description: nonEmpty(artifact.description) }
+      : {}),
+    ...(artifact.metadata ? { metadata: artifact.metadata } : {}),
+  };
+}
+
+function normalizeActionArtifacts(
+  artifacts: readonly TeamActionArtifactContract[] | null | undefined,
+): TeamActionArtifactContract[] {
+  const seen = new Set<string>();
+  const normalized: TeamActionArtifactContract[] = [];
+  for (const artifact of artifacts ?? []) {
+    const entry = normalizeActionArtifactContract(artifact);
+    if (seen.has(entry.key)) {
+      throw new Error(`team manifest: duplicate action artifact "${entry.key}"`);
+    }
+    seen.add(entry.key);
+    normalized.push(entry);
+  }
+  return normalized;
+}
+
+function normalizeActionOutputContract(
+  output: TeamActionOutputContract | null | undefined,
+): TeamActionOutputContract | null {
+  if (!output) {
+    return null;
+  }
+  return {
+    ...(normalizeActionOutputMode(output.mode)
+      ? { mode: normalizeActionOutputMode(output.mode) }
+      : {}),
+    ...(nonEmpty(output.contentType)
+      ? { contentType: nonEmpty(output.contentType) }
+      : {}),
+    ...(output.schema ? { schema: output.schema } : {}),
+    artifacts: normalizeActionArtifacts(output.artifacts),
+    ...(output.metadata ? { metadata: output.metadata } : {}),
+  };
+}
+
+function normalizeActionRouteContract(
+  route: TeamActionRouteContract | null | undefined,
+): TeamActionRouteContract | null {
+  if (!route) {
+    return null;
+  }
+  const path = nonEmpty(route.path);
+  if (path && !path.startsWith("/")) {
+    throw new Error(`team manifest: action route path must start with "/": ${path}`);
+  }
+  return {
+    ...(normalizeActionHttpMethod(route.method)
+      ? { method: normalizeActionHttpMethod(route.method) }
+      : {}),
+    ...(nonEmpty(route.surfaceKey) ? { surfaceKey: nonEmpty(route.surfaceKey) } : {}),
+    ...(path ? { path } : {}),
+    ...(route.metadata ? { metadata: route.metadata } : {}),
+  };
+}
+
+function normalizeTeamActionContract(action: TeamActionContract): TeamActionContract {
+  const defaults = normalizeActionDefaults(action.defaults);
+  return {
+    id: requiredText(action.id, "action id"),
+    ...(nonEmpty(action.title) ? { title: nonEmpty(action.title) } : {}),
+    ...(nonEmpty(action.description)
+      ? { description: nonEmpty(action.description) }
+      : {}),
+    ...(action.enabled !== undefined && action.enabled !== null
+      ? { enabled: Boolean(action.enabled) }
+      : {}),
+    ...(action.route ? { route: normalizeActionRouteContract(action.route) } : {}),
+    ...(action.input ? { input: normalizeActionInputContract(action.input) } : {}),
+    ...(action.output ? { output: normalizeActionOutputContract(action.output) } : {}),
+    ...(defaults ? { defaults } : {}),
+    capabilities: uniqueStrings(action.capabilities),
+    ...(action.metadata ? { metadata: action.metadata } : {}),
+  };
+}
+
+function normalizeTeamActionContracts(
+  actions: readonly TeamActionContract[] | null | undefined,
+): TeamActionContract[] {
+  const seen = new Set<string>();
+  const normalized: TeamActionContract[] = [];
+  for (const action of actions ?? []) {
+    const entry = normalizeTeamActionContract(action);
+    if (seen.has(entry.id)) {
+      throw new Error(`team manifest: duplicate action "${entry.id}"`);
+    }
+    seen.add(entry.id);
+    normalized.push(entry);
+  }
+  return normalized;
 }
 
 function pathSegment(value: string, label: string): string {
@@ -219,6 +591,7 @@ function normalizeMember(member: TeamManifestMember): TeamManifestMember {
     ...(member.workspace
       ? { workspace: normalizeWorkspaceConfig(member.workspace) }
       : {}),
+    actions: normalizeTeamActionContracts(member.actions),
     capabilities: uniqueStrings(member.capabilities),
     ...(member.metadata ? { metadata: member.metadata } : {}),
   };
@@ -230,6 +603,7 @@ function normalizeTeam(team: TeamManifestTeam): TeamManifestTeam {
     ...(team.identity ? { identity: normalizeIdentity(team.identity) } : {}),
     members: (team.members ?? []).map(normalizeMember),
     ...(team.workspace ? { workspace: normalizeWorkspaceConfig(team.workspace) } : {}),
+    actions: normalizeTeamActionContracts(team.actions),
     capabilities: uniqueStrings(team.capabilities),
     routes: (team.routes ?? []).map((route) => ({
       key: requiredText(route.key, "route key"),
@@ -297,6 +671,7 @@ export function normalizeTeamManifest(
   }
   return {
     version: TEAM_MANIFEST_VERSION,
+    actions: normalizeTeamActionContracts(manifest.actions),
     teams: manifest.teams.map(normalizeTeam),
   };
 }
@@ -323,12 +698,288 @@ export function findTeamManifestMember(
   return team.members?.find((member) => member.id === normalized) ?? null;
 }
 
+export function findTeamActionContract(
+  actions: readonly TeamActionContract[] | null | undefined,
+  actionId: string | null | undefined,
+): TeamActionContract | null {
+  const normalized = nonEmpty(actionId);
+  if (!normalized) {
+    return null;
+  }
+  return actions?.find((action) => action.id === normalized) ?? null;
+}
+
+function mergeRecords<T>(
+  base: Record<string, T> | null | undefined,
+  override: Record<string, T> | null | undefined,
+): Record<string, T> | null {
+  const merged: Record<string, T> = {};
+  Object.assign(merged, base ?? {}, override ?? {});
+  return Object.keys(merged).length ? merged : null;
+}
+
+function mergeActionParamContract(
+  base: TeamActionParamContract,
+  override: TeamActionParamContract,
+): TeamActionParamContract {
+  const metadata = mergeRecords(base.metadata, override.metadata);
+  const required =
+    override.required !== undefined && override.required !== null
+      ? override.required
+      : base.required;
+  return {
+    key: base.key,
+    ...(override.type ?? base.type ? { type: override.type ?? base.type } : {}),
+    ...(required !== undefined && required !== null
+      ? { required }
+      : {}),
+    ...(hasOwn(override, "default")
+      ? { default: override.default }
+      : hasOwn(base, "default")
+        ? { default: base.default }
+        : {}),
+    values: uniqueStrings([...(base.values ?? []), ...(override.values ?? [])]),
+    aliases: uniqueStrings([...(base.aliases ?? []), ...(override.aliases ?? [])]),
+    ...(override.description ?? base.description
+      ? { description: override.description ?? base.description }
+      : {}),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+function mergeActionParams(
+  base: readonly TeamActionParamContract[] | null | undefined,
+  override: readonly TeamActionParamContract[] | null | undefined,
+): TeamActionParamContract[] {
+  const merged = new Map<string, TeamActionParamContract>();
+  for (const param of base ?? []) {
+    merged.set(param.key, param);
+  }
+  for (const param of override ?? []) {
+    const existing = merged.get(param.key);
+    merged.set(param.key, existing ? mergeActionParamContract(existing, param) : param);
+  }
+  return [...merged.values()];
+}
+
+function mergeActionInputContract(
+  base: TeamActionInputContract | null | undefined,
+  override: TeamActionInputContract | null | undefined,
+): TeamActionInputContract | null {
+  if (!base && !override) {
+    return null;
+  }
+  const metadata = mergeRecords(base?.metadata, override?.metadata);
+  return {
+    ...(override?.mode ?? base?.mode ? { mode: override?.mode ?? base?.mode } : {}),
+    ...(override?.command ?? base?.command
+      ? { command: override?.command ?? base?.command }
+      : {}),
+    params: mergeActionParams(base?.params, override?.params),
+    ...(override?.schema ?? base?.schema ? { schema: override?.schema ?? base?.schema } : {}),
+    examples: uniqueStrings([...(base?.examples ?? []), ...(override?.examples ?? [])]),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+function mergeActionArtifactContract(
+  base: TeamActionArtifactContract,
+  override: TeamActionArtifactContract,
+): TeamActionArtifactContract {
+  const metadata = mergeRecords(base.metadata, override.metadata);
+  return {
+    key: base.key,
+    ...(override.contentType ?? base.contentType
+      ? { contentType: override.contentType ?? base.contentType }
+      : {}),
+    ...(override.path ?? base.path ? { path: override.path ?? base.path } : {}),
+    ...(override.description ?? base.description
+      ? { description: override.description ?? base.description }
+      : {}),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+function mergeActionArtifacts(
+  base: readonly TeamActionArtifactContract[] | null | undefined,
+  override: readonly TeamActionArtifactContract[] | null | undefined,
+): TeamActionArtifactContract[] {
+  const merged = new Map<string, TeamActionArtifactContract>();
+  for (const artifact of base ?? []) {
+    merged.set(artifact.key, artifact);
+  }
+  for (const artifact of override ?? []) {
+    const existing = merged.get(artifact.key);
+    merged.set(
+      artifact.key,
+      existing ? mergeActionArtifactContract(existing, artifact) : artifact,
+    );
+  }
+  return [...merged.values()];
+}
+
+function mergeActionOutputContract(
+  base: TeamActionOutputContract | null | undefined,
+  override: TeamActionOutputContract | null | undefined,
+): TeamActionOutputContract | null {
+  if (!base && !override) {
+    return null;
+  }
+  const metadata = mergeRecords(base?.metadata, override?.metadata);
+  return {
+    ...(override?.mode ?? base?.mode ? { mode: override?.mode ?? base?.mode } : {}),
+    ...(override?.contentType ?? base?.contentType
+      ? { contentType: override?.contentType ?? base?.contentType }
+      : {}),
+    ...(override?.schema ?? base?.schema ? { schema: override?.schema ?? base?.schema } : {}),
+    artifacts: mergeActionArtifacts(base?.artifacts, override?.artifacts),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+function mergeActionRouteContract(
+  base: TeamActionRouteContract | null | undefined,
+  override: TeamActionRouteContract | null | undefined,
+): TeamActionRouteContract | null {
+  if (!base && !override) {
+    return null;
+  }
+  const metadata = mergeRecords(base?.metadata, override?.metadata);
+  return {
+    ...(override?.method ?? base?.method
+      ? { method: override?.method ?? base?.method }
+      : {}),
+    ...(override?.surfaceKey ?? base?.surfaceKey
+      ? { surfaceKey: override?.surfaceKey ?? base?.surfaceKey }
+      : {}),
+    ...(override?.path ?? base?.path ? { path: override?.path ?? base?.path } : {}),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+function mergeTeamActionContracts(
+  base: TeamActionContract,
+  override: TeamActionContract,
+): TeamActionContract {
+  if (base.id !== override.id) {
+    throw new Error(
+      `team manifest: cannot merge action "${override.id}" into "${base.id}"`,
+    );
+  }
+  const route = mergeActionRouteContract(base.route, override.route);
+  const input = mergeActionInputContract(base.input, override.input);
+  const output = mergeActionOutputContract(base.output, override.output);
+  const defaults = mergeRecords(base.defaults, override.defaults);
+  const metadata = mergeRecords(base.metadata, override.metadata);
+  const enabled =
+    override.enabled !== undefined && override.enabled !== null
+      ? override.enabled
+      : base.enabled;
+  return {
+    id: base.id,
+    ...(override.title ?? base.title ? { title: override.title ?? base.title } : {}),
+    ...(override.description ?? base.description
+      ? { description: override.description ?? base.description }
+      : {}),
+    ...(enabled !== undefined && enabled !== null ? { enabled } : {}),
+    ...(route ? { route } : {}),
+    ...(input ? { input } : {}),
+    ...(output ? { output } : {}),
+    ...(defaults ? { defaults } : {}),
+    capabilities: uniqueStrings([
+      ...(base.capabilities ?? []),
+      ...(override.capabilities ?? []),
+    ]),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+export function resolveTeamActionContract(
+  manifest: TeamManifest,
+  teamId: string | null | undefined,
+  actionId: string | null | undefined,
+  options: ResolveTeamActionContractOptions = {},
+): TeamActionContract {
+  const normalizedTeamId = requiredText(teamId, "team id");
+  const normalizedActionId = requiredText(actionId, "action id");
+  const team = findTeamManifestTeam(manifest, normalizedTeamId);
+  if (!team) {
+    throw new Error(`team manifest: unknown team "${normalizedTeamId}"`);
+  }
+  const normalizedMemberId = nonEmpty(options.memberId);
+  const member = normalizedMemberId
+    ? findTeamManifestMember(team, normalizedMemberId)
+    : null;
+  if (normalizedMemberId && !member) {
+    throw new Error(
+      `team manifest: unknown member "${normalizedMemberId}" for team "${team.id}"`,
+    );
+  }
+  const scopedActions = [
+    findTeamActionContract(manifest.actions, normalizedActionId),
+    findTeamActionContract(team.actions, normalizedActionId),
+    member ? findTeamActionContract(member.actions, normalizedActionId) : null,
+  ].filter((action): action is TeamActionContract => Boolean(action));
+  if (!scopedActions.length) {
+    throw new Error(
+      `team manifest: unknown action "${normalizedActionId}" for team "${team.id}"`,
+    );
+  }
+  return scopedActions.reduce((merged, action) =>
+    mergeTeamActionContracts(merged, action),
+  );
+}
+
+export function resolveTeamActionApiPath(
+  manifest: TeamManifest,
+  teamId: string | null | undefined,
+  actionId: string | null | undefined,
+  options: ResolveTeamActionContractOptions = {},
+): string {
+  const action = resolveTeamActionContract(manifest, teamId, actionId, options);
+  if (action.enabled === false) {
+    throw new Error(`team manifest: action "${action.id}" is disabled`);
+  }
+  if (action.route?.path) {
+    return action.route.path;
+  }
+  const normalizedMemberId = nonEmpty(options.memberId);
+  if (normalizedMemberId) {
+    return resolveTeamRoutePath("agent.action", {
+      teamId: requiredText(teamId, "team id"),
+      agentId: normalizedMemberId,
+      actionId: action.id,
+    });
+  }
+  return resolveTeamRoutePath("action", {
+    teamId: requiredText(teamId, "team id"),
+    actionId: action.id,
+  });
+}
+
 export function resolveTeamRoutePath(
   routeKey: TeamRouteKey,
   options: ResolveTeamRoutePathOptions,
 ): string {
   const teamId = requiredText(options.teamId, "team id");
   switch (routeKey) {
+    case "action": {
+      const actionId = requiredText(options.actionId, "action id");
+      return joinUrlPath(["api", "teams", teamId, "actions", actionId]);
+    }
+    case "agent.action": {
+      const agentId = requiredText(options.agentId, "agent id");
+      const actionId = requiredText(options.actionId, "action id");
+      return joinUrlPath([
+        "api",
+        "teams",
+        teamId,
+        "agents",
+        agentId,
+        "actions",
+        actionId,
+      ]);
+    }
     case "kanban":
     case "runs":
     case "config":

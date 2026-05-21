@@ -25,9 +25,10 @@ For workspace consumers, depend on the workspace package through the repo packag
 - `BaseHttpApiClient` for shared HTTP behavior, headers, JSON parsing, tracing, timeouts, and errors.
 - `CaviControlApiClient` for CAVI Control HTTP endpoints.
 - `GatewayApiClient` and `createGatewayApiClient` for gateway-agnostic run and capability APIs.
+- `GatewayMediaApiClient`, `createGatewayMediaClient`, `HermesMediaApiClient`, and `OpenClawMediaApiClient` for gateway-native audio, video, and music generation.
 - `HermesApiClient` and Hermes run-stream helpers as provider-specific compatibility exports.
 - `TeamRegistry`, `TEAM_REGISTRY_CONFIG`, `configureTeamRegistryConfig`, `createHermesTeamRegistry`, and `createOpenClawTeamRegistry` for runtime-loaded team registry config.
-- `TeamManifest`, `normalizeTeamManifest`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, and `resolveTeamWorkspacePath` for agnostic team/member/workspace contracts.
+- `TeamManifest`, `normalizeTeamManifest`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, `resolveTeamWorkspacePath`, `resolveTeamActionContract`, and `resolveTeamActionApiPath` for agnostic team/member/workspace/action contracts.
 - `LibraryApiClient` for library search, ingest, and document APIs.
 - `PortalApiClient` for portal-scoped dashboard and relative portal API calls.
 - `GatewayRpcClient`, gateway RPC helpers, and React hooks/providers from the package root.
@@ -151,6 +152,43 @@ const gateway = createGatewayApiClient(
 
 Provider resolution checks an explicit `provider` first, then `CAVI_GATEWAY_PROVIDER`, then `GATEWAY_PROVIDER`, and defaults to `gateway`. Supported provider values are `gateway`, `hermes`, and `openclaw`. Hermes-specific exports remain available for existing callers, but new shared code should use `GatewayApiClient`, `GatewayCapabilities`, `GatewayRunStatus`, `streamGatewayChatRun`, and `GatewaySseRunEventProvider` unless it is binding to a Hermes-only behavior.
 
+## Gateway Media
+
+Audio, video, and music are core gateway features. Use the media client instead
+of product-specific shims when a frontend wants to render voice, video, songs,
+loops, or other generated media.
+
+```ts
+import { createGatewayMediaClient } from "@cavi/api-client";
+
+const media = createGatewayMediaClient(
+  {
+    baseUrl: config.gateway.baseUrl,
+    auth: {
+      bearerToken: config.gateway.authToken,
+      clientId: config.gateway.clientId,
+    },
+  },
+  { provider },
+);
+
+const providers = await media.listMediaProviders("audio");
+
+const music = await media.generateMusic({
+  input: "lofi loop for a research dashboard",
+  format: "mp3",
+  options: { bpm: 90 },
+});
+
+const asset = music.asset?.id
+  ? await media.getMediaAsset(music.asset.id, { accept: "audio/mpeg" })
+  : null;
+```
+
+The same interface is implemented by the generic gateway client plus
+`HermesMediaApiClient` and `OpenClawMediaApiClient`. Provider-specific routing
+stays behind `createGatewayMediaClient`.
+
 ## Team Registry
 
 Team and portal registry data is runtime config. The package exposes the
@@ -182,11 +220,12 @@ Legacy registry import paths such as `@cavi/api-client/team-registry` and
 `@cavi/api-client/cavi`, or provider exports such as
 `@cavi/api-client/providers/hermes`.
 
-## Team Manifest And Workspace Paths
+## Team Manifest, Workspace Paths, And Actions
 
 Prefer manifest-driven team config for new frontend compatibility surfaces.
 The consumer owns team/member entries; this package owns the contract,
-normalization, generated route grammar, and workspace path whitelist checks.
+normalization, generated route grammar, workspace path whitelist checks, and
+action override resolution.
 
 ```ts
 import {
@@ -194,6 +233,8 @@ import {
   findTeamManifestTeam,
   normalizeTeamManifest,
   resolvePath,
+  resolveTeamActionApiPath,
+  resolveTeamActionContract,
   resolveTeamWorkspaceApiPath,
   type TeamManifest,
 } from "@cavi/api-client";
@@ -216,7 +257,28 @@ const manifest = normalizeTeamManifest({
           { key: "media.images", path: "media/images" },
         ],
       },
-      members: [{ id: "scout", capabilities: ["research.complete"] }],
+      actions: [
+        {
+          id: "summarize",
+          input: {
+            mode: "json",
+            params: [{ key: "documentId", type: "string", required: true }],
+          },
+          output: { mode: "json", contentType: "application/json" },
+        },
+      ],
+      members: [
+        {
+          id: "scout",
+          capabilities: ["research.complete"],
+          actions: [
+            {
+              id: "summarize",
+              defaults: { tone: "brief" },
+            },
+          ],
+        },
+      ],
     },
   ],
 } satisfies TeamManifest);
@@ -237,14 +299,24 @@ if (!team) throw new Error("missing team");
 
 resolveTeamWorkspaceApiPath(team, "media.images", { memberId: "scout" });
 // /api/teams/research/agents/scout/workspace/media/images
+
+const action = resolveTeamActionContract(manifest, "research", "summarize", {
+  memberId: "scout",
+});
+
+resolveTeamActionApiPath(manifest, "research", action.id, { memberId: "scout" });
+// /api/teams/research/agents/scout/actions/summarize
 ```
 
 The workspace resolver accepts only paths declared in `workspace.paths`, so
 custom folders such as `media/images` and `research/complete` do not require
-new product-specific endpoint constants. See
+new product-specific endpoint constants. Action contracts work the same way:
+shared behavior lives on the manifest or team, and agent-specific differences
+override only the fields they need. Responses should use the exported
+`TeamActionResponse` union rather than custom per-agent response bodies. See
 [`docs/team-manifest.md`](docs/team-manifest.md) and
 [`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts)
-for the consumer-side add/remove agent template.
+for the consumer-side add/remove agent and override template.
 
 ## Requests, Headers, and Errors
 

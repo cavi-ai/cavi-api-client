@@ -26,7 +26,7 @@ import type {
   RoutingMatrixSnapshot,
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
-import { mockDebWorkspace, mockTaskDiscourse } from "../fallbacks/mock-data/index.js";
+import { fallbackDebWorkspace, fallbackTaskDiscourse } from "../fallbacks/snapshots/index.js";
 import { debWorkspaceExpectedContractSummary } from "../data/cavi-control/api-paths.js";
 import { withFallback } from "../data/cavi-control/envelope.js";
 import { taskDiscourseExpectedContractSummary } from "../data/cavi-control/gateway-rpc.js";
@@ -200,7 +200,7 @@ export function createCaviControlAdapters(opts: {
           area: "task-discourse",
           expectedContract: taskDiscourseExpectedContractSummary(),
           note: "Task discourse snapshot unavailable",
-          fallback: mockTaskDiscourse(taskId),
+          fallback: fallbackTaskDiscourse(taskId),
           run: async () =>
             await loadTaskDiscourseLive(requestJson, opts.client, taskId),
         }),
@@ -212,7 +212,7 @@ export function createCaviControlAdapters(opts: {
           area: "deb-workspace",
           expectedContract: debWorkspaceExpectedContractSummary(),
           note: "Deb workspace APIs unavailable",
-          fallback: mockDebWorkspace,
+          fallback: fallbackDebWorkspace,
           run: async () => await debLive.loadDebWorkspaceLive(),
         }),
       ),

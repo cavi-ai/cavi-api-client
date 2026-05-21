@@ -77,6 +77,10 @@ export const LIBRARY_API_ENDPOINTS = {
   inbox: `${LIBRARY_API_BASE_PATH}/inbox`,
   promotable: `${LIBRARY_API_BASE_PATH}/promotable`,
   reviewRequests: `${LIBRARY_API_BASE_PATH}/review-requests`,
+  clip: `${LIBRARY_API_BASE_PATH}/clip`,
+  clipHealth: `${LIBRARY_API_BASE_PATH}/clip/health`,
+  clipSchema: `${LIBRARY_API_BASE_PATH}/clip/schema`,
+  clipLogs: `${LIBRARY_API_BASE_PATH}/clip/logs`,
   document: (id: string) => `${LIBRARY_API_BASE_PATH}/documents/${encodeURIComponent(id)}`,
 } as const;
 
@@ -124,6 +128,25 @@ export const HERMES_API_ENDPOINTS = {
 
 export const GATEWAY_API_ENDPOINT_TEMPLATES = HERMES_API_ENDPOINT_TEMPLATES;
 export const GATEWAY_API_ENDPOINTS = HERMES_API_ENDPOINTS;
+
+export const GATEWAY_MEDIA_API_BASE_PATH = "/v1/media" as const;
+
+export const GATEWAY_MEDIA_API_ENDPOINTS = {
+  root: GATEWAY_MEDIA_API_BASE_PATH,
+  providers: (kind?: string | null) =>
+    kind
+      ? `${GATEWAY_MEDIA_API_BASE_PATH}/${encodeURIComponent(kind)}/providers`
+      : `${GATEWAY_MEDIA_API_BASE_PATH}/providers`,
+  generate: (kind: string) =>
+    `${GATEWAY_MEDIA_API_BASE_PATH}/${encodeURIComponent(kind)}/generate`,
+  job: (kind: string, jobId: string) =>
+    `${GATEWAY_MEDIA_API_BASE_PATH}/${encodeURIComponent(kind)}/jobs/${encodeURIComponent(jobId)}`,
+  asset: (assetId: string) =>
+    `${GATEWAY_MEDIA_API_BASE_PATH}/assets/${encodeURIComponent(assetId)}`,
+} as const;
+
+export const HERMES_MEDIA_API_ENDPOINTS = GATEWAY_MEDIA_API_ENDPOINTS;
+export const OPENCLAW_MEDIA_API_ENDPOINTS = GATEWAY_MEDIA_API_ENDPOINTS;
 
 export const GATEWAY_SESSION_API_PATHS = {
   list: "/api/sessions/list",

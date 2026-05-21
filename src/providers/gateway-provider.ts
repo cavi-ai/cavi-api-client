@@ -1,5 +1,8 @@
 import { GatewayApiClient } from "../core/gateway/client.js";
+import { GatewayMediaApiClient } from "../core/gateway/media.js";
 import { HermesApiClient } from "./hermes/client.js";
+import { HermesMediaApiClient } from "./hermes/media.js";
+import { OpenClawMediaApiClient } from "./openclaw/media.js";
 import type { HttpApiClientOptions } from "../core/http/types.js";
 
 export type GatewayProviderKind = "gateway" | "hermes" | "openclaw";
@@ -54,4 +57,18 @@ export function createGatewayApiClient(
     clientOptions,
     provider === "openclaw" ? "openclaw-api" : "gateway-api",
   );
+}
+
+export function createGatewayMediaClient(
+  clientOptions: HttpApiClientOptions,
+  providerOptions: ResolveGatewayProviderOptions = {},
+): GatewayMediaApiClient {
+  const provider = resolveGatewayProviderKind(providerOptions);
+  if (provider === "hermes") {
+    return new HermesMediaApiClient(clientOptions);
+  }
+  if (provider === "openclaw") {
+    return new OpenClawMediaApiClient(clientOptions);
+  }
+  return new GatewayMediaApiClient(clientOptions);
 }

@@ -1,5 +1,6 @@
 import {
   normalizeTeamManifest,
+  type TeamActionContract,
   type TeamManifest,
   type TeamManifestMember,
   type TeamManifestTeam,
@@ -26,10 +27,26 @@ export const TEAM_MANIFEST = {
           { key: "research.complete", path: "research/complete" },
         ],
       },
+      actions: [
+        {
+          id: "summarize",
+          input: {
+            mode: "json",
+            params: [{ key: "documentId", type: "string", required: true }],
+          },
+          output: { mode: "json", contentType: "application/json" },
+        },
+      ],
       members: [
         {
           id: "default-agent",
           capabilities: ["kanban.read", "runs.read", "config.read"],
+          actions: [
+            {
+              id: "summarize",
+              defaults: { tone: "brief" },
+            },
+          ],
         },
       ],
     },
@@ -63,6 +80,7 @@ export function addAgentToManifest(
 
   return normalizeTeamManifest({
     version: normalized.version,
+    actions: normalized.actions,
     teams,
   });
 }
@@ -75,6 +93,7 @@ export function removeAgentFromManifest(
   const normalized = normalizeTeamManifest(manifest);
   return normalizeTeamManifest({
     version: normalized.version,
+    actions: normalized.actions,
     teams: normalized.teams.map((team) => {
       if (team.id !== teamId) {
         return team;
@@ -82,6 +101,76 @@ export function removeAgentFromManifest(
       return {
         ...team,
         members: team.members?.filter((member) => member.id !== agentId) ?? [],
+      };
+    }),
+  });
+}
+
+export function upsertTeamAction(
+  manifest: TeamManifest,
+  teamId: string,
+  action: TeamActionContract,
+): TeamManifest {
+  const normalized = normalizeTeamManifest(manifest);
+  return normalizeTeamManifest({
+    version: normalized.version,
+    actions: normalized.actions,
+    teams: normalized.teams.map((team) =>
+      team.id === teamId ? upsertActionOnTeam(team, action) : team,
+    ),
+  });
+}
+
+export function upsertAgentActionOverride(
+  manifest: TeamManifest,
+  teamId: string,
+  agentId: string,
+  action: TeamActionContract,
+): TeamManifest {
+  const normalized = normalizeTeamManifest(manifest);
+  return normalizeTeamManifest({
+    version: normalized.version,
+    actions: normalized.actions,
+    teams: normalized.teams.map((team) => {
+      if (team.id !== teamId) {
+        return team;
+      }
+      return {
+        ...team,
+        members: (team.members ?? []).map((member) =>
+          member.id === agentId ? upsertActionOnMember(member, action) : member,
+        ),
+      };
+    }),
+  });
+}
+
+export function removeAgentActionOverride(
+  manifest: TeamManifest,
+  teamId: string,
+  agentId: string,
+  actionId: string,
+): TeamManifest {
+  const normalized = normalizeTeamManifest(manifest);
+  return normalizeTeamManifest({
+    version: normalized.version,
+    actions: normalized.actions,
+    teams: normalized.teams.map((team) => {
+      if (team.id !== teamId) {
+        return team;
+      }
+      return {
+        ...team,
+        members: (team.members ?? []).map((member) =>
+          member.id === agentId
+            ? {
+                ...member,
+                actions: (member.actions ?? []).filter(
+                  (action) => action.id !== actionId,
+                ),
+              }
+            : member,
+        ),
       };
     }),
   });
@@ -108,4 +197,34 @@ function upsertMember(
     ...team,
     members: nextMembers,
   };
+}
+
+function upsertActionOnTeam(
+  team: TeamManifestTeam,
+  action: TeamActionContract,
+): TeamManifestTeam {
+  return {
+    ...team,
+    actions: upsertAction(team.actions, action),
+  };
+}
+
+function upsertActionOnMember(
+  member: TeamManifestMember,
+  action: TeamActionContract,
+): TeamManifestMember {
+  return {
+    ...member,
+    actions: upsertAction(member.actions, action),
+  };
+}
+
+function upsertAction(
+  actions: readonly TeamActionContract[] | null | undefined,
+  action: TeamActionContract,
+): TeamActionContract[] {
+  const current = actions ?? [];
+  return current.some((entry) => entry.id === action.id)
+    ? current.map((entry) => (entry.id === action.id ? action : entry))
+    : [...current, action];
 }

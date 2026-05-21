@@ -1,7 +1,9 @@
 export * from "./client.js";
 export * from "./paths.js";
 export * from "./library/client.js";
+export * from "./library/clip.js";
 export * from "./portal/client.js";
+export * from "./portal/machine-tts.js";
 export * from "./adapters/create-cavi-control-adapters.js";
 export {
   backfillCanonicalTeam,

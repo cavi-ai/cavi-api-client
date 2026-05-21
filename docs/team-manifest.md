@@ -38,6 +38,16 @@ export const TEAM_MANIFEST = {
           { key: "media.images", path: "media/images" },
         ],
       },
+      actions: [
+        {
+          id: "summarize",
+          input: {
+            mode: "json",
+            params: [{ key: "documentId", type: "string", required: true }],
+          },
+          output: { mode: "json", contentType: "application/json" },
+        },
+      ],
       members: [
         {
           id: "scout",
@@ -89,6 +99,71 @@ resolveTeamWorkspacePath(team, "media.images", { memberId: "scout" });
 `resolveTeamWorkspacePath` returns a local workspace path for trusted consumer
 code. `resolveTeamWorkspaceApiPath` returns the HTTP path and never includes the
 workspace root.
+
+## Action Overrides
+
+Actions are the generic escape hatch for agent-specific behavior. Define the
+shared action contract once at the manifest or team level, then let a team or
+member override the last details.
+
+```ts
+const manifest = normalizeTeamManifest({
+  version: 1,
+  actions: [
+    {
+      id: "joke",
+      input: {
+        mode: "command",
+        command: "/joke",
+        params: [
+          { key: "topic", type: "string", required: true },
+          { key: "dark", type: "boolean", default: false },
+        ],
+      },
+      output: { mode: "markdown", contentType: "text/markdown" },
+      defaults: { long: false },
+    },
+  ],
+  teams: [
+    {
+      id: "machine",
+      actions: [{ id: "joke", defaults: { long: true } }],
+      members: [
+        {
+          id: "chris",
+          actions: [
+            {
+              id: "joke",
+              output: { mode: "json", contentType: "application/json" },
+              defaults: { dark: true, style: "degen" },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+const action = resolveTeamActionContract(manifest, "machine", "joke", {
+  memberId: "chris",
+});
+
+resolveTeamActionApiPath(manifest, "machine", "joke", { memberId: "chris" });
+// /api/teams/machine/agents/chris/actions/joke
+```
+
+The merge order is:
+
+1. Manifest action defaults.
+2. Team action overrides.
+3. Member action overrides.
+4. Request-time params owned by the consumer or gateway.
+
+Command strings such as `/joke --dark --long "topic"` should be treated as UI
+sugar. Consumers should normalize them to the resolved action id plus params
+before sending the request. Responses should use the stable `TeamActionResponse`
+union (`json`, `text`, `markdown`, or `artifact`) instead of inventing a custom
+body shape for each agent.
 
 ## Add Or Remove Agents
 
