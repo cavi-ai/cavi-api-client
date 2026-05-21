@@ -23,6 +23,17 @@ export {
 
 export { BaseHttpApiClient } from "./core/http/client.js";
 
+export {
+  DEFAULT_PREVIEW_MAX_CHARS,
+  REDACTION_PLACEHOLDER,
+  SENSITIVE_KEY_PATTERN,
+  isSensitiveKey,
+  redactPreviewText,
+  redactSensitiveText,
+  redactSensitiveValue,
+  stringifyRedacted,
+} from "./core/http/redaction.js";
+
 export * from "./cavi/domain/index.js";
 export * from "./core/gateway/rpc.js";
 export * from "./react/gateway-provider.js";

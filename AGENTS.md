@@ -16,13 +16,13 @@ This package is the single private API client package for mobile and portal clie
 
 ## Paths
 
-- API path literals belong in files whose name ends with `paths.ts`, especially `src/paths.ts`.
-- Do not scatter route strings through clients, React adapters, or mobile-specific code.
-- `src/endpoints.ts` is a compatibility re-export only; do not add route literals there.
+- API path literals belong in files whose name ends with `paths.ts` (the endpoint tables live in `src/contracts/paths.ts`) or in `src/contracts/surfaces.ts` (the surface contract map).
+- Do not scatter route strings through clients, React adapters, or mobile-specific code. Bare paths and full-URL-embedded paths are both rejected by the hardening test.
+- There is no `endpoints.ts` compatibility shim; do not reintroduce one.
 
 ## Repo Roots
 
-- Filesystem integrations must receive an explicit `repoRoot` or resolve `REPO_ROOT` through `src/repo-root.ts`.
+- Filesystem integrations must receive an explicit `repoRoot` or resolve `REPO_ROOT` through `src/core/env/repo-root.ts`.
 - Do not reach out to a host repo using relative imports like `../../registry/...`.
 - Mobile apps choose their repo root at runtime; this package must not assume Hermes, OpenClaw, or any specific checkout layout.
 
