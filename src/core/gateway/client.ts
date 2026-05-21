@@ -25,9 +25,57 @@ export type GatewayRunStatus = {
     | string;
   session_id?: string;
   model?: string;
+  targetProfile?: string;
+  task_id?: string;
+  routing?: {
+    kind?: string;
+    targetProfile?: string | null;
+    taskId?: string | null;
+    workerEventStream?: boolean;
+    decision?: Record<string, unknown>;
+  };
   output?: string;
+  response?: string;
   error?: string;
   usage?: Record<string, number>;
+  events?: Record<string, unknown>[];
+  tool_call_count?: number;
+};
+
+export type GatewayRunMessage = {
+  role: string;
+  content: string | Record<string, unknown>[];
+  [key: string]: unknown;
+};
+
+export type GatewayRunAttachment = {
+  name: string;
+  mimeType?: string;
+  mime_type?: string;
+  size?: number;
+  dataBase64?: string;
+  data_base64?: string;
+  [key: string]: unknown;
+};
+
+export type GatewayRunStartBody = {
+  input: string | GatewayRunMessage[];
+  session_id?: string;
+  instructions?: string;
+  previous_response_id?: string;
+  conversation_history?: GatewayRunMessage[];
+  targetProfile?: string;
+  target_profile?: string;
+  targetAgent?: string;
+  target_agent?: string;
+  agentId?: string;
+  agent_id?: string;
+  action?: string;
+  source?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  attachments?: GatewayRunAttachment[];
+  dryRun?: boolean;
+  dry_run?: boolean;
 };
 
 export class GatewayApiClient extends BaseHttpApiClient {
@@ -43,12 +91,7 @@ export class GatewayApiClient extends BaseHttpApiClient {
     return this.request<GatewayCapabilities>(this.endpoints.capabilities);
   }
 
-  startRun(body: {
-    input: string;
-    session_id?: string;
-    instructions?: string;
-    previous_response_id?: string;
-  }): Promise<GatewayRunStatus> {
+  startRun(body: GatewayRunStartBody): Promise<GatewayRunStatus> {
     return this.request<GatewayRunStatus>(this.endpoints.runs, {
       method: "POST",
       body,

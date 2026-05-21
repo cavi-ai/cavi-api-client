@@ -31,6 +31,7 @@ describe("api-paths", () => {
   });
 
   it("stays aligned with the package-level CAVI endpoint owner", () => {
+    expect(API_OPERATOR).toBe(CAVI_CONTROL_API_ENDPOINTS.operator.root);
     expect(API_COST_HISTORY).toBe(CAVI_CONTROL_API_ENDPOINTS.costHistory);
     expect(API_SCORING_MODEL).toBe(CAVI_CONTROL_API_ENDPOINTS.scoringModel);
     expect(DEB_API).toEqual({

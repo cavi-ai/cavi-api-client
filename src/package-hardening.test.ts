@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 import {
   GATEWAY_PROVIDER_ENV_KEYS,
   GatewayApiClient,
+  HERMES_HTTP_API_ENV_ALIASES,
+  HERMES_HTTP_API_ENV_KEYS,
+  HTTP_API_CLIENT_ENV_ALIASES,
+  HTTP_API_CLIENT_ENV_KEYS,
   HermesApiClient,
   SURFACE_CONTRACTS,
   TEAM_REGISTRY_CONFIG,
@@ -21,7 +25,18 @@ const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)))
 const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
 const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
+const CORE_ENV_CONFIG = path.join(SRC_ROOT, "core", "env", "config.ts");
+const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
+const CAVI_PATHS = path.join(SRC_ROOT, "cavi", "paths.ts");
+const CAVI_CONTROL_API_PATHS = path.join(
+  SRC_ROOT,
+  "cavi",
+  "data",
+  "cavi-control",
+  "api-paths.ts",
+);
+const CAVI_HTTP_CLIENT = path.join(SRC_ROOT, "cavi", "data", "cavi-control", "http-client.ts");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -41,6 +56,7 @@ const FORBIDDEN_PATH_FRAGMENTS = [
 
 const API_PATH_LITERAL_RE = /(["'`])\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
 const API_URL_LITERAL_RE = /(["'`])https?:\/\/[^"'`]*\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
+const CAVI_CONTROL_ROUTE_LITERAL_RE = /(["'`])\/cavi-control\/api(?:\/|["'`])/u;
 const SURFACE_FIRST_CANONICAL_PATH_RE = /canonicalPath:\s*(?:\([^)]*\)\s*=>\s*)?(["'`])\/(?:cavi-control|front-door|library|machine|martina|trading)\/api(?:\/|[?]|["'`])/u;
 const MARTINA_COMPAT_IDENTIFIER_RE = /\b(?:MARTINA_|Martina[A-Z]\w*|normalizeMartina|inferMartina|martinaRun)/u;
 const BAKED_TEAM_REGISTRY_VALUE_RE = /(["'`])(?:angela|deb|front-door|machine|martina|run-dmc|scout|wu-tang|angels|paw-and-order|griselda|headhunter|scout-school)\1/u;
@@ -114,10 +130,10 @@ const EXPECTED_TS_INCLUDE = [
   "src/react/**/*.ts",
   "src/react/**/*.tsx",
   "src/compat/martina/**/*.ts",
-  "src/test-support/**/*.ts",
 ] as const;
 const ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE =
   /from "\.\/(?:base-client|types|config|repo-root|paths|surface-paths|surfaces|resolve|portal-paths|mobile-gateway-contracts|gateway-client|gateway-provider|cavi-control-client|library-client|portal-client|run-event-stream|run-stream-contracts|team-registry|team-registry-config|domain\/|gateway\/|gateway-transforms\/|data\/|hermes\/|openclaw\/)/u;
+const PROVIDER_FACTORY_ROOT_EXPORT_RE = /from "\.\/core\/gateway\/provider\.js"/u;
 const TEAM_REGISTRY_OWNER_FILES = [
   "src/cavi/registry/team-registry-config.ts",
   "src/providers/hermes/team-registry-config.ts",
@@ -169,6 +185,13 @@ function legacySourceFiles(): string[] {
       LEGACY_TOP_LEVEL_SOURCE_FILES.has(relative) ||
       LEGACY_SOURCE_PREFIXES.some((prefix) => relative.startsWith(prefix))
     );
+  });
+}
+
+function productionSourceFiles(): string[] {
+  return walkFiles(SRC_ROOT).filter((filePath) => {
+    const relative = rel(filePath);
+    return !/\.test\.tsx?$/u.test(relative) && !relative.startsWith("src/test-support/");
   });
 }
 
@@ -239,6 +262,11 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("keeps CAVI path literals in the shared contracts owner", () => {
+    expect(read(CAVI_PATHS).trim()).toBe('export * from "../contracts/paths.js";');
+    expect(read(CAVI_CONTROL_API_PATHS)).not.toMatch(CAVI_CONTROL_ROUTE_LITERAL_RE);
+  });
+
   it("keeps canonical surface contracts api-first", () => {
     expect(read(SURFACE_PATHS)).not.toMatch(SURFACE_FIRST_CANONICAL_PATH_RE);
   });
@@ -269,6 +297,7 @@ describe("package hardening", () => {
   it("removes legacy package subpath exports", () => {
     const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
       exports: Record<string, unknown>;
+      files?: string[];
     };
     const offenders = REMOVED_PACKAGE_EXPORTS.filter(
       (exportKey) => packageJson.exports[exportKey] !== undefined,
@@ -279,12 +308,56 @@ describe("package hardening", () => {
 
     expect(offenders).toEqual([]);
     expect(compatLegacyTargets).toEqual([]);
+    expect(packageJson.files).toContain("!dist/test-support");
   });
 
   it("points the package root at canonical implementation folders", () => {
     expect(read(path.join(SRC_ROOT, "index.ts"))).not.toMatch(
       ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE,
     );
+    expect(read(path.join(SRC_ROOT, "index.ts"))).not.toMatch(
+      PROVIDER_FACTORY_ROOT_EXPORT_RE,
+    );
+  });
+
+  it("keeps core gateway independent from provider implementations", () => {
+    const offenders = walkFiles(path.join(SRC_ROOT, "core"))
+      .filter((filePath) => {
+        const source = read(filePath);
+        return /from\s+["'][^"']*providers\//u.test(source);
+      })
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps provider-specific env naming out of core config", () => {
+    expect(read(CORE_ENV_CONFIG)).not.toMatch(/\bhermes\b|HERMES_/iu);
+    expect(read(CORE_HTTP_TYPES)).not.toContain("hermes-api-server");
+  });
+
+  it("keeps production code independent from test-support fixtures", () => {
+    const offenders = productionSourceFiles()
+      .filter((filePath) => /from\s+["'][^"']*test-support\//u.test(read(filePath)))
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("routes the CAVI control request helper through shared core HTTP", () => {
+    const source = read(CAVI_HTTP_CLIENT);
+
+    expect(source).toContain("BaseHttpApiClient");
+    expect(source).not.toMatch(/\bfetch\s*\(/u);
+  });
+
+  it("keeps CAVI production modules on shared HTTP transports", () => {
+    const offenders = productionSourceFiles()
+      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => /\bfetch\s*\(/u.test(read(filePath)))
+      .map(rel);
+
+    expect(offenders).toEqual([]);
   });
 
   it("builds only canonical and compat folders", () => {
@@ -398,5 +471,19 @@ describe("package hardening", () => {
     expect(hermes.surface).toBe("hermes-api-server");
     expect(openclaw).toBeInstanceOf(GatewayApiClient);
     expect(openclaw.surface).toBe("openclaw-api");
+  });
+
+  it("keeps generic HTTP env maps gateway-agnostic", () => {
+    expect(Object.keys(HTTP_API_CLIENT_ENV_KEYS).filter((key) => /hermes/iu.test(key))).toEqual([]);
+    expect(Object.values(HTTP_API_CLIENT_ENV_KEYS).filter((value) => /HERMES/u.test(value))).toEqual([]);
+    expect(Object.keys(HTTP_API_CLIENT_ENV_ALIASES).filter((key) => /hermes/iu.test(key))).toEqual([]);
+    expect(HERMES_HTTP_API_ENV_KEYS).toEqual({
+      baseUrl: "HERMES_API_BASE_URL",
+      authToken: "HERMES_API_AUTH_TOKEN",
+      clientId: "HERMES_API_CLIENT_ID",
+    });
+    expect(HERMES_HTTP_API_ENV_ALIASES.baseUrl).toContain(
+      "EXPO_PUBLIC_HERMES_API_BASE_URL",
+    );
   });
 });

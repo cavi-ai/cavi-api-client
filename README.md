@@ -115,14 +115,11 @@ Canonical environment keys:
 - `GATEWAY_API_BASE_URL`
 - `GATEWAY_API_AUTH_TOKEN`
 - `GATEWAY_API_CLIENT_ID`
-- `HERMES_API_BASE_URL`
-- `HERMES_API_AUTH_TOKEN`
-- `HERMES_API_CLIENT_ID`
 - `LIBRARY_API_BASE_URL`
 - `LIBRARY_API_AUTH_TOKEN`
 - `LIBRARY_API_CLIENT_ID`
 
-Alias keys for Expo and Vite clients are also supported by default. Pass `{ includeAliases: false }` to disable alias lookup.
+Alias keys for Expo and Vite clients are also supported by default. Pass `{ includeAliases: false }` to disable alias lookup. Hermes-specific env keys remain available through `resolveHermesHttpApiConfigFromEnv` from the Hermes provider exports.
 
 ## Gateway Providers
 

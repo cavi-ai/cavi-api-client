@@ -1,3 +1,6 @@
+import { BaseHttpApiClient } from "../../../core/http/client.js";
+import { HttpApiError } from "../../../core/http/errors.js";
+import type { HttpApiRequestInit } from "../../../core/http/types.js";
 import { isSessionAuthMode } from "../lib/standalone-mode.js";
 import {
   buildGatewayHttpError,
@@ -27,11 +30,55 @@ export type CaviControlRequestJson = <TData>(
   },
 ) => Promise<TData>;
 
+class CaviControlHttpClient extends BaseHttpApiClient {
+  request<TData>(path: string, init?: HttpApiRequestInit): Promise<TData> {
+    return this.requestCaviJson<TData>(path, init);
+  }
+
+  private async requestCaviJson<TData>(
+    path: string,
+    init?: HttpApiRequestInit,
+  ): Promise<TData> {
+    try {
+      const response = await this.requestRaw(path, init);
+      const text = await response.text();
+      if (response.status === 204 || !text.trim()) {
+        return {} as TData;
+      }
+      try {
+        return JSON.parse(text) as TData;
+      } catch {
+        throw new Error(`Invalid JSON from ${path}.`);
+      }
+    } catch (error) {
+      if (error instanceof HttpApiError && error.status > 0) {
+        const details = parseGatewayErrorText(error.body, "application/json");
+        throw buildGatewayHttpError({
+          label: error.path,
+          status: error.status,
+          statusText: "",
+          message: details.message,
+          code: details.code,
+        });
+      }
+      throw error;
+    }
+  }
+}
+
 export function createCaviControlRequestJson(opts: {
   httpBase: string;
   authToken: string | null;
 }): CaviControlRequestJson {
   const sessionMode = isSessionAuthMode();
+  const client = new CaviControlHttpClient("cavi-control-api", {
+    baseUrl: opts.httpBase,
+    allowRelativeBaseUrl: true,
+    auth: {
+      bearerToken: sessionMode ? null : opts.authToken,
+    },
+    credentials: sessionMode ? "same-origin" : undefined,
+  });
 
   return async function requestJson<TData>(
     path: string,
@@ -40,55 +87,6 @@ export function createCaviControlRequestJson(opts: {
       body?: unknown;
     },
   ): Promise<TData> {
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-    };
-
-    // In session mode, the httpOnly cookie carries auth — server.mjs injects
-    // the gateway token on the proxy side. No Authorization header needed.
-    if (!sessionMode && opts.authToken) {
-      headers.Authorization = `Bearer ${opts.authToken}`;
-    }
-
-    const body =
-      init?.body === undefined ? undefined : JSON.stringify(init.body);
-    if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    const response = await fetch(`${opts.httpBase}${path}`, {
-      method: init?.method ?? "GET",
-      headers,
-      body,
-      cache: "no-store",
-      ...(sessionMode ? { credentials: "same-origin" as RequestCredentials } : {}),
-    });
-    const contentType = response.headers.get("content-type") ?? "";
-    const text = await response.text();
-
-    if (!response.ok) {
-      const details = parseGatewayErrorText(text, contentType);
-      throw buildGatewayHttpError({
-        label: path,
-        status: response.status,
-        statusText: response.statusText,
-        message: details.message,
-        code: details.code,
-      });
-    }
-
-    if (response.status === 204) {
-      return {} as TData;
-    }
-
-    if (!text.trim()) {
-      return {} as TData;
-    }
-
-    try {
-      return JSON.parse(text) as TData;
-    } catch {
-      throw new Error(`Invalid JSON from ${path}.`);
-    }
+    return await client.request<TData>(path, init);
   };
 }

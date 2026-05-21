@@ -12,8 +12,9 @@ import { HttpApiError } from "./errors.js";
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_CLIENT_ID = "cavi-api-client";
 
-function normalizeBaseUrl(baseUrl: string): string {
+function normalizeBaseUrl(baseUrl: string, allowRelative = false): string {
   const trimmed = baseUrl.trim();
+  if (!trimmed && allowRelative) return "";
   if (!trimmed) throw new Error("Missing baseUrl for HTTP API client");
   return trimmed.replace(/\/+$/, "");
 }
@@ -38,9 +39,11 @@ function buildUrl(baseUrl: string, basePath: string, path: string): string {
   return `${baseUrl}${basePath}${normalizePath(path)}`;
 }
 
-function buildJsonBody(body: unknown): string | undefined {
-  if (body === undefined) return undefined;
-  return JSON.stringify(body);
+function buildRequestBody(init?: HttpApiRequestInit): BodyInit | undefined {
+  if (!init) return undefined;
+  if ("rawBody" in init && init.rawBody !== undefined) return init.rawBody;
+  if (!("body" in init) || init.body === undefined) return undefined;
+  return JSON.stringify(init.body);
 }
 
 function createRequestAbortSignal(
@@ -90,7 +93,7 @@ export class BaseHttpApiClient {
 
   constructor(surface: HttpApiTrace["surface"], options: HttpApiClientOptions) {
     this.surface = surface;
-    this.baseUrl = normalizeBaseUrl(options.baseUrl);
+    this.baseUrl = normalizeBaseUrl(options.baseUrl, options.allowRelativeBaseUrl);
     this.basePath = normalizeBasePath(options.basePath);
     this.authToken = options.auth?.bearerToken?.trim() ?? "";
     this.clientId = options.auth?.clientId?.trim() || DEFAULT_CLIENT_ID;
@@ -128,15 +131,14 @@ export class BaseHttpApiClient {
     return headers;
   }
 
-  protected buildBody(init?: HttpApiRequestInit): string | undefined {
-    if (!init || !("body" in init)) return undefined;
-    return buildJsonBody(init.body);
+  protected buildBody(init?: HttpApiRequestInit): BodyInit | undefined {
+    return buildRequestBody(init);
   }
 
   protected buildFetchInit(
     method: HttpApiHttpMethod,
     headers: Record<string, string>,
-    body: string | undefined,
+    body: BodyInit | undefined,
     signal: AbortSignal,
     init?: HttpApiRequestInit,
   ): RequestInit {

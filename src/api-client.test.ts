@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BaseHttpApiClient } from "./core/http/client";
 import { resolveHttpApiConfigFromEnv } from "./core/env/config";
+import { resolveHermesHttpApiConfigFromEnv } from "./providers/hermes/env-config";
 import {
   appendHttpQuery,
   CAVI_CONTROL_API_ENDPOINTS,
@@ -11,6 +12,7 @@ import {
   resolveLibraryApiPath,
 } from "./contracts/paths";
 import {
+  GatewayApiClient,
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
   PORTAL_DASHBOARD_IDS,
   createContractGap,
@@ -50,7 +52,7 @@ describe("agnostic HTTP API client package", () => {
       EXPO_PUBLIC_CAVI_API_BASE_URL: "https://alias.example",
       CAVI_API_AUTH_TOKEN: " token-value ",
       CAVI_API_CLIENT_ID: " cavi-client ",
-      HERMES_API_BASE_URL: "https://hermes.example",
+      GATEWAY_API_BASE_URL: "https://gateway.example",
     });
 
     expect(config.cavi).toEqual({
@@ -58,9 +60,8 @@ describe("agnostic HTTP API client package", () => {
       authToken: "token-value",
       clientId: "cavi-client",
     });
-    expect(config.hermes.baseUrl).toBe("https://hermes.example");
     expect(config.gateway).toEqual({
-      baseUrl: "https://hermes.example",
+      baseUrl: "https://gateway.example",
       authToken: null,
       clientId: "cavi-api-client",
     });
@@ -71,7 +72,25 @@ describe("agnostic HTTP API client package", () => {
     });
   });
 
+  it("keeps Hermes env compatibility behind the Hermes provider resolver", () => {
+    const config = resolveHermesHttpApiConfigFromEnv({
+      HERMES_API_BASE_URL: " https://hermes.example ",
+      EXPO_PUBLIC_HERMES_API_BASE_URL: "https://alias.example",
+      HERMES_API_AUTH_TOKEN: " hermes-token ",
+      HERMES_API_CLIENT_ID: " hermes-client ",
+    });
+
+    expect(config).toEqual({
+      baseUrl: "https://hermes.example",
+      authToken: "hermes-token",
+      clientId: "hermes-client",
+    });
+  });
+
   it("keeps extracted endpoint builders encoded and aligned", () => {
+    expect(CAVI_CONTROL_API_ENDPOINTS.operator.root).toBe(
+      "/cavi-control/api/operator",
+    );
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.task("task/a b")).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b",
     );
@@ -325,5 +344,72 @@ describe("agnostic HTTP API client package", () => {
     await expect(client.search({ q: "research", archived: false })).resolves.toEqual({ results: [] });
 
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example/library/api/search?q=research&archived=false");
+  });
+
+  it("keeps targeted fleet-router chat runs on the gateway run surface", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            run_id: "run_1",
+            status: "started",
+            routing: {
+              targetProfile: "martina",
+              taskId: "task_1",
+              workerEventStream: true,
+            },
+          }),
+          { status: 202 },
+        ),
+    );
+    const client = new GatewayApiClient({
+      baseUrl: "https://gateway.example",
+      auth: { bearerToken: "test-token", clientId: "cavi-control-mobile" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(
+      client.startRun({
+        input: "show my workspace queue",
+        session_id: "mobile-session-1",
+        targetProfile: "martina",
+        target_agent: "martina",
+        source: {
+          platform: "mobile_app",
+          app_env: "cavi-control-mobile",
+          conversation_id: "thread-1",
+        },
+        metadata: { mobileMessageId: "msg-1" },
+        attachments: [{ name: "note.txt", mimeType: "text/plain", dataBase64: "aGVsbG8=" }],
+      }),
+    ).resolves.toMatchObject({
+      run_id: "run_1",
+      routing: {
+        targetProfile: "martina",
+        taskId: "task_1",
+        workerEventStream: true,
+      },
+    });
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://gateway.example/v1/runs");
+    expect(fetchImpl.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Authorization: "Bearer test-token",
+      "Content-Type": "application/json",
+      "X-Portal-Client-Id": "cavi-control-mobile",
+    });
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
+      input: "show my workspace queue",
+      session_id: "mobile-session-1",
+      targetProfile: "martina",
+      target_agent: "martina",
+      source: {
+        platform: "mobile_app",
+        app_env: "cavi-control-mobile",
+        conversation_id: "thread-1",
+      },
+      metadata: { mobileMessageId: "msg-1" },
+      attachments: [{ name: "note.txt", mimeType: "text/plain", dataBase64: "aGVsbG8=" }],
+    });
   });
 });

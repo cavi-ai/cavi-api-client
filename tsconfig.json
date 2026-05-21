@@ -20,8 +20,7 @@
     "src/providers/**/*.ts",
     "src/react/**/*.ts",
     "src/react/**/*.tsx",
-    "src/compat/martina/**/*.ts",
-    "src/test-support/**/*.ts"
+    "src/compat/martina/**/*.ts"
   ],
   "exclude": [
     "node_modules",

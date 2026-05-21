@@ -2,7 +2,12 @@ import {
   buildGatewayHttpError,
   parseGatewayErrorText,
 } from "../cavi-control/api-error.js";
-import { resolveGatewayHttpUrl } from "../cavi-control/runtime-paths.js";
+import { HttpApiError } from "../../../core/http/errors.js";
+import { resolveGatewayHttpBase } from "../cavi-control/runtime-paths.js";
+import {
+  createCaviRawHttpClient,
+  toHttpRequestInit,
+} from "./http-transport.js";
 import {
   PORTAL_CLIENT_ID_HEADER,
   requirePortalClientId,
@@ -74,10 +79,24 @@ export type FetchGatewayJsonOptions = Omit<RequestInit, "headers"> & {
   headers?: Record<string, string>;
 };
 
-export async function fetchGatewayJson<T>(
+function throwGatewayHttpErrorFromCore(
+  error: HttpApiError,
+  apiLabel: string,
+): never {
+  const details = parseGatewayErrorText(error.body, "application/json");
+  throw buildGatewayHttpError({
+    label: apiLabel,
+    status: error.status,
+    statusText: "",
+    message: details.message,
+    code: details.code,
+  });
+}
+
+async function requestGatewayRaw(
   path: string,
   options: FetchGatewayJsonOptions,
-): Promise<T> {
+): Promise<Response> {
   const {
     gatewayBaseUrl,
     clientId,
@@ -86,85 +105,45 @@ export async function fetchGatewayJson<T>(
     headers: extraHeaders,
     ...init
   } = options;
-  const headers = { ...gatewayAuthHeaders(clientId, authToken), ...extraHeaders };
-  const credentials = gatewayRequestCredentials();
-  const res = await fetch(resolveGatewayHttpUrl(gatewayBaseUrl, path), {
-    ...init,
-    headers,
-    cache: init.cache ?? "no-store",
-    ...(credentials ? { credentials } : {}),
+  const sessionMode = isSessionAuthMode();
+  const client = createCaviRawHttpClient({
+    surface: "gateway-api",
+    baseUrl: resolveGatewayHttpBase(gatewayBaseUrl),
+    authToken: sessionMode ? null : authToken,
+    clientId,
+    credentials: sessionMode ? "same-origin" : undefined,
   });
-  return parseGatewayJsonResponse<T>(res, path, apiLabel);
+
+  try {
+    return await client.raw(path, toHttpRequestInit(init, extraHeaders));
+  } catch (error) {
+    if (error instanceof HttpApiError && error.status > 0) {
+      throwGatewayHttpErrorFromCore(error, apiLabel);
+    }
+    throw error;
+  }
+}
+
+export async function fetchGatewayJson<T>(
+  path: string,
+  options: FetchGatewayJsonOptions,
+): Promise<T> {
+  const res = await requestGatewayRaw(path, options);
+  return parseGatewayJsonResponse<T>(res, path, options.apiLabel);
 }
 
 export async function fetchGatewayExpectOk(
   path: string,
   options: FetchGatewayJsonOptions,
 ): Promise<void> {
-  const {
-    gatewayBaseUrl,
-    clientId,
-    authToken,
-    apiLabel,
-    headers: extraHeaders,
-    ...init
-  } = options;
-  const headers = { ...gatewayAuthHeaders(clientId, authToken), ...extraHeaders };
-  const credentials = gatewayRequestCredentials();
-  const res = await fetch(resolveGatewayHttpUrl(gatewayBaseUrl, path), {
-    ...init,
-    headers,
-    cache: init.cache ?? "no-store",
-    ...(credentials ? { credentials } : {}),
-  });
-  if (!res.ok) {
-    const contentType = res.headers.get("content-type") ?? "";
-    const text = await res.text();
-    const details = parseGatewayErrorText(text, contentType);
-    throw buildGatewayHttpError({
-      label: apiLabel,
-      status: res.status,
-      statusText: res.statusText,
-      message: details.message,
-      code: details.code,
-    });
-  }
+  await requestGatewayRaw(path, options);
 }
 
 export async function fetchGatewayBlob(
   path: string,
   options: FetchGatewayJsonOptions,
 ): Promise<Blob> {
-  const {
-    gatewayBaseUrl,
-    clientId,
-    authToken,
-    apiLabel,
-    headers: extraHeaders,
-    ...init
-  } = options;
-  const headers = { ...gatewayAuthHeaders(clientId, authToken), ...extraHeaders };
-  const credentials = gatewayRequestCredentials();
-  const res = await fetch(resolveGatewayHttpUrl(gatewayBaseUrl, path), {
-    ...init,
-    headers,
-    cache: init.cache ?? "no-store",
-    ...(credentials ? { credentials } : {}),
-  });
-
-  if (!res.ok) {
-    const contentType = res.headers.get("content-type") ?? "";
-    const text = await res.text();
-    const details = parseGatewayErrorText(text, contentType);
-    throw buildGatewayHttpError({
-      label: apiLabel,
-      status: res.status,
-      statusText: res.statusText,
-      message: details.message,
-      code: details.code,
-    });
-  }
-
+  const res = await requestGatewayRaw(path, options);
   return res.blob();
 }
 
@@ -178,17 +157,13 @@ export async function fetchGatewayFormDataJson<T>(
     body: FormData;
   },
 ): Promise<T> {
-  const headers = gatewayAuthHeaders(options.clientId, options.authToken);
-  const credentials = gatewayRequestCredentials();
-  const res = await fetch(
-    resolveGatewayHttpUrl(options.gatewayBaseUrl, path),
-    {
-      method: "POST",
-      headers,
-      body: options.body,
-      cache: "no-store",
-      ...(credentials ? { credentials } : {}),
-    },
-  );
+  const res = await requestGatewayRaw(path, {
+    gatewayBaseUrl: options.gatewayBaseUrl,
+    clientId: options.clientId,
+    authToken: options.authToken,
+    apiLabel: options.apiLabel,
+    method: "POST",
+    body: options.body,
+  });
   return parseGatewayJsonResponse<T>(res, path, options.apiLabel);
 }

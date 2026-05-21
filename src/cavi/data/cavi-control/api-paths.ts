@@ -1,38 +1,40 @@
-export const API_OPERATOR = "/cavi-control/api/operator";
-export const API_DEB = "/cavi-control/api/deb";
+import { CAVI_CONTROL_API_ENDPOINTS } from "../../../contracts/paths.js";
+
+export const API_OPERATOR = CAVI_CONTROL_API_ENDPOINTS.operator.root;
+export const API_DEB = CAVI_CONTROL_API_ENDPOINTS.deb.root;
 
 /** Cost time-series (see refs/contracts-pending.md). */
-export const API_COST_HISTORY = "/cavi-control/api/cost/history";
+export const API_COST_HISTORY = CAVI_CONTROL_API_ENDPOINTS.costHistory;
 
 /** Pending scoring endpoint; reserved for future UI. */
-export const API_SCORING_MODEL = "/cavi-control/api/scoring/model";
+export const API_SCORING_MODEL = CAVI_CONTROL_API_ENDPOINTS.scoringModel;
 
-/** Deb HTTP resources under `/cavi-control/api/deb`. */
+/** Deb HTTP resources. */
 export const DEB_API = {
-  root: API_DEB,
-  profile: `${API_DEB}/profile`,
-  sprint: `${API_DEB}/sprint`,
-  backlog: `${API_DEB}/backlog`,
-  call: `${API_DEB}/call`,
+  root: CAVI_CONTROL_API_ENDPOINTS.deb.root,
+  profile: CAVI_CONTROL_API_ENDPOINTS.deb.profile,
+  sprint: CAVI_CONTROL_API_ENDPOINTS.deb.sprint,
+  backlog: CAVI_CONTROL_API_ENDPOINTS.deb.backlog,
+  call: CAVI_CONTROL_API_ENDPOINTS.deb.call,
 } as const;
 
-/** Operator control HTTP resources under `/cavi-control/api/operator`. */
+/** Operator control HTTP resources. */
 export const OPERATOR_API = {
-  snapshot: `${API_OPERATOR}/snapshot`,
-  status: `${API_OPERATOR}/status`,
-  registry: `${API_OPERATOR}/registry`,
-  tasks: `${API_OPERATOR}/tasks`,
-  memory: `${API_OPERATOR}/memory`,
-  workerReady: `${API_OPERATOR}/worker/ready`,
-  workerTasks: `${API_OPERATOR}/worker/tasks`,
+  snapshot: CAVI_CONTROL_API_ENDPOINTS.operator.snapshot,
+  status: CAVI_CONTROL_API_ENDPOINTS.operator.status,
+  registry: CAVI_CONTROL_API_ENDPOINTS.operator.registry,
+  tasks: CAVI_CONTROL_API_ENDPOINTS.operator.tasks,
+  memory: CAVI_CONTROL_API_ENDPOINTS.operator.memory,
+  workerReady: CAVI_CONTROL_API_ENDPOINTS.operator.workerReady,
+  workerTasks: CAVI_CONTROL_API_ENDPOINTS.operator.workerTasks,
 } as const;
 
 export function debBacklogItemPath(itemId: string): string {
-  return `${DEB_API.backlog}/${encodeURIComponent(itemId)}`;
+  return CAVI_CONTROL_API_ENDPOINTS.deb.backlogItem(itemId);
 }
 
 export function operatorTaskDiscoursePath(taskId: string): string {
-  return `${API_OPERATOR}/tasks/${encodeURIComponent(taskId)}/discourse`;
+  return CAVI_CONTROL_API_ENDPOINTS.operator.taskDiscourse(taskId);
 }
 
 export function operatorControlExpectedContractSummary(): string {

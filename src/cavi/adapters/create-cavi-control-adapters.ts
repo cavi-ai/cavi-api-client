@@ -26,7 +26,7 @@ import type {
   RoutingMatrixSnapshot,
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
-import { mockDebWorkspace, mockTaskDiscourse } from "../../test-support/mock-data/cavi/index.js";
+import { mockDebWorkspace, mockTaskDiscourse } from "../fallbacks/mock-data/index.js";
 import { debWorkspaceExpectedContractSummary } from "../data/cavi-control/api-paths.js";
 import { withFallback } from "../data/cavi-control/envelope.js";
 import { taskDiscourseExpectedContractSummary } from "../data/cavi-control/gateway-rpc.js";

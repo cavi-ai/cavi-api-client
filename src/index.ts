@@ -72,6 +72,9 @@ export { CaviControlApiClient } from "./cavi/client.js";
 
 export {
   GatewayApiClient,
+  type GatewayRunAttachment,
+  type GatewayRunMessage,
+  type GatewayRunStartBody,
   type GatewayCapabilities,
   type GatewayRunStatus,
 } from "./core/gateway/client.js";
@@ -83,7 +86,7 @@ export {
   type GatewayProviderEnv,
   type GatewayProviderKind,
   type ResolveGatewayProviderOptions,
-} from "./core/gateway/provider.js";
+} from "./providers/gateway-provider.js";
 
 export {
   createTeamRegistry,
@@ -117,6 +120,13 @@ export {
   type HermesCapabilities,
   type HermesRunStatus,
 } from "./providers/hermes/client.js";
+
+export {
+  HERMES_HTTP_API_ENV_ALIASES,
+  HERMES_HTTP_API_ENV_KEYS,
+  resolveHermesHttpApiConfigFromEnv,
+  type ResolveHermesHttpApiConfigOptions,
+} from "./providers/hermes/env-config.js";
 
 export {
   RunPreviewPollProvider,

@@ -25,7 +25,7 @@ import { fallbackGap } from "../../data/cavi-control/envelope.js";
 import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
 import { withQuery } from "../../data/cavi-control/http-client.js";
 import { loadOperatorControlSection } from "../../data/cavi-control/operator/load-section.js";
-import { mockOperatorControl } from "../../../test-support/mock-data/cavi/index.js";
+import { mockOperatorControl } from "../../fallbacks/mock-data/index.js";
 
 const OPERATOR_FULL_FALLBACK_BACKOFF_MS = 15_000;
 const fullFallbackByRequestJson = new WeakMap<

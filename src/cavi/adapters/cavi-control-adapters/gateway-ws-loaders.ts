@@ -32,7 +32,7 @@ import {
   mockRoutingMatrix,
   mockRunDetailForKey,
   mockCostHistory,
-} from "../../../test-support/mock-data/cavi/index.js";
+} from "../../fallbacks/mock-data/index.js";
 import {
   API_COST_HISTORY,
   describeHttpContract,

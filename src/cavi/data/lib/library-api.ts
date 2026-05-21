@@ -2,7 +2,12 @@ import {
   gatewayAuthHeaders,
   gatewayRequestCredentials,
 } from "./gateway-json-fetch.js";
+import { HttpApiError } from "../../../core/http/errors.js";
 import { LIBRARY_API_BASE_PATH } from "../../paths.js";
+import {
+  createCaviRawHttpClient,
+  toHttpRequestInit,
+} from "./http-transport.js";
 
 type LibraryApiMutationMethod =
   | "POST"
@@ -85,7 +90,6 @@ export async function fetchLibraryApiJson<T>(
   const headers = gatewayAuthHeaders(clientId, authToken);
   const init: RequestInit = {
     method: options?.method ?? "GET",
-    headers,
     signal: options?.signal,
     cache: options?.cache ?? "no-store",
   };
@@ -94,25 +98,33 @@ export async function fetchLibraryApiJson<T>(
     init.body = JSON.stringify(options.body);
   }
   const credentials = gatewayRequestCredentials();
-  const response = await fetch(resolveLibraryApiPath(path), {
-    ...init,
-    ...(credentials ? { credentials } : {}),
+  const client = createCaviRawHttpClient({
+    surface: "library-api",
+    baseUrl: "",
+    authToken: credentials ? null : authToken,
+    clientId,
+    credentials,
+  });
+  const response = await client.raw(
+    resolveLibraryApiPath(path),
+    toHttpRequestInit(
+      {
+        ...init,
+        ...(credentials ? { credentials } : {}),
+      },
+      headers,
+    ),
+  ).catch((error: unknown) => {
+    if (error instanceof HttpApiError && error.status > 0) {
+      const payload = parseLibraryApiPayload(error.body, error.status);
+      const fallbackMessage = error.body.trim() || `Request failed (${error.status})`;
+      throw new Error(extractLibraryApiErrorMessage(payload) ?? fallbackMessage);
+    }
+    throw error;
   });
   const raw = await response.text();
 
-  let payload: unknown = null;
-  if (raw) {
-    try {
-      payload = JSON.parse(raw) as unknown;
-    } catch {
-      throw new Error(raw.trim() || `Librarian error (${response.status})`);
-    }
-  }
-
-  if (!response.ok) {
-    const fallbackMessage = raw.trim() || `Request failed (${response.status})`;
-    throw new Error(extractLibraryApiErrorMessage(payload) ?? fallbackMessage);
-  }
+  const payload = parseLibraryApiPayload(raw, response.status);
 
   if (payload === null) {
     throw new Error("Empty response.");
@@ -142,4 +154,15 @@ export async function requestLibraryApiJson<T>(
         }
       : undefined;
   return await requestJson<T>(requestPath, init);
+}
+
+function parseLibraryApiPayload(raw: string, status: number): unknown {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error(raw.trim() || `Librarian error (${status})`);
+  }
 }

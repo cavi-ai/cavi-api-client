@@ -3,7 +3,6 @@ export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key" as const;
 
 export type HttpApiClientSurface =
   | "cavi-control-api"
-  | "hermes-api-server"
   | "library-api"
   | "portal-api"
   | string;
@@ -13,6 +12,7 @@ export type HttpApiHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type HttpApiRequestInit = {
   method?: HttpApiHttpMethod;
   body?: unknown;
+  rawBody?: BodyInit;
   headers?: Record<string, string>;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -46,6 +46,7 @@ export type HttpApiClientAuth = {
 export type HttpApiClientOptions = {
   baseUrl: string;
   basePath?: string;
+  allowRelativeBaseUrl?: boolean;
   auth?: HttpApiClientAuth;
   defaultTimeoutMs?: number;
   fetchImpl?: typeof fetch;

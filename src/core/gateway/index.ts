@@ -1,5 +1,4 @@
 export * from "./client.js";
-export * from "./provider.js";
 export * from "./rpc.js";
 export * from "./rpc-error.js";
 export * from "./device-crypto.js";

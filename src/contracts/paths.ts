@@ -11,6 +11,7 @@ export const CAVI_CONTROL_API_ENDPOINTS = {
       `/cavi-control/api/deb/backlog/${encodeURIComponent(itemId)}`,
   },
   operator: {
+    root: "/cavi-control/api/operator",
     snapshot: "/cavi-control/api/operator/snapshot",
     status: "/cavi-control/api/operator/status",
     registry: "/cavi-control/api/operator/registry",

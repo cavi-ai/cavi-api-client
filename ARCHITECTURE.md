@@ -15,6 +15,7 @@ src/
     adapters/
     data/
     domain/
+    fallbacks/
     library/
     portal/
     registry/
@@ -37,16 +38,17 @@ package exports, and are not built. They are preserved only under
 
 - `core/**` contains shared HTTP, gateway, and env behavior. It must not import from `cavi/**`, `providers/**`, `react/**`, or compatibility shims.
 - `contracts/**` contains route and surface contracts. It must not import from `cavi/**` or providers.
-- `cavi/**` may import from `core/**` and `contracts/**`. It owns CAVI clients, data, adapters, domain DTOs, current CAVI routes, and registry wrappers.
+- `cavi/**` may import from `core/**` and `contracts/**`. It owns CAVI clients, data, adapters, domain DTOs, and registry wrappers.
 - `providers/**` may import from `core/**`, `contracts/**`, and shared CAVI registry/domain types when needed.
 - `react/**` may import from `core/gateway/**` and React only.
 - `compat/**` owns explicit compatibility domains such as Martina. It is not a
   dumping ground for stale root import paths.
-- `test-support/**` contains fixtures and mock data. Production modules should not grow new dependencies on it.
+- `cavi/fallbacks/**` contains runtime fallback snapshots used by degraded gateway flows.
+- `test-support/**` contains test-only fixtures and helpers. Production modules must not depend on it and it is not part of the build include.
 
 ## CAVI Boundary
 
-Current CAVI paths such as `/cavi-control/api/*`, `/library/api/*`, and portal-memory routes are active CAVI contracts. They belong under `src/cavi/**`. They are not treated as quarantine.
+Current CAVI paths such as `/cavi-control/api/*`, `/library/api/*`, and portal-memory routes are active CAVI contracts. Route literals are owned by `src/contracts/paths.ts`; `src/cavi/paths.ts` is a compatibility re-export for CAVI consumers. They are not treated as quarantine.
 
 CAVI must not duplicate:
 
