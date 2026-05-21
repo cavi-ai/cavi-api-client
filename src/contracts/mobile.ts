@@ -139,6 +139,29 @@ export const MOBILE_GATEWAY_ENDPOINT_CONTRACTS = {
     owner: "gateway/kanban owner",
     note: "Hermes API Server exposes the unified Kanban board through bearer-authenticated /api/plugins/kanban/board for Deb and Operator visibility.",
   },
+  teamWorkspace: {
+    surface: "team-workspace",
+    classification: "gateway-native",
+    method: "GET",
+    hermesPath: canonicalPath("team.workspace", {
+      teamId: "research",
+      workspacePath: "research/complete",
+    }),
+    owner: "gateway/team contract",
+    note: "Preferred agnostic replacement for team-owned folder shims; resolve the concrete path through the team manifest whitelist.",
+  },
+  teamAgentWorkspace: {
+    surface: "team-agent-workspace",
+    classification: "gateway-native",
+    method: "GET",
+    hermesPath: canonicalPath("team.agent.workspace", {
+      teamId: "research",
+      agentId: "scout",
+      workspacePath: "media/images",
+    }),
+    owner: "gateway/team contract",
+    note: "Preferred agnostic replacement for agent-owned media/research folder shims; resolve concrete paths through the team manifest whitelist.",
+  },
   frontDoorDashboard: {
     surface: "front-door-dashboard",
     classification: "compatibility-shim",

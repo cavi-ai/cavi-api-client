@@ -183,6 +183,32 @@ export { PortalApiClient, type PortalApiClientOptions } from "./cavi/portal/clie
 export { SURFACE_CONTRACTS, type GatewayMode, type SurfaceContract } from "./contracts/surfaces.js";
 export { resolvePath } from "./contracts/resolve.js";
 export {
+  DEFAULT_TEAM_ID,
+  DEFAULT_TEAM_MEMBER_ID,
+  DEFAULT_TEAM_ROUTE_KEYS,
+  TEAM_MANIFEST_VERSION,
+  createDefaultTeamManifest,
+  findTeamManifestMember,
+  findTeamManifestTeam,
+  normalizeTeamManifest,
+  resolveTeamRoutePath,
+  resolveTeamWorkspaceApiPath,
+  resolveTeamWorkspacePath,
+  type CreateDefaultTeamManifestOptions,
+  type DefaultTeamRouteKey,
+  type ResolveTeamRoutePathOptions,
+  type ResolveTeamWorkspacePathOptions,
+  type TeamManifest,
+  type TeamManifestIdentity,
+  type TeamManifestMember,
+  type TeamManifestRouteConfig,
+  type TeamManifestTeam,
+  type TeamManifestVersion,
+  type TeamRouteKey,
+  type TeamWorkspaceConfig,
+  type TeamWorkspacePathEntry,
+} from "./contracts/team-manifest.js";
+export {
   PORTAL_DASHBOARD_IDS,
   isPortalDashboardId,
   portalDashboardPath,

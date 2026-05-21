@@ -27,6 +27,7 @@ For workspace consumers, depend on the workspace package through the repo packag
 - `GatewayApiClient` and `createGatewayApiClient` for gateway-agnostic run and capability APIs.
 - `HermesApiClient` and Hermes run-stream helpers as provider-specific compatibility exports.
 - `TeamRegistry`, `TEAM_REGISTRY_CONFIG`, `configureTeamRegistryConfig`, `createHermesTeamRegistry`, and `createOpenClawTeamRegistry` for runtime-loaded team registry config.
+- `TeamManifest`, `normalizeTeamManifest`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, and `resolveTeamWorkspacePath` for agnostic team/member/workspace contracts.
 - `LibraryApiClient` for library search, ingest, and document APIs.
 - `PortalApiClient` for portal-scoped dashboard and relative portal API calls.
 - `GatewayRpcClient`, gateway RPC helpers, and React hooks/providers from the package root.
@@ -180,6 +181,70 @@ Legacy registry import paths such as `@cavi/api-client/team-registry` and
 `@cavi/api-client/hermes/team-registry` are not exported. Use the package root,
 `@cavi/api-client/cavi`, or provider exports such as
 `@cavi/api-client/providers/hermes`.
+
+## Team Manifest And Workspace Paths
+
+Prefer manifest-driven team config for new frontend compatibility surfaces.
+The consumer owns team/member entries; this package owns the contract,
+normalization, generated route grammar, and workspace path whitelist checks.
+
+```ts
+import {
+  configureTeamRegistryConfig,
+  findTeamManifestTeam,
+  normalizeTeamManifest,
+  resolvePath,
+  resolveTeamWorkspaceApiPath,
+  type TeamManifest,
+} from "@cavi/api-client";
+
+const manifest = normalizeTeamManifest({
+  version: 1,
+  teams: [
+    {
+      id: "research",
+      identity: {
+        displayName: "Research",
+        slug: "research",
+        code: "RND",
+        aliases: ["scout-school"],
+      },
+      workspace: {
+        rootPath: "/teams/research/workspace-research",
+        paths: [
+          "research/complete",
+          { key: "media.images", path: "media/images" },
+        ],
+      },
+      members: [{ id: "scout", capabilities: ["research.complete"] }],
+    },
+  ],
+} satisfies TeamManifest);
+
+configureTeamRegistryConfig({ provider: "gateway", manifest });
+
+resolvePath("team.kanban", "canonical", { teamId: "research" });
+// /api/teams/research/kanban
+
+resolvePath("team.agent.config", "canonical", {
+  teamId: "research",
+  agentId: "scout",
+});
+// /api/teams/research/agents/scout/config
+
+const team = findTeamManifestTeam(manifest, "research");
+if (!team) throw new Error("missing team");
+
+resolveTeamWorkspaceApiPath(team, "media.images", { memberId: "scout" });
+// /api/teams/research/agents/scout/workspace/media/images
+```
+
+The workspace resolver accepts only paths declared in `workspace.paths`, so
+custom folders such as `media/images` and `research/complete` do not require
+new product-specific endpoint constants. See
+[`docs/team-manifest.md`](docs/team-manifest.md) and
+[`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts)
+for the consumer-side add/remove agent template.
 
 ## Requests, Headers, and Errors
 

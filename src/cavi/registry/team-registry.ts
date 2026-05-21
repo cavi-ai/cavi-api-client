@@ -3,6 +3,11 @@ import type {
   OperatorRegistryTeam,
 } from "../domain/index.js";
 import type { PortalLibraryRef } from "../data/lib/portal-api-contract.js";
+import {
+  normalizeTeamManifest,
+  type TeamManifest,
+  type TeamManifestTeam,
+} from "../../contracts/team-manifest.js";
 
 export type TeamRegistryProviderKind =
   | "gateway"
@@ -26,6 +31,7 @@ export type TeamRegistryLibraryConfig = {
 
 export type TeamRegistryConfig = {
   provider?: TeamRegistryProviderKind | null;
+  manifest?: Partial<TeamManifest> | null;
   teams?: readonly TeamRegistryTeamConfig[] | null;
   libraries?: TeamRegistryLibraryConfig | null;
   snapshot?: Pick<OperatorRegistrySnapshot, "teams"> | null;
@@ -91,9 +97,38 @@ function toPortalLibraryRef(record: TeamRegistryLibraryRefConfig): PortalLibrary
   };
 }
 
+function teamFromManifest(team: TeamManifestTeam): TeamRegistryTeamConfig {
+  const identity = team.identity ?? {};
+  const name = identity.name ?? identity.displayName ?? team.id;
+  const teamSlug = identity.slug ?? team.id;
+  const teamCode = identity.code ?? teamSlug;
+  const sectorSlug = identity.sectorSlug ?? teamSlug;
+  const sectorCode = identity.sectorCode ?? teamCode;
+  const members = team.members?.map((member) => member.id) ?? [];
+
+  return {
+    id: team.id,
+    name,
+    displayName: identity.displayName ?? name,
+    teamSlug,
+    teamCode,
+    sectorSlug,
+    sectorCode,
+    portalId: identity.portalId ?? null,
+    legacyAliases: [...(identity.aliases ?? [])],
+    members,
+    memberIdentityIds: members,
+    ownsCapabilities: [...(team.capabilities ?? [])],
+    teamManifest: null,
+  };
+}
+
 function configuredTeams(config: TeamRegistryConfig): readonly TeamRegistryTeamConfig[] {
   if (config.snapshot?.teams?.length) {
     return config.snapshot.teams;
+  }
+  if (config.manifest) {
+    return normalizeTeamManifest(config.manifest).teams.map(teamFromManifest);
   }
   return config.teams ?? [];
 }

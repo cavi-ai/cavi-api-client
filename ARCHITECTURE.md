@@ -37,7 +37,7 @@ package exports, and are not built. They are preserved only under
 ## Dependency Direction
 
 - `core/**` contains shared HTTP, gateway, and env behavior. It must not import from `cavi/**`, `providers/**`, `react/**`, or compatibility shims.
-- `contracts/**` contains route and surface contracts. It must not import from `cavi/**` or providers.
+- `contracts/**` contains route, surface, and agnostic team-manifest contracts. It must not import from `cavi/**` or providers.
 - `cavi/**` may import from `core/**` and `contracts/**`. It owns CAVI clients, data, adapters, domain DTOs, and registry wrappers.
 - `providers/**` may import from `core/**`, `contracts/**`, and shared CAVI registry/domain types when needed.
 - `react/**` may import from `core/gateway/**` and React only.
@@ -62,6 +62,19 @@ CAVI should call shared core methods and shared contract helpers.
 ## Registry Model
 
 Team and portal registry data is runtime configuration. `TEAM_REGISTRY_CONFIG` starts empty, apps populate it after loading gateway/plugin config, and registry-dependent APIs fail loudly when config is missing.
+
+Team manifests are the preferred agnostic input shape for dynamic frontend
+compatibility. A manifest has a `teams` array, a default team-of-one helper for
+minimal setups, shared generated routes such as team Kanban/runs/config and
+team/member workspace APIs, and per-team or per-member workspace roots with
+explicit whitelisted relative paths. Product names such as Deb or Martina
+should not define core route grammar; they may supply manifest entries,
+workspace folders, capabilities, or compatibility adapters.
+
+New team-shaped CAVI paths should use the `team.*` contracts first. Existing
+Deb, Martina, Machine, Front Door, and portal-memory paths are compatibility
+contracts and should not be expanded unless a gateway compatibility boundary
+requires it.
 
 ## Quarantine
 

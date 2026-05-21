@@ -16,11 +16,17 @@ import {
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
   PORTAL_DASHBOARD_IDS,
   createContractGap,
+  createDefaultTeamManifest,
   getMobileGatewayEndpointPath,
+  normalizeTeamManifest,
   portalDashboardPath,
   resolveOperatorTaskDispatchPath,
   SURFACE_CONTRACTS,
   resolvePath,
+  resolveTeamRoutePath,
+  resolveTeamWorkspaceApiPath,
+  resolveTeamWorkspacePath,
+  DEFAULT_TEAM_ROUTE_KEYS,
 } from "./index";
 import { LibraryApiClient } from "./cavi/library/client";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "./core/http/types";
@@ -143,6 +149,22 @@ describe("agnostic HTTP API client package", () => {
       "/api/plugins/cavi-control/operator/snapshot",
     );
     expect(resolvePath("kanban.board", "canonical")).toBe("/api/plugins/kanban/board");
+    expect(resolvePath("team.kanban", "canonical", { teamId: "research team" })).toBe(
+      "/api/teams/research%20team/kanban",
+    );
+    expect(resolvePath("team.agent.config", "canonical", {
+      teamId: "research",
+      agentId: "scout/a",
+    })).toBe("/api/teams/research/agents/scout%2Fa/config");
+    expect(resolvePath("team.workspace", "canonical", {
+      teamId: "research",
+      workspacePath: "research/complete",
+    })).toBe("/api/teams/research/workspace/research/complete");
+    expect(resolvePath("team.agent.workspace", "canonical", {
+      teamId: "research",
+      agentId: "scout/a",
+      workspacePath: "media/images",
+    })).toBe("/api/teams/research/agents/scout%2Fa/workspace/media/images");
     expect(resolvePath("cavi.operator.memory", "canonical")).toBe(
       "/api/plugins/cavi-control/operator/memory",
     );
@@ -214,6 +236,12 @@ describe("agnostic HTTP API client package", () => {
       "/api/plugins/kanban/tasks",
     );
     expect(resolveOperatorTaskDispatchPath("kanban-native")).toBe("/api/plugins/kanban/tasks");
+    expect(getMobileGatewayEndpointPath("teamWorkspace", "canonical")).toBe(
+      "/api/teams/research/workspace/research/complete",
+    );
+    expect(getMobileGatewayEndpointPath("teamAgentWorkspace", "canonical")).toBe(
+      "/api/teams/research/agents/scout/workspace/media/images",
+    );
     expect(MOBILE_GATEWAY_ENDPOINT_CONTRACTS.machineComedyRun.hermesPath).toBe("/v1/runs");
     expect(createContractGap("preflightCapabilities", "missing auth")).toEqual({
       area: "preflight-capabilities",
@@ -221,6 +249,65 @@ describe("agnostic HTTP API client package", () => {
       note: "missing auth",
       reason: "unknown",
     });
+  });
+
+  it("normalizes agnostic team manifests and resolves whitelisted workspace paths", () => {
+    expect(DEFAULT_TEAM_ROUTE_KEYS).toEqual(["kanban", "runs", "config", "workspace"]);
+    expect(createDefaultTeamManifest().teams[0]?.members?.[0]?.id).toBe(
+      "default-agent",
+    );
+
+    const manifest = normalizeTeamManifest({
+      version: 1,
+      teams: [
+        {
+          id: "research",
+          identity: {
+            displayName: "Research",
+            slug: "research",
+            code: "RND",
+            aliases: ["scout-school"],
+          },
+          workspace: {
+            rootPath: "/teams/research/workspace-research/",
+            paths: ["research/complete"],
+          },
+          members: [
+            {
+              id: "scout",
+              workspace: {
+                rootPath: "/teams/research/workspace-research",
+                paths: [{ key: "media.images", path: "media/images" }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const team = manifest.teams[0];
+    expect(team?.identity?.aliases).toEqual(["scout-school"]);
+    expect(resolveTeamRoutePath("kanban", { teamId: "research" })).toBe(
+      "/api/teams/research/kanban",
+    );
+    expect(resolveTeamRoutePath("agent.config", {
+      teamId: "research",
+      agentId: "scout",
+    })).toBe("/api/teams/research/agents/scout/config");
+    expect(resolveTeamWorkspacePath(team!, "research/complete")).toBe(
+      "/teams/research/workspace-research/research/complete",
+    );
+    expect(resolveTeamWorkspacePath(team!, "media.images", { memberId: "scout" })).toBe(
+      "/teams/research/workspace-research/media/images",
+    );
+    expect(resolveTeamWorkspaceApiPath(team!, "research/complete")).toBe(
+      "/api/teams/research/workspace/research/complete",
+    );
+    expect(resolveTeamWorkspaceApiPath(team!, "media.images", { memberId: "scout" })).toBe(
+      "/api/teams/research/agents/scout/workspace/media/images",
+    );
+    expect(() => resolveTeamWorkspacePath(team!, "secrets/tokens")).toThrow(
+      /not whitelisted/u,
+    );
   });
 
   it("throws for unknown surface and missing required path params", () => {
@@ -233,6 +320,9 @@ describe("agnostic HTTP API client package", () => {
     );
     expect(() => resolvePath("cavi.operator.task", "legacy")).toThrow(
       'SURFACE_CONTRACTS: missing path param "taskId"',
+    );
+    expect(() => resolvePath("team.agent.config", "canonical", { teamId: "research" })).toThrow(
+      'SURFACE_CONTRACTS: missing path param "agentId"',
     );
   });
 

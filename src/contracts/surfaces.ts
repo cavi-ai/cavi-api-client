@@ -1,3 +1,5 @@
+import { resolveTeamRoutePath } from "./team-manifest.js";
+
 export type GatewayMode = "legacy" | "canonical";
 
 export type SurfaceContract = {
@@ -15,6 +17,12 @@ const p = (params: Record<string, string> | undefined, k: string): string => {
   const v = params?.[k];
   if (!v) throw new Error(`SURFACE_CONTRACTS: missing path param "${k}"`);
   return encodeURIComponent(v);
+};
+
+const raw = (params: Record<string, string> | undefined, k: string): string => {
+  const v = params?.[k];
+  if (!v) throw new Error(`SURFACE_CONTRACTS: missing path param "${k}"`);
+  return v;
 };
 
 export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
@@ -180,6 +188,76 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     degradation: "hard",
     owner: "gateway/kanban owner",
     note: "Unified Kanban board for Deb and Operator visibility.",
+  },
+  "team.kanban": {
+    key: "team.kanban",
+    method: "GET",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("kanban", { teamId: raw(params, "teamId") }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic team Kanban route derived from the team manifest identity.",
+  },
+  "team.runs": {
+    key: "team.runs",
+    method: "GET",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("runs", { teamId: raw(params, "teamId") }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic team runs route derived from the team manifest identity.",
+  },
+  "team.config": {
+    key: "team.config",
+    method: "GET",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("config", { teamId: raw(params, "teamId") }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic team config route derived from the team manifest identity.",
+  },
+  "team.workspace": {
+    key: "team.workspace",
+    method: "GET",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("workspace", {
+        teamId: raw(params, "teamId"),
+        workspacePath: raw(params, "workspacePath"),
+      }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic whitelisted team workspace route; callers should validate paths against the team manifest.",
+  },
+  "team.agent.config": {
+    key: "team.agent.config",
+    method: "GET",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("agent.config", {
+        teamId: raw(params, "teamId"),
+        agentId: raw(params, "agentId"),
+      }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic team member config route derived from the team manifest identity.",
+  },
+  "team.agent.workspace": {
+    key: "team.agent.workspace",
+    method: "GET",
+    canonicalPath: (params) =>
+      resolveTeamRoutePath("agent.workspace", {
+        teamId: raw(params, "teamId"),
+        agentId: raw(params, "agentId"),
+        workspacePath: raw(params, "workspacePath"),
+      }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/team contract",
+    note: "Agnostic whitelisted team-member workspace route; callers should validate paths against the team manifest.",
   },
   "cavi.costHistory": {
     key: "cavi.costHistory",

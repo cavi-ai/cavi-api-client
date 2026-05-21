@@ -85,4 +85,38 @@ describe("team registry", () => {
       "research",
     );
   });
+
+  it("accepts an agnostic team manifest as registry input", () => {
+    const registry = createTeamRegistry({
+      provider: "gateway",
+      manifest: {
+        version: 1,
+        teams: [
+          {
+            id: "research",
+            identity: {
+              displayName: "Research Team",
+              slug: "research",
+              code: "RND",
+              portalId: "scout",
+              aliases: ["scout-school"],
+            },
+            capabilities: ["research.complete"],
+            members: [{ id: "scout" }],
+          },
+        ],
+      },
+    });
+
+    expect(registry.resolveTeam("scout-school")).toMatchObject({
+      id: "research",
+      displayName: "Research Team",
+      teamCode: "RND",
+      portalId: "scout",
+      members: ["scout"],
+      memberIdentityIds: ["scout"],
+      ownsCapabilities: ["research.complete"],
+    });
+    expect(registry.getPortalTeamSlug("scout")).toBe("research");
+  });
 });

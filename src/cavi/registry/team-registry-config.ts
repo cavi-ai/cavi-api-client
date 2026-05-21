@@ -6,6 +6,7 @@ import {
 } from "./team-registry.js";
 
 export const TEAM_REGISTRY_CONFIG: TeamRegistryConfig = {
+  manifest: null,
   teams: [],
   libraries: {
     teams: [],
@@ -17,6 +18,7 @@ export function configureTeamRegistryConfig(
 ): void {
   Object.assign(TEAM_REGISTRY_CONFIG, {
     provider: config?.provider ?? null,
+    manifest: config?.manifest ?? null,
     teams: config?.teams ?? [],
     libraries: config?.libraries ?? { teams: [] },
     snapshot: config?.snapshot ?? null,
