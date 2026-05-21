@@ -12,6 +12,22 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx"]
+  "include": [
+    "src/index.ts",
+    "src/core/**/*.ts",
+    "src/contracts/**/*.ts",
+    "src/cavi/**/*.ts",
+    "src/providers/**/*.ts",
+    "src/react/**/*.ts",
+    "src/react/**/*.tsx",
+    "src/compat/martina/**/*.ts",
+    "src/test-support/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "quarantine/**"
+  ]
 }

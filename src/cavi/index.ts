@@ -1,0 +1,38 @@
+export * from "./client.js";
+export * from "./paths.js";
+export * from "./library/client.js";
+export * from "./portal/client.js";
+export * from "./adapters/create-cavi-control-adapters.js";
+export {
+  backfillCanonicalTeam,
+  buildAgentMainSessionKey,
+  configureCanonicalOperatorRegistry,
+  configureCanonicalTeamRegistry,
+  getOperatorTeamLookupKeys,
+  getPortalTeamCode,
+  getPortalTeamIdentity,
+  getPortalTeamSectorSlug,
+  getPortalTeamSlug,
+  listCaviTeamPortalIds,
+  listCompiledCanonicalTeams,
+  matchesOperatorTeamIdentifier,
+  matchesTaskTargetToTeam,
+  normalizeSessionAgentId,
+  normalizeSessionKey,
+  normalizeTeamLookupValue,
+  parseAgentSessionKey,
+  resetCanonicalOperatorRegistry,
+  resolveCompiledCanonicalTeam,
+  resolvePortalPrimarySessionKey,
+  resolveTeamSessionAgentId,
+  resolveTeamSessionKey,
+  sessionKeysEqual,
+  type CaviTeamPortalId,
+  type ParsedAgentSessionKey,
+} from "./data/lib/canonical-team-registry.js";
+export * from "./data/lib/portal-api-contract.js";
+export * from "./data/lib/portal-library-registry.js";
+export * from "./data/cavi-control/discourse/normalize.js";
+export * from "./domain/index.js";
+export * from "./registry/team-registry.js";
+export * from "./registry/team-registry-config.js";

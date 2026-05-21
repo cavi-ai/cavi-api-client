@@ -1,14 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
-import { BaseHttpApiClient } from "./base-client";
-import { resolveHttpApiConfigFromEnv } from "./config";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { BaseHttpApiClient } from "./core/http/client";
+import { resolveHttpApiConfigFromEnv } from "./core/env/config";
 import {
   appendHttpQuery,
   CAVI_CONTROL_API_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
   LIBRARY_API_ENDPOINTS,
+  OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
-} from "./paths";
+} from "./contracts/paths";
 import {
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
   PORTAL_DASHBOARD_IDS,
@@ -19,8 +20,8 @@ import {
   SURFACE_CONTRACTS,
   resolvePath,
 } from "./index";
-import { LibraryApiClient } from "./library-client";
-import type { HttpApiClientOptions, HttpApiRequestInit } from "./types";
+import { LibraryApiClient } from "./cavi/library/client";
+import type { HttpApiClientOptions, HttpApiRequestInit } from "./core/http/types";
 
 class TestApiClient extends BaseHttpApiClient {
   constructor(options: HttpApiClientOptions) {
@@ -39,6 +40,10 @@ class HeaderOverrideClient extends TestApiClient {
 }
 
 describe("agnostic HTTP API client package", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("resolves canonical env values before aliases and falls back library config to CAVI", () => {
     const config = resolveHttpApiConfigFromEnv({
       CAVI_API_BASE_URL: " https://canonical.example ",
@@ -54,6 +59,11 @@ describe("agnostic HTTP API client package", () => {
       clientId: "cavi-client",
     });
     expect(config.hermes.baseUrl).toBe("https://hermes.example");
+    expect(config.gateway).toEqual({
+      baseUrl: "https://hermes.example",
+      authToken: null,
+      clientId: "cavi-api-client",
+    });
     expect(config.library).toEqual({
       baseUrl: "https://canonical.example",
       authToken: "token-value",
@@ -74,6 +84,10 @@ describe("agnostic HTTP API client package", () => {
     expect(HERMES_API_ENDPOINTS.runApproval("run/1")).toBe("/v1/runs/run%2F1/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.runApproval).toBe("/v1/runs/{run_id}/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.ecgSharedFiles).toBe("/api/v1/files?agent={agent}&folder={folder}");
+    expect(OPERATOR_DISPATCH_ENDPOINTS.operatorEvents).toBe("/operator/events");
+    expect(OPERATOR_DISPATCH_ENDPOINTS.taskReceiptsTemplate).toBe(
+      "/cavi-control/api/tasks/{taskId}/receipts",
+    );
     expect(LIBRARY_API_ENDPOINTS.document("doc/1")).toBe("/library/api/documents/doc%2F1");
     expect(LIBRARY_API_ENDPOINTS.fleetStatus).toBe("/library/api/fleet-status");
     expect(LIBRARY_API_ENDPOINTS.status).toBe("/library/api/status");
@@ -99,31 +113,31 @@ describe("agnostic HTTP API client package", () => {
       "/machine/api/media?name=a%2Fb%20c.png",
     );
     expect(resolvePath("cavi.deb.root", "legacy")).toBe("/cavi-control/api/deb");
-    expect(resolvePath("cavi.deb.profile", "canonical")).toBe("/cavi-control/api/deb/profile");
+    expect(resolvePath("cavi.deb.profile", "canonical")).toBe("/api/plugins/cavi-control/deb/profile");
     expect(resolvePath("cavi.deb.sprint", "legacy")).toBe("/cavi-control/api/deb/sprint");
-    expect(resolvePath("cavi.deb.backlog", "canonical")).toBe("/cavi-control/api/deb/backlog");
-    expect(resolvePath("cavi.deb.call", "canonical")).toBe("/cavi-control/api/deb/call");
+    expect(resolvePath("cavi.deb.backlog", "canonical")).toBe("/api/plugins/cavi-control/deb/backlog");
+    expect(resolvePath("cavi.deb.call", "canonical")).toBe("/api/plugins/cavi-control/deb/call");
     expect(resolvePath("cavi.operator.registry", "legacy")).toBe(
       "/cavi-control/api/operator/registry",
     );
     expect(resolvePath("cavi.operator.snapshot", "canonical")).toBe(
-      "/cavi-control/api/operator/snapshot",
+      "/api/plugins/cavi-control/operator/snapshot",
     );
     expect(resolvePath("kanban.board", "canonical")).toBe("/api/plugins/kanban/board");
     expect(resolvePath("cavi.operator.memory", "canonical")).toBe(
-      "/cavi-control/api/operator/memory",
+      "/api/plugins/cavi-control/operator/memory",
     );
     expect(resolvePath("cavi.operator.workerReady", "legacy")).toBe(
       "/cavi-control/api/operator/worker/ready",
     );
     expect(resolvePath("cavi.operator.workerTasks", "canonical")).toBe(
-      "/cavi-control/api/operator/worker/tasks",
+      "/api/plugins/cavi-control/operator/worker/tasks",
     );
     expect(resolvePath("cavi.operator.task", "legacy", { taskId: "task/a b" })).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b",
     );
     expect(resolvePath("cavi.operator.taskDiscourse", "canonical", { taskId: "task/a b" })).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
+      "/api/plugins/cavi-control/operator/tasks/task%2Fa%20b/discourse",
     );
 
     expect(SURFACE_CONTRACTS["frontDoor.ideaList"]?.method).toBe("GET");
@@ -139,23 +153,23 @@ describe("agnostic HTTP API client package", () => {
     expect(SURFACE_CONTRACTS["frontDoor.memoryCreate"]?.method).toBe("POST");
     expect(SURFACE_CONTRACTS["frontDoor.inboxUpload"]?.method).toBe("POST");
 
-    expect(resolvePath("frontDoor.ideaList", "canonical")).toBe("/front-door/api/ideas");
+    expect(resolvePath("frontDoor.ideaList", "canonical")).toBe("/api/plugins/front-door/ideas");
     expect(resolvePath("frontDoor.ideaDetail", "canonical", { id: "idea/a b" })).toBe(
-      "/front-door/api/ideas/idea%2Fa%20b",
+      "/api/plugins/front-door/ideas/idea%2Fa%20b",
     );
     expect(resolvePath("frontDoor.projectDetail", "legacy", { id: "proj/a b" })).toBe(
       "/front-door/api/projects/proj%2Fa%20b",
     );
     expect(resolvePath("frontDoor.articleList", "legacy")).toBe("/front-door/api/articles");
-    expect(resolvePath("frontDoor.memoryList", "canonical")).toBe("/front-door/api/memory");
+    expect(resolvePath("frontDoor.memoryList", "canonical")).toBe("/api/plugins/front-door/memory");
     expect(resolvePath("frontDoor.inboxUpload", "legacy")).toBe("/front-door/api/inbox");
 
     expect(resolvePath("trading.dashboard", "legacy")).toBe("/trading/api/dashboard");
-    expect(resolvePath("trading.dashboard", "canonical")).toBe("/trading/api/dashboard");
+    expect(resolvePath("trading.dashboard", "canonical")).toBe("/api/plugins/trading/dashboard");
     expect(resolvePath("trading.researchPackets", "legacy")).toBe("/trading/api/research-packets");
-    expect(resolvePath("trading.researchPackets", "canonical")).toBe("/trading/api/research-packets");
+    expect(resolvePath("trading.researchPackets", "canonical")).toBe("/api/plugins/trading/research-packets");
     expect(resolvePath("trading.sourceRegistry", "legacy")).toBe("/trading/api/source-registry");
-    expect(resolvePath("trading.sourceRegistry", "canonical")).toBe("/trading/api/source-registry");
+    expect(resolvePath("trading.sourceRegistry", "canonical")).toBe("/api/plugins/trading/source-registry");
   });
 
   it("keeps mobile portal/workspace contracts in the shared package", () => {
@@ -233,6 +247,75 @@ describe("agnostic HTTP API client package", () => {
       "X-Portal-Client-Id": "client-1",
     });
     expect(trace).toHaveBeenCalledWith(expect.objectContaining({ ok: true, path: "/items" }));
+  });
+
+  it("keeps request timeouts active when callers pass their own abort signal", async () => {
+    vi.useFakeTimers();
+    const callerController = new AbortController();
+    const fetchImpl = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("The operation was aborted.", "AbortError"));
+          });
+        }),
+    );
+    const trace = vi.fn();
+    const client = new TestApiClient({
+      baseUrl: "https://api.example",
+      defaultTimeoutMs: 50,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      onTrace: trace,
+    });
+
+    const assertion = expect(
+      client.get("/slow", { signal: callerController.signal }),
+    ).rejects.toMatchObject({
+      name: "HttpApiError",
+      path: "/slow",
+      status: 0,
+    });
+    await vi.advanceTimersByTimeAsync(51);
+
+    await assertion;
+    expect(callerController.signal.aborted).toBe(false);
+    expect(fetchImpl.mock.calls[0]?.[1]?.signal).not.toBe(callerController.signal);
+    expect(trace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: false,
+        path: "/slow",
+      }),
+    );
+  });
+
+  it("honors caller abort signals before the package timeout fires", async () => {
+    vi.useFakeTimers();
+    const callerController = new AbortController();
+    const fetchImpl = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("caller cancelled", "AbortError"));
+          });
+        }),
+    );
+    const client = new TestApiClient({
+      baseUrl: "https://api.example",
+      defaultTimeoutMs: 10_000,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    const assertion = expect(
+      client.get("/cancelled", { signal: callerController.signal }),
+    ).rejects.toMatchObject({
+      name: "HttpApiError",
+      path: "/cancelled",
+      status: 0,
+    });
+    callerController.abort("caller cancelled");
+    await vi.advanceTimersByTimeAsync(0);
+
+    await assertion;
   });
 
   it("uses inherited transport for library search", async () => {

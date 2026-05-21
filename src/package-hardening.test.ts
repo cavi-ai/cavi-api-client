@@ -2,11 +2,26 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { GatewayApiClient, requireRepoRoot, resolveRepoRoot } from "./index";
+import {
+  GATEWAY_PROVIDER_ENV_KEYS,
+  GatewayApiClient,
+  HermesApiClient,
+  SURFACE_CONTRACTS,
+  TEAM_REGISTRY_CONFIG,
+  createGatewayApiClient,
+  createHermesTeamRegistry,
+  createOpenClawTeamRegistry,
+  requireRepoRoot,
+  resolveGatewayProviderKind,
+  resolvePath,
+  resolveRepoRoot,
+} from "./index";
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
+const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
+const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -25,8 +40,91 @@ const FORBIDDEN_PATH_FRAGMENTS = [
 ] as const;
 
 const API_PATH_LITERAL_RE = /(["'`])\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
+const API_URL_LITERAL_RE = /(["'`])https?:\/\/[^"'`]*\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
+const SURFACE_FIRST_CANONICAL_PATH_RE = /canonicalPath:\s*(?:\([^)]*\)\s*=>\s*)?(["'`])\/(?:cavi-control|front-door|library|machine|martina|trading)\/api(?:\/|[?]|["'`])/u;
+const MARTINA_COMPAT_IDENTIFIER_RE = /\b(?:MARTINA_|Martina[A-Z]\w*|normalizeMartina|inferMartina|martinaRun)/u;
+const BAKED_TEAM_REGISTRY_VALUE_RE = /(["'`])(?:angela|deb|front-door|machine|martina|run-dmc|scout|wu-tang|angels|paw-and-order|griselda|headhunter|scout-school)\1/u;
 const PATH_OWNER_RE = /(?:^|[-_/])paths\.ts$/u;
-const PATH_COMPAT_FILES = new Set(["endpoints.ts"]);
+const PATH_COMPAT_FILES = new Set<string>();
+const CONTRACT_OWNER_FILES = new Set(["src/contracts/surfaces.ts"]);
+const ALLOWED_SRC_ROOT_FILES = new Set([
+  "src/api-client.test.ts",
+  "src/index.ts",
+  "src/package-hardening.test.ts",
+  "src/team-registry.test.ts",
+]);
+const LEGACY_TOP_LEVEL_SOURCE_FILES: ReadonlySet<string> = new Set([
+  "src/base-client.ts",
+  "src/cavi-control-client.ts",
+  "src/config.ts",
+  "src/endpoints.ts",
+  "src/gateway-client.ts",
+  "src/gateway-provider.ts",
+  "src/hermes-chat-run.ts",
+  "src/hermes-client.ts",
+  "src/hermes-sse-provider.ts",
+  "src/library-client.ts",
+  "src/martina-config.ts",
+  "src/martina-runs.ts",
+  "src/mobile-gateway-contracts.ts",
+  "src/paths.ts",
+  "src/portal-client.ts",
+  "src/portal-paths.ts",
+  "src/repo-root.ts",
+  "src/resolve.ts",
+  "src/run-event-stream.ts",
+  "src/run-stream-contracts.ts",
+  "src/surface-paths.ts",
+  "src/surfaces.ts",
+  "src/team-registry.ts",
+  "src/team-registry-config.ts",
+  "src/types.ts",
+] as const);
+const LEGACY_SOURCE_PREFIXES = [
+  "src/data/",
+  "src/domain/",
+  "src/gateway/",
+  "src/gateway-transforms/",
+  "src/hermes/",
+  "src/openclaw/",
+  "src/portals/",
+  "src/compat/legacy/",
+  "src/cavi/domain/domain/",
+] as const;
+const REMOVED_PACKAGE_EXPORTS = [
+  "./team-registry",
+  "./team-registry-config",
+  "./hermes/team-registry",
+  "./hermes/team-registry-config",
+  "./openclaw/team-registry",
+  "./openclaw/team-registry-config",
+  "./compat/team-registry",
+  "./compat/team-registry-config",
+  "./compat/hermes/team-registry",
+  "./compat/hermes/team-registry-config",
+  "./compat/openclaw/team-registry",
+  "./compat/openclaw/team-registry-config",
+] as const;
+const EXPECTED_TS_INCLUDE = [
+  "src/index.ts",
+  "src/core/**/*.ts",
+  "src/contracts/**/*.ts",
+  "src/cavi/**/*.ts",
+  "src/providers/**/*.ts",
+  "src/react/**/*.ts",
+  "src/react/**/*.tsx",
+  "src/compat/martina/**/*.ts",
+  "src/test-support/**/*.ts",
+] as const;
+const ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE =
+  /from "\.\/(?:base-client|types|config|repo-root|paths|surface-paths|surfaces|resolve|portal-paths|mobile-gateway-contracts|gateway-client|gateway-provider|cavi-control-client|library-client|portal-client|run-event-stream|run-stream-contracts|team-registry|team-registry-config|domain\/|gateway\/|gateway-transforms\/|data\/|hermes\/|openclaw\/)/u;
+const TEAM_REGISTRY_OWNER_FILES = [
+  "src/cavi/registry/team-registry-config.ts",
+  "src/providers/hermes/team-registry-config.ts",
+  "src/providers/openclaw/team-registry-config.ts",
+  "src/cavi/data/lib/canonical-team-registry.ts",
+  "src/cavi/data/lib/portal-library-registry.ts",
+] as const;
 
 function walkFiles(root: string): string[] {
   const files: string[] = [];
@@ -61,6 +159,19 @@ function selfScannedSources(): string[] {
   );
 }
 
+function legacySourceFiles(): string[] {
+  return walkFiles(SRC_ROOT).filter((filePath) => {
+    const relative = rel(filePath);
+    if (/\.test\.tsx?$/u.test(relative)) {
+      return false;
+    }
+    return (
+      LEGACY_TOP_LEVEL_SOURCE_FILES.has(relative) ||
+      LEGACY_SOURCE_PREFIXES.some((prefix) => relative.startsWith(prefix))
+    );
+  });
+}
+
 describe("package hardening", () => {
   it("keeps the public dependency surface to @cavi/api-client only", () => {
     const offenders = selfScannedSources().flatMap((filePath) => {
@@ -73,7 +184,7 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("does not reference quarantined monorepo package paths or host registry imports", () => {
+  it("does not reference monorepo package paths or host registry imports", () => {
     const offenders = selfScannedSources().flatMap((filePath) => {
       const source = read(filePath);
       return FORBIDDEN_PATH_FRAGMENTS.filter((fragment) => source.includes(fragment)).map(
@@ -92,7 +203,11 @@ describe("package hardening", () => {
           return false;
         }
         const baseName = path.basename(filePath);
-        if (PATH_OWNER_RE.test(relative) || PATH_COMPAT_FILES.has(baseName)) {
+        if (
+          PATH_OWNER_RE.test(relative) ||
+          PATH_COMPAT_FILES.has(baseName) ||
+          CONTRACT_OWNER_FILES.has(relative)
+        ) {
           return false;
         }
         return API_PATH_LITERAL_RE.test(read(filePath));
@@ -102,8 +217,148 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps endpoints.ts as a compatibility re-export", () => {
-    expect(read(path.join(SRC_ROOT, "endpoints.ts")).trim()).toBe('export * from "./paths.js";');
+  it("does not hide API route literals inside full URLs", () => {
+    const offenders = walkFiles(SRC_ROOT)
+      .filter((filePath) => {
+        const relative = rel(filePath);
+        if (/\.test\.tsx?$/u.test(relative)) {
+          return false;
+        }
+        const baseName = path.basename(filePath);
+        if (
+          PATH_OWNER_RE.test(relative) ||
+          PATH_COMPAT_FILES.has(baseName) ||
+          CONTRACT_OWNER_FILES.has(relative)
+        ) {
+          return false;
+        }
+        return API_URL_LITERAL_RE.test(read(filePath));
+      })
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps canonical surface contracts api-first", () => {
+    expect(read(SURFACE_PATHS)).not.toMatch(SURFACE_FIRST_CANONICAL_PATH_RE);
+  });
+
+  it("keeps stale legacy source paths out of src", () => {
+    const offenders = legacySourceFiles().map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps src root clean", () => {
+    const offenders = walkFiles(SRC_ROOT)
+      .map(rel)
+      .filter((relative) => path.dirname(relative) === "src")
+      .filter((relative) => !ALLOWED_SRC_ROOT_FILES.has(relative));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("does not keep a legacy compat bridge tree", () => {
+    const offenders = walkFiles(SRC_ROOT)
+      .map(rel)
+      .filter((relative) => relative.startsWith("src/compat/legacy/"));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("removes legacy package subpath exports", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+    const offenders = REMOVED_PACKAGE_EXPORTS.filter(
+      (exportKey) => packageJson.exports[exportKey] !== undefined,
+    );
+    const compatLegacyTargets = Object.entries(packageJson.exports).filter(([, value]) =>
+      JSON.stringify(value).includes("compat/legacy"),
+    );
+
+    expect(offenders).toEqual([]);
+    expect(compatLegacyTargets).toEqual([]);
+  });
+
+  it("points the package root at canonical implementation folders", () => {
+    expect(read(path.join(SRC_ROOT, "index.ts"))).not.toMatch(
+      ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE,
+    );
+  });
+
+  it("builds only canonical and compat folders", () => {
+    const tsconfig = JSON.parse(read(TS_CONFIG)) as {
+      include?: string[];
+      exclude?: string[];
+    };
+
+    expect(tsconfig.include).toEqual([...EXPECTED_TS_INCLUDE]);
+    expect(tsconfig.include).not.toContain("src/**/*.ts");
+    expect(tsconfig.include).not.toContain("src/**/*.tsx");
+    expect(tsconfig.include).not.toContain("src/compat/**/*.ts");
+    expect(tsconfig.exclude).toContain("quarantine/**");
+  });
+
+  it("keeps Martina implementation under explicit compat paths", () => {
+    const offenders = selfScannedSources()
+      .filter((filePath) => {
+        const relative = rel(filePath);
+        if (
+          relative.startsWith("src/compat/martina/")
+        ) {
+          return false;
+        }
+        return MARTINA_COMPAT_IDENTIFIER_RE.test(read(filePath));
+      })
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps team registry data runtime-supplied instead of baked into the package", () => {
+    const offenders = TEAM_REGISTRY_OWNER_FILES.filter((relativePath) =>
+      BAKED_TEAM_REGISTRY_VALUE_RE.test(read(path.join(PACKAGE_ROOT, relativePath))),
+    );
+
+    expect(offenders).toEqual([]);
+    expect(read(path.join(SRC_ROOT, "index.ts"))).not.toContain(
+      "CAVI_TEAM_PORTAL_IDS",
+    );
+    expect(TEAM_REGISTRY_CONFIG.teams).toEqual([]);
+    expect(createHermesTeamRegistry().listTeams()).toEqual([]);
+    expect(createOpenClawTeamRegistry().listTeams()).toEqual([]);
+  });
+
+  it("does not expose Mission Control aliases", () => {
+    const offenders = selfScannedSources()
+      .filter((filePath) =>
+        /MissionControl|mission-control|missionControl/u.test(read(filePath)),
+      )
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("does not keep endpoint compatibility shims in src", () => {
+    expect(legacySourceFiles().map(rel)).not.toContain("src/endpoints.ts");
+  });
+
+  it("keeps surface contract keys and critical canonical paths aligned", () => {
+    const mismatchedKeys = Object.entries(SURFACE_CONTRACTS)
+      .filter(([key, contract]) => contract.key !== key)
+      .map(([key, contract]) => `${key} -> ${contract.key}`);
+
+    expect(mismatchedKeys).toEqual([]);
+    expect(resolvePath("cavi.operator.tasks", "canonical")).toBe("/api/plugins/kanban/tasks");
+    expect(resolvePath("cavi.operator.snapshot", "canonical")).toBe(
+      "/api/plugins/cavi-control/operator/snapshot",
+    );
+    expect(resolvePath("portalMemory.snapshot", "canonical", {
+      teamSlug: "machine",
+      memberId: "chris",
+      memoryKey: "comedy-room",
+    })).toBe("/api/plugins/portal-memory/teams/machine/members/chris/comedy-room");
   });
 
   it("resolves repo roots only from explicit or REPO_ROOT-backed inputs", () => {
@@ -119,5 +374,29 @@ describe("package hardening", () => {
 
     expect(client.surface).toBe("gateway-api");
     expect(client.endpoints.runs).toBe("/v1/runs");
+  });
+
+  it("selects gateway implementations by explicit provider or env", () => {
+    const fetchImpl = (() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))) as typeof fetch;
+    const hermes = createGatewayApiClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "hermes" },
+    );
+    const openclaw = createGatewayApiClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { env: { CAVI_GATEWAY_PROVIDER: "openclaw" } },
+    );
+
+    expect(resolveGatewayProviderKind({ env: { GATEWAY_PROVIDER: "generic" } })).toBe("gateway");
+    expect(GATEWAY_PROVIDER_ENV_KEYS).toEqual(["CAVI_GATEWAY_PROVIDER", "GATEWAY_PROVIDER"]);
+    expect(resolveGatewayProviderKind({ provider: "open-claw" })).toBe("openclaw");
+    expect(() => resolveGatewayProviderKind({ provider: "martina" })).toThrow(
+      'Unknown gateway provider "martina"',
+    );
+    expect(hermes).toBeInstanceOf(HermesApiClient);
+    expect(hermes.surface).toBe("hermes-api-server");
+    expect(openclaw).toBeInstanceOf(GatewayApiClient);
+    expect(openclaw.surface).toBe("openclaw-api");
   });
 });

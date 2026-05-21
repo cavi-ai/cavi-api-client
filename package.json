@@ -1,6 +1,6 @@
 {
   "name": "@cavi/api-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gateway-agnostic HTTP API client package for CAVI Control surfaces",
   "type": "module",
   "files": [
@@ -13,6 +13,61 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./core/http": {
+      "types": "./dist/core/http/index.d.ts",
+      "import": "./dist/core/http/index.js",
+      "default": "./dist/core/http/index.js"
+    },
+    "./core/gateway": {
+      "types": "./dist/core/gateway/index.d.ts",
+      "import": "./dist/core/gateway/index.js",
+      "default": "./dist/core/gateway/index.js"
+    },
+    "./core/env": {
+      "types": "./dist/core/env/index.d.ts",
+      "import": "./dist/core/env/index.js",
+      "default": "./dist/core/env/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js",
+      "default": "./dist/contracts/index.js"
+    },
+    "./cavi": {
+      "types": "./dist/cavi/index.d.ts",
+      "import": "./dist/cavi/index.js",
+      "default": "./dist/cavi/index.js"
+    },
+    "./providers/hermes": {
+      "types": "./dist/providers/hermes/index.d.ts",
+      "import": "./dist/providers/hermes/index.js",
+      "default": "./dist/providers/hermes/index.js"
+    },
+    "./providers/openclaw": {
+      "types": "./dist/providers/openclaw/index.d.ts",
+      "import": "./dist/providers/openclaw/index.js",
+      "default": "./dist/providers/openclaw/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
+    },
+    "./compat/martina": {
+      "types": "./dist/compat/martina/index.d.ts",
+      "import": "./dist/compat/martina/index.js",
+      "default": "./dist/compat/martina/index.js"
+    },
+    "./compat/martina/config": {
+      "types": "./dist/compat/martina/config.d.ts",
+      "import": "./dist/compat/martina/config.js",
+      "default": "./dist/compat/martina/config.js"
+    },
+    "./compat/martina/runs": {
+      "types": "./dist/compat/martina/runs.d.ts",
+      "import": "./dist/compat/martina/runs.js",
+      "default": "./dist/compat/martina/runs.js"
     }
   },
   "scripts": {
@@ -21,8 +76,15 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@types/react": "^19.2.15",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.6",
     "typescript": "^5.9.2",
+    "vite": "^6.4.2",
     "vitest": "^4.1.5"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
   },
   "engines": {
     "node": ">=20.0.0"

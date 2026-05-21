@@ -9,7 +9,7 @@ export {
   type HttpApiRequestInit,
   type HttpApiTrace,
   type HttpApiTransport,
-} from "./types.js";
+} from "./core/http/types.js";
 
 export {
   HTTP_API_CLIENT_ENV_ALIASES,
@@ -19,31 +19,34 @@ export {
   type HttpApiResolvedConfig,
   type HttpApiSurfaceConfig,
   type ResolveHttpApiConfigOptions,
-} from "./config.js";
+} from "./core/env/config.js";
 
-export { BaseHttpApiClient } from "./base-client.js";
+export { BaseHttpApiClient } from "./core/http/client.js";
 
-export * from "./domain/index.js";
-export * from "./gateway/index.js";
-export * from "./gateway/react.js";
-export * from "./gateway-transforms/index.js";
+export * from "./cavi/domain/index.js";
+export * from "./core/gateway/rpc.js";
+export * from "./react/gateway-provider.js";
+export * from "./core/gateway/transforms.js";
 export {
   createCaviControlAdapters,
   type CaviControlAdapters,
-} from "./data/create-cavi-control-adapters.js";
-export { normalizeDiscourseEvent } from "./data/cavi-control/discourse/normalize.js";
+} from "./cavi/adapters/create-cavi-control-adapters.js";
+export { normalizeDiscourseEvent } from "./cavi/data/cavi-control/discourse/normalize.js";
 
 export {
   appendHttpQuery,
+  CAVI_CONTROL_BASE_PATH,
   CAVI_CONTROL_API_ENDPOINTS,
   GATEWAY_API_ENDPOINTS,
   GATEWAY_API_ENDPOINT_TEMPLATES,
+  GATEWAY_PROBE_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
   LIBRARY_API_BASE_PATH,
   LIBRARY_API_ENDPOINTS,
+  OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
-} from "./paths.js";
+} from "./contracts/paths.js";
 
 export {
   GLOBAL_REPO_ROOT_KEY,
@@ -52,18 +55,57 @@ export {
   resolveRepoRoot,
   type RepoRootEnv,
   type ResolveRepoRootOptions,
-} from "./repo-root.js";
+} from "./core/env/repo-root.js";
 
-export { CaviControlApiClient } from "./cavi-control-client.js";
+export { CaviControlApiClient } from "./cavi/client.js";
 
 export {
   GatewayApiClient,
-  HermesApiClient,
   type GatewayCapabilities,
   type GatewayRunStatus,
+} from "./core/gateway/client.js";
+
+export {
+  createGatewayApiClient,
+  GATEWAY_PROVIDER_ENV_KEYS,
+  resolveGatewayProviderKind,
+  type GatewayProviderEnv,
+  type GatewayProviderKind,
+  type ResolveGatewayProviderOptions,
+} from "./core/gateway/provider.js";
+
+export {
+  createTeamRegistry,
+  createTeamRegistryFromSnapshot,
+  getTeamLookupKeys,
+  matchesTeamIdentifier,
+  normalizeTeamLookupValue,
+  normalizeTeamRegistryTeam,
+  resolveTeamFromCollection,
+  type CreateTeamRegistryOptions,
+  type TeamRegistry,
+  type TeamRegistryConfig,
+  type TeamRegistryLibraryConfig,
+  type TeamRegistryLibraryRefConfig,
+  type TeamRegistryProviderKind,
+  type TeamRegistryTeamConfig,
+} from "./cavi/registry/team-registry.js";
+
+export {
+  TEAM_REGISTRY_CONFIG,
+  configureTeamRegistryConfig,
+  getConfiguredTeamRegistry,
+  resetTeamRegistryConfig,
+} from "./cavi/registry/team-registry-config.js";
+
+export { createHermesTeamRegistry } from "./providers/hermes/team-registry.js";
+export { createOpenClawTeamRegistry } from "./providers/openclaw/team-registry.js";
+
+export {
+  HermesApiClient,
   type HermesCapabilities,
   type HermesRunStatus,
-} from "./hermes-client.js";
+} from "./providers/hermes/client.js";
 
 export {
   RunPreviewPollProvider,
@@ -76,78 +118,55 @@ export {
   type RunEventStreamSubscription,
   type RunPreviewPollProviderOptions,
   type RunPreviewSnapshotFetcher,
-} from "./run-event-stream.js";
+} from "./core/gateway/run-event-stream.js";
 
 export {
+  GatewaySseRunEventProvider,
   HermesSseRunEventProvider,
+  type GatewaySseRunEventProviderOptions,
   type HermesSseRunEventProviderOptions,
-} from "./hermes-sse-provider.js";
+} from "./providers/hermes/sse-run-event-provider.js";
 
 export {
+  resolveGatewayChatRunApproval,
   resolveHermesChatRunApproval,
+  sanitizeGatewayRouteMetadata,
   sanitizeHermesRouteMetadata,
+  startGatewayChatRun,
   startHermesChatRun,
+  streamGatewayChatRun,
   streamHermesChatRun,
+  type GatewayChatRunAttachment,
+  type GatewayRouteMetadata,
+  type ResolveGatewayChatRunApprovalParams,
+  type StartGatewayChatRunParams,
+  type StreamGatewayChatRunParams,
+  type StreamGatewayChatRunResult,
   type HermesChatRunAttachment,
   type HermesRouteMetadata,
   type ResolveHermesChatRunApprovalParams,
   type StartHermesChatRunParams,
   type StreamHermesChatRunParams,
   type StreamHermesChatRunResult,
-} from "./hermes-chat-run.js";
+} from "./providers/hermes/chat-run.js";
 
 export {
   LibraryApiClient,
   type LibraryIngestRequest,
   type LibraryIngestResult,
   type LibraryIngestSource,
-} from "./library-client.js";
+} from "./cavi/library/client.js";
 
-export { PortalApiClient, type PortalApiClientOptions } from "./portal-client.js";
+export { PortalApiClient, type PortalApiClientOptions } from "./cavi/portal/client.js";
 
-export { SURFACE_CONTRACTS, type GatewayMode, type SurfaceContract } from "./surface-paths.js";
-export { resolvePath } from "./resolve.js";
+export { SURFACE_CONTRACTS, type GatewayMode, type SurfaceContract } from "./contracts/surfaces.js";
+export { resolvePath } from "./contracts/resolve.js";
 export {
   PORTAL_DASHBOARD_IDS,
   isPortalDashboardId,
   portalDashboardPath,
   type PortalDashboardId,
-} from "./portal-paths.js";
-export {
-  MARTINA_RUN_DISPATCH_LABEL,
-  martinaRunDispatchLabel,
-  normalizeMartinaRunStatus,
-  type MartinaRunStatus,
-} from "./martina-runs.js";
-export {
-  MARTINA_REMOTE_POLICY_KEYS,
-  MARTINA_DOCTOR_COMMAND_PRESETS,
-  ENUM_CANDIDATE_SETS,
-  humanizeKey,
-  isRecord,
-  isPrimitive,
-  isSimpleArray,
-  isEditableValue,
-  parseListValue,
-  isMultilineString,
-  inferSelectOptions,
-  isMartinaCommandModifierKey,
-  mergeDoctorCommandOptions,
-  serializeRemotePolicyValue,
-  deserializeRemotePolicyValue,
-  remotePolicySelectItems,
-  inferMartinaConfigFieldKind,
-  type MartinaConfigFieldKind,
-} from "./martina-config.js";
-
-export {
-  CAVI_TEAM_PORTAL_IDS,
-  configureCanonicalOperatorRegistry,
-  getPortalTeamCode,
-  getPortalTeamIdentity,
-  resetCanonicalOperatorRegistry,
-  type CaviTeamPortalId,
-} from "./data/lib/canonical-team-registry.js";
+} from "./contracts/portals.js";
 export {
   GATEWAY_KANBAN_BOARD_PATH,
   GATEWAY_KANBAN_TASKS_PATH,
@@ -168,4 +187,4 @@ export {
   type MobileGatewaySurfaceClass,
   type MobileGatewaySurfaceKey,
   type OperatorTaskDispatchMode,
-} from "./mobile-gateway-contracts.js";
+} from "./contracts/mobile.js";
