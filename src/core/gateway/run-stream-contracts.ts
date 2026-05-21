@@ -40,6 +40,19 @@ export type AgentRunDetailSnapshot = {
   };
 };
 
+/**
+ * Canonical wire names for live run-stream events.
+ *
+ * Producers (Hermes SSE, gateway WebSocket, run-preview poll stopgap, mock)
+ * MUST emit these exact strings on the `event` field of every
+ * {@link RunStreamEvent}. Consumers MUST switch on these constants — never
+ * inline string literals.
+ *
+ * Tool events are part of the contract even when the upstream transport does
+ * not yet emit them: the {@link RunPreviewPollProvider}-style implementation
+ * synthesizes them from {@link AgentRunPreviewItem} so the consumer code path
+ * is identical regardless of producer.
+ */
 export const RUN_STREAM_EVENT_NAMES = {
   MESSAGE_DELTA: "message.delta",
   RUN_COMPLETED: "run.completed",
@@ -124,6 +137,11 @@ export type RunStreamToolEvent = {
   at?: number;
 };
 
+/**
+ * Discriminated union of every event a {@link RunEventStreamProvider}-shaped
+ * source can emit. Add new variants here when extending the contract — do not
+ * add untagged variants.
+ */
 export type RunStreamEvent =
   | RunStreamMessageDeltaEvent
   | RunStreamRunCompletedEvent

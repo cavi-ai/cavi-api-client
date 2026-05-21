@@ -7,7 +7,7 @@ import {
   type RunStreamToolCall,
   type RunStreamToolEvent,
   type RunStreamToolStatus,
-} from "../../cavi/domain/runs.js";
+} from "./run-stream-contracts.js";
 
 /**
  * Disposes an active subscription. Idempotent: calling more than once is a no-op.
