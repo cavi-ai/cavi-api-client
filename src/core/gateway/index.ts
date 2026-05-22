@@ -15,6 +15,7 @@ export * from "./device-crypto.js";
 export * from "./device-store.js";
 export * from "./preauth-handshake.js";
 export * from "./session-loaders.js";
+export * from "./snapshot-loaders.js";
 export * from "./system-loaders.js";
 export * from "./stream-failure.js";
 export * from "./portal-config-patch.js";

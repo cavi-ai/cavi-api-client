@@ -1,6 +1,6 @@
 # @cavi/api-client
 
-Gateway-agnostic TypeScript API client package for CAVI Control mobile and portal surfaces.
+Gateway-agnostic TypeScript API client package for runtime, mobile, and portal surfaces.
 
 This package is the shared boundary for HTTP clients, gateway RPC helpers, endpoint path contracts, domain DTOs, and UI-facing adapter helpers. Consumers should import from `@cavi/api-client` instead of reaching into host application packages or checkout-specific paths.
 
@@ -58,11 +58,13 @@ For workspace consumers, depend on the workspace package through the repo packag
 - `GatewayMediaApiClient`, `createGatewayMediaClient`, `HermesMediaApiClient`, and `OpenClawMediaApiClient` for gateway-native audio, video, and music generation.
 - `GatewayWikiApiClient`, `createGatewayWikiClient`, `HermesWikiApiClient`, and `OpenClawWikiApiClient` for gateway-native Obsidian/QMD wiki vault operations.
 - `GatewaySseRunEventProvider`, `createGatewaySseRunEventProvider`, `GatewayWebSocketClient`, and `createGatewayWebSocketClient` for shared run-event SSE and WebSocket/RPC transports.
+- `createGatewaySnapshotLoaders`, `createEmptyGatewaySnapshotFallbacks`, and `createDemoGatewaySnapshotFallbacks` for gateway-derived overview, run, routing, and incident snapshots with injected fallbacks.
 - Core SSE helpers such as `parseSseBlock`, `drainSseMessages`, `consumeSseStream`, and `combineAbortSignals`.
 - Core WebSocket helpers such as `resolveHttpWebSocketTargets`, `tryResolveHttpWebSocketTargets`, and `describeWebSocketClose`.
 - `HermesApiClient` and Hermes run-stream helpers as provider-specific compatibility exports.
+- `createGatewayProviderRegistry` and `GatewayProviderModule` for adding third-party gateway providers without editing this package. Plugin authors can import the provider contract from `@cavi/api-client/providers/gateway`.
 - `TeamRegistry`, `TEAM_REGISTRY_CONFIG`, `configureTeamRegistryConfig`, `createHermesTeamRegistry`, and `createOpenClawTeamRegistry` for runtime-loaded team registry config.
-- `TeamManifest`, `normalizeTeamManifest`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, `resolveTeamWorkspacePath`, `resolveTeamActionContract`, and `resolveTeamActionApiPath` for agnostic team/member/workspace/action contracts.
+- `TeamManifest`, `GatewayRouteBinding`, `normalizeTeamManifest`, `resolveGatewayRouteBinding`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, `resolveTeamWorkspacePath`, `resolveTeamActionContract`, and `resolveTeamActionApiPath` for agnostic team/member/workspace/action/binding contracts.
 - `LibraryApiClient` for library search, ingest, and document APIs.
 - `PortalApiClient` for portal-scoped dashboard and relative portal API calls.
 - `GatewayRpcClient`, gateway RPC helpers, and React hooks/providers from the package root.
@@ -184,7 +186,47 @@ const gateway = createGatewayApiClient(
 );
 ```
 
-Provider resolution checks an explicit `provider` first, then `CAVI_GATEWAY_PROVIDER`, then `GATEWAY_PROVIDER`, and defaults to `gateway`. Supported provider values are `gateway`, `hermes`, and `openclaw`. Hermes-specific exports remain available for existing callers, but new shared code should use `GatewayApiClient`, `GatewayCapabilities`, `GatewayRunStatus`, `streamGatewayChatRun`, `GatewaySseRunEventProvider`, and `GatewayWebSocketClient` unless it is binding to provider-only behavior.
+Provider resolution checks an explicit `provider` first, then `CAVI_GATEWAY_PROVIDER`, then `GATEWAY_PROVIDER`, and defaults to `gateway`. Built-in provider values are `gateway`, `hermes`, and `openclaw`. Hermes-specific exports remain available for existing callers, but new shared code should use `GatewayApiClient`, `GatewayCapabilities`, `GatewayRunStatus`, `streamGatewayChatRun`, `GatewaySseRunEventProvider`, and `GatewayWebSocketClient` unless it is binding to provider-only behavior.
+
+Third-party gateways can be registered at the factory boundary without adding
+new branches to this package. The provider plugin surface is split by concern:
+
+- `@cavi/api-client/providers/gateway` exports provider contracts, registry helpers, built-in modules, and factory functions.
+- `src/providers/gateway/types.ts` owns the provider interfaces.
+- `src/providers/gateway/registry.ts` owns provider lookup, aliases, environment fallback, and duplicate-key detection.
+- `src/providers/gateway/built-ins.ts` is the only gateway provider factory module that imports built-in Hermes/OpenClaw implementations.
+
+```ts
+import {
+  GatewayApiClient,
+  createGatewayApiClient,
+  createGatewayProviderRegistry,
+} from "@cavi/api-client";
+import {
+  type GatewayProviderModule,
+} from "@cavi/api-client/providers/gateway";
+
+const acmeProvider: GatewayProviderModule = {
+  kind: "acme",
+  aliases: ["acme-gateway"],
+  createApiClient: (options) => new GatewayApiClient(options, "acme-api"),
+};
+
+const registry = createGatewayProviderRegistry({
+  modules: [acmeProvider],
+});
+
+const gateway = createGatewayApiClient(config.gateway, {
+  provider: "acme-gateway",
+  registry,
+});
+```
+
+Provider keys are normalized by trimming and lowercasing. `generic` is treated
+as the `gateway` alias. Duplicate provider keys throw by default so plugins do
+not silently replace built-ins; pass `{ includeBuiltIns: false }` for a
+standalone plugin registry or `{ allowOverrides: true }` when an override is
+intentional.
 
 Gateway slash commands are part of the `/v1/capabilities` contract. The
 capability payload may expose `commands`, `slashCommands`, or `slash_commands`;
@@ -367,6 +409,7 @@ import {
   configureTeamRegistryConfig,
   findTeamManifestTeam,
   normalizeTeamManifest,
+  resolveGatewayRouteBinding,
   resolvePath,
   resolveTeamActionApiPath,
   resolveTeamActionContract,
@@ -416,6 +459,16 @@ const manifest = normalizeTeamManifest({
       ],
     },
   ],
+  bindings: [
+    {
+      id: "research-chat",
+      teamId: "research",
+      memberId: "scout",
+      source: "chat",
+      sessionKeyPattern: "agent:{memberId}:*",
+      routeKey: "agent.config",
+    },
+  ],
 } satisfies TeamManifest);
 
 configureTeamRegistryConfig({ provider: "gateway", manifest });
@@ -441,6 +494,13 @@ const action = resolveTeamActionContract(manifest, "research", "summarize", {
 
 resolveTeamActionApiPath(manifest, "research", action.id, { memberId: "scout" });
 // /api/teams/research/agents/scout/actions/summarize
+
+resolveGatewayRouteBinding(manifest, {
+  source: "chat",
+  key: "agent:scout:main",
+  agentId: "scout",
+});
+// { id: "research-chat", path: "/api/teams/research/agents/scout/config", ... }
 ```
 
 The workspace resolver accepts only paths declared in `workspace.paths`, so
@@ -452,6 +512,11 @@ override only the fields they need. Responses should use the exported
 [`docs/team-manifest.md`](docs/team-manifest.md) and
 [`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts)
 for the consumer-side add/remove agent and override template.
+
+Gateway route bindings are declarative manifest entries. Sources such as chat
+rooms, workplace tools, or product-specific channels are data, not package
+routes; consumers supply those bindings and the package resolves them to the
+same generated team/member/action route grammar used everywhere else.
 
 ## Requests, Headers, and Errors
 
@@ -539,6 +604,7 @@ const adapters = createCaviControlAdapters({
   apiBaseUrl: "https://control.example.com",
   authToken: token,
   client: gatewayRpcClient,
+  fallbackMode: "empty",
 });
 
 const overview = await adapters.loadOverview();
@@ -546,6 +612,9 @@ const operator = await adapters.loadOperatorControl();
 ```
 
 Pass `client: null` when only HTTP-backed loaders are available. Loaders that require an active gateway client will throw a clear connection error.
+`fallbackMode` defaults to `"compat"` for existing CAVI dashboards. Use
+`"empty"` or custom `snapshotFallbacks` for product-neutral open-source demos,
+or `"none"` when gateway snapshot failures should propagate.
 
 ## Path Contracts
 
@@ -596,6 +665,7 @@ Resolution order:
 - Prefer gateway-agnostic names such as `GatewayApiClient`, `GATEWAY_API_ENDPOINTS`, and `GatewayRunStatus` for new code.
 - Hermes-specific exports remain available for compatibility with existing callers.
 - Keep provider-specific behavior behind shared client interfaces or provider-specific modules.
+- Keep demo snapshots opt-in and product-neutral; CAVI fallback data is compatibility behavior under CAVI adapters.
 - Add new API paths in path-owner files, not inside clients, React adapters, or mobile-specific code.
 
 ## Development

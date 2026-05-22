@@ -1,4 +1,4 @@
-export type GatewayProviderKind = "gateway";
+export type GatewayProviderKind = "gateway" | (string & {});
 
 export const GATEWAY_PROVIDER_ENV_KEYS = [
   "CAVI_GATEWAY_PROVIDER",
@@ -10,7 +10,7 @@ export type GatewayProviderEnv = Record<string, string | undefined>;
 export type ResolveGatewayProviderOptions = {
   provider?: GatewayProviderKind | "generic" | string | null;
   env?: GatewayProviderEnv;
-  defaultProvider?: GatewayProviderKind;
+  defaultProvider?: GatewayProviderKind | "generic" | string;
 };
 
 function normalizeGatewayProviderKind(
@@ -18,8 +18,7 @@ function normalizeGatewayProviderKind(
 ): GatewayProviderKind | null {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return null;
-  if (normalized === "gateway" || normalized === "generic") return "gateway";
-  throw new Error(`Unknown gateway provider "${value}"`);
+  return normalized === "generic" ? "gateway" : normalized;
 }
 
 export function resolveGatewayProviderKind(
@@ -33,5 +32,5 @@ export function resolveGatewayProviderKind(
     if (fromEnv) return fromEnv;
   }
 
-  return options.defaultProvider ?? "gateway";
+  return normalizeGatewayProviderKind(options.defaultProvider ?? null) ?? "gateway";
 }

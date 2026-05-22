@@ -1,7 +1,7 @@
 {
   "name": "@cavi/api-client",
   "version": "0.2.1",
-  "description": "Gateway-agnostic HTTP/WebSocket API client package for CAVI Control surfaces",
+  "description": "Gateway-agnostic TypeScript API client package for runtime surfaces",
   "type": "module",
   "files": [
     "dist",
@@ -71,6 +71,11 @@
       "types": "./dist/providers/openclaw/index.d.ts",
       "import": "./dist/providers/openclaw/index.js",
       "default": "./dist/providers/openclaw/index.js"
+    },
+    "./providers/gateway": {
+      "types": "./dist/providers/gateway/index.d.ts",
+      "import": "./dist/providers/gateway/index.js",
+      "default": "./dist/providers/gateway/index.js"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",

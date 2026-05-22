@@ -65,6 +65,16 @@ export const TEAM_MANIFEST = {
       ],
     },
   ],
+  bindings: [
+    {
+      id: "research-chat",
+      teamId: "research",
+      memberId: "scout",
+      source: "chat",
+      sessionKeyPattern: "agent:{memberId}:*",
+      routeKey: "agent.config",
+    },
+  ],
 } satisfies TeamManifest;
 ```
 
@@ -108,6 +118,29 @@ resolveTeamWorkspacePath(team, "media.images", { memberId: "scout" });
 `resolveTeamWorkspacePath` returns a local workspace path for trusted consumer
 code. `resolveTeamWorkspaceApiPath` returns the HTTP path and never includes the
 workspace root.
+
+## Gateway Route Bindings
+
+Bindings connect runtime sources to manifest-owned teams, members, and actions
+without adding package-level routes for every chat app, room, or deployment.
+The consumer owns binding entries; this package normalizes them and resolves the
+final route through the same team route grammar.
+
+```ts
+const binding = resolveGatewayRouteBinding(manifest, {
+  source: "chat",
+  key: "agent:scout:main",
+  agentId: "scout",
+});
+
+binding?.path;
+// /api/teams/research/agents/scout/config
+```
+
+`sessionKeyPattern` supports `*` wildcards plus `{teamId}`, `{memberId}`, and
+`{actionId}` placeholders. If no explicit `routeKey` is supplied, action
+bindings resolve to team or member action routes, and non-action bindings
+resolve to the team runs route.
 
 ## Action Overrides
 

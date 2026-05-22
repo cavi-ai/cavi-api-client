@@ -54,6 +54,16 @@ export const TEAM_MANIFEST = {
       ],
     },
   ],
+  bindings: [
+    {
+      id: "default-web",
+      teamId: "default",
+      memberId: "default-agent",
+      source: "web",
+      sessionKeyPattern: "agent:{memberId}:*",
+      routeKey: "agent.config",
+    },
+  ],
 } satisfies TeamManifest;
 
 export function addAgentToManifest(
@@ -84,6 +94,7 @@ export function addAgentToManifest(
   return normalizeTeamManifest({
     version: normalized.version,
     actions: normalized.actions,
+    bindings: normalized.bindings,
     teams,
   });
 }
@@ -97,6 +108,7 @@ export function removeAgentFromManifest(
   return normalizeTeamManifest({
     version: normalized.version,
     actions: normalized.actions,
+    bindings: normalized.bindings,
     teams: normalized.teams.map((team) => {
       if (team.id !== teamId) {
         return team;
@@ -118,6 +130,7 @@ export function upsertTeamAction(
   return normalizeTeamManifest({
     version: normalized.version,
     actions: normalized.actions,
+    bindings: normalized.bindings,
     teams: normalized.teams.map((team) =>
       team.id === teamId ? upsertActionOnTeam(team, action) : team,
     ),
@@ -134,6 +147,7 @@ export function upsertAgentActionOverride(
   return normalizeTeamManifest({
     version: normalized.version,
     actions: normalized.actions,
+    bindings: normalized.bindings,
     teams: normalized.teams.map((team) => {
       if (team.id !== teamId) {
         return team;
@@ -158,6 +172,7 @@ export function removeAgentActionOverride(
   return normalizeTeamManifest({
     version: normalized.version,
     actions: normalized.actions,
+    bindings: normalized.bindings,
     teams: normalized.teams.map((team) => {
       if (team.id !== teamId) {
         return team;

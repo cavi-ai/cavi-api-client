@@ -1,3 +1,5 @@
+import type { GatewayResolvedRouteBinding } from "../../contracts/team-manifest.js";
+
 export type RoutingMatrixRow = {
   channel: string;
   handler: string;
@@ -6,6 +8,7 @@ export type RoutingMatrixRow = {
   failedRuns: number;
   successRate: number;
   messages: number;
+  binding?: GatewayResolvedRouteBinding | null;
 };
 
 export type RoutingMatrixSnapshot = {

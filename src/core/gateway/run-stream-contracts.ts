@@ -1,3 +1,5 @@
+import type { GatewayResolvedRouteBinding } from "../../contracts/team-manifest.js";
+
 export type AgentRunStatus = "active" | "idle" | "stalled" | "error";
 
 export type AgentRun = {
@@ -13,6 +15,8 @@ export type AgentRun = {
   model?: string;
   /** Cost in USD for this run. From backend when available. */
   totalCostUsd?: number;
+  /** Optional manifest-derived binding for source/channel/team routing diagnostics. */
+  binding?: GatewayResolvedRouteBinding | null;
 };
 
 export type AgentRunPreviewItem = {

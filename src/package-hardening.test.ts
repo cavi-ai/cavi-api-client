@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 import {
   GATEWAY_PROVIDER_ENV_KEYS,
   GatewayApiClient,
+  GatewayAgentConfigApiClient,
   GatewayMediaApiClient,
   GatewayRpcClient,
   GatewaySseRunEventProvider,
+  GatewayWebSocketClient,
   GatewayWikiApiClient,
   HERMES_HTTP_API_ENV_ALIASES,
   HERMES_HTTP_API_ENV_KEYS,
@@ -25,8 +27,11 @@ import {
   OpenClawWikiApiClient,
   SURFACE_CONTRACTS,
   TEAM_REGISTRY_CONFIG,
+  BUILT_IN_GATEWAY_PROVIDER_MODULES,
   createGatewayApiClient,
+  createGatewayAgentConfigClient,
   createGatewayMediaClient,
+  createGatewayProviderRegistry,
   createGatewaySseRunEventProvider,
   createGatewayWebSocketClient,
   createGatewayWikiClient,
@@ -36,12 +41,14 @@ import {
   resolveGatewayProviderKind,
   resolvePath,
   resolveRepoRoot,
+  type GatewayProviderModule,
 } from "./index";
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
 const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
+const PROVIDERS_GATEWAY_ROOT = path.join(SRC_ROOT, "providers", "gateway");
 const CORE_ENV_CONFIG = path.join(SRC_ROOT, "core", "env", "config.ts");
 const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
@@ -58,6 +65,7 @@ const CORE_SSE_INDEX = path.join(SRC_ROOT, "core", "sse", "index.ts");
 const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
 const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
 const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "fetch.ts");
+const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshot-loaders.ts");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -372,11 +380,11 @@ describe("package hardening", () => {
     );
   });
 
-  it("keeps core gateway independent from provider implementations", () => {
+  it("keeps core gateway independent from CAVI and provider implementations", () => {
     const offenders = walkFiles(path.join(SRC_ROOT, "core"))
       .filter((filePath) => {
         const source = read(filePath);
-        return /from\s+["'][^"']*providers\//u.test(source);
+        return /from\s+["'][^"']*(?:providers\/|cavi\/)/u.test(source);
       })
       .map(rel);
 
@@ -403,6 +411,12 @@ describe("package hardening", () => {
       .map(rel);
 
     expect(offenders).toEqual([]);
+  });
+
+  it("keeps generic snapshot demo fallbacks product-neutral", () => {
+    expect(read(CORE_GATEWAY_SNAPSHOT_LOADERS)).not.toMatch(
+      /\b(?:CAVI|Deb|Martina|Machine|Hermes|OpenClaw|discord|teams|Tony|Scout|Wu-Tang)\b/u,
+    );
   });
 
   it("keeps CAVI tests under the shared test tree", () => {
@@ -493,6 +507,46 @@ describe("package hardening", () => {
       default: "./dist/core/ws/index.js",
     });
     expect(importOffenders).toEqual([]);
+  });
+
+  it("exposes gateway provider plugins from a dedicated provider module", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+    const providerBarrel = read(path.join(SRC_ROOT, "providers", "gateway-provider.ts")).trim();
+    const expectedProviderFiles = [
+      "built-ins.ts",
+      "factory.ts",
+      "index.ts",
+      "normalize.ts",
+      "registry.ts",
+      "types.ts",
+    ];
+    const providerSpecificFiles = ["factory.ts", "normalize.ts", "registry.ts", "types.ts"];
+
+    expect(packageJson.exports["./providers/gateway"]).toEqual({
+      types: "./dist/providers/gateway/index.d.ts",
+      import: "./dist/providers/gateway/index.js",
+      default: "./dist/providers/gateway/index.js",
+    });
+    expect(providerBarrel).toBe('export * from "./gateway/index.js";');
+    expect(expectedProviderFiles.filter((file) =>
+      !existsSync(path.join(PROVIDERS_GATEWAY_ROOT, file)),
+    )).toEqual([]);
+    expect(read(path.join(PROVIDERS_GATEWAY_ROOT, "types.ts"))).toContain(
+      "export interface GatewayProviderModule extends GatewayProviderFactories",
+    );
+    expect(read(path.join(PROVIDERS_GATEWAY_ROOT, "built-ins.ts"))).toContain(
+      "HermesApiClient",
+    );
+    expect(providerSpecificFiles.filter((file) =>
+      /\b(?:Hermes|OpenClaw)\b/u.test(read(path.join(PROVIDERS_GATEWAY_ROOT, file))),
+    )).toEqual([]);
+    expect(BUILT_IN_GATEWAY_PROVIDER_MODULES.map((module) => module.kind)).toEqual([
+      "gateway",
+      "hermes",
+      "openclaw",
+    ]);
   });
 
   it("keeps CAVI production modules on shared HTTP transports", () => {
@@ -688,6 +742,108 @@ describe("package hardening", () => {
     expect(genericSse).toBeInstanceOf(GatewaySseRunEventProvider);
     expect(hermesSse).toBeInstanceOf(HermesSseRunEventProvider);
     expect(openclawSse).toBeInstanceOf(OpenClawSseRunEventProvider);
+  });
+
+  it("allows custom gateway provider modules without factory branches", () => {
+    class AcmeApiClient extends GatewayApiClient {
+      constructor(options: ConstructorParameters<typeof GatewayApiClient>[0]) {
+        super(options, "acme-api");
+      }
+    }
+    class AcmeWebSocketClient extends GatewayWebSocketClient {}
+    class AcmeSseRunEventProvider extends GatewaySseRunEventProvider {}
+    class AcmeMediaClient extends GatewayMediaApiClient {
+      constructor(options: ConstructorParameters<typeof GatewayMediaApiClient>[0]) {
+        super(options, { surface: "acme-media-api" });
+      }
+    }
+    class AcmeWikiClient extends GatewayWikiApiClient {
+      constructor(options: ConstructorParameters<typeof GatewayWikiApiClient>[0]) {
+        super(options, { surface: "acme-wiki-api" });
+      }
+    }
+    class AcmeAgentConfigClient extends GatewayAgentConfigApiClient {
+      constructor(options: ConstructorParameters<typeof GatewayAgentConfigApiClient>[0]) {
+        super(options, { surface: "acme-agent-config-api" });
+      }
+    }
+
+    const acmeProvider: GatewayProviderModule = {
+      kind: "acme",
+      aliases: ["acme-gateway"],
+      createApiClient: (options) => new AcmeApiClient(options),
+      createWebSocketClient: (wsUrl, authToken, options) =>
+        new AcmeWebSocketClient(wsUrl, authToken, {
+          ...options,
+          clientMode: "acme-ws",
+        }),
+      createSseRunEventProvider: (options) =>
+        new AcmeSseRunEventProvider({
+          ...options,
+          headers: { "X-Acme-Route": "sse" },
+        }),
+      createMediaClient: (options) => new AcmeMediaClient(options),
+      createWikiClient: (options) => new AcmeWikiClient(options),
+      createAgentConfigClient: (options) => new AcmeAgentConfigClient(options),
+    };
+    const betaProvider: GatewayProviderModule = {
+      kind: "beta",
+      createApiClient: (options) => new GatewayApiClient(options, "beta-api"),
+    };
+    const registry = createGatewayProviderRegistry({
+      modules: [acmeProvider],
+    });
+    const fetchImpl = (() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))) as typeof fetch;
+    const clientOptions = { baseUrl: "https://gateway.example", fetchImpl };
+
+    expect(resolveGatewayProviderKind({
+      provider: "acme-gateway",
+      registry,
+    })).toBe("acme");
+    expect(createGatewayApiClient(clientOptions, {
+      provider: "acme",
+      registry,
+    })).toBeInstanceOf(AcmeApiClient);
+    expect(createGatewayWebSocketClient("wss://gateway.example/ws", "token", {}, {
+      provider: "acme",
+      registry,
+    })).toBeInstanceOf(AcmeWebSocketClient);
+    expect(createGatewaySseRunEventProvider({
+      httpBase: "https://gateway.example",
+      authToken: "token",
+      clientId: "client-1",
+    }, {
+      provider: "acme",
+      registry,
+    })).toBeInstanceOf(AcmeSseRunEventProvider);
+    expect(createGatewayMediaClient(clientOptions, {
+      provider: "acme",
+      registry,
+    })).toBeInstanceOf(AcmeMediaClient);
+    expect(createGatewayWikiClient(clientOptions, {
+      provider: "acme",
+      registry,
+    })).toBeInstanceOf(AcmeWikiClient);
+    expect(createGatewayAgentConfigClient(clientOptions, {
+      provider: "acme",
+      registry,
+    })).toBeInstanceOf(AcmeAgentConfigClient);
+    expect(createGatewayApiClient(clientOptions, {
+      provider: "beta",
+      registry,
+      providerModules: [betaProvider],
+    }).surface).toBe("beta-api");
+    expect(() => resolveGatewayProviderKind({
+      provider: "acme",
+    })).toThrow('Unknown gateway provider "acme"');
+    expect(() => createGatewayProviderRegistry({
+      modules: [{ kind: "gateway" }],
+    })).toThrow('Duplicate gateway provider key "gateway"');
+    expect(createGatewayProviderRegistry({
+      modules: [{ kind: "gateway" }],
+      allowOverrides: true,
+    }).resolveProvider("generic")?.kind).toBe("gateway");
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {

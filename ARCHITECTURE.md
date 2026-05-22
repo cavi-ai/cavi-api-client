@@ -25,6 +25,7 @@ src/
     registry/
     runtime/
   providers/
+    gateway/
     hermes/
     openclaw/
   react/
@@ -48,6 +49,10 @@ deletion.
 - `contracts/**` contains route, surface, and agnostic team-manifest contracts. It must not import from `cavi/**` or providers.
 - `cavi/**` may import from `core/**` and `contracts/**`. It owns CAVI clients, data, adapters, domain DTOs, and registry wrappers.
 - `providers/**` may import from `core/**`, `contracts/**`, and shared CAVI registry/domain types when needed.
+- `providers/gateway/**` owns the gateway provider plugin boundary. Its
+  `types.ts`, `normalize.ts`, `registry.ts`, and `factory.ts` modules must stay
+  provider-implementation agnostic. Built-in provider wiring belongs in
+  `providers/gateway/built-ins.ts`.
 - `react/**` may import from `core/gateway/**` and React only.
 - `cavi/fallbacks/snapshots/**` contains runtime fallback snapshots used by degraded gateway flows. These are production fallback data, not test mocks.
 - `cavi/data/**` is quarantined legacy shim space. Active source should import named folders such as `cavi/deb/**`, `cavi/operator/**`, `cavi/portal/**`, `cavi/registry/**`, `cavi/runtime/**`, or `cavi/library/**` directly.
@@ -91,6 +96,7 @@ Completed cleanup passes:
 - Shared JSON HTTP request helpers and gateway HTTP errors moved to `src/core/http/**`.
 - Gateway envelope/fallback contracts moved to `src/core/gateway/**`.
 - Gateway health/log tail system loaders and shared TTL cache plumbing moved to `src/core/gateway/**`.
+- Gateway-derived overview, run, routing, and incident snapshot orchestration moved to `src/core/gateway/snapshot-loaders.ts`, with fallbacks and source bindings injected by callers.
 - Generic runtime base-path helpers moved to `src/core/runtime/**`, with CAVI runtime wrappers under `src/cavi/runtime/**`.
 - Generic SSE stream parsing and consumption moved to `src/core/sse/**`; gateway run-event providers now compose those helpers.
 - Deb and operator route aliases moved to `src/cavi/paths.ts`; operator defaults and section helpers remain in `src/cavi/operator/**`.
@@ -131,13 +137,29 @@ live in `src/core/gateway/**`; provider adapters live under
   `createGatewayWebSocketClient` or the `createGatewayRpcClient` alias.
 
 New transport behavior should enter through these core contracts first. A
-provider module may customize headers, endpoint maps, or defaults, but it
-should not fork the parser, RPC protocol, retry semantics, or trace behavior.
+provider module may customize headers, endpoint maps, factories, or defaults,
+but it should not fork the parser, RPC protocol, retry semantics, or trace
+behavior.
+
+Provider selection is a plugin boundary, not a core gateway concern:
+
+- `providers/gateway/types.ts` defines `GatewayProviderModule` and the factory
+  interface each plugin implements.
+- `providers/gateway/registry.ts` resolves explicit provider choices,
+  `CAVI_GATEWAY_PROVIDER`, `GATEWAY_PROVIDER`, aliases, and default providers.
+  It rejects duplicate provider keys unless an override is explicit.
+- `providers/gateway/factory.ts` adapts resolved provider modules into the
+  public `createGateway*` factory functions.
+- `providers/gateway/built-ins.ts` is the built-in implementation wiring for
+  Hermes and OpenClaw. New third-party providers should be passed as modules or
+  registries by the host app instead of being added to this package.
 
 CAVI adapter modules should stay as composition layers over those contracts.
 For gateway WebSocket-backed control surfaces, `core/gateway/session-loaders.ts`
-owns `sessions.*` request coalescing and cache behavior, while CAVI owns only
-the dashboard snapshot assembly and CAVI-specific fallback envelopes.
+owns `sessions.*` request coalescing and cache behavior, while
+`core/gateway/snapshot-loaders.ts` owns reusable snapshot assembly. CAVI
+adapters inject compatibility fallbacks and keep CAVI-only surfaces such as
+operator control, Deb, Discourse, cost history, and library loading.
 
 ## Gateway Media
 
@@ -170,6 +192,11 @@ team/member workspace APIs, and per-team or per-member workspace roots with
 explicit whitelisted relative paths. Product names such as Deb or Martina
 should not define core route grammar; they may supply manifest entries,
 workspace folders, capabilities, or compatibility adapters.
+
+Gateway route bindings are also manifest data. Runtime sources such as chat
+rooms, workplace tools, or deployment-specific channels should be expressed as
+`GatewayRouteBinding` entries and resolved through `resolveGatewayRouteBinding`
+instead of adding package-owned route literals or hardcoded channel names.
 
 New team-shaped CAVI paths should use the `team.*` contracts first. Existing
 Deb, Martina, Machine, Front Door, and portal-memory paths are compatibility

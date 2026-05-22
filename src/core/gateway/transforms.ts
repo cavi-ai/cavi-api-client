@@ -1,6 +1,7 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
 import { GATEWAY_PROBE_ENDPOINTS } from "../../contracts/paths.js";
+import type { GatewayResolvedRouteBinding } from "../../contracts/team-manifest.js";
 import { asNumber, asString } from "../data/guards.js";
 
 export { asNumber, asString };
@@ -69,6 +70,8 @@ export type GatewaySessionRun = {
   model?: string;
   /** Estimated cost in USD when usage data provides it */
   totalCostUsd?: number;
+  /** Optional manifest-derived binding for source/channel/team routing diagnostics. */
+  binding?: GatewayResolvedRouteBinding | null;
 };
 
 export type GatewaySessionRunsSnapshot = {
@@ -110,6 +113,7 @@ export type GatewayRoutingMatrixSnapshot = {
     failedRuns: number;
     successRate: number;
     messages: number;
+    binding?: GatewayResolvedRouteBinding | null;
   }>;
   totals: {
     totalRuns: number;
@@ -589,7 +593,7 @@ export function buildIncidentsSnapshot(
         firstSeenAt: now,
         lastSeenAt: now,
         count: 1,
-        owner: "@tony",
+        owner: "gateway",
       });
       continue;
     }

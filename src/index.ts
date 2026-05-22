@@ -72,6 +72,7 @@ export {
 } from "./core/gateway/fetch.js";
 export * from "./core/gateway/rpc.js";
 export * from "./core/gateway/runtime-targets.js";
+export * from "./core/gateway/snapshot-loaders.js";
 export * from "./core/sse/index.js";
 export * from "./core/ws/index.js";
 export * from "./react/gateway-provider.js";
@@ -80,6 +81,10 @@ export {
   createCaviControlAdapters,
   type CaviControlAdapters,
 } from "./cavi/adapters/create-cavi-control-adapters.js";
+export {
+  type CaviSnapshotFallbackMode,
+  type CreateGatewayWsSnapshotLoadersOptions,
+} from "./cavi/adapters/cavi-control-adapters/gateway-ws-snapshot-loaders.js";
 export { normalizeDiscourseEvent } from "./cavi/discourse/normalize.js";
 
 export {
@@ -170,20 +175,37 @@ export {
 } from "./core/gateway/media.js";
 
 export {
+  BUILT_IN_GATEWAY_PROVIDER_MODULES,
   createGatewayAgentConfigClient,
   createGatewayApiClient,
   createGatewayMediaClient,
+  createGatewayProviderRegistry,
   createGatewayRpcClient,
   createGatewaySseRunEventProvider,
   createGatewayWebSocketClient,
   createGatewayWikiClient,
   GATEWAY_PROVIDER_ENV_KEYS,
+  GATEWAY_PROVIDER_MODULE,
+  HERMES_PROVIDER_MODULE,
+  normalizeGatewayProviderToken,
+  OPENCLAW_PROVIDER_MODULE,
   resolveGatewayProviderKind,
+  resolveGatewayProviderModule,
   type CreateGatewaySseRunEventProviderOptions,
+  type CreateGatewayProviderRegistryOptions,
   type GatewayProviderEnv,
+  type GatewayProviderFactories,
   type GatewayProviderKind,
+  type GatewayProviderModule,
+  type GatewayProviderRegistry,
   type ResolveGatewayProviderOptions,
 } from "./providers/gateway-provider.js";
+
+export {
+  GatewayAgentConfigApiClient,
+  type GatewayAgentConfigApiClientOptions,
+  type GatewayAgentConfigEndpointMap,
+} from "./core/gateway/agent-config.js";
 
 export {
   GatewayWikiApiClient,
@@ -372,6 +394,7 @@ export {
   findTeamManifestMember,
   findTeamManifestTeam,
   normalizeTeamManifest,
+  resolveGatewayRouteBinding,
   resolveTeamActionApiPath,
   resolveTeamActionContract,
   resolveTeamRoutePath,
@@ -379,6 +402,9 @@ export {
   resolveTeamWorkspacePath,
   type CreateDefaultTeamManifestOptions,
   type DefaultTeamRouteKey,
+  type GatewayResolvedRouteBinding,
+  type GatewayRouteBinding,
+  type ResolveGatewayRouteBindingOptions,
   type ResolveTeamActionContractOptions,
   type ResolveTeamRoutePathOptions,
   type ResolveTeamWorkspacePathOptions,

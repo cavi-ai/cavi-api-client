@@ -46,6 +46,7 @@ import {
   resolveOperatorTaskDispatchPath,
   SURFACE_CONTRACTS,
   resolvePath,
+  resolveGatewayRouteBinding,
   resolveTeamActionApiPath,
   resolveTeamActionContract,
   resolveTeamRoutePath,
@@ -444,6 +445,66 @@ describe("agnostic HTTP API client package", () => {
     expect(() => resolveTeamWorkspacePath(team!, "secrets/tokens")).toThrow(
       /not whitelisted/u,
     );
+  });
+
+  it("resolves manifest route bindings for runtime channels without baked routes", () => {
+    const manifest = normalizeTeamManifest({
+      version: 1,
+      bindings: [
+        {
+          id: "discord-scout",
+          teamId: "research",
+          memberId: "scout",
+          source: "discord",
+          sessionKeyPattern: "agent:{memberId}:*",
+          routeKey: "agent.config",
+        },
+        {
+          id: "teams-triage",
+          teamId: "support",
+          source: "teams",
+          actionId: "triage",
+        },
+        {
+          id: "custom-room",
+          teamId: "support",
+          channel: "community-room",
+          routeKey: "runs",
+        },
+      ],
+      teams: [
+        {
+          id: "research",
+          members: [{ id: "scout" }],
+        },
+        {
+          id: "support",
+          actions: [{ id: "triage" }],
+          members: [{ id: "helper" }],
+        },
+      ],
+    });
+
+    expect(resolveGatewayRouteBinding(manifest, {
+      source: "discord",
+      key: "agent:scout:main",
+      agentId: "scout",
+    })).toMatchObject({
+      id: "discord-scout",
+      path: "/api/teams/research/agents/scout/config",
+    });
+    expect(resolveGatewayRouteBinding(manifest, {
+      source: "teams",
+    })).toMatchObject({
+      id: "teams-triage",
+      path: "/api/teams/support/actions/triage",
+    });
+    expect(resolveGatewayRouteBinding(manifest, {
+      channel: "community-room",
+    })).toMatchObject({
+      id: "custom-room",
+      path: "/api/teams/support/runs",
+    });
   });
 
   it("merges team action contracts from manifest, team, and agent overrides", () => {

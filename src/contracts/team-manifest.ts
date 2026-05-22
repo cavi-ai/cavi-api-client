@@ -178,9 +178,44 @@ export type TeamManifestTeam = {
   metadata?: Record<string, unknown> | null;
 };
 
+export type GatewayRouteBinding = {
+  id: string;
+  teamId: string;
+  memberId?: string | null;
+  source?: string | null;
+  channel?: string | null;
+  actionId?: string | null;
+  routeKey?: TeamRouteKey | null;
+  sessionKeyPattern?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type GatewayResolvedRouteBinding = {
+  id: string;
+  teamId: string;
+  memberId: string | null;
+  source: string | null;
+  channel: string | null;
+  actionId: string | null;
+  routeKey: TeamRouteKey;
+  path: string;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type ResolveGatewayRouteBindingOptions = {
+  bindingId?: string | null;
+  source?: string | null;
+  channel?: string | null;
+  sessionKey?: string | null;
+  key?: string | null;
+  agentId?: string | null;
+  actionId?: string | null;
+};
+
 export type TeamManifest = {
   version: TeamManifestVersion;
   actions?: readonly TeamActionContract[] | null;
+  bindings?: readonly GatewayRouteBinding[] | null;
   teams: readonly TeamManifestTeam[];
 };
 
@@ -613,6 +648,42 @@ function normalizeTeam(team: TeamManifestTeam): TeamManifestTeam {
   };
 }
 
+function normalizeGatewayRouteBinding(
+  binding: GatewayRouteBinding,
+): GatewayRouteBinding {
+  return {
+    id: requiredText(binding.id, "gateway route binding id"),
+    teamId: requiredText(binding.teamId, "gateway route binding teamId"),
+    ...(nonEmpty(binding.memberId) ? { memberId: nonEmpty(binding.memberId) } : {}),
+    ...(nonEmpty(binding.source) ? { source: nonEmpty(binding.source) } : {}),
+    ...(nonEmpty(binding.channel) ? { channel: nonEmpty(binding.channel) } : {}),
+    ...(nonEmpty(binding.actionId) ? { actionId: nonEmpty(binding.actionId) } : {}),
+    ...(nonEmpty(binding.routeKey)
+      ? { routeKey: nonEmpty(binding.routeKey) as TeamRouteKey }
+      : {}),
+    ...(nonEmpty(binding.sessionKeyPattern)
+      ? { sessionKeyPattern: nonEmpty(binding.sessionKeyPattern) }
+      : {}),
+    ...(binding.metadata ? { metadata: binding.metadata } : {}),
+  };
+}
+
+function normalizeGatewayRouteBindings(
+  bindings: readonly GatewayRouteBinding[] | null | undefined,
+): GatewayRouteBinding[] {
+  const seen = new Set<string>();
+  const normalized: GatewayRouteBinding[] = [];
+  for (const binding of bindings ?? []) {
+    const entry = normalizeGatewayRouteBinding(binding);
+    if (seen.has(entry.id)) {
+      throw new Error(`team manifest: duplicate gateway route binding "${entry.id}"`);
+    }
+    seen.add(entry.id);
+    normalized.push(entry);
+  }
+  return normalized;
+}
+
 function findWorkspacePath(
   workspace: TeamWorkspaceConfig,
   keyOrPath: string,
@@ -672,6 +743,7 @@ export function normalizeTeamManifest(
   return {
     version: TEAM_MANIFEST_VERSION,
     actions: normalizeTeamActionContracts(manifest.actions),
+    bindings: normalizeGatewayRouteBindings(manifest.bindings),
     teams: manifest.teams.map(normalizeTeam),
   };
 }
@@ -1018,6 +1090,149 @@ export function resolveTeamRoutePath(
     default:
       throw new Error(`team manifest: unknown team route "${routeKey}"`);
   }
+}
+
+function normalizeBindingMatchValue(value: string | null | undefined): string | null {
+  const trimmed = nonEmpty(value);
+  return trimmed ? trimmed.toLowerCase() : null;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|]/gu, "\\$&");
+}
+
+function expandSessionKeyPattern(
+  pattern: string,
+  binding: GatewayRouteBinding,
+): string {
+  return pattern
+    .replace(/\{teamId\}/gu, binding.teamId)
+    .replace(/\{memberId\}/gu, binding.memberId ?? "")
+    .replace(/\{actionId\}/gu, binding.actionId ?? "");
+}
+
+function matchesSessionKeyPattern(
+  binding: GatewayRouteBinding,
+  sessionKey: string | null,
+): boolean {
+  const pattern = nonEmpty(binding.sessionKeyPattern);
+  if (!pattern) {
+    return true;
+  }
+  const candidate = nonEmpty(sessionKey);
+  if (!candidate) {
+    return false;
+  }
+  const expanded = expandSessionKeyPattern(pattern, binding);
+  if (!expanded.includes("*")) {
+    return candidate === expanded;
+  }
+  const source = expanded.split("*").map(escapeRegExp).join(".*");
+  return new RegExp(`^${source}$`, "u").test(candidate);
+}
+
+function bindingMatchScore(
+  binding: GatewayRouteBinding,
+  options: ResolveGatewayRouteBindingOptions,
+): number {
+  if (options.bindingId && binding.id !== options.bindingId.trim()) {
+    return -1;
+  }
+
+  const inputSource = normalizeBindingMatchValue(options.source);
+  const inputChannel = normalizeBindingMatchValue(options.channel);
+  const inputAgentId = normalizeBindingMatchValue(options.agentId);
+  const inputActionId = normalizeBindingMatchValue(options.actionId);
+  const bindingSource = normalizeBindingMatchValue(binding.source);
+  const bindingChannel = normalizeBindingMatchValue(binding.channel);
+  const bindingMemberId = normalizeBindingMatchValue(binding.memberId);
+  const bindingActionId = normalizeBindingMatchValue(binding.actionId);
+
+  if (bindingSource && bindingSource !== inputSource && bindingSource !== inputChannel) {
+    return -1;
+  }
+  if (bindingChannel && bindingChannel !== inputChannel && bindingChannel !== inputSource) {
+    return -1;
+  }
+  if (bindingMemberId && inputAgentId && bindingMemberId !== inputAgentId) {
+    return -1;
+  }
+  if (bindingActionId && inputActionId && bindingActionId !== inputActionId) {
+    return -1;
+  }
+  const sessionKey = nonEmpty(options.sessionKey) ?? nonEmpty(options.key);
+  if (!matchesSessionKeyPattern(binding, sessionKey)) {
+    return -1;
+  }
+
+  let score = 0;
+  if (options.bindingId) score += 100;
+  if (binding.sessionKeyPattern) score += 20;
+  if (bindingSource) score += 10;
+  if (bindingChannel) score += 10;
+  if (bindingMemberId) score += 5;
+  if (bindingActionId) score += 5;
+  return score;
+}
+
+function bindingRouteKey(binding: GatewayRouteBinding): TeamRouteKey {
+  const explicit = nonEmpty(binding.routeKey);
+  if (explicit) {
+    return explicit as TeamRouteKey;
+  }
+  if (nonEmpty(binding.actionId)) {
+    return nonEmpty(binding.memberId) ? "agent.action" : "action";
+  }
+  return "runs";
+}
+
+export function resolveGatewayRouteBinding(
+  manifest: TeamManifest,
+  options: ResolveGatewayRouteBindingOptions,
+): GatewayResolvedRouteBinding | null {
+  const bindings = normalizeGatewayRouteBindings(manifest.bindings);
+  let selected: GatewayRouteBinding | null = null;
+  let selectedScore = -1;
+  for (const binding of bindings) {
+    const score = bindingMatchScore(binding, options);
+    if (score > selectedScore) {
+      selected = binding;
+      selectedScore = score;
+    }
+  }
+  if (!selected || selectedScore < 0) {
+    return null;
+  }
+
+  const team = findTeamManifestTeam(manifest, selected.teamId);
+  if (!team) {
+    throw new Error(`team manifest: binding "${selected.id}" references unknown team "${selected.teamId}"`);
+  }
+  const memberId = nonEmpty(selected.memberId);
+  if (memberId && !findTeamManifestMember(team, memberId)) {
+    throw new Error(
+      `team manifest: binding "${selected.id}" references unknown member "${memberId}" for team "${team.id}"`,
+    );
+  }
+
+  const routeKey = bindingRouteKey(selected);
+  const actionId = nonEmpty(selected.actionId);
+  const path = resolveTeamRoutePath(routeKey, {
+    teamId: team.id,
+    agentId: memberId,
+    actionId,
+  });
+  return {
+    id: selected.id,
+    teamId: team.id,
+    memberId,
+    source: nonEmpty(selected.source),
+    channel: nonEmpty(selected.channel),
+    actionId,
+    routeKey,
+    path,
+    ...(selected.metadata ? { metadata: selected.metadata } : {}),
+  };
 }
 
 function resolveTeamWorkspaceEntry(

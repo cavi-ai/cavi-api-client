@@ -1,24 +1,11 @@
+import type { SessionLoaders } from "../../../core/gateway/session-loaders.js";
 import {
-  BASELINE_SESSIONS_LIST_PARAMS,
-  EMPTY_SESSIONS_USAGE,
-  type SessionLoaders,
-} from "../../../core/gateway/session-loaders.js";
-import {
-  buildIncidentsSnapshot,
-  buildOverviewSnapshot,
-  buildRunDetailSnapshot,
-  buildRunsSnapshot,
-  buildRoutingMatrix,
-  normalizeRun,
-  utcDateYmd,
-} from "../../../core/gateway/transforms.js";
-import type { SessionsUsagePayload } from "../../../core/gateway/transforms.js";
-import {
-  classifyFallbackError,
-  type DataEnvelope,
-  withFallback,
-} from "../../../core/gateway/envelope.js";
-import { asString } from "../../../core/data/guards.js";
+  createEmptyGatewaySnapshotFallbacks,
+  createGatewaySnapshotLoaders,
+  type GatewaySnapshotBindingResolver,
+  type GatewaySnapshotFallbacks,
+} from "../../../core/gateway/snapshot-loaders.js";
+import { type DataEnvelope, withFallback } from "../../../core/gateway/envelope.js";
 import {
   type JsonHttpRequest,
   withQuery,
@@ -45,6 +32,8 @@ import {
 } from "../../fallbacks/snapshots/index.js";
 import type { GatewaySystemLoaders } from "../../../core/gateway/system-loaders.js";
 
+export type CaviSnapshotFallbackMode = "compat" | "empty" | "none";
+
 export type GatewayWsSnapshotLoaders = {
   loadOverview: () => Promise<DataEnvelope<OverviewSnapshot>>;
   loadAgentRuns: (
@@ -62,218 +51,113 @@ export type GatewayWsSnapshotLoaders = {
   ) => Promise<DataEnvelope<CostHistorySnapshot>>;
 };
 
+export type CreateGatewayWsSnapshotLoadersOptions = {
+  fallbackMode?: CaviSnapshotFallbackMode;
+  snapshotFallbacks?: Partial<GatewaySnapshotFallbacks>;
+  resolveBinding?: GatewaySnapshotBindingResolver | null;
+};
+
+function createCompatSnapshotFallbacks(): GatewaySnapshotFallbacks {
+  return {
+    overview: fallbackOverview,
+    agentRuns: fallbackAgentRuns,
+    runDetail: fallbackRunDetailForKey,
+    routingMatrix: fallbackRoutingMatrix,
+    incidents: fallbackIncidents,
+  };
+}
+
+function resolveSnapshotFallbacks(
+  options: CreateGatewayWsSnapshotLoadersOptions = {},
+): GatewaySnapshotFallbacks | null {
+  const mode = options.fallbackMode ?? "compat";
+  const base =
+    mode === "none"
+      ? null
+      : mode === "empty"
+        ? createEmptyGatewaySnapshotFallbacks()
+        : createCompatSnapshotFallbacks();
+  if (!options.snapshotFallbacks) {
+    return base;
+  }
+  return {
+    ...(base ?? createEmptyGatewaySnapshotFallbacks()),
+    ...options.snapshotFallbacks,
+  };
+}
+
+function gatewayEnvelope<TData>(data: TData): DataEnvelope<TData> {
+  return {
+    data,
+    source: "gateway",
+    fetchedAt: Date.now(),
+    contractGaps: [],
+  };
+}
+
+function createEmptyCostHistory(range: CostHistoryRange): CostHistorySnapshot {
+  return {
+    range,
+    resolution: "none",
+    generatedAt: Date.now(),
+    buckets: [],
+    totals: {
+      totalTokens: 0,
+      estimatedCostUsd: 0,
+      totalErrors: 0,
+    },
+  };
+}
+
 export function createGatewayWsSnapshotLoaders(deps: {
   sessionLoaders: SessionLoaders;
   systemLoaders: GatewaySystemLoaders;
   requestJson: JsonHttpRequest;
+  options?: CreateGatewayWsSnapshotLoadersOptions;
 }): GatewayWsSnapshotLoaders {
-  const {
-    loadSessionsListRaw,
-    loadSessionsUsageRaw,
-    loadSessionsPreviewRaw,
-    peekSessionsListCache,
-  } = deps.sessionLoaders;
-  const { loadHealthSnapshotRaw, loadLogsTailRaw } = deps.systemLoaders;
   const { requestJson } = deps;
-
-  const loadSessionsUsageBestEffort = async (
-    params: Record<string, unknown>,
-  ): Promise<SessionsUsagePayload> => {
-    try {
-      return await loadSessionsUsageRaw(params);
-    } catch (error) {
-      const classified = classifyFallbackError(error);
-      if (
-        classified.reason === "backend-unavailable" ||
-        classified.reason === "transport-disconnected"
-      ) {
-        return EMPTY_SESSIONS_USAGE;
-      }
-      throw error;
-    }
-  };
+  const fallbacks = resolveSnapshotFallbacks(deps.options);
+  const coreLoaders = createGatewaySnapshotLoaders({
+    sessionLoaders: deps.sessionLoaders,
+    systemLoaders: deps.systemLoaders,
+    options: {
+      fallbacks,
+      resolveBinding: deps.options?.resolveBinding ?? null,
+    },
+  });
 
   return {
-    loadOverview: async (): Promise<DataEnvelope<OverviewSnapshot>> =>
-      withFallback({
-        area: "overview",
-        expectedContract: "WS sessions.list + sessions.usage + health.snapshot",
-        note: "Cavi Control overview via WebSocket unavailable",
-        fallback: fallbackOverview,
-        run: async () => {
-          const [listRes, usageRes, healthRes] = await Promise.all([
-            loadSessionsListRaw({
-              ...BASELINE_SESSIONS_LIST_PARAMS,
-            }),
-            loadSessionsUsageRaw({
-              limit: 300,
-              includeContextWeight: false,
-            }),
-            loadHealthSnapshotRaw(),
-          ]);
-          const sessions = Array.isArray(listRes.sessions)
-            ? listRes.sessions
-            : [];
-          const readiness = {
-            ready: healthRes.ready,
-            failing: Array.isArray(healthRes.failing)
-              ? healthRes.failing
-                  .map((entry) =>
-                    typeof entry === "string" ? entry : String(entry),
-                  )
-                  .filter((entry) => entry.trim().length > 0)
-              : [],
-            uptimeMs: healthRes.uptimeMs ?? null,
-            statusCode: healthRes.ready ? (200 as const) : (503 as const),
-          };
-          return buildOverviewSnapshot(sessions, usageRes, readiness, {
-            totalSessions: listRes.count,
-          });
-        },
-      }),
-
-    loadAgentRuns: async (
-      filters: AgentRunsFilters,
-    ): Promise<DataEnvelope<AgentRunsSnapshot>> =>
-      withFallback({
-        area: "agent-runs",
-        expectedContract: "WS sessions.list + sessions.usage",
-        note: "Cavi Control runs via WebSocket unavailable",
-        fallback: fallbackAgentRuns,
-        run: async () => {
-          const [listRes, usageRes] = await Promise.all([
-            loadSessionsListRaw({
-              limit: filters.limit,
-              activeMinutes: filters.activeMinutes,
-              includeGlobal: true,
-              includeUnknown: true,
-              search: filters.search,
-              includeDerivedTitles: true,
-            }),
-            loadSessionsUsageBestEffort({
-              limit: filters.limit,
-              includeContextWeight: false,
-            }),
-          ]);
-          const rows = Array.isArray(listRes.sessions) ? listRes.sessions : [];
-          return buildRunsSnapshot(rows, usageRes);
-        },
-      }),
-
-    loadRunDetail: async (
-      key: string,
-    ): Promise<DataEnvelope<AgentRunDetailSnapshot>> =>
-      withFallback({
-        area: "run-detail",
-        expectedContract:
-          "WS sessions.usage + sessions.list + sessions.preview",
-        note: "Cavi Control run detail via WebSocket unavailable",
-        fallback: fallbackRunDetailForKey(key),
-        run: async () => {
-          const [usageRes, previewRes] = await Promise.all([
-            loadSessionsUsageRaw({
-              key,
-              limit: 1,
-              includeContextWeight: false,
-            }),
-            loadSessionsPreviewRaw({
-              keys: [key],
-              limit: 24,
-              maxChars: 240,
-            }),
-          ]);
-
-          const baselineRows = peekSessionsListCache(
-            BASELINE_SESSIONS_LIST_PARAMS,
-          )?.sessions;
-          const baselineMatch = Array.isArray(baselineRows)
-            ? (baselineRows.find((row) => asString(row.key) === key) ?? null)
-            : null;
-
-          let matchedRow = baselineMatch;
-          if (!matchedRow) {
-            const listRes = await loadSessionsListRaw({
-              ...BASELINE_SESSIONS_LIST_PARAMS,
-              search: key,
-            });
-            const rows = Array.isArray(listRes.sessions)
-              ? listRes.sessions
-              : [];
-            matchedRow = rows.find((row) => asString(row.key) === key) ?? null;
-          }
-
-          const usageSession =
-            Array.isArray(usageRes.sessions) && usageRes.sessions.length > 0
-              ? (usageRes.sessions[0] ?? null)
-              : null;
-          const run = matchedRow ? normalizeRun(matchedRow, 0) : null;
-          const preview = Array.isArray(previewRes.previews)
-            ? previewRes.previews[0]
-            : null;
-          return buildRunDetailSnapshot(run, usageSession, preview);
-        },
-      }),
-
-    loadRoutingMatrix: async (
-      windowDays: number,
-    ): Promise<DataEnvelope<RoutingMatrixSnapshot>> =>
-      withFallback({
-        area: "routing-matrix",
-        expectedContract: "WS sessions.usage",
-        note: "Cavi Control routing via WebSocket unavailable",
-        fallback: fallbackRoutingMatrix,
-        run: async () => {
-          const end = new Date();
-          const start = new Date(Date.now() - windowDays * 86_400_000);
-          const usageRes = await loadSessionsUsageBestEffort({
-            limit: 400,
-            startDate: utcDateYmd(start),
-            endDate: utcDateYmd(end),
-            includeContextWeight: false,
-          });
-          return buildRoutingMatrix(usageRes);
-        },
-      }),
-
-    loadIncidents: async (): Promise<DataEnvelope<IncidentsSnapshot>> =>
-      withFallback({
-        area: "incidents",
-        expectedContract: "WS logs.tail + sessions.list",
-        note: "Cavi Control incidents via WebSocket unavailable",
-        fallback: fallbackIncidents,
-        run: async () => {
-          const [logsRes, listRes] = await Promise.all([
-            loadLogsTailRaw({
-              limit: 300,
-              maxBytes: 512_000,
-            }),
-            loadSessionsListRaw({
-              ...BASELINE_SESSIONS_LIST_PARAMS,
-            }),
-          ]);
-          const sessions = Array.isArray(listRes.sessions)
-            ? listRes.sessions
-            : [];
-          return buildIncidentsSnapshot(logsRes, sessions);
-        },
-      }),
+    loadOverview: coreLoaders.loadOverview,
+    loadAgentRuns: async (filters: AgentRunsFilters) =>
+      await coreLoaders.loadAgentRuns(filters) as DataEnvelope<AgentRunsSnapshot>,
+    loadRunDetail: async (key: string) =>
+      await coreLoaders.loadRunDetail(key) as DataEnvelope<AgentRunDetailSnapshot>,
+    loadRoutingMatrix: async (windowDays: number) =>
+      await coreLoaders.loadRoutingMatrix(windowDays) as DataEnvelope<RoutingMatrixSnapshot>,
+    loadIncidents: coreLoaders.loadIncidents,
 
     loadCostHistory: async (
       range: CostHistoryRange,
     ): Promise<DataEnvelope<CostHistorySnapshot>> =>
-      withFallback({
-        area: "cost-history",
-        expectedContract: describeHttpContract(
-          "GET",
-          CAVI_CONTROL_API_ENDPOINTS.costHistory,
-        ),
-        note: "Cost history endpoint unavailable",
-        fallback: fallbackCostHistory(range),
-        run: async () => {
-          return await requestJson<CostHistorySnapshot>(
-            withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
-          );
-        },
-      }),
+      deps.options?.fallbackMode === "none"
+        ? gatewayEnvelope(
+            await requestJson<CostHistorySnapshot>(
+              withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
+            ),
+          )
+        : await withFallback({
+            area: "cost-history",
+            expectedContract: describeHttpContract(
+              "GET",
+              CAVI_CONTROL_API_ENDPOINTS.costHistory,
+            ),
+            note: "Cost history endpoint unavailable",
+            fallback: deps.options?.fallbackMode === "empty"
+              ? createEmptyCostHistory(range)
+              : fallbackCostHistory(range),
+            run: async () => await requestJson<CostHistorySnapshot>(
+              withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
+            ),
+          }),
   };
 }

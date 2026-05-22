@@ -39,6 +39,10 @@ import { createDebLiveHelpers } from "../deb/live.js";
 import { createDebMutations } from "../deb/mutations.js";
 import { loadTaskDiscourseLive } from "../discourse/live.js";
 import { createGatewayWsLoaders } from "./cavi-control-adapters/gateway-ws-loaders.js";
+import type {
+  CaviSnapshotFallbackMode,
+  CreateGatewayWsSnapshotLoadersOptions,
+} from "./cavi-control-adapters/gateway-ws-snapshot-loaders.js";
 import { loadFleetLibraryLive } from "./cavi-control-adapters/library-live.js";
 import { loadOperatorControlLive } from "./cavi-control-adapters/operator-control-live.js";
 
@@ -133,6 +137,9 @@ export function createCaviControlAdapters(opts: {
   authToken: string | null;
   apiBaseUrl?: string | null;
   client?: GatewayWebSocketClient | null;
+  fallbackMode?: CaviSnapshotFallbackMode;
+  snapshotFallbacks?: CreateGatewayWsSnapshotLoadersOptions["snapshotFallbacks"];
+  resolveSnapshotBinding?: CreateGatewayWsSnapshotLoadersOptions["resolveBinding"];
 }): CaviControlAdapters {
   const httpBase =
     opts.apiBaseUrl?.trim() || resolveGatewayHttpBase(opts.gatewayBaseUrl);
@@ -150,6 +157,11 @@ export function createCaviControlAdapters(opts: {
   const gatewayWs = createGatewayWsLoaders({
     client: opts.client,
     requestJson,
+    snapshotOptions: {
+      fallbackMode: opts.fallbackMode,
+      snapshotFallbacks: opts.snapshotFallbacks,
+      resolveBinding: opts.resolveSnapshotBinding,
+    },
   });
   const inFlightLoads = new Map<string, Promise<unknown>>();
 

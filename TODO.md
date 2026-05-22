@@ -21,8 +21,10 @@
 - [x] Quarantine `src/compat/martina/**` public compatibility exports and remove them from package exports/build include.
 - [x] Move dynamic portal route construction to `src/contracts/paths.ts` and quarantine CAVI runtime HTTP transport / portal client-id core re-export shims.
 - [x] Move portal envelope/library/memory contracts to `src/contracts/portals.ts` and quarantine the old CAVI portal contract owner.
-- [ ] Review large `src/cavi/fallbacks/snapshots/operator/**` fallback modules for feature-owned boundaries.
-- [ ] Review `src/cavi/adapters/cavi-control-adapters/gateway-ws-snapshot-loaders.ts`; keep CAVI fallbacks/adapters there, but move any reusable gateway snapshot orchestration to core with injected fallbacks.
+- [x] Review large `src/cavi/fallbacks/snapshots/operator/**` fallback modules for feature-owned boundaries; keep them under CAVI compatibility fallback ownership instead of exposing them as generic defaults.
+- [x] Review `src/cavi/adapters/cavi-control-adapters/gateway-ws-snapshot-loaders.ts`; move reusable gateway snapshot orchestration to core with injected fallbacks and binding resolution.
+- [x] Add provider plugin registry support so third-party gateway providers can register factories without package factory branches.
+- [x] Add manifest-owned gateway route bindings for dynamic source/channel/team routing.
 - [x] Keep hardening checks preventing `src/cavi/data/**`, hidden CAVI feature path owners, CAVI runtime gateway fetch/core transport shims, portal client-id/contract shims, gateway-owned generic SSE helpers, and gateway-owned WebSocket alias files from returning to active source.
 - [ ] Run `npm run build` and `npm test` before any commit, publish, or linked consumer verification.
 
