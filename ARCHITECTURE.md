@@ -86,6 +86,11 @@ New transport behavior should enter through these core contracts first. A
 provider module may customize headers, endpoint maps, or defaults, but it
 should not fork the parser, RPC protocol, retry semantics, or trace behavior.
 
+CAVI adapter modules should stay as composition layers over those contracts.
+For gateway WebSocket-backed control surfaces, `core/gateway/session-loaders.ts`
+owns `sessions.*` request coalescing and cache behavior, while CAVI owns only
+the dashboard snapshot assembly and CAVI-specific fallback envelopes.
+
 ## Gateway Media
 
 Audio, video, and music are core gateway features. The shared interface lives in
