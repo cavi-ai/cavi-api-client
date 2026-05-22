@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CaviControlRequestJson } from "../../data/cavi-control/http-client";
+import type { CaviControlRequestJson } from "../../../../cavi/data/cavi-control/http-client";
 import {
   configureTeamRegistryConfig,
   resetTeamRegistryConfig,
-} from "../../registry/team-registry-config";
-import type { TeamRegistryConfig } from "../../registry/team-registry";
-import { loadFleetLibraryLive } from "./library-live";
+} from "../../../../cavi/registry/team-registry-config";
+import type { TeamRegistryConfig } from "../../../../cavi/registry/team-registry";
+import { loadFleetLibraryLive } from "../../../../cavi/adapters/cavi-control-adapters/library-live";
 
 const TEST_TEAM_REGISTRY_CONFIG: TeamRegistryConfig = {
   teams: [

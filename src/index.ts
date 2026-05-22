@@ -106,6 +106,7 @@ export {
 } from "./core/gateway/media.js";
 
 export {
+  createGatewayAgentConfigClient,
   createGatewayApiClient,
   createGatewayMediaClient,
   createGatewayRpcClient,

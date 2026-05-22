@@ -5,7 +5,7 @@ import {
   resolveGatewayHttpBase,
   resolveGatewayHttpUrl,
   resolveSessionApiPath,
-} from "./runtime-paths";
+} from "../../../../cavi/data/cavi-control/runtime-paths";
 
 describe("runtime paths", () => {
   afterEach(() => {

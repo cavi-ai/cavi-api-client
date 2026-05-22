@@ -19,6 +19,7 @@ src/
     library/
     portal/
     registry/
+    runtime/
   providers/
     hermes/
     openclaw/
@@ -26,6 +27,7 @@ src/
   compat/
     martina/
   __tests__/
+    cavi/
     fixtures/
   index.ts
 ```
@@ -45,6 +47,8 @@ package exports, and are not built. They are preserved only under
 - `compat/**` owns explicit compatibility domains such as Martina. It is not a
   dumping ground for stale root import paths.
 - `cavi/fallbacks/snapshots/**` contains runtime fallback snapshots used by degraded gateway flows. These are production fallback data, not test mocks.
+- `cavi/data/lib/**` is compatibility shims only. New implementation belongs in named folders such as `cavi/portal/**`, `cavi/registry/**`, `cavi/runtime/**`, or `cavi/library/**`.
+- `__tests__/cavi/**` contains CAVI tests. Test files should not live under production `cavi/**` folders.
 - `__tests__/fixtures/**` contains test-only fixtures and helpers. Production modules must not depend on it and it is not part of the build include.
 
 ## CAVI Boundary

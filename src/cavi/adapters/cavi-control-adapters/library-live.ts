@@ -1,9 +1,9 @@
 import type { FleetLibrarySnapshot, TeamLibraryStatus } from "../../domain/index.js";
 import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
-import { requestLibraryApiJson } from "../../data/lib/library-api.js";
-import { getPortalTeamIdentity } from "../../data/lib/canonical-team-registry.js";
-import type { PortalLibraryRef } from "../../data/lib/portal-api-contract.js";
-import { listPortalLibraryRefs } from "../../data/lib/portal-library-registry.js";
+import { requestLibraryApiJson } from "../../library/api.js";
+import type { PortalLibraryRef } from "../../portal/contracts.js";
+import { getPortalTeamIdentity } from "../../registry/canonical-team-registry.js";
+import { listPortalLibraryRefs } from "../../registry/portal-library-registry.js";
 
 function listTeamLibraryRefs(): PortalLibraryRef[] {
   return listPortalLibraryRefs().filter(

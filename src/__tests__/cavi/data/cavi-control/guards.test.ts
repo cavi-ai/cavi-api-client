@@ -5,7 +5,7 @@ import {
   asString,
   asStringArray,
   isRecord,
-} from "./guards";
+} from "../../../../cavi/data/cavi-control/guards";
 
 describe("guards", () => {
   describe("isRecord", () => {

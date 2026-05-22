@@ -46,6 +46,8 @@ const CORE_ENV_CONFIG = path.join(SRC_ROOT, "core", "env", "config.ts");
 const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
 const CAVI_PATHS = path.join(SRC_ROOT, "cavi", "paths.ts");
+const CAVI_ROOT = path.join(SRC_ROOT, "cavi");
+const CAVI_DATA_LIB_ROOT = path.join(SRC_ROOT, "cavi", "data", "lib");
 const CAVI_CONTROL_API_PATHS = path.join(
   SRC_ROOT,
   "cavi",
@@ -155,9 +157,11 @@ const TEAM_REGISTRY_OWNER_FILES = [
   "src/cavi/registry/team-registry-config.ts",
   "src/providers/hermes/team-registry-config.ts",
   "src/providers/openclaw/team-registry-config.ts",
-  "src/cavi/data/lib/canonical-team-registry.ts",
-  "src/cavi/data/lib/portal-library-registry.ts",
+  "src/cavi/registry/canonical-team-registry.ts",
+  "src/cavi/registry/portal-library-registry.ts",
 ] as const;
+const CAVI_DATA_LIB_SHIM_RE =
+  /^export \* from "\.\.\/\.\.\/(?:library|portal|registry|runtime)\/[^"]+\.js";$/u;
 
 function walkFiles(root: string): string[] {
   const files: string[] = [];
@@ -377,6 +381,31 @@ describe("package hardening", () => {
       .map(rel);
 
     expect(offenders).toEqual([]);
+  });
+
+  it("keeps CAVI tests under the shared test tree", () => {
+    const offenders = walkFiles(CAVI_ROOT)
+      .map(rel)
+      .filter((relative) => /\.test\.tsx?$/u.test(relative));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps CAVI data/lib as compatibility shims only", () => {
+    const implementationOffenders = walkFiles(CAVI_DATA_LIB_ROOT)
+      .map((filePath) => ({
+        filePath,
+        source: read(filePath).trim(),
+      }))
+      .filter(({ source }) => !CAVI_DATA_LIB_SHIM_RE.test(source))
+      .map(({ filePath }) => rel(filePath));
+    const importOffenders = productionSourceFiles()
+      .filter((filePath) => !rel(filePath).startsWith("src/cavi/data/lib/"))
+      .filter((filePath) => /["'][^"']*data\/lib\//u.test(read(filePath)))
+      .map(rel);
+
+    expect(implementationOffenders).toEqual([]);
+    expect(importOffenders).toEqual([]);
   });
 
   it("routes the CAVI control request helper through shared core HTTP", () => {

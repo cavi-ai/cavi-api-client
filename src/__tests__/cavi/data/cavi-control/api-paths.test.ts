@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CAVI_CONTROL_API_ENDPOINTS } from "../../paths";
-import { API_DEB, API_OPERATOR } from "./constants";
+import { CAVI_CONTROL_API_ENDPOINTS } from "../../../../cavi/paths";
+import { API_DEB, API_OPERATOR } from "../../../../cavi/data/cavi-control/constants";
 import {
   API_COST_HISTORY,
   API_SCORING_MODEL,
@@ -11,7 +11,7 @@ import {
   debWorkspaceExpectedContractSummary,
   describeHttpContract,
   operatorTaskDiscoursePath,
-} from "./api-paths";
+} from "../../../../cavi/data/cavi-control/api-paths";
 
 describe("api-paths", () => {
   it("keeps DEB_API and OPERATOR_API aligned with base constants", () => {

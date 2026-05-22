@@ -1,4 +1,5 @@
 import { GatewayApiClient } from "../core/gateway/client.js";
+import { GatewayAgentConfigApiClient } from "../core/gateway/agent-config.js";
 import { GatewayMediaApiClient } from "../core/gateway/media.js";
 import { GatewayRpcClient, type GatewayRpcClientOptions } from "../core/gateway/rpc.js";
 import {
@@ -7,11 +8,13 @@ import {
 } from "../core/gateway/sse-run-event-provider.js";
 import { GatewayWikiApiClient } from "../core/gateway/wiki.js";
 import { HermesApiClient } from "./hermes/client.js";
+import { HermesAgentConfigApiClient } from "./hermes/agent-config.js";
 import { HermesMediaApiClient } from "./hermes/media.js";
 import { HermesSseRunEventProvider } from "./hermes/sse-run-event-provider.js";
 import { HermesWebSocketClient } from "./hermes/websocket.js";
 import { HermesWikiApiClient } from "./hermes/wiki.js";
 import { OpenClawApiClient } from "./openclaw/client.js";
+import { OpenClawAgentConfigApiClient } from "./openclaw/agent-config.js";
 import { OpenClawMediaApiClient } from "./openclaw/media.js";
 import { OpenClawSseRunEventProvider } from "./openclaw/sse-run-event-provider.js";
 import { OpenClawWebSocketClient } from "./openclaw/websocket.js";
@@ -139,4 +142,18 @@ export function createGatewayWikiClient(
     return new OpenClawWikiApiClient(clientOptions);
   }
   return new GatewayWikiApiClient(clientOptions);
+}
+
+export function createGatewayAgentConfigClient(
+  clientOptions: HttpApiClientOptions,
+  providerOptions: ResolveGatewayProviderOptions = {},
+): GatewayAgentConfigApiClient {
+  const provider = resolveGatewayProviderKind(providerOptions);
+  if (provider === "hermes") {
+    return new HermesAgentConfigApiClient(clientOptions);
+  }
+  if (provider === "openclaw") {
+    return new OpenClawAgentConfigApiClient(clientOptions);
+  }
+  return new GatewayAgentConfigApiClient(clientOptions);
 }

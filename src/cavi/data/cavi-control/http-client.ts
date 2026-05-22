@@ -1,7 +1,7 @@
 import { BaseHttpApiClient } from "../../../core/http/client.js";
 import { HttpApiError } from "../../../core/http/errors.js";
 import type { HttpApiRequestInit } from "../../../core/http/types.js";
-import { isSessionAuthMode } from "../lib/standalone-mode.js";
+import { isSessionAuthMode } from "../../runtime/standalone-mode.js";
 import {
   buildGatewayHttpError,
   parseGatewayErrorText,

@@ -1,4 +1,6 @@
 export * from "./client.js";
+export * from "./agent-config.js";
+export * from "./agent-voice-config.js";
 export * from "./media.js";
 export * from "./wiki.js";
 export * from "./rpc.js";

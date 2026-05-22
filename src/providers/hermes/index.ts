@@ -1,4 +1,5 @@
 export * from "./client.js";
+export * from "./agent-config.js";
 export * from "./chat-run.js";
 export * from "./env-config.js";
 export * from "./media.js";

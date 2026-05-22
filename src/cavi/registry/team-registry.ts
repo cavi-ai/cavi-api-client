@@ -2,7 +2,7 @@ import type {
   OperatorRegistrySnapshot,
   OperatorRegistryTeam,
 } from "../domain/index.js";
-import type { PortalLibraryRef } from "../data/lib/portal-api-contract.js";
+import type { PortalLibraryRef } from "../portal/contracts.js";
 import {
   normalizeTeamManifest,
   type TeamManifest,

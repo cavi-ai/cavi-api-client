@@ -31,9 +31,9 @@ export {
   sessionKeysEqual,
   type CaviTeamPortalId,
   type ParsedAgentSessionKey,
-} from "./data/lib/canonical-team-registry.js";
-export * from "./data/lib/portal-api-contract.js";
-export * from "./data/lib/portal-library-registry.js";
+} from "./registry/canonical-team-registry.js";
+export * from "./portal/contracts.js";
+export * from "./registry/portal-library-registry.js";
 export * from "./data/cavi-control/discourse/normalize.js";
 export * from "./domain/index.js";
 export * from "./registry/team-registry.js";

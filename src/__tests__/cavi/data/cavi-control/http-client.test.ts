@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CaviControlApiError } from "./api-error";
-import { createCaviControlRequestJson, withQuery } from "./http-client";
+import { CaviControlApiError } from "../../../../cavi/data/cavi-control/api-error";
+import { createCaviControlRequestJson, withQuery } from "../../../../cavi/data/cavi-control/http-client";
 
 describe("http-client", () => {
   describe("withQuery", () => {

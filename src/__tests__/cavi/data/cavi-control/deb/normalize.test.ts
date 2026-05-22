@@ -4,7 +4,7 @@ import {
   sortBacklogItems,
   toDebProfile,
   toDebWorkspaceSnapshot,
-} from "./normalize";
+} from "../../../../../cavi/data/cavi-control/deb/normalize";
 
 type RuntimeBaseOverrideGlobal = typeof globalThis & {
   __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
@@ -27,7 +27,7 @@ describe("Deb asset path normalization", () => {
   it("maps legacy /cavi-control/deb assets to standalone root paths", async () => {
     setRuntimeBaseOverride("/");
     vi.resetModules();
-    const { toDebProfile } = await import("./normalize");
+    const { toDebProfile } = await import("../../../../../cavi/data/cavi-control/deb/normalize");
 
     const profile = toDebProfile({
       name: "Deb",
@@ -49,7 +49,7 @@ describe("Deb asset path normalization", () => {
   it("keeps embedded /cavi-control/deb asset paths when base path is /cavi-control/", async () => {
     setRuntimeBaseOverride("/cavi-control/");
     vi.resetModules();
-    const { toDebProfile } = await import("./normalize");
+    const { toDebProfile } = await import("../../../../../cavi/data/cavi-control/deb/normalize");
 
     const profile = toDebProfile({
       name: "Deb",
