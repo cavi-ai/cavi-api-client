@@ -7,20 +7,28 @@ import type {
   DebProfile,
   DebSprintStatus,
   DebWorkspaceSnapshot,
-} from "../../../domain/index.js";
-import { asNumber, asString, asStringArray, isRecord } from "../guards.js";
+} from "../domain/index.js";
+import {
+  asNumber,
+  asString,
+  asStringArray,
+  isRecord,
+} from "../../core/data/guards.js";
 import type {
   DebBacklogApiItemResponse,
   DebBacklogApiResponse,
   DebProfileApiResponse,
   DebSprintApiResponse,
 } from "./constants.js";
-import { CAVI_CONTROL_BASE_PATH } from "../../../paths.js";
+import { CAVI_CONTROL_BASE_PATH } from "../paths.js";
 import {
   DEB_CANONICAL_AVATAR_CANDIDATES,
   DEB_FALLBACK_LIMITATIONS,
 } from "./constants.js";
-import { resolveDebAssetPath, withRuntimeBasePath } from "../runtime-paths.js";
+import {
+  resolveDebAssetPath,
+  withRuntimeBasePath,
+} from "../data/cavi-control/runtime-paths.js";
 
 export function normalizeDebPriority(value: unknown): DebBacklogPriority {
   const normalized = asString(value)?.toLowerCase();

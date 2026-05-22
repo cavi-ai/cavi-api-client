@@ -1,6 +1,9 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
 import { GATEWAY_PROBE_ENDPOINTS } from "../../contracts/paths.js";
+import { asNumber, asString } from "../data/guards.js";
+
+export { asNumber, asString };
 
 /**
  * Pure data transformation functions for Gateway / Cavi Control.
@@ -224,16 +227,6 @@ export type ReadinessInput = {
 
 const ACTIVE_WINDOW_MS = 5 * 60_000;
 const STALLED_WINDOW_MS = 30 * 60_000;
-
-export function asNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-export function asString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
 
 export function toIntInRange(
   raw: string | null,

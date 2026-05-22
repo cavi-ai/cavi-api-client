@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { GatewayRpcClient } from "../../../../core/gateway/rpc";
 import { createGatewayWsLoaders } from "../../../../cavi/adapters/cavi-control-adapters/gateway-ws-loaders";
-import type { CaviControlRequestJson } from "../../../../cavi/data/cavi-control/http-client";
+import type { JsonHttpRequest } from "../../../../core/http/json-client";
 
 function createMockGatewayClient(
   handler: (method: string, params: Record<string, unknown>) => Promise<unknown>,
@@ -11,10 +11,10 @@ function createMockGatewayClient(
   } as unknown as GatewayRpcClient;
 }
 
-function createUnusedRequestJson(): CaviControlRequestJson {
+function createUnusedRequestJson(): JsonHttpRequest {
   return vi.fn(async () => {
     throw new Error("unexpected HTTP fallback call");
-  }) as CaviControlRequestJson;
+  }) as JsonHttpRequest;
 }
 
 describe("createGatewayWsLoaders", () => {

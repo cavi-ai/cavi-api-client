@@ -4,20 +4,20 @@ import type {
   DebBacklogStatus,
   DebProfile,
   DebWorkspaceSnapshot,
-} from "../../domain/index.js";
-import { CaviControlApiError } from "../../data/cavi-control/api-error.js";
-import { DEB_API } from "../../data/cavi-control/api-paths.js";
-import { API_DEB } from "../../data/cavi-control/constants.js";
+} from "../domain/index.js";
+import { GatewayHttpError } from "../../core/http/gateway-error.js";
+import type { JsonHttpRequest } from "../../core/http/json-client.js";
+import { DEB_API } from "../data/cavi-control/api-paths.js";
+import { API_DEB } from "../data/cavi-control/constants.js";
 import {
   normalizeEmailList,
   toDebProfile,
   toDebWorkspaceFromCompatPayload,
   toDebWorkspaceSnapshot,
-} from "../../data/cavi-control/deb/normalize.js";
-import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
-import { asString } from "../../data/cavi-control/guards.js";
+} from "./normalize.js";
+import { asString } from "../../core/data/guards.js";
 
-export function createDebLiveHelpers(requestJson: CaviControlRequestJson) {
+export function createDebLiveHelpers(requestJson: JsonHttpRequest) {
   const loadDebWorkspaceLive = async (): Promise<DebWorkspaceSnapshot> => {
     try {
       const [profilePayload, sprintPayload, backlogPayload] = await Promise.all(
@@ -34,7 +34,7 @@ export function createDebLiveHelpers(requestJson: CaviControlRequestJson) {
         backlogPayload,
       });
     } catch (error) {
-      if (!(error instanceof CaviControlApiError) || error.status !== 404) {
+      if (!(error instanceof GatewayHttpError) || error.status !== 404) {
         throw error;
       }
 
@@ -48,7 +48,7 @@ export function createDebLiveHelpers(requestJson: CaviControlRequestJson) {
       const profilePayload = await requestJson<unknown>(DEB_API.profile);
       return toDebProfile(profilePayload);
     } catch (error) {
-      if (!(error instanceof CaviControlApiError) || error.status !== 404) {
+      if (!(error instanceof GatewayHttpError) || error.status !== 404) {
         throw error;
       }
       const compatPayload = await requestJson<unknown>(API_DEB);
@@ -68,7 +68,7 @@ export function createDebLiveHelpers(requestJson: CaviControlRequestJson) {
       });
       return toDebProfile(payload);
     } catch (error) {
-      if (!(error instanceof CaviControlApiError) || error.status !== 404) {
+      if (!(error instanceof GatewayHttpError) || error.status !== 404) {
         throw error;
       }
 

@@ -1,7 +1,7 @@
 {
   "name": "@cavi/api-client",
-  "version": "0.2.0",
-  "description": "Gateway-agnostic HTTP API client package for CAVI Control surfaces",
+  "version": "0.2.1",
+  "description": "Gateway-agnostic HTTP/WebSocket API client package for CAVI Control surfaces",
   "type": "module",
   "files": [
     "dist",
@@ -21,6 +21,11 @@
       "types": "./dist/core/http/index.d.ts",
       "import": "./dist/core/http/index.js",
       "default": "./dist/core/http/index.js"
+    },
+    "./core/data": {
+      "types": "./dist/core/data/index.d.ts",
+      "import": "./dist/core/data/index.js",
+      "default": "./dist/core/data/index.js"
     },
     "./core/gateway": {
       "types": "./dist/core/gateway/index.d.ts",

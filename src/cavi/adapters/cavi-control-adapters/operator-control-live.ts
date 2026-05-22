@@ -1,7 +1,14 @@
 import type { GatewayRpcClient } from "../../../core/gateway/rpc.js";
+import {
+  fallbackGap,
+  type ContractGap,
+  type DataEnvelope,
+} from "../../../core/gateway/envelope.js";
+import {
+  type JsonHttpRequest,
+  withQuery,
+} from "../../../core/http/json-client.js";
 import type {
-  ContractGap,
-  DataEnvelope,
   OperatorControlSnapshot,
 } from "../../domain/index.js";
 import {
@@ -21,15 +28,12 @@ import {
   OPERATOR_API,
   operatorControlExpectedContractSummary,
 } from "../../data/cavi-control/api-paths.js";
-import { fallbackGap } from "../../data/cavi-control/envelope.js";
-import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
-import { withQuery } from "../../data/cavi-control/http-client.js";
 import { loadOperatorControlSection } from "../../data/cavi-control/operator/load-section.js";
 import { fallbackOperatorControl } from "../../fallbacks/snapshots/index.js";
 
 const OPERATOR_FULL_FALLBACK_BACKOFF_MS = 15_000;
 const fullFallbackByRequestJson = new WeakMap<
-  CaviControlRequestJson,
+  JsonHttpRequest,
   {
     expiresAt: number;
     envelope: DataEnvelope<OperatorControlSnapshot>;
@@ -87,7 +91,7 @@ function buildAvailableSectionStatus(params: {
 
 async function requestOperatorSnapshot(params: {
   client: GatewayRpcClient | null | undefined;
-  requestJson: CaviControlRequestJson;
+  requestJson: JsonHttpRequest;
 }): Promise<OperatorControlSnapshot> {
   const snapshotParams = {
     taskLimit: OPERATOR_TASK_SAMPLE_LIMIT,
@@ -111,7 +115,7 @@ async function requestOperatorSnapshot(params: {
 
 async function requestOperatorSection<TData>(params: {
   client: GatewayRpcClient | null | undefined;
-  requestJson: CaviControlRequestJson;
+  requestJson: JsonHttpRequest;
   wsMethod: string;
   wsParams?: Record<string, unknown>;
   httpPath: string;
@@ -128,7 +132,7 @@ async function requestOperatorSection<TData>(params: {
 }
 
 export async function loadOperatorControlLive(
-  requestJson: CaviControlRequestJson,
+  requestJson: JsonHttpRequest,
   client: GatewayRpcClient | null | undefined,
 ): Promise<DataEnvelope<OperatorControlSnapshot>> {
   const cachedFullFallback = fullFallbackByRequestJson.get(requestJson);

@@ -2,7 +2,7 @@ export { mockNow } from "./shared.js";
 export { mockAgentRuns, mockRunDetailForKey } from "./runs.js";
 export { mockOverview } from "./overview.js";
 export { mockRoutingMatrix } from "./routing.js";
-export { mockDebWorkspace } from "./deb.js";
+export { fallbackDebWorkspace as mockDebWorkspace } from "../../../../cavi/deb/fallback.js";
 export { mockOperatorControl } from "./operator/index.js";
 export { fallbackTaskDiscourse as mockTaskDiscourse } from "../../../../cavi/discourse/fallback.js";
 export { mockIncidents } from "./incidents.js";

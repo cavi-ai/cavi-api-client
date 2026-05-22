@@ -2,32 +2,34 @@ import type {
   DebBacklogDraft,
   DebCallRequest,
   DebEmailDraft,
-  MutationResult,
-} from "../../domain/index.js";
-import { CaviControlApiError } from "../../data/cavi-control/api-error.js";
+} from "../domain/index.js";
+import { GatewayHttpError } from "../../core/http/gateway-error.js";
+import type { JsonHttpRequest } from "../../core/http/json-client.js";
+import {
+  type MutationResult,
+  withMutationResult,
+} from "../../core/gateway/envelope.js";
 import {
   DEB_API,
   debBacklogItemPath,
   describeHttpContract,
-} from "../../data/cavi-control/api-paths.js";
+} from "../data/cavi-control/api-paths.js";
 import {
   DEB_FALLBACK_LIMITATIONS,
   type DebCallApiAckResponse,
-} from "../../data/cavi-control/deb/constants.js";
+} from "./constants.js";
 import {
   normalizeDebBacklogItem,
   normalizeEmailAddress,
   parseDebCallAck,
-} from "../../data/cavi-control/deb/normalize.js";
-import { createTraceId } from "../../data/cavi-control/deb/trace-id.js";
-import { withMutationResult } from "../../data/cavi-control/envelope.js";
-import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
-import type { createDebLiveHelpers } from "./deb-live.js";
+} from "./normalize.js";
+import { createTraceId } from "./trace-id.js";
+import type { createDebLiveHelpers } from "./live.js";
 
 type DebLiveHelpers = ReturnType<typeof createDebLiveHelpers>;
 
 export function createDebMutations(
-  requestJson: CaviControlRequestJson,
+  requestJson: JsonHttpRequest,
   debLive: DebLiveHelpers,
 ) {
   const {
@@ -279,7 +281,7 @@ export function createDebMutations(
             });
           } catch (error) {
             if (
-              !(error instanceof CaviControlApiError) ||
+              !(error instanceof GatewayHttpError) ||
               (error.status !== 422 && error.status !== 404)
             ) {
               throw error;

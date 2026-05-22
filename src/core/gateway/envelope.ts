@@ -1,5 +1,20 @@
-import type { ContractGap, ContractGapReason, DataEnvelope, MutationResult } from "../../domain/index.js";
-import { CaviControlApiError } from "./api-error.js";
+import { GatewayHttpError } from "../http/gateway-error.js";
+import type {
+  ContractGap,
+  ContractGapReason,
+  DataEnvelope,
+  MutationResult,
+} from "./envelope-types.js";
+
+export type {
+  ConnectivityDomain,
+  ConnectivityStatus,
+  ContractGap,
+  ContractGapReason,
+  DataEnvelope,
+  DataSourceMode,
+  MutationResult,
+} from "./envelope-types.js";
 
 export function fallbackGap(
   area: string,
@@ -52,10 +67,10 @@ export function classifyFallbackError(error: unknown): {
   reason: ContractGapReason;
   httpStatus?: number;
 } {
-  if (error instanceof CaviControlApiError) {
+  if (error instanceof GatewayHttpError) {
     if (error.status === 404) {
       return {
-        message: "The current gateway does not expose one or more required Cavi Control routes yet.",
+        message: "The current gateway does not expose one or more required routes yet.",
         reason: "endpoint-not-found",
         httpStatus: 404,
       };
@@ -132,7 +147,7 @@ export async function withFallback<TData>(params: {
     };
   } catch (error) {
     if (
-      error instanceof CaviControlApiError &&
+      error instanceof GatewayHttpError &&
       (error.status === 401 || error.status === 403)
     ) {
       throw error;
@@ -176,7 +191,7 @@ export async function withMutationResult<TData>(params: {
     };
   } catch (error) {
     if (
-      error instanceof CaviControlApiError &&
+      error instanceof GatewayHttpError &&
       (error.status === 401 || error.status === 403)
     ) {
       throw error;

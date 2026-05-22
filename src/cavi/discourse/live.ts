@@ -1,12 +1,12 @@
 import type { GatewayRpcClient } from "../../core/gateway/rpc.js";
 import type { TaskDiscourseSnapshot } from "../domain/index.js";
 import { operatorTaskDiscoursePath } from "../data/cavi-control/api-paths.js";
-import type { CaviControlRequestJson } from "../data/cavi-control/http-client.js";
+import type { JsonHttpRequest } from "../../core/http/json-client.js";
 import { GATEWAY_RPC_METHODS } from "./contracts.js";
 import { normalizeTaskDiscourseSnapshot } from "./normalize.js";
 
 export async function loadTaskDiscourseLive(
-  requestJson: CaviControlRequestJson,
+  requestJson: JsonHttpRequest,
   wsClient: GatewayRpcClient | null | undefined,
   taskId: string,
 ): Promise<TaskDiscourseSnapshot> {

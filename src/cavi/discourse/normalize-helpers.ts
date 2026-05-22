@@ -2,7 +2,7 @@ import type {
   DiscourseEventType,
   TaskDiscourseSummary,
 } from "../domain/index.js";
-import { asString, isRecord } from "../data/cavi-control/guards.js";
+import { asString, isRecord } from "../../core/data/guards.js";
 
 function tryParseJsonRecord(text: string): Record<string, unknown> | null {
   const trimmed = text.trim();

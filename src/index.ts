@@ -32,6 +32,17 @@ export {
   createRawHttpApiClient,
   toHttpRequestInit,
 } from "./core/http/raw-client.js";
+export {
+  GatewayHttpError,
+  buildGatewayHttpError,
+} from "./core/http/gateway-error.js";
+export {
+  JsonHttpApiClient,
+  createJsonHttpRequest,
+  withQuery,
+  type JsonHttpRequest,
+} from "./core/http/json-client.js";
+export * from "./core/data/guards.js";
 
 export {
   DEFAULT_PREVIEW_MAX_CHARS,
@@ -45,6 +56,7 @@ export {
 } from "./core/http/redaction.js";
 
 export * from "./cavi/domain/index.js";
+export * from "./core/gateway/envelope.js";
 export * from "./core/gateway/error-details.js";
 export * from "./core/gateway/rpc.js";
 export * from "./core/gateway/runtime-targets.js";

@@ -55,7 +55,7 @@ const CAVI_CONTROL_API_PATHS = path.join(
   "cavi-control",
   "api-paths.ts",
 );
-const CAVI_HTTP_CLIENT = path.join(SRC_ROOT, "cavi", "data", "cavi-control", "http-client.ts");
+const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -408,8 +408,8 @@ describe("package hardening", () => {
     expect(importOffenders).toEqual([]);
   });
 
-  it("routes the CAVI control request helper through shared core HTTP", () => {
-    const source = read(CAVI_HTTP_CLIENT);
+  it("routes JSON request helpers through shared core HTTP", () => {
+    const source = read(CORE_JSON_HTTP_CLIENT);
 
     expect(source).toContain("BaseHttpApiClient");
     expect(source).not.toMatch(/\bfetch\s*\(/u);

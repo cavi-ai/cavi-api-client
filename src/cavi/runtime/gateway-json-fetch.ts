@@ -1,7 +1,7 @@
 import {
   buildGatewayHttpError,
   parseGatewayErrorText,
-} from "../data/cavi-control/api-error.js";
+} from "../../core/http/gateway-error.js";
 import { HttpApiError } from "../../core/http/errors.js";
 import {
   createRawHttpApiClient,

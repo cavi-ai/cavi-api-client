@@ -1,10 +1,13 @@
 import type {
-  ContractGap,
   OperatorControlSnapshot,
   OperatorControlSectionKey,
 } from "../../../domain/index.js";
-import { CaviControlApiError } from "../api-error.js";
-import { classifyFallbackError, fallbackGap } from "../envelope.js";
+import {
+  classifyFallbackError,
+  fallbackGap,
+  type ContractGap,
+} from "../../../../core/gateway/envelope.js";
+import { GatewayHttpError } from "../../../../core/http/gateway-error.js";
 
 export type OperatorSectionLoadResult<
   TKey extends OperatorControlSectionKey,
@@ -59,7 +62,7 @@ export async function loadOperatorControlSection<
     };
   } catch (error) {
     if (
-      error instanceof CaviControlApiError &&
+      error instanceof GatewayHttpError &&
       (error.status === 401 || error.status === 403)
     ) {
       throw error;

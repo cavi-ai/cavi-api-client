@@ -3,7 +3,7 @@ import {
   extractGatewayErrorDetails,
   formatGatewayHttpErrorMessage,
   parseGatewayErrorText,
-} from "../../../core/gateway/error-details.js";
+} from "../gateway/error-details.js";
 
 export {
   cleanGatewayErrorText,
@@ -11,13 +11,13 @@ export {
   parseGatewayErrorText,
 };
 
-export class CaviControlApiError extends Error {
+export class GatewayHttpError extends Error {
   readonly status: number;
   readonly code: string | null;
 
   constructor(message: string, status: number, code: string | null = null) {
     super(message);
-    this.name = "CaviControlApiError";
+    this.name = "GatewayHttpError";
     this.status = status;
     this.code = code;
   }
@@ -29,8 +29,8 @@ export function buildGatewayHttpError(params: {
   statusText: string;
   message?: string | null;
   code?: string | null;
-}): CaviControlApiError {
-  return new CaviControlApiError(
+}): GatewayHttpError {
+  return new GatewayHttpError(
     formatGatewayHttpErrorMessage(params),
     params.status,
     cleanGatewayErrorText(params.code),

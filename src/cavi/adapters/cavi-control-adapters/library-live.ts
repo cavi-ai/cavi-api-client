@@ -1,5 +1,5 @@
 import type { FleetLibrarySnapshot, TeamLibraryStatus } from "../../domain/index.js";
-import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
+import type { JsonHttpRequest } from "../../../core/http/json-client.js";
 import { requestLibraryApiJson } from "../../library/api.js";
 import type { PortalLibraryRef } from "../../portal/contracts.js";
 import { getPortalTeamIdentity } from "../../registry/canonical-team-registry.js";
@@ -72,7 +72,7 @@ function buildTeamStatus(
 }
 
 async function fetchFleetStatus(
-  requestJson: CaviControlRequestJson,
+  requestJson: JsonHttpRequest,
 ): Promise<LibrarianStatusResponse> {
   return await requestLibraryApiJson<LibrarianStatusResponse>(
     requestJson,
@@ -102,7 +102,7 @@ function buildSigmundStatus(
 }
 
 export async function loadFleetLibraryLive(
-  requestJson: CaviControlRequestJson,
+  requestJson: JsonHttpRequest,
 ): Promise<FleetLibrarySnapshot> {
   const teamLibraryRefs = listTeamLibraryRefs();
   if (teamLibraryRefs.length === 0) {

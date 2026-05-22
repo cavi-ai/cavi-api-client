@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CaviControlRequestJson } from "../../../../cavi/data/cavi-control/http-client";
+import type { JsonHttpRequest } from "../../../../core/http/json-client";
 import {
   configureTeamRegistryConfig,
   resetTeamRegistryConfig,
@@ -60,7 +60,7 @@ describe("loadFleetLibraryLive", () => {
         };
       }
       throw new Error(`unexpected path: ${path}`);
-    }) as CaviControlRequestJson;
+    }) as JsonHttpRequest;
 
     const snapshot = await loadFleetLibraryLive(requestJson);
 
@@ -91,7 +91,7 @@ describe("loadFleetLibraryLive", () => {
         throw new Error("library status offline");
       }
       throw new Error(`unexpected path: ${path}`);
-    }) as CaviControlRequestJson;
+    }) as JsonHttpRequest;
 
     await expect(loadFleetLibraryLive(requestJson)).rejects.toThrow(
       "library status offline",
@@ -101,7 +101,7 @@ describe("loadFleetLibraryLive", () => {
   it("rejects when the app has not loaded team registry config yet", async () => {
     const requestJson = vi.fn(async () => {
       throw new Error("should not request library status before registry config");
-    }) as CaviControlRequestJson;
+    }) as JsonHttpRequest;
 
     await expect(loadFleetLibraryLive(requestJson)).rejects.toThrow(
       /Team registry config does not define team library refs/u,

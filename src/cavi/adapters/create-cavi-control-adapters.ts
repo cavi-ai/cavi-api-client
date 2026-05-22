@@ -4,13 +4,19 @@ import type {
   SessionsPreviewPayload,
   SessionsUsagePayload,
 } from "../../core/gateway/transforms.js";
+import {
+  type DataEnvelope,
+  type MutationResult,
+  withFallback,
+} from "../../core/gateway/envelope.js";
+import { createJsonHttpRequest } from "../../core/http/json-client.js";
+import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 import type {
   AgentRunDetailSnapshot,
   AgentRunsFilters,
   AgentRunsSnapshot,
   CostHistoryRange,
   CostHistorySnapshot,
-  DataEnvelope,
   DebBacklogDraft,
   DebBacklogItem,
   DebCallRequest,
@@ -20,7 +26,6 @@ import type {
   DebWorkspaceSnapshot,
   FleetLibrarySnapshot,
   IncidentsSnapshot,
-  MutationResult,
   OperatorControlSnapshot,
   OverviewSnapshot,
   RoutingMatrixSnapshot,
@@ -28,12 +33,10 @@ import type {
 } from "../domain/index.js";
 import { fallbackDebWorkspace, fallbackTaskDiscourse } from "../fallbacks/snapshots/index.js";
 import { debWorkspaceExpectedContractSummary } from "../data/cavi-control/api-paths.js";
-import { withFallback } from "../data/cavi-control/envelope.js";
 import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
-import { createCaviControlRequestJson } from "../data/cavi-control/http-client.js";
 import { resolveGatewayHttpBase } from "../data/cavi-control/runtime-paths.js";
-import { createDebLiveHelpers } from "./cavi-control-adapters/deb-live.js";
-import { createDebMutations } from "./cavi-control-adapters/deb-mutations.js";
+import { createDebLiveHelpers } from "../deb/live.js";
+import { createDebMutations } from "../deb/mutations.js";
 import { loadTaskDiscourseLive } from "../discourse/live.js";
 import { createGatewayWsLoaders } from "./cavi-control-adapters/gateway-ws-loaders.js";
 import { loadFleetLibraryLive } from "./cavi-control-adapters/library-live.js";
@@ -134,9 +137,12 @@ export function createCaviControlAdapters(opts: {
   const httpBase =
     opts.apiBaseUrl?.trim() || resolveGatewayHttpBase(opts.gatewayBaseUrl);
 
-  const requestJson = createCaviControlRequestJson({
+  const sessionMode = isSessionAuthMode();
+  const requestJson = createJsonHttpRequest({
+    surface: "cavi-control-api",
     httpBase,
-    authToken: opts.authToken,
+    authToken: sessionMode ? null : opts.authToken,
+    credentials: sessionMode ? "same-origin" : undefined,
   });
 
   const debLive = createDebLiveHelpers(requestJson);

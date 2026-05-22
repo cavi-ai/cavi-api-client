@@ -1,8 +1,8 @@
-import type { DebWorkspaceSnapshot } from "../../../../cavi/domain/index.js";
-import { resolveDebAssetPath } from "../../../../cavi/data/cavi-control/runtime-paths.js";
-import { mockNow as now } from "./shared.js";
+import type { DebWorkspaceSnapshot } from "../domain/index.js";
+import { resolveDebAssetPath } from "../data/cavi-control/runtime-paths.js";
+import { fallbackSnapshotNow as now } from "../fallbacks/snapshots/shared.js";
 
-export const mockDebWorkspace: DebWorkspaceSnapshot = {
+export const fallbackDebWorkspace: DebWorkspaceSnapshot = {
   profile: {
     name: "Deb",
     role: "Project Board Operator",

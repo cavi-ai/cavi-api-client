@@ -1,11 +1,10 @@
-import { BaseHttpApiClient } from "../../../core/http/client.js";
-import { HttpApiError } from "../../../core/http/errors.js";
-import type { HttpApiRequestInit } from "../../../core/http/types.js";
-import { isSessionAuthMode } from "../../runtime/standalone-mode.js";
+import { BaseHttpApiClient } from "./client.js";
+import { HttpApiError } from "./errors.js";
+import type { HttpApiRequestInit, HttpApiTrace } from "./types.js";
 import {
   buildGatewayHttpError,
   parseGatewayErrorText,
-} from "./api-error.js";
+} from "./gateway-error.js";
 
 export function withQuery(
   path: string,
@@ -22,20 +21,17 @@ export function withQuery(
   return query ? `${path}?${query}` : path;
 }
 
-export type CaviControlRequestJson = <TData>(
+export type JsonHttpRequest = <TData>(
   path: string,
-  init?: {
-    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-    body?: unknown;
-  },
+  init?: HttpApiRequestInit,
 ) => Promise<TData>;
 
-class CaviControlHttpClient extends BaseHttpApiClient {
+export class JsonHttpApiClient extends BaseHttpApiClient {
   request<TData>(path: string, init?: HttpApiRequestInit): Promise<TData> {
-    return this.requestCaviJson<TData>(path, init);
+    return this.requestJsonBody<TData>(path, init);
   }
 
-  private async requestCaviJson<TData>(
+  private async requestJsonBody<TData>(
     path: string,
     init?: HttpApiRequestInit,
   ): Promise<TData> {
@@ -66,26 +62,28 @@ class CaviControlHttpClient extends BaseHttpApiClient {
   }
 }
 
-export function createCaviControlRequestJson(opts: {
+export function createJsonHttpRequest(opts: {
+  surface: HttpApiTrace["surface"];
   httpBase: string;
   authToken: string | null;
-}): CaviControlRequestJson {
-  const sessionMode = isSessionAuthMode();
-  const client = new CaviControlHttpClient("cavi-control-api", {
+  clientId?: string | null;
+  credentials?: RequestCredentials;
+  cache?: RequestCache;
+}): JsonHttpRequest {
+  const client = new JsonHttpApiClient(opts.surface, {
     baseUrl: opts.httpBase,
     allowRelativeBaseUrl: true,
     auth: {
-      bearerToken: sessionMode ? null : opts.authToken,
+      bearerToken: opts.authToken,
+      clientId: opts.clientId,
     },
-    credentials: sessionMode ? "same-origin" : undefined,
+    credentials: opts.credentials,
+    cache: opts.cache,
   });
 
   return async function requestJson<TData>(
     path: string,
-    init?: {
-      method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-      body?: unknown;
-    },
+    init?: HttpApiRequestInit,
   ): Promise<TData> {
     return await client.request<TData>(path, init);
   };

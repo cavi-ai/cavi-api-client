@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CaviControlApiError } from "../../../../cavi/data/cavi-control/api-error";
-import { createCaviControlRequestJson, withQuery } from "../../../../cavi/data/cavi-control/http-client";
+import { GatewayHttpError } from "../../../core/http/gateway-error";
+import { createJsonHttpRequest, withQuery } from "../../../core/http/json-client";
 
-describe("http-client", () => {
+describe("json HTTP client", () => {
   describe("withQuery", () => {
     it("omits undefined params", () => {
       expect(withQuery("/p", { a: 1, b: undefined })).toBe("/p?a=1");
@@ -20,7 +20,7 @@ describe("http-client", () => {
     });
   });
 
-  describe("createCaviControlRequestJson", () => {
+  describe("createJsonHttpRequest", () => {
     afterEach(() => {
       vi.unstubAllGlobals();
     });
@@ -34,7 +34,8 @@ describe("http-client", () => {
       );
       vi.stubGlobal("fetch", fetchMock);
 
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "http://gw",
         authToken: "tok",
       });
@@ -63,7 +64,8 @@ describe("http-client", () => {
       );
       vi.stubGlobal("fetch", fetchMock);
 
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "",
         authToken: null,
       });
@@ -87,7 +89,8 @@ describe("http-client", () => {
       );
       vi.stubGlobal("fetch", fetchMock);
 
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "http://gw",
         authToken: null,
       });
@@ -113,7 +116,8 @@ describe("http-client", () => {
         "fetch",
         vi.fn(async () => new Response(null, { status: 204 })),
       );
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "",
         authToken: null,
       });
@@ -131,7 +135,8 @@ describe("http-client", () => {
           }),
         ),
       );
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "",
         authToken: null,
       });
@@ -139,17 +144,18 @@ describe("http-client", () => {
       expect(data).toEqual({});
     });
 
-    it("throws CaviControlApiError with status when not ok", async () => {
+    it("throws GatewayHttpError with status when not ok", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn(async () => new Response("nope", { status: 502 })),
       );
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "",
         authToken: null,
       });
       await expect(requestJson("/bad")).rejects.toMatchObject({
-        name: "CaviControlApiError",
+        name: "GatewayHttpError",
         status: 502,
       });
     });
@@ -168,7 +174,8 @@ describe("http-client", () => {
             ),
         ),
       );
-      const requestJson = createCaviControlRequestJson({
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
         httpBase: "",
         authToken: null,
       });
@@ -176,10 +183,10 @@ describe("http-client", () => {
         await requestJson("/bad");
         expect.fail("expected throw");
       } catch (e) {
-        expect(e).toBeInstanceOf(CaviControlApiError);
-        expect((e as CaviControlApiError).message).toContain("/bad 400");
-        expect((e as CaviControlApiError).message).toContain("custom reason");
-        expect((e as CaviControlApiError).status).toBe(400);
+        expect(e).toBeInstanceOf(GatewayHttpError);
+        expect((e as GatewayHttpError).message).toContain("/bad 400");
+        expect((e as GatewayHttpError).message).toContain("custom reason");
+        expect((e as GatewayHttpError).status).toBe(400);
       }
     });
   });

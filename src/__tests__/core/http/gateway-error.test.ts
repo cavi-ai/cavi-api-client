@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  CaviControlApiError,
+  GatewayHttpError,
   buildGatewayHttpError,
-} from "../../../../cavi/data/cavi-control/api-error";
+} from "../../../core/http/gateway-error";
 
-describe("CAVI control API errors", () => {
-  it("keeps the CAVI error class while using core gateway error formatting", () => {
+describe("gateway HTTP errors", () => {
+  it("uses the generic gateway error class with gateway error formatting", () => {
     const error = buildGatewayHttpError({
       label: "Cavi Control API",
       status: 502,
@@ -14,7 +14,7 @@ describe("CAVI control API errors", () => {
       code: "plugin_offline",
     });
 
-    expect(error).toBeInstanceOf(CaviControlApiError);
+    expect(error).toBeInstanceOf(GatewayHttpError);
     expect(error.status).toBe(502);
     expect(error.code).toBe("plugin_offline");
     expect(error.message).toBe(

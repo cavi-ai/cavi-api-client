@@ -13,13 +13,22 @@ import {
   utcDateYmd,
 } from "../../../core/gateway/transforms.js";
 import type { SessionsUsagePayload } from "../../../core/gateway/transforms.js";
+import {
+  classifyFallbackError,
+  type DataEnvelope,
+  withFallback,
+} from "../../../core/gateway/envelope.js";
+import { asString } from "../../../core/data/guards.js";
+import {
+  type JsonHttpRequest,
+  withQuery,
+} from "../../../core/http/json-client.js";
 import type {
   AgentRunDetailSnapshot,
   AgentRunsFilters,
   AgentRunsSnapshot,
   CostHistoryRange,
   CostHistorySnapshot,
-  DataEnvelope,
   IncidentsSnapshot,
   OverviewSnapshot,
   RoutingMatrixSnapshot,
@@ -36,15 +45,6 @@ import {
   API_COST_HISTORY,
   describeHttpContract,
 } from "../../data/cavi-control/api-paths.js";
-import {
-  classifyFallbackError,
-  withFallback,
-} from "../../data/cavi-control/envelope.js";
-import { asString } from "../../data/cavi-control/guards.js";
-import {
-  withQuery,
-  type CaviControlRequestJson,
-} from "../../data/cavi-control/http-client.js";
 import type { GatewayWsSystemLoaders } from "./gateway-ws-system-loaders.js";
 
 export type GatewayWsSnapshotLoaders = {
@@ -67,7 +67,7 @@ export type GatewayWsSnapshotLoaders = {
 export function createGatewayWsSnapshotLoaders(deps: {
   sessionLoaders: SessionLoaders;
   systemLoaders: GatewayWsSystemLoaders;
-  requestJson: CaviControlRequestJson;
+  requestJson: JsonHttpRequest;
 }): GatewayWsSnapshotLoaders {
   const {
     loadSessionsListRaw,

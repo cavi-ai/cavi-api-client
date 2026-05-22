@@ -1,5 +1,7 @@
 export * from "./client.js";
 export * from "./error-details.js";
+export * from "./envelope.js";
+export * from "./envelope-types.js";
 export * from "./agent-config.js";
 export * from "./agent-voice-config.js";
 export * from "./media.js";
