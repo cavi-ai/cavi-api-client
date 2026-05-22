@@ -1,7 +1,7 @@
-import type { TaskDiscourseSnapshot } from "../../../../cavi/domain/index.js";
-import { mockNow as now } from "./shared.js";
+import type { TaskDiscourseSnapshot } from "../domain/index.js";
+import { fallbackSnapshotNow as now } from "../fallbacks/snapshots/shared.js";
 
-export function mockTaskDiscourse(taskId: string): TaskDiscourseSnapshot {
+export function fallbackTaskDiscourse(taskId: string): TaskDiscourseSnapshot {
   const rootTaskId = taskId.trim() || "task-operator-1";
   const baseTs = now - 18 * 60_000;
   const blockerEventId = `${rootTaskId}-blocker-1`;

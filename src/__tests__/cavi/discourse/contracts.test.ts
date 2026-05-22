@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { API_OPERATOR } from "../../../../cavi/data/cavi-control/constants";
+import { API_OPERATOR } from "../../../cavi/data/cavi-control/constants";
 import {
   GATEWAY_RPC_METHODS,
   taskDiscourseExpectedContractSummary,
-} from "../../../../cavi/data/cavi-control/gateway-rpc";
+} from "../../../cavi/discourse/contracts";
 
 describe("gateway-rpc", () => {
   it("exposes discourse.tree RPC name", () => {

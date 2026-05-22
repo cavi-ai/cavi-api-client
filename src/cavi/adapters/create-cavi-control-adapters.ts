@@ -29,12 +29,12 @@ import type {
 import { fallbackDebWorkspace, fallbackTaskDiscourse } from "../fallbacks/snapshots/index.js";
 import { debWorkspaceExpectedContractSummary } from "../data/cavi-control/api-paths.js";
 import { withFallback } from "../data/cavi-control/envelope.js";
-import { taskDiscourseExpectedContractSummary } from "../data/cavi-control/gateway-rpc.js";
+import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
 import { createCaviControlRequestJson } from "../data/cavi-control/http-client.js";
 import { resolveGatewayHttpBase } from "../data/cavi-control/runtime-paths.js";
 import { createDebLiveHelpers } from "./cavi-control-adapters/deb-live.js";
 import { createDebMutations } from "./cavi-control-adapters/deb-mutations.js";
-import { loadTaskDiscourseLive } from "./cavi-control-adapters/discourse-live.js";
+import { loadTaskDiscourseLive } from "../discourse/live.js";
 import { createGatewayWsLoaders } from "./cavi-control-adapters/gateway-ws-loaders.js";
 import { loadFleetLibraryLive } from "./cavi-control-adapters/library-live.js";
 import { loadOperatorControlLive } from "./cavi-control-adapters/operator-control-live.js";

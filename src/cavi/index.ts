@@ -34,7 +34,8 @@ export {
 } from "./registry/canonical-team-registry.js";
 export * from "./portal/contracts.js";
 export * from "./registry/portal-library-registry.js";
-export * from "./data/cavi-control/discourse/normalize.js";
+export * from "./discourse/contracts.js";
+export * from "./discourse/normalize.js";
 export * from "./domain/index.js";
 export * from "./registry/team-registry.js";
 export * from "./registry/team-registry-config.js";

@@ -55,7 +55,7 @@ export {
   createCaviControlAdapters,
   type CaviControlAdapters,
 } from "./cavi/adapters/create-cavi-control-adapters.js";
-export { normalizeDiscourseEvent } from "./cavi/data/cavi-control/discourse/normalize.js";
+export { normalizeDiscourseEvent } from "./cavi/discourse/normalize.js";
 
 export {
   appendHttpQuery,

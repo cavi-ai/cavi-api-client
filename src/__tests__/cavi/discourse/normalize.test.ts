@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeDiscourseEvent,
   normalizeTaskDiscourseSnapshot,
-} from "../../../../../cavi/data/cavi-control/discourse/normalize";
+} from "../../../cavi/discourse/normalize";
 
 describe("normalizeDiscourseEvent", () => {
   it("unwraps stringified JSON data payloads", () => {

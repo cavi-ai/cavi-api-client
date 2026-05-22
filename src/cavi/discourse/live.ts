@@ -1,9 +1,9 @@
-import type { GatewayRpcClient } from "../../../core/gateway/rpc.js";
-import type { TaskDiscourseSnapshot } from "../../domain/index.js";
-import { operatorTaskDiscoursePath } from "../../data/cavi-control/api-paths.js";
-import { GATEWAY_RPC_METHODS } from "../../data/cavi-control/gateway-rpc.js";
-import { normalizeTaskDiscourseSnapshot } from "../../data/cavi-control/discourse/normalize.js";
-import type { CaviControlRequestJson } from "../../data/cavi-control/http-client.js";
+import type { GatewayRpcClient } from "../../core/gateway/rpc.js";
+import type { TaskDiscourseSnapshot } from "../domain/index.js";
+import { operatorTaskDiscoursePath } from "../data/cavi-control/api-paths.js";
+import type { CaviControlRequestJson } from "../data/cavi-control/http-client.js";
+import { GATEWAY_RPC_METHODS } from "./contracts.js";
+import { normalizeTaskDiscourseSnapshot } from "./normalize.js";
 
 export async function loadTaskDiscourseLive(
   requestJson: CaviControlRequestJson,
