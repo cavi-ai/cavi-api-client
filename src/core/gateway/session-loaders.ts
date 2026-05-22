@@ -14,6 +14,10 @@ import type {
 import { GATEWAY_SESSION_API_PATHS } from "../../contracts/paths.js";
 
 import type { GatewayRpcClient } from "./index.js";
+import {
+  getOrCreateTtlCacheEntry,
+  type TtlCacheEntry,
+} from "./cache.js";
 
 export type SessionHttpRequestJson = <T>(
   path: string,
@@ -106,12 +110,6 @@ type SessionsListCacheEntry = {
   lastHash: string | null;
   payload: SessionsListPayloadWithCache | null;
   inFlight: Promise<SessionsListPayloadWithCache> | null;
-};
-
-type TtlCacheEntry<TPayload> = {
-  payload: TPayload | null;
-  expiresAt: number;
-  inFlight: Promise<TPayload> | null;
 };
 
 /** Align with loader `staleTime` (~10–15s) so SSE/stream invalidations coalesce without hammering the gateway. */
@@ -247,23 +245,6 @@ export function normalizeSessionsListPayload(
     ...payload,
     sessions: Array.isArray(payload.sessions) ? payload.sessions : [],
   };
-}
-
-function getOrCreateTtlCacheEntry<TPayload>(
-  cache: Map<string, TtlCacheEntry<TPayload>>,
-  cacheKey: string,
-): TtlCacheEntry<TPayload> {
-  const existing = cache.get(cacheKey);
-  if (existing) {
-    return existing;
-  }
-  const entry: TtlCacheEntry<TPayload> = {
-    payload: null,
-    expiresAt: 0,
-    inFlight: null,
-  };
-  cache.set(cacheKey, entry);
-  return entry;
 }
 
 function withQuery(path: string, params: Record<string, unknown>): string {

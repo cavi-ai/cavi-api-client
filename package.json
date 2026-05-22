@@ -27,6 +27,21 @@
       "import": "./dist/core/data/index.js",
       "default": "./dist/core/data/index.js"
     },
+    "./core/runtime": {
+      "types": "./dist/core/runtime/index.d.ts",
+      "import": "./dist/core/runtime/index.js",
+      "default": "./dist/core/runtime/index.js"
+    },
+    "./core/sse": {
+      "types": "./dist/core/sse/index.d.ts",
+      "import": "./dist/core/sse/index.js",
+      "default": "./dist/core/sse/index.js"
+    },
+    "./core/ws": {
+      "types": "./dist/core/ws/index.d.ts",
+      "import": "./dist/core/ws/index.js",
+      "default": "./dist/core/ws/index.js"
+    },
     "./core/gateway": {
       "types": "./dist/core/gateway/index.d.ts",
       "import": "./dist/core/gateway/index.js",
@@ -61,21 +76,6 @@
       "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.js",
       "default": "./dist/react/index.js"
-    },
-    "./compat/martina": {
-      "types": "./dist/compat/martina/index.d.ts",
-      "import": "./dist/compat/martina/index.js",
-      "default": "./dist/compat/martina/index.js"
-    },
-    "./compat/martina/config": {
-      "types": "./dist/compat/martina/config.d.ts",
-      "import": "./dist/compat/martina/config.js",
-      "default": "./dist/compat/martina/config.js"
-    },
-    "./compat/martina/runs": {
-      "types": "./dist/compat/martina/runs.d.ts",
-      "import": "./dist/compat/martina/runs.js",
-      "default": "./dist/compat/martina/runs.js"
     }
   },
   "scripts": {

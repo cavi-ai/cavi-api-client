@@ -1,5 +1,5 @@
 import type { DebWorkspaceSnapshot } from "../domain/index.js";
-import { resolveDebAssetPath } from "../data/cavi-control/runtime-paths.js";
+import { resolveDebAssetPath } from "../runtime/paths.js";
 import { fallbackSnapshotNow as now } from "../fallbacks/snapshots/shared.js";
 
 export const fallbackDebWorkspace: DebWorkspaceSnapshot = {

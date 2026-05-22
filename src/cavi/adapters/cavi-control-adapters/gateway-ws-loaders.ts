@@ -1,16 +1,16 @@
-import type { GatewayRpcClient } from "../../../core/gateway/rpc.js";
+import type { GatewayWebSocketClient } from "../../../core/ws/index.js";
 import { createSessionLoaders } from "../../../core/gateway/session-loaders.js";
+import { createGatewaySystemLoaders } from "../../../core/gateway/system-loaders.js";
 import type { JsonHttpRequest } from "../../../core/http/json-client.js";
 import { createGatewayWsSnapshotLoaders } from "./gateway-ws-snapshot-loaders.js";
-import { createGatewayWsSystemLoaders } from "./gateway-ws-system-loaders.js";
 
 export function createGatewayWsLoaders(deps: {
-  client: GatewayRpcClient | null | undefined;
+  client: GatewayWebSocketClient | null | undefined;
   requestJson: JsonHttpRequest;
 }) {
   const { client, requestJson } = deps;
-  const sessionLoaders = createSessionLoaders(client);
-  const systemLoaders = createGatewayWsSystemLoaders(client);
+  const sessionLoaders = createSessionLoaders(client, { requestJson });
+  const systemLoaders = createGatewaySystemLoaders(client);
   const snapshotLoaders = createGatewayWsSnapshotLoaders({
     sessionLoaders,
     systemLoaders,
@@ -22,6 +22,7 @@ export function createGatewayWsLoaders(deps: {
     loadSessionsUsageRaw: sessionLoaders.loadSessionsUsageRaw,
     loadSessionsPreviewRaw: sessionLoaders.loadSessionsPreviewRaw,
     loadSessionDetailRaw: sessionLoaders.loadSessionDetailRaw,
+    patchSessionRaw: sessionLoaders.patchSession,
     ...snapshotLoaders,
   };
 }

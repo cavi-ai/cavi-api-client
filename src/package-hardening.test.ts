@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -47,15 +47,17 @@ const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
 const CAVI_PATHS = path.join(SRC_ROOT, "cavi", "paths.ts");
 const CAVI_ROOT = path.join(SRC_ROOT, "cavi");
+const CAVI_DATA_ROOT = path.join(SRC_ROOT, "cavi", "data");
 const CAVI_DATA_LIB_ROOT = path.join(SRC_ROOT, "cavi", "data", "lib");
-const CAVI_CONTROL_API_PATHS = path.join(
-  SRC_ROOT,
-  "cavi",
-  "data",
-  "cavi-control",
-  "api-paths.ts",
-);
+const CAVI_RUNTIME_GATEWAY_FETCH = path.join(SRC_ROOT, "cavi", "runtime", "gateway-json-fetch.ts");
+const CAVI_RUNTIME_HTTP_TRANSPORT = path.join(SRC_ROOT, "cavi", "runtime", "http-transport.ts");
+const CAVI_PORTAL_CLIENT_ID = path.join(SRC_ROOT, "cavi", "portal", "client-id.ts");
+const CAVI_PORTAL_CONTRACTS = path.join(SRC_ROOT, "cavi", "portal", "contracts.ts");
+const CORE_GATEWAY_WEBSOCKET = path.join(SRC_ROOT, "core", "gateway", "websocket.ts");
+const CORE_SSE_INDEX = path.join(SRC_ROOT, "core", "sse", "index.ts");
+const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
 const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
+const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "fetch.ts");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -74,6 +76,7 @@ const FORBIDDEN_PATH_FRAGMENTS = [
 ] as const;
 
 const API_PATH_LITERAL_RE = /(["'`])\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
+const API_TEMPLATE_ROUTE_LITERAL_RE = /`\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[\s\S]*?`/u;
 const API_URL_LITERAL_RE = /(["'`])https?:\/\/[^"'`]*\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
 const CAVI_CONTROL_ROUTE_LITERAL_RE = /(["'`])\/cavi-control\/api(?:\/|["'`])/u;
 const SURFACE_FIRST_CANONICAL_PATH_RE = /canonicalPath:\s*(?:\([^)]*\)\s*=>\s*)?(["'`])\/(?:cavi-control|front-door|library|machine|martina|trading)\/api(?:\/|[?]|["'`])/u;
@@ -139,6 +142,9 @@ const REMOVED_PACKAGE_EXPORTS = [
   "./compat/hermes/team-registry-config",
   "./compat/openclaw/team-registry",
   "./compat/openclaw/team-registry-config",
+  "./compat/martina",
+  "./compat/martina/config",
+  "./compat/martina/runs",
 ] as const;
 const EXPECTED_TS_INCLUDE = [
   "src/index.ts",
@@ -148,7 +154,6 @@ const EXPECTED_TS_INCLUDE = [
   "src/providers/**/*.ts",
   "src/react/**/*.ts",
   "src/react/**/*.tsx",
-  "src/compat/martina/**/*.ts",
 ] as const;
 const ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE =
   /from "\.\/(?:base-client|types|config|repo-root|paths|surface-paths|surfaces|resolve|portal-paths|mobile-gateway-contracts|gateway-client|gateway-provider|cavi-control-client|library-client|portal-client|run-event-stream|run-stream-contracts|team-registry|team-registry-config|domain\/|gateway\/|gateway-transforms\/|data\/|hermes\/|openclaw\/)/u;
@@ -160,9 +165,6 @@ const TEAM_REGISTRY_OWNER_FILES = [
   "src/cavi/registry/canonical-team-registry.ts",
   "src/cavi/registry/portal-library-registry.ts",
 ] as const;
-const CAVI_DATA_LIB_SHIM_RE =
-  /^export \* from "\.\.\/\.\.\/(?:library|portal|registry|runtime)\/[^"]+\.js";$/u;
-
 function walkFiles(root: string): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(root)) {
@@ -182,12 +184,20 @@ function walkFiles(root: string): string[] {
   return files;
 }
 
+function walkFilesIfExists(root: string): string[] {
+  return existsSync(root) ? walkFiles(root) : [];
+}
+
 function read(relativeOrAbsolute: string): string {
   return readFileSync(relativeOrAbsolute, "utf8");
 }
 
 function rel(filePath: string): string {
   return path.relative(PACKAGE_ROOT, filePath);
+}
+
+function hasApiRouteLiteral(source: string): boolean {
+  return API_PATH_LITERAL_RE.test(source) || API_TEMPLATE_ROUTE_LITERAL_RE.test(source);
 }
 
 function selfScannedSources(): string[] {
@@ -261,7 +271,7 @@ describe("package hardening", () => {
         ) {
           return false;
         }
-        return API_PATH_LITERAL_RE.test(read(filePath));
+        return hasApiRouteLiteral(read(filePath));
       })
       .map(rel);
 
@@ -290,9 +300,21 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps CAVI path literals in the shared contracts owner", () => {
-    expect(read(CAVI_PATHS).trim()).toBe('export * from "../contracts/paths.js";');
-    expect(read(CAVI_CONTROL_API_PATHS)).not.toMatch(CAVI_CONTROL_ROUTE_LITERAL_RE);
+  it("keeps CAVI route aliases in the top-level CAVI path owner", () => {
+    const source = read(CAVI_PATHS);
+    const hiddenFeaturePathOwners = walkFiles(CAVI_ROOT)
+      .map(rel)
+      .filter((relative) => relative.endsWith("/paths.ts"))
+      .filter(
+        (relative) =>
+          relative !== "src/cavi/paths.ts" &&
+          relative !== "src/cavi/runtime/paths.ts",
+      );
+
+    expect(source).toContain('export * from "../contracts/paths.js";');
+    expect(source).toContain("export const DEB_API");
+    expect(source).toContain("export const OPERATOR_API");
+    expect(hiddenFeaturePathOwners).toEqual([]);
   });
 
   it("keeps canonical surface contracts api-first", () => {
@@ -391,20 +413,28 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps CAVI data/lib as compatibility shims only", () => {
-    const implementationOffenders = walkFiles(CAVI_DATA_LIB_ROOT)
-      .map((filePath) => ({
-        filePath,
-        source: read(filePath).trim(),
-      }))
-      .filter(({ source }) => !CAVI_DATA_LIB_SHIM_RE.test(source))
-      .map(({ filePath }) => rel(filePath));
+  it("does not keep CAVI data compatibility shims in active source", () => {
     const importOffenders = productionSourceFiles()
-      .filter((filePath) => !rel(filePath).startsWith("src/cavi/data/lib/"))
-      .filter((filePath) => /["'][^"']*data\/lib\//u.test(read(filePath)))
+      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => /["'][^"']*(?:cavi\/data|(?:\.\.\/)+data\/)/u.test(read(filePath)))
       .map(rel);
 
-    expect(implementationOffenders).toEqual([]);
+    expect(walkFilesIfExists(CAVI_DATA_ROOT).map(rel)).toEqual([]);
+    expect(existsSync(CAVI_DATA_LIB_ROOT)).toBe(false);
+    expect(importOffenders).toEqual([]);
+  });
+
+  it("does not keep CAVI core re-export shims in active source", () => {
+    const importOffenders = productionSourceFiles()
+      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) =>
+        /["'][^"']*(?:portal\/client-id|portal\/contracts|runtime\/http-transport)/u.test(read(filePath)),
+      )
+      .map(rel);
+
+    expect(existsSync(CAVI_RUNTIME_HTTP_TRANSPORT)).toBe(false);
+    expect(existsSync(CAVI_PORTAL_CLIENT_ID)).toBe(false);
+    expect(existsSync(CAVI_PORTAL_CONTRACTS)).toBe(false);
     expect(importOffenders).toEqual([]);
   });
 
@@ -413,6 +443,56 @@ describe("package hardening", () => {
 
     expect(source).toContain("BaseHttpApiClient");
     expect(source).not.toMatch(/\bfetch\s*\(/u);
+  });
+
+  it("keeps gateway fetch helpers in core gateway", () => {
+    const source = read(CORE_GATEWAY_FETCH);
+    const importOffenders = productionSourceFiles()
+      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => /gateway-json-fetch/u.test(read(filePath)))
+      .map(rel);
+
+    expect(existsSync(CAVI_RUNTIME_GATEWAY_FETCH)).toBe(false);
+    expect(source).toContain("createRawHttpApiClient");
+    expect(importOffenders).toEqual([]);
+  });
+
+  it("keeps generic SSE helpers in core sse", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+    const gatewaySseSource = read(path.join(SRC_ROOT, "core", "gateway", "sse-run-event-provider.ts"));
+
+    expect(read(CORE_SSE_INDEX)).toContain('export * from "./stream.js";');
+    expect(packageJson.exports["./core/sse"]).toEqual({
+      types: "./dist/core/sse/index.d.ts",
+      import: "./dist/core/sse/index.js",
+      default: "./dist/core/sse/index.js",
+    });
+    expect(gatewaySseSource).toContain('from "../sse/index.js";');
+    expect(gatewaySseSource).not.toMatch(/\bfunction\s+(?:parseSseBlock|takeNextSseBlock|drainBlocks|combineSignals)\b/u);
+  });
+
+  it("keeps WebSocket helpers in core ws", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+    const importOffenders = productionSourceFiles()
+      .filter((filePath) =>
+        /from\s+["']\.\/core\/gateway\/websocket\.js["']|from\s+["'][^"']*core\/gateway\/websocket/u.test(
+          read(filePath),
+        ),
+      )
+      .map(rel);
+
+    expect(existsSync(CORE_GATEWAY_WEBSOCKET)).toBe(false);
+    expect(read(CORE_WS_INDEX)).toContain('export * from "./targets.js";');
+    expect(packageJson.exports["./core/ws"]).toEqual({
+      types: "./dist/core/ws/index.d.ts",
+      import: "./dist/core/ws/index.js",
+      default: "./dist/core/ws/index.js",
+    });
+    expect(importOffenders).toEqual([]);
   });
 
   it("keeps CAVI production modules on shared HTTP transports", () => {
@@ -438,17 +518,9 @@ describe("package hardening", () => {
     expect(tsconfig.exclude).toContain("quarantine/**");
   });
 
-  it("keeps Martina implementation under explicit compat paths", () => {
+  it("does not keep Martina compatibility implementation modules in active source", () => {
     const offenders = selfScannedSources()
-      .filter((filePath) => {
-        const relative = rel(filePath);
-        if (
-          relative.startsWith("src/compat/martina/")
-        ) {
-          return false;
-        }
-        return MARTINA_COMPAT_IDENTIFIER_RE.test(read(filePath));
-      })
+      .filter((filePath) => MARTINA_COMPAT_IDENTIFIER_RE.test(read(filePath)))
       .map(rel);
 
     expect(offenders).toEqual([]);

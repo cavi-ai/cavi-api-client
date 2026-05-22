@@ -15,6 +15,15 @@ grammar, and guardrails; the consuming app owns the actual team entries.
 - Keep local workspace roots out of HTTP paths. API paths use only team/member
   identity plus the whitelisted relative workspace path.
 
+## Boundary Status
+
+The manifest remains consumer-owned configuration. Shared HTTP, runtime,
+gateway envelope, media, wiki, SSE, and WebSocket behavior lives in core and
+provider modules; manifest entries should describe teams, members, workspace
+whitelists, capabilities, and action overrides only. Do not add transport
+behavior, product runtime globals, or local filesystem assumptions to a team
+entry.
+
 ## Shape
 
 ```ts

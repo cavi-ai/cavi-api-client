@@ -7,8 +7,7 @@ import type {
 } from "../domain/index.js";
 import { GatewayHttpError } from "../../core/http/gateway-error.js";
 import type { JsonHttpRequest } from "../../core/http/json-client.js";
-import { DEB_API } from "../data/cavi-control/api-paths.js";
-import { API_DEB } from "../data/cavi-control/constants.js";
+import { API_DEB, DEB_API } from "../paths.js";
 import {
   normalizeEmailList,
   toDebProfile,

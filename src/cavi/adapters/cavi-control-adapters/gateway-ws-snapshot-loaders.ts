@@ -23,6 +23,8 @@ import {
   type JsonHttpRequest,
   withQuery,
 } from "../../../core/http/json-client.js";
+import { describeHttpContract } from "../../../core/http/contracts.js";
+import { CAVI_CONTROL_API_ENDPOINTS } from "../../../contracts/paths.js";
 import type {
   AgentRunDetailSnapshot,
   AgentRunsFilters,
@@ -41,11 +43,7 @@ import {
   fallbackRoutingMatrix,
   fallbackRunDetailForKey,
 } from "../../fallbacks/snapshots/index.js";
-import {
-  API_COST_HISTORY,
-  describeHttpContract,
-} from "../../data/cavi-control/api-paths.js";
-import type { GatewayWsSystemLoaders } from "./gateway-ws-system-loaders.js";
+import type { GatewaySystemLoaders } from "../../../core/gateway/system-loaders.js";
 
 export type GatewayWsSnapshotLoaders = {
   loadOverview: () => Promise<DataEnvelope<OverviewSnapshot>>;
@@ -66,7 +64,7 @@ export type GatewayWsSnapshotLoaders = {
 
 export function createGatewayWsSnapshotLoaders(deps: {
   sessionLoaders: SessionLoaders;
-  systemLoaders: GatewayWsSystemLoaders;
+  systemLoaders: GatewaySystemLoaders;
   requestJson: JsonHttpRequest;
 }): GatewayWsSnapshotLoaders {
   const {
@@ -265,12 +263,15 @@ export function createGatewayWsSnapshotLoaders(deps: {
     ): Promise<DataEnvelope<CostHistorySnapshot>> =>
       withFallback({
         area: "cost-history",
-        expectedContract: describeHttpContract("GET", API_COST_HISTORY),
+        expectedContract: describeHttpContract(
+          "GET",
+          CAVI_CONTROL_API_ENDPOINTS.costHistory,
+        ),
         note: "Cost history endpoint unavailable",
         fallback: fallbackCostHistory(range),
         run: async () => {
           return await requestJson<CostHistorySnapshot>(
-            withQuery(API_COST_HISTORY, { range }),
+            withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
           );
         },
       }),

@@ -9,11 +9,11 @@ import {
   type MutationResult,
   withMutationResult,
 } from "../../core/gateway/envelope.js";
+import { describeHttpContract } from "../../core/http/contracts.js";
 import {
   DEB_API,
   debBacklogItemPath,
-  describeHttpContract,
-} from "../data/cavi-control/api-paths.js";
+} from "../paths.js";
 import {
   DEB_FALLBACK_LIMITATIONS,
   type DebCallApiAckResponse,

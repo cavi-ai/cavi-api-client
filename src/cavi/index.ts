@@ -1,5 +1,6 @@
 export * from "./client.js";
 export * from "./paths.js";
+export * from "./runtime/paths.js";
 export * from "./library/client.js";
 export * from "./library/clip.js";
 export * from "./portal/client.js";
@@ -32,7 +33,8 @@ export {
   type CaviTeamPortalId,
   type ParsedAgentSessionKey,
 } from "./registry/canonical-team-registry.js";
-export * from "./portal/contracts.js";
+export * from "../contracts/portals.js";
+export { PORTAL_CLIENT_ID_HEADER } from "../core/http/client-id.js";
 export * from "./registry/portal-library-registry.js";
 export * from "./discourse/contracts.js";
 export * from "./discourse/normalize.js";

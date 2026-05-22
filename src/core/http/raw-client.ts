@@ -27,6 +27,7 @@ export function createRawHttpApiClient(params: {
   clientId?: string | null;
   credentials?: RequestCredentials;
   cache?: RequestCache;
+  fetchImpl?: typeof fetch;
 }): RawHttpApiClient {
   return new RawHttpApiClient(params.surface, {
     baseUrl: params.baseUrl,
@@ -37,6 +38,7 @@ export function createRawHttpApiClient(params: {
     },
     credentials: params.credentials,
     cache: params.cache,
+    fetchImpl: params.fetchImpl,
   });
 }
 

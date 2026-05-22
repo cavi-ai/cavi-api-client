@@ -1,14 +1,15 @@
-import {
-  gatewayAuthHeaders,
-  gatewayRequestCredentials,
-} from "../runtime/gateway-json-fetch.js";
 import { HttpApiError } from "../../core/http/errors.js";
 import {
   createRawHttpApiClient,
   toHttpRequestInit,
 } from "../../core/http/raw-client.js";
+import {
+  buildGatewayAuthHeaders,
+  resolveGatewayRequestCredentials,
+} from "../../core/gateway/fetch.js";
 import { extractGatewayErrorDetails } from "../../core/gateway/error-details.js";
-import { LIBRARY_API_BASE_PATH } from "../paths.js";
+import { appendHttpQuery, resolveLibraryApiPath } from "../paths.js";
+import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 
 type LibraryApiMutationMethod =
   | "POST"
@@ -24,36 +25,6 @@ export type LibraryApiRequestJson = <TData>(
   },
 ) => Promise<TData>;
 
-function normalizeLibraryApiPath(path: string): string {
-  const trimmed = path.trim();
-  if (!trimmed || trimmed === "/") {
-    return "";
-  }
-  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-}
-
-export function resolveLibraryApiPath(path: string): string {
-  return `${LIBRARY_API_BASE_PATH}${normalizeLibraryApiPath(path)}`;
-}
-
-function appendLibraryApiQuery(
-  path: string,
-  query?: Record<string, string | number | boolean | undefined>,
-): string {
-  if (!query) {
-    return path;
-  }
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value === undefined) {
-      continue;
-    }
-    params.set(key, String(value));
-  }
-  const search = params.toString();
-  return search ? `${path}?${search}` : path;
-}
-
 export async function fetchLibraryApiJson<T>(
   path: string,
   clientId: string,
@@ -65,7 +36,10 @@ export async function fetchLibraryApiJson<T>(
     cache?: RequestCache;
   },
 ): Promise<T> {
-  const headers = gatewayAuthHeaders(clientId, authToken);
+  const sessionAuthMode = isSessionAuthMode();
+  const headers = buildGatewayAuthHeaders(clientId, authToken, {
+    includeBearerToken: !sessionAuthMode,
+  });
   const init: RequestInit = {
     method: options?.method ?? "GET",
     signal: options?.signal,
@@ -75,11 +49,11 @@ export async function fetchLibraryApiJson<T>(
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(options.body);
   }
-  const credentials = gatewayRequestCredentials();
+  const credentials = resolveGatewayRequestCredentials(sessionAuthMode);
   const client = createRawHttpApiClient({
     surface: "library-api",
     baseUrl: "",
-    authToken: credentials ? null : authToken,
+    authToken: sessionAuthMode ? null : authToken,
     clientId,
     credentials,
   });
@@ -120,7 +94,7 @@ export async function requestLibraryApiJson<T>(
     query?: Record<string, string | number | boolean | undefined>;
   },
 ): Promise<T> {
-  const requestPath = appendLibraryApiQuery(
+  const requestPath = appendHttpQuery(
     resolveLibraryApiPath(path),
     options?.query,
   );

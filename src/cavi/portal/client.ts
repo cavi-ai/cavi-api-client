@@ -1,5 +1,5 @@
 import { BaseHttpApiClient } from "../../core/http/client.js";
-import { CAVI_CONTROL_API_ENDPOINTS } from "../paths.js";
+import { CAVI_CONTROL_API_ENDPOINTS, resolvePortalApiPath } from "../paths.js";
 import { resolvePath } from "../../contracts/resolve.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 
@@ -26,7 +26,7 @@ export class PortalApiClient extends BaseHttpApiClient {
   }
 
   protected portalPath(path: string): string {
-    return `/api/plugins/portal/${encodeURIComponent(this.portalId)}/${path.replace(/^\/+/, "")}`;
+    return resolvePortalApiPath(this.portalId, path);
   }
 
   getDashboard<T = unknown>(): Promise<T> {

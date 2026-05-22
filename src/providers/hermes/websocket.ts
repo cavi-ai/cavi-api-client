@@ -1,11 +1,11 @@
 import {
-  GatewayRpcClient,
-  type GatewayRpcClientOptions,
-} from "../../core/gateway/rpc.js";
+  GatewayWebSocketClient,
+  type GatewayWebSocketClientOptions,
+} from "../../core/ws/index.js";
 
-export type HermesWebSocketClientOptions = GatewayRpcClientOptions;
+export type HermesWebSocketClientOptions = GatewayWebSocketClientOptions;
 
-export class HermesWebSocketClient extends GatewayRpcClient {
+export class HermesWebSocketClient extends GatewayWebSocketClient {
   constructor(
     wsUrl: string,
     authToken: string | null,

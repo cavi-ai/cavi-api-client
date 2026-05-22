@@ -1,4 +1,10 @@
 import { GATEWAY_API_ENDPOINTS } from "../../contracts/paths.js";
+import {
+  combineAbortSignals,
+  consumeSseStream,
+  isSseContentType,
+  type SseMessage,
+} from "../sse/index.js";
 import { PORTAL_CLIENT_ID_HEADER } from "../http/types.js";
 import {
   RUN_STREAM_EVENT_NAMES,
@@ -75,10 +81,10 @@ function normalizeClientId(clientId: string): string {
 }
 
 /**
- * Provider-neutral run-event SSE reader. It owns the transport mechanics:
- * request headers, SSE block parsing, canonical run-event translation, and
- * status polling fallback. Provider adapters should only supply endpoint maps
- * and any gateway-specific session/routing headers.
+ * Provider-neutral run-event SSE reader. Generic stream mechanics live in
+ * core/sse; this class owns gateway request headers, canonical run-event
+ * translation, and status polling fallback. Provider adapters should only
+ * supply endpoint maps and any gateway-specific session/routing headers.
  */
 export class GatewaySseRunEventProvider implements RunEventStreamProvider {
   private readonly httpBase: string;
@@ -110,7 +116,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
     handlers: RunEventStreamHandlers,
   ): Promise<RunEventStreamSubscription> {
     const localController = new AbortController();
-    const signal = combineSignals(localController.signal, params.signal);
+    const signal = combineAbortSignals(localController.signal, params.signal);
     let disposed = false;
 
     const dispose = (): void => {
@@ -179,7 +185,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
     if (
       this.fallbackToPoll &&
       contentType &&
-      !contentType.toLowerCase().includes("text/event-stream")
+      !isSseContentType(contentType)
     ) {
       return this.pollUntilTerminal(runId, signal, handlers);
     }
@@ -191,45 +197,9 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
       throw new Error("run events response missing readable body");
     }
 
-    await this.consumeSseStream(runId, response.body, signal, handlers);
-  }
-
-  private async consumeSseStream(
-    runId: string,
-    body: ReadableStream<Uint8Array>,
-    signal: AbortSignal,
-    handlers: RunEventStreamHandlers,
-  ): Promise<void> {
-    const reader = body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-    const onAbort = (): void => {
-      try {
-        void reader.cancel();
-      } catch {
-        // best effort
-      }
-    };
-    signal.addEventListener("abort", onAbort);
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          buffer += decoder.decode();
-          break;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        buffer = drainBlocks(buffer, runId, handlers);
-      }
-      buffer = drainBlocks(buffer, runId, handlers);
-      const trailing = parseSseBlock(buffer);
-      if (trailing) {
-        const raw = parseRawEvent(trailing);
-        if (raw) emitFromRaw(raw, runId, handlers);
-      }
-    } finally {
-      signal.removeEventListener("abort", onAbort);
-    }
+    await consumeSseStream(response.body, signal, (message) => {
+      emitFromSseMessage(message, runId, handlers);
+    });
   }
 
   private async pollUntilTerminal(
@@ -377,6 +347,15 @@ function emitFromRaw(
   if (toolEvent) handlers.onEvent(toolEvent);
 }
 
+function emitFromSseMessage(
+  message: SseMessage,
+  runId: string,
+  handlers: RunEventStreamHandlers,
+): void {
+  const raw = parseRawEvent(message.data);
+  if (raw) emitFromRaw(raw, runId, handlers);
+}
+
 function parseToolEvent(
   raw: RawGatewaySseEvent,
   runId: string,
@@ -497,46 +476,6 @@ function parseTimestamp(value: unknown): number | undefined {
   return undefined;
 }
 
-function parseSseBlock(block: string): string | null {
-  const lines = block.split(/\r?\n/);
-  const dataLines: string[] = [];
-  for (const line of lines) {
-    if (!line || line.startsWith(":")) continue;
-    if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
-  }
-  if (dataLines.length === 0) return null;
-  return dataLines.join("\n");
-}
-
-function takeNextSseBlock(buffer: string): { block: string; rest: string } | null {
-  const lfBoundary = buffer.indexOf("\n\n");
-  const crlfBoundary = buffer.indexOf("\r\n\r\n");
-  if (lfBoundary < 0 && crlfBoundary < 0) return null;
-  if (crlfBoundary >= 0 && (lfBoundary < 0 || crlfBoundary < lfBoundary)) {
-    return { block: buffer.slice(0, crlfBoundary), rest: buffer.slice(crlfBoundary + 4) };
-  }
-  return { block: buffer.slice(0, lfBoundary), rest: buffer.slice(lfBoundary + 2) };
-}
-
-function drainBlocks(
-  buffer: string,
-  runId: string,
-  handlers: RunEventStreamHandlers,
-): string {
-  let cur = buffer;
-  let next = takeNextSseBlock(cur);
-  while (next) {
-    cur = next.rest;
-    const data = parseSseBlock(next.block);
-    if (data) {
-      const raw = parseRawEvent(data);
-      if (raw) emitFromRaw(raw, runId, handlers);
-    }
-    next = takeNextSseBlock(cur);
-  }
-  return cur;
-}
-
 function parseRawEvent(data: string): RawGatewaySseEvent | null {
   try {
     const parsed = JSON.parse(data) as unknown;
@@ -556,18 +495,6 @@ function shouldFallbackToPoll(status: number, body: string): boolean {
 function formatHttpError(prefix: string, status: number, body: string): string {
   const trimmed = body.trim();
   return `${prefix} with HTTP ${status}${trimmed ? `: ${trimmed.slice(0, 240)}` : ""}`;
-}
-
-function combineSignals(a: AbortSignal, b: AbortSignal | undefined): AbortSignal {
-  if (!b) return a;
-  const ac = new AbortController();
-  if (a.aborted || b.aborted) {
-    ac.abort();
-    return ac.signal;
-  }
-  a.addEventListener("abort", () => ac.abort(), { once: true });
-  b.addEventListener("abort", () => ac.abort(), { once: true });
-  return ac.signal;
 }
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {

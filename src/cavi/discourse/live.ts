@@ -1,13 +1,13 @@
-import type { GatewayRpcClient } from "../../core/gateway/rpc.js";
+import type { GatewayWebSocketClient } from "../../core/ws/index.js";
 import type { TaskDiscourseSnapshot } from "../domain/index.js";
-import { operatorTaskDiscoursePath } from "../data/cavi-control/api-paths.js";
+import { operatorTaskDiscoursePath } from "../paths.js";
 import type { JsonHttpRequest } from "../../core/http/json-client.js";
 import { GATEWAY_RPC_METHODS } from "./contracts.js";
 import { normalizeTaskDiscourseSnapshot } from "./normalize.js";
 
 export async function loadTaskDiscourseLive(
   requestJson: JsonHttpRequest,
-  wsClient: GatewayRpcClient | null | undefined,
+  wsClient: GatewayWebSocketClient | null | undefined,
   taskId: string,
 ): Promise<TaskDiscourseSnapshot> {
   const normalizedTaskId = taskId.trim();

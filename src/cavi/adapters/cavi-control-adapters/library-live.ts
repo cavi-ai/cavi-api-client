@@ -1,7 +1,7 @@
 import type { FleetLibrarySnapshot, TeamLibraryStatus } from "../../domain/index.js";
 import type { JsonHttpRequest } from "../../../core/http/json-client.js";
 import { requestLibraryApiJson } from "../../library/api.js";
-import type { PortalLibraryRef } from "../../portal/contracts.js";
+import type { PortalLibraryRef } from "../../../contracts/portals.js";
 import { getPortalTeamIdentity } from "../../registry/canonical-team-registry.js";
 import { listPortalLibraryRefs } from "../../registry/portal-library-registry.js";
 

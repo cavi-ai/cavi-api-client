@@ -1,4 +1,4 @@
-import { resolveGatewayTargets } from "./rpc.js";
+import { resolveGatewayTargets } from "../ws/targets.js";
 
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 const DEFAULT_LOCAL_GATEWAY_WS_URL = "ws://127.0.0.1:18789/ws";

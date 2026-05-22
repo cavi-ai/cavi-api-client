@@ -1,3 +1,6 @@
+// Consumer-owned example for team/member/action registry edits.
+// Shared HTTP, runtime, envelope, media, wiki, and transport behavior belongs
+// to @cavi/api-client core/provider modules, not to manifest entries.
 import {
   normalizeTeamManifest,
   type TeamActionContract,

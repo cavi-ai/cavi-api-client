@@ -31,7 +31,9 @@ import {
   OpenClawWikiApiClient,
   PortalApiClient,
   PORTAL_DASHBOARD_IDS,
+  PORTAL_MEMORY_SNAPSHOT_CONTRACT,
   RUN_STREAM_EVENT_NAMES,
+  buildPortalMemoryEnvelope,
   createContractGap,
   createDefaultTeamManifest,
   createGatewayMediaClient,
@@ -315,6 +317,26 @@ describe("agnostic HTTP API client package", () => {
       );
     }
     expect(portalDashboardPath("front-door")).toBeNull();
+    expect(
+      buildPortalMemoryEnvelope({
+        clientId: "portal-client",
+        teamSlug: "research",
+        memberId: "analyst",
+        memoryKey: "briefing",
+        schemaContract: "BRIEFING_V1",
+        payload: { ok: true },
+        updatedAt: 123,
+      }),
+    ).toEqual({
+      contract: PORTAL_MEMORY_SNAPSHOT_CONTRACT,
+      clientId: "portal-client",
+      teamSlug: "research",
+      memberId: "analyst",
+      memoryKey: "briefing",
+      schemaContract: "BRIEFING_V1",
+      updatedAt: 123,
+      payload: { ok: true },
+    });
 
     expect(getMobileGatewayEndpointPath("preflightCapabilities", "canonical")).toBe(
       "/v1/capabilities",

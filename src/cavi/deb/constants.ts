@@ -2,7 +2,7 @@ import type {
   DebBacklogPriority,
   DebBacklogStatus,
 } from "../domain/index.js";
-import { resolveDebAssetPath } from "../data/cavi-control/runtime-paths.js";
+import { resolveDebAssetPath } from "../runtime/paths.js";
 
 export const DEB_CANONICAL_AVATAR_CANDIDATES = [
   resolveDebAssetPath("deb-wave.png"),

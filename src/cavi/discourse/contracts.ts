@@ -1,4 +1,4 @@
-import { API_OPERATOR } from "../data/cavi-control/constants.js";
+import { API_OPERATOR } from "../paths.js";
 
 export const GATEWAY_RPC_METHODS = {
   discourseTree: "discourse.tree",

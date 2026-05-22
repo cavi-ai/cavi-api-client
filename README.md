@@ -6,11 +6,37 @@ This package is the shared boundary for HTTP clients, gateway RPC helpers, endpo
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the package boundary plan, including the migration away from baked product registries and portal-specific root exports.
 
+## Boundary Progress
+
+Recent cleanup moved shared implementation out of CAVI-labeled folders and into
+core modules:
+
+- `src/core/http/**` owns raw/JSON HTTP clients, gateway HTTP errors, request helpers, and error-detail parsing.
+- `src/core/data/**` owns generic data guards and coercion helpers.
+- `src/core/gateway/**` owns gateway envelope/fallback contracts, RPC, SSE, media, wiki, and run-event contracts.
+- `src/core/sse/**` owns reusable Server-Sent Events stream parsing, stream consumption, and abort-signal helpers.
+- `src/core/ws/**` owns reusable WebSocket target resolution, close-event normalization, and WebSocket-facing aliases.
+- `src/core/runtime/**` owns generic runtime base-path helpers.
+- `src/cavi/deb/**` and `src/cavi/discourse/**` own Deb and Discourse feature shaping.
+- `src/contracts/paths.ts` owns route literals and dynamic route helpers; `src/cavi/paths.ts` owns CAVI-facing aliases such as `DEB_API` and `OPERATOR_API`.
+- `src/cavi/data/**` is quarantined legacy space; active CAVI code should use named feature folders.
+- CAVI-labeled core re-export shims such as runtime HTTP transport, portal client-id aliases, and portal envelope contracts are quarantined; active CAVI modules import core/contracts directly.
+
+Stale source fixtures and stale generated output are moved under
+`quarantine/**` and must not be imported by active source, package exports, or
+tests.
+
 ## Runtime
 
 - ESM package.
 - Requires Node.js `>=20.0.0`.
 - Uses the platform `fetch` by default. Pass `fetchImpl` when a runtime needs an explicit fetch implementation.
+
+Runtime path helpers are core exports. Use `normalizeRuntimeBasePath`,
+`withRuntimeBasePath`, and `resolvePublicRuntimeAsset` for generic base-path
+resolution. Use CAVI runtime wrappers from `@cavi/api-client/cavi` only when a
+consumer needs CAVI/OpenClaw globals, Deb asset helpers, or session API path
+compatibility.
 
 ## Install
 
@@ -23,11 +49,17 @@ For workspace consumers, depend on the workspace package through the repo packag
 ## Main Exports
 
 - `BaseHttpApiClient` for shared HTTP behavior, headers, JSON parsing, tracing, timeouts, and errors.
+- `JsonHttpApiClient`, `createJsonHttpRequest`, `withQuery`, `GatewayHttpError`, and gateway error-detail helpers for shared JSON HTTP and fallback plumbing.
+- `fetchGatewayJson`, `fetchGatewayBlob`, `fetchGatewayExpectOk`, `fetchGatewayFormDataJson`, and `buildGatewayAuthHeaders` for gateway fetch flows that need raw `Response`, `Blob`, or multipart handling.
+- Core data and runtime helpers such as `isRecord`, `asStringArray`, `normalizeRuntimeBasePath`, `withRuntimeBasePath`, and `resolvePublicRuntimeAsset`.
 - `CaviControlApiClient` for CAVI Control HTTP endpoints.
 - `GatewayApiClient` and `createGatewayApiClient` for gateway-agnostic run and capability APIs.
+- `extractGatewayCommandCatalog`, `buildAgentSlashShortcuts`, `buildAgentMentionChips`, and `buildAgentCommandSurface` for slash-command and mention UI data sourced from `/v1/capabilities`.
 - `GatewayMediaApiClient`, `createGatewayMediaClient`, `HermesMediaApiClient`, and `OpenClawMediaApiClient` for gateway-native audio, video, and music generation.
 - `GatewayWikiApiClient`, `createGatewayWikiClient`, `HermesWikiApiClient`, and `OpenClawWikiApiClient` for gateway-native Obsidian/QMD wiki vault operations.
 - `GatewaySseRunEventProvider`, `createGatewaySseRunEventProvider`, `GatewayWebSocketClient`, and `createGatewayWebSocketClient` for shared run-event SSE and WebSocket/RPC transports.
+- Core SSE helpers such as `parseSseBlock`, `drainSseMessages`, `consumeSseStream`, and `combineAbortSignals`.
+- Core WebSocket helpers such as `resolveHttpWebSocketTargets`, `tryResolveHttpWebSocketTargets`, and `describeWebSocketClose`.
 - `HermesApiClient` and Hermes run-stream helpers as provider-specific compatibility exports.
 - `TeamRegistry`, `TEAM_REGISTRY_CONFIG`, `configureTeamRegistryConfig`, `createHermesTeamRegistry`, and `createOpenClawTeamRegistry` for runtime-loaded team registry config.
 - `TeamManifest`, `normalizeTeamManifest`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, `resolveTeamWorkspacePath`, `resolveTeamActionContract`, and `resolveTeamActionApiPath` for agnostic team/member/workspace/action contracts.
@@ -154,11 +186,34 @@ const gateway = createGatewayApiClient(
 
 Provider resolution checks an explicit `provider` first, then `CAVI_GATEWAY_PROVIDER`, then `GATEWAY_PROVIDER`, and defaults to `gateway`. Supported provider values are `gateway`, `hermes`, and `openclaw`. Hermes-specific exports remain available for existing callers, but new shared code should use `GatewayApiClient`, `GatewayCapabilities`, `GatewayRunStatus`, `streamGatewayChatRun`, `GatewaySseRunEventProvider`, and `GatewayWebSocketClient` unless it is binding to provider-only behavior.
 
+Gateway slash commands are part of the `/v1/capabilities` contract. The
+capability payload may expose `commands`, `slashCommands`, or `slash_commands`;
+clients should normalize that catalog instead of hardcoding command lists in
+the frontend.
+
+```ts
+import {
+  buildAgentSlashShortcuts,
+  extractGatewayCommandCatalog,
+} from "@cavi/api-client";
+
+const capabilities = await gateway.getCapabilities();
+const coreCommands = extractGatewayCommandCatalog(capabilities);
+const shortcuts = buildAgentSlashShortcuts(activeAgent, { coreCommands });
+```
+
 ## Gateway Transports
 
 HTTP, run-event SSE, and WebSocket/RPC follow the same shape: core owns the
-base contract, while Hermes and OpenClaw provide thin adapters for
-provider-specific headers, endpoint maps, or default client surfaces.
+base transport mechanics and gateway contracts, while Hermes and OpenClaw
+provide thin adapters for provider-specific headers, endpoint maps, or default
+client surfaces.
+Raw gateway fetch helpers also live in `core/gateway`; CAVI code should only
+adapt runtime auth/base-url details before calling those helpers.
+Generic SSE stream mechanics live in `core/sse`; gateway run-event providers
+compose those helpers with run status polling and canonical run-event mapping.
+Generic WebSocket mechanics live in `core/ws`; gateway RPC composes those
+helpers with gateway-specific connect/auth frames.
 
 ```ts
 import {
@@ -494,7 +549,7 @@ Pass `client: null` when only HTTP-backed loaders are available. Loaders that re
 
 ## Path Contracts
 
-Route literals belong in path-owner files such as `src/paths.ts` and surface path contract files. Consumers should use exported path constants or `resolvePath` instead of recreating route strings.
+Route literals belong in path-owner files such as `src/contracts/paths.ts`, `src/cavi/paths.ts`, and surface path contract files. Consumers should use exported path constants, `resolvePath`, or helpers such as `resolvePortalApiPath` instead of recreating route strings.
 
 Canonical surface routes are api-first: use `/api/plugins/<surface>/...` for plugin-backed surfaces. Legacy compatibility routes keep the old `/<surface>/api/...` shape only where existing clients or gateways still need them.
 

@@ -1,7 +1,10 @@
 import { GatewayApiClient } from "../core/gateway/client.js";
 import { GatewayAgentConfigApiClient } from "../core/gateway/agent-config.js";
 import { GatewayMediaApiClient } from "../core/gateway/media.js";
-import { GatewayRpcClient, type GatewayRpcClientOptions } from "../core/gateway/rpc.js";
+import {
+  GatewayWebSocketClient,
+  type GatewayWebSocketClientOptions,
+} from "../core/ws/index.js";
 import {
   GatewaySseRunEventProvider,
   type GatewaySseRunEventProviderOptions,
@@ -78,9 +81,9 @@ export function createGatewayApiClient(
 export function createGatewayWebSocketClient(
   wsUrl: string,
   authToken: string | null,
-  clientOptions: GatewayRpcClientOptions = {},
+  clientOptions: GatewayWebSocketClientOptions = {},
   providerOptions: ResolveGatewayProviderOptions = {},
-): GatewayRpcClient {
+): GatewayWebSocketClient {
   const provider = resolveGatewayProviderKind(providerOptions);
   if (provider === "hermes") {
     return new HermesWebSocketClient(wsUrl, authToken, clientOptions);
@@ -88,7 +91,7 @@ export function createGatewayWebSocketClient(
   if (provider === "openclaw") {
     return new OpenClawWebSocketClient(wsUrl, authToken, clientOptions);
   }
-  return new GatewayRpcClient(wsUrl, authToken, clientOptions);
+  return new GatewayWebSocketClient(wsUrl, authToken, clientOptions);
 }
 
 export const createGatewayRpcClient = createGatewayWebSocketClient;

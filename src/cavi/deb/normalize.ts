@@ -28,7 +28,7 @@ import {
 import {
   resolveDebAssetPath,
   withRuntimeBasePath,
-} from "../data/cavi-control/runtime-paths.js";
+} from "../runtime/paths.js";
 
 export function normalizeDebPriority(value: unknown): DebBacklogPriority {
   const normalized = asString(value)?.toLowerCase();

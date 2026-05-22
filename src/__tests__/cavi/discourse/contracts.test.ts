@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { API_OPERATOR } from "../../../cavi/data/cavi-control/constants";
+import { API_OPERATOR } from "../../../cavi/paths";
 import {
   GATEWAY_RPC_METHODS,
   taskDiscourseExpectedContractSummary,

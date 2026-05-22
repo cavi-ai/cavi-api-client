@@ -65,6 +65,39 @@ export const CAVI_CONTROL_API_ENDPOINTS = {
     `/api/plugins/portal-memory/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(memberId)}/${encodeURIComponent(memoryKey)}`,
 } as const;
 
+function normalizeRelativeApiPath(path: string): string {
+  const normalized = path.trim().replace(/^\/+/, "");
+  if (!normalized) return "";
+  if (normalized.includes("\\")) {
+    throw new Error("resolvePortalApiPath: relativePath must not contain backslashes");
+  }
+  for (const segment of normalized.split("/")) {
+    const decoded = decodePathSegment(segment);
+    if (decoded === "." || decoded === "..") {
+      throw new Error("resolvePortalApiPath: relativePath must stay within portal root");
+    }
+  }
+  return normalized;
+}
+
+function decodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+export function resolvePortalApiPath(portalId: string, relativePath: string): string {
+  const portal = portalId.trim();
+  if (!portal) {
+    throw new Error("resolvePortalApiPath: missing portalId");
+  }
+  const path = normalizeRelativeApiPath(relativePath);
+  const root = `/api/plugins/portal/${encodeURIComponent(portal)}`;
+  return path ? `${root}/${path}` : root;
+}
+
 export const LIBRARY_API_BASE_PATH = "/library/api" as const;
 
 export const LIBRARY_API_ENDPOINTS = {

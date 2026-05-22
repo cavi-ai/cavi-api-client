@@ -1,4 +1,4 @@
-import type { GatewayRpcClient } from "../../../core/gateway/rpc.js";
+import type { GatewayWebSocketClient } from "../../../core/ws/index.js";
 import {
   fallbackGap,
   type ContractGap,
@@ -15,7 +15,7 @@ import {
   OPERATOR_MEMORY_SAMPLE_LIMIT,
   OPERATOR_TASK_SAMPLE_LIMIT,
   OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
-} from "../../data/cavi-control/constants.js";
+} from "../../operator/constants.js";
 import {
   createEmptyOperatorMemory,
   createEmptyOperatorRegistry,
@@ -23,12 +23,12 @@ import {
   createEmptyOperatorTasks,
   createEmptyWorkerReady,
   createEmptyWorkerTasks,
-} from "../../data/cavi-control/operator/defaults.js";
+} from "../../operator/defaults.js";
 import {
   OPERATOR_API,
   operatorControlExpectedContractSummary,
-} from "../../data/cavi-control/api-paths.js";
-import { loadOperatorControlSection } from "../../data/cavi-control/operator/load-section.js";
+} from "../../paths.js";
+import { loadOperatorControlSection } from "../../operator/load-section.js";
 import { fallbackOperatorControl } from "../../fallbacks/snapshots/index.js";
 
 const OPERATOR_FULL_FALLBACK_BACKOFF_MS = 15_000;
@@ -90,7 +90,7 @@ function buildAvailableSectionStatus(params: {
 }
 
 async function requestOperatorSnapshot(params: {
-  client: GatewayRpcClient | null | undefined;
+  client: GatewayWebSocketClient | null | undefined;
   requestJson: JsonHttpRequest;
 }): Promise<OperatorControlSnapshot> {
   const snapshotParams = {
@@ -114,7 +114,7 @@ async function requestOperatorSnapshot(params: {
 }
 
 async function requestOperatorSection<TData>(params: {
-  client: GatewayRpcClient | null | undefined;
+  client: GatewayWebSocketClient | null | undefined;
   requestJson: JsonHttpRequest;
   wsMethod: string;
   wsParams?: Record<string, unknown>;
@@ -133,7 +133,7 @@ async function requestOperatorSection<TData>(params: {
 
 export async function loadOperatorControlLive(
   requestJson: JsonHttpRequest,
-  client: GatewayRpcClient | null | undefined,
+  client: GatewayWebSocketClient | null | undefined,
 ): Promise<DataEnvelope<OperatorControlSnapshot>> {
   const cachedFullFallback = fullFallbackByRequestJson.get(requestJson);
   if (cachedFullFallback && cachedFullFallback.expiresAt > Date.now()) {

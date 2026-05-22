@@ -1,11 +1,11 @@
 import {
-  GatewayRpcClient,
-  type GatewayRpcClientOptions,
-} from "../../core/gateway/rpc.js";
+  GatewayWebSocketClient,
+  type GatewayWebSocketClientOptions,
+} from "../../core/ws/index.js";
 
-export type OpenClawWebSocketClientOptions = GatewayRpcClientOptions;
+export type OpenClawWebSocketClientOptions = GatewayWebSocketClientOptions;
 
-export class OpenClawWebSocketClient extends GatewayRpcClient {
+export class OpenClawWebSocketClient extends GatewayWebSocketClient {
   constructor(
     wsUrl: string,
     authToken: string | null,

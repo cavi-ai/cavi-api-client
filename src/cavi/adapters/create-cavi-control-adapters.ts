@@ -1,4 +1,4 @@
-import { type GatewayRpcClient } from "../../core/gateway/rpc.js";
+import { type GatewayWebSocketClient } from "../../core/ws/index.js";
 import type {
   SessionsListPayload,
   SessionsPreviewPayload,
@@ -32,9 +32,9 @@ import type {
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
 import { fallbackDebWorkspace, fallbackTaskDiscourse } from "../fallbacks/snapshots/index.js";
-import { debWorkspaceExpectedContractSummary } from "../data/cavi-control/api-paths.js";
+import { debWorkspaceExpectedContractSummary } from "../paths.js";
 import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
-import { resolveGatewayHttpBase } from "../data/cavi-control/runtime-paths.js";
+import { resolveGatewayHttpBase } from "../runtime/paths.js";
 import { createDebLiveHelpers } from "../deb/live.js";
 import { createDebMutations } from "../deb/mutations.js";
 import { loadTaskDiscourseLive } from "../discourse/live.js";
@@ -132,7 +132,7 @@ export function createCaviControlAdapters(opts: {
   gatewayBaseUrl: string;
   authToken: string | null;
   apiBaseUrl?: string | null;
-  client?: GatewayRpcClient | null;
+  client?: GatewayWebSocketClient | null;
 }): CaviControlAdapters {
   const httpBase =
     opts.apiBaseUrl?.trim() || resolveGatewayHttpBase(opts.gatewayBaseUrl);
@@ -174,12 +174,7 @@ export function createCaviControlAdapters(opts: {
     loadSessionsUsageRaw: gatewayWs.loadSessionsUsageRaw,
     loadSessionsPreviewRaw: gatewayWs.loadSessionsPreviewRaw,
     loadSessionDetailRaw: gatewayWs.loadSessionDetailRaw,
-    patchSessionRaw: async (params) => {
-      if (!opts.client) {
-        throw new Error("Gateway client not connected");
-      }
-      await opts.client.request("sessions.patch", params);
-    },
+    patchSessionRaw: gatewayWs.patchSessionRaw,
     loadOverview: gatewayWs.loadOverview,
     loadAgentRuns: gatewayWs.loadAgentRuns,
     loadRunDetail: gatewayWs.loadRunDetail,

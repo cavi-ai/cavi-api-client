@@ -42,7 +42,9 @@ export {
   withQuery,
   type JsonHttpRequest,
 } from "./core/http/json-client.js";
+export { describeHttpContract } from "./core/http/contracts.js";
 export * from "./core/data/guards.js";
+export * from "./core/runtime/paths.js";
 
 export {
   DEFAULT_PREVIEW_MAX_CHARS,
@@ -58,9 +60,20 @@ export {
 export * from "./cavi/domain/index.js";
 export * from "./core/gateway/envelope.js";
 export * from "./core/gateway/error-details.js";
+export {
+  buildGatewayAuthHeaders,
+  fetchGatewayBlob,
+  fetchGatewayExpectOk,
+  fetchGatewayFormDataJson,
+  fetchGatewayJson,
+  requestGatewayRaw,
+  resolveGatewayRequestCredentials,
+  type GatewayHttpFetchOptions,
+} from "./core/gateway/fetch.js";
 export * from "./core/gateway/rpc.js";
 export * from "./core/gateway/runtime-targets.js";
-export * from "./core/gateway/websocket.js";
+export * from "./core/sse/index.js";
+export * from "./core/ws/index.js";
 export * from "./react/gateway-provider.js";
 export * from "./core/gateway/transforms.js";
 export {
@@ -68,6 +81,18 @@ export {
   type CaviControlAdapters,
 } from "./cavi/adapters/create-cavi-control-adapters.js";
 export { normalizeDiscourseEvent } from "./cavi/discourse/normalize.js";
+
+export {
+  API_DEB,
+  API_OPERATOR,
+  DEB_API,
+  OPERATOR_API,
+  debBacklogItemPath,
+  debWorkspaceDiagnosticRouteHint,
+  debWorkspaceExpectedContractSummary,
+  operatorControlExpectedContractSummary,
+  operatorTaskDiscoursePath,
+} from "./cavi/paths.js";
 
 export {
   appendHttpQuery,
@@ -111,6 +136,21 @@ export {
   type GatewayCapabilities,
   type GatewayRunStatus,
 } from "./core/gateway/client.js";
+
+export {
+  FALLBACK_CORE_SLASH_COMMANDS,
+  buildAgentCommandSurface,
+  buildAgentMentionChips,
+  buildAgentSlashShortcuts,
+  extractGatewayCommandCatalog,
+  type AgentCommandShortcut,
+  type AgentCommandSource,
+  type AgentCommandSurface,
+  type AgentMentionSuggestion,
+  type GatewayCommandCapabilities,
+  type GatewayCommandCatalog,
+  type GatewayCommandSpec,
+} from "./core/gateway/agent-commands.js";
 
 export {
   GatewayMediaApiClient,
@@ -368,9 +408,20 @@ export {
 } from "./contracts/team-manifest.js";
 export {
   PORTAL_DASHBOARD_IDS,
+  PORTAL_MEMORY_SNAPSHOT_CONTRACT,
+  buildPortalApiErrorEnvelope,
+  buildPortalApiRequestEnvelope,
+  buildPortalApiSuccessEnvelope,
+  buildPortalMemoryEnvelope,
   isPortalDashboardId,
   portalDashboardPath,
+  type PortalApiEnvelopeBase,
+  type PortalApiError,
+  type PortalApiRequestEnvelope,
+  type PortalApiResponseEnvelope,
   type PortalDashboardId,
+  type PortalLibraryRef,
+  type PortalMemoryEnvelope,
 } from "./contracts/portals.js";
 export {
   GATEWAY_KANBAN_BOARD_PATH,

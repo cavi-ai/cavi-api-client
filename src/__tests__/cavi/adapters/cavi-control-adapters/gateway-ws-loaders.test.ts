@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GatewayRpcClient } from "../../../../core/gateway/rpc";
+import type { GatewayWebSocketClient } from "../../../../core/ws";
 import { createGatewayWsLoaders } from "../../../../cavi/adapters/cavi-control-adapters/gateway-ws-loaders";
 import type { JsonHttpRequest } from "../../../../core/http/json-client";
 
 function createMockGatewayClient(
   handler: (method: string, params: Record<string, unknown>) => Promise<unknown>,
-): GatewayRpcClient {
+): GatewayWebSocketClient {
   return {
     request: vi.fn(handler),
-  } as unknown as GatewayRpcClient;
+  } as unknown as GatewayWebSocketClient;
 }
 
 function createUnusedRequestJson(): JsonHttpRequest {
@@ -136,5 +136,56 @@ describe("createGatewayWsLoaders", () => {
           Boolean((params as Record<string, unknown>).search),
       ),
     ).toEqual([]);
+  });
+
+  it("uses HTTP fallback for session loaders when the gateway client is missing", async () => {
+    const requestJson = vi.fn(async () => ({
+      sessions: [
+        {
+          key: "run-http",
+          label: "HTTP run",
+          agentId: "agent-http",
+        },
+      ],
+      hash: "http-hash",
+      count: 1,
+    })) as JsonHttpRequest;
+    const loaders = createGatewayWsLoaders({
+      client: null,
+      requestJson,
+    });
+
+    const result = await loaders.loadSessionsListRaw({
+      limit: 10,
+      includeGlobal: true,
+    });
+
+    expect(result.sessions?.[0]?.key).toBe("run-http");
+    expect(requestJson).toHaveBeenCalledWith(
+      expect.stringContaining("/api/sessions/list?"),
+    );
+  });
+
+  it("routes session patch through the shared loader so HTTP fallback works", async () => {
+    const requestJson = vi.fn(async () => ({})) as JsonHttpRequest;
+    const loaders = createGatewayWsLoaders({
+      client: null,
+      requestJson,
+    });
+
+    await loaders.patchSessionRaw({
+      key: "run-1",
+      label: "Focus",
+      fastMode: true,
+    });
+
+    expect(requestJson).toHaveBeenCalledWith("/api/sessions/patch", {
+      method: "PATCH",
+      body: {
+        key: "run-1",
+        label: "Focus",
+        fastMode: true,
+      },
+    });
   });
 });

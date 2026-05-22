@@ -19,8 +19,7 @@
     "src/cavi/**/*.ts",
     "src/providers/**/*.ts",
     "src/react/**/*.ts",
-    "src/react/**/*.tsx",
-    "src/compat/martina/**/*.ts"
+    "src/react/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

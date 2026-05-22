@@ -1,4 +1,4 @@
-import type { PortalLibraryRef } from "../portal/contracts.js";
+import type { PortalLibraryRef } from "../../contracts/portals.js";
 import { getConfiguredTeamRegistry } from "./team-registry-config.js";
 
 export function getFleetLibraryRef(): PortalLibraryRef {

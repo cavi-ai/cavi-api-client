@@ -13,15 +13,21 @@ import {
 } from "react";
 import { normalizeGatewayStreamFailure } from "../core/gateway/stream-failure.js";
 import {
-  GatewayRpcClient,
   GatewayRpcError,
-  tryResolveGatewayTargets,
-  type DeviceIdentity,
-  type GatewayRpcClientOptions,
-  type GatewayRpcTraceEntry,
   type GatewayConnectionState,
+  type GatewayRpcTraceEntry,
   type GatewayStreamEvent,
 } from "../core/gateway/rpc.js";
+import {
+  GatewayWebSocketClient,
+  tryResolveGatewayTargets,
+  type DeviceIdentity,
+  type GatewayWebSocketClientOptions,
+} from "../core/ws/index.js";
+
+const GatewayRpcClient = GatewayWebSocketClient;
+type GatewayRpcClient = GatewayWebSocketClient;
+type GatewayRpcClientOptions = GatewayWebSocketClientOptions;
 
 export type { GatewayConnectionState, GatewayRpcTraceEntry, GatewayStreamEvent };
 

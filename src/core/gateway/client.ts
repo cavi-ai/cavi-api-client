@@ -1,8 +1,9 @@
 import { BaseHttpApiClient } from "../http/client.js";
 import { GATEWAY_API_ENDPOINTS } from "../../contracts/paths.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../http/types.js";
+import type { GatewayCommandCapabilities } from "./agent-commands.js";
 
-export type GatewayCapabilities = {
+export type GatewayCapabilities = GatewayCommandCapabilities & {
   object?: string;
   platform?: string;
   model?: string;

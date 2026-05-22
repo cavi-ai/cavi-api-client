@@ -8,6 +8,10 @@ import {
 } from "./device-store.js";
 import { GatewayRpcError } from "./rpc-error.js";
 import { resolveDeviceTokenOnlyFallbackMs } from "./preauth-handshake.js";
+import {
+  describeWebSocketClose,
+  type WebSocketCloseLike,
+} from "../ws/close.js";
 
 declare const process:
   | {
@@ -109,11 +113,6 @@ const MAX_CONCURRENT_RPC_REQUESTS = 3;
 export const DEFAULT_GATEWAY_PROTOCOL_VERSION = 4;
 const DEFAULT_GATEWAY_RPC_CLIENT_VERSION = "0.1.0";
 const DEFAULT_GATEWAY_RPC_CLIENT_SCOPES = ["operator.read"] as const;
-
-type GatewaySocketCloseLike = {
-  code?: unknown;
-  reason?: unknown;
-};
 
 /** Completed WebSocket RPC (after response or failure). Params are redacted. */
 export type GatewayRpcTraceEntry = {
@@ -356,35 +355,15 @@ function serializeRpcTraceError(error: Error): {
 }
 
 function createGatewaySocketClosedError(
-  event?: GatewaySocketCloseLike | null,
+  event?: WebSocketCloseLike | null,
 ): GatewayRpcError {
-  const closeCode =
-    typeof event?.code === "number" && Number.isFinite(event.code)
-      ? Math.round(event.code)
-      : null;
-  const closeReason =
-    typeof event?.reason === "string" && event.reason.trim().length > 0
-      ? event.reason.trim()
-      : null;
-  if (closeCode !== null && closeReason) {
-    return new GatewayRpcError(
-      `gateway closed (${closeCode}): ${closeReason}`,
-      "socket_closed",
-    );
-  }
-  if (closeCode !== null) {
-    return new GatewayRpcError(
-      `gateway closed (${closeCode})`,
-      "socket_closed",
-    );
-  }
-  if (closeReason) {
-    return new GatewayRpcError(
-      `gateway closed: ${closeReason}`,
-      "socket_closed",
-    );
-  }
-  return new GatewayRpcError("gateway websocket closed", "socket_closed");
+  const closed = describeWebSocketClose(event, "gateway closed");
+  return new GatewayRpcError(
+    closed.code === null && closed.reason === null
+      ? "gateway websocket closed"
+      : closed.message,
+    "socket_closed",
+  );
 }
 
 export class GatewayRpcClient {
@@ -770,7 +749,7 @@ export class GatewayRpcClient {
           this.socket = null;
         }
         const closeError = createGatewaySocketClosedError(
-          event as GatewaySocketCloseLike,
+          event as WebSocketCloseLike,
         );
         for (const pending of this.pending.values()) {
           pending.reject(closeError);
@@ -1006,86 +985,10 @@ export class GatewayRpcClient {
   }
 }
 
-/**
- * Resolve the HTTP and WebSocket targets for a gateway. Accepts any of the
- * four schemes the gateway exposes: `http://`, `https://`, `ws://`, `wss://`.
- *
- * - `httpBase` is always normalized to the http(s) scheme matching the input's
- *   transport security (TLS preserved across ws<->http translation). For
- *   explicit ws(s) inputs, the HTTP base is the origin only; the WS pathname is
- *   not a REST mount path.
- * - `wsUrl` is always normalized to the ws(s) scheme matching the same TLS
- *   preference. HTTP(S) inputs keep the historical host-root `/ws` default,
- *   while explicit WS(S) inputs preserve their pathname so Hermes-style
- *   `wss://host/api/ws` chat sidecars do not get rewritten to `/ws`.
- *
- * The pathname on the input is preserved on `httpBase` so embedded mounts
- * under a sub-path (for example, an embedded app base path) keep working.
- *
- * Throws if the input scheme is anything other than http/https/ws/wss.
- */
-export function resolveGatewayTargets(baseUrl: string): {
-  httpBase: string;
-  wsUrl: string;
-} {
-  const trimmed = baseUrl.replace(/\/+$/u, "");
-  const url = new URL(trimmed);
-
-  let httpProtocol: "http:" | "https:";
-  let wsProtocol: "ws:" | "wss:";
-  switch (url.protocol) {
-    case "http:":
-      httpProtocol = "http:";
-      wsProtocol = "ws:";
-      break;
-    case "https:":
-      httpProtocol = "https:";
-      wsProtocol = "wss:";
-      break;
-    case "ws:":
-      httpProtocol = "http:";
-      wsProtocol = "ws:";
-      break;
-    case "wss:":
-      httpProtocol = "https:";
-      wsProtocol = "wss:";
-      break;
-    default:
-      throw new Error(
-        `resolveGatewayTargets: unsupported gateway scheme "${url.protocol.replace(/:$/u, "")}". Expected one of http, https, ws, wss.`,
-      );
-  }
-
-  const pathname =
-    url.pathname === "/" ? "" : url.pathname.replace(/\/+$/u, "");
-  const explicitWsInput = url.protocol === "ws:" || url.protocol === "wss:";
-  const httpBase = `${httpProtocol}//${url.host}${explicitWsInput ? "" : pathname}`;
-  const wsPath = explicitWsInput ? pathname || "/ws" : "/ws";
-  const wsUrl = `${wsProtocol}//${url.host}${wsPath}`;
-  return {
-    httpBase,
-    wsUrl,
-  };
-}
-
-/**
- * Like {@link resolveGatewayTargets}, but returns `null` for empty input or any
- * value that would throw (malformed URL, unsupported scheme). Safe for UI hooks.
- */
-export function tryResolveGatewayTargets(baseUrl: string): {
-  httpBase: string;
-  wsUrl: string;
-} | null {
-  const trimmed = baseUrl.trim().replace(/\/+$/u, "");
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    return resolveGatewayTargets(trimmed);
-  } catch {
-    return null;
-  }
-}
+export {
+  resolveGatewayTargets,
+  tryResolveGatewayTargets,
+} from "../ws/targets.js";
 
 export {
   PORTAL_CONFIG_PATCH_CLIENT_ID_HEADER,
