@@ -1,3 +1,5 @@
+import { PORTAL_CLIENT_ID_HEADER } from "../http/types.js";
+
 /**
  * Shared HTTP contract for portal dashboard config updates (POST).
  * Any client (mobile, web, scripts) may call {@link postPortalConfigPatch} against
@@ -7,8 +9,8 @@
 export const PORTAL_CONFIG_PATCH_CONTRACT = "PORTAL_CONFIG_PATCH_V1" as const;
 export const PORTAL_CONFIG_PATCH_CONTRACT_VERSION = 1 as const;
 
-/** Optional header some gateways require for audit / routing (matches cavi-data `PORTAL_CLIENT_ID_HEADER`). */
-export const PORTAL_CONFIG_PATCH_CLIENT_ID_HEADER = "X-Portal-Client-Id" as const;
+/** Optional header some gateways require for audit / routing. */
+export const PORTAL_CONFIG_PATCH_CLIENT_ID_HEADER = PORTAL_CLIENT_ID_HEADER;
 
 export type PortalConfigPatchRequestBody = {
   contract: typeof PORTAL_CONFIG_PATCH_CONTRACT;

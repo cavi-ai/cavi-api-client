@@ -3,11 +3,12 @@ import {
   gatewayRequestCredentials,
 } from "../runtime/gateway-json-fetch.js";
 import { HttpApiError } from "../../core/http/errors.js";
-import { LIBRARY_API_BASE_PATH } from "../paths.js";
 import {
-  createCaviRawHttpClient,
+  createRawHttpApiClient,
   toHttpRequestInit,
-} from "../runtime/http-transport.js";
+} from "../../core/http/raw-client.js";
+import { extractGatewayErrorDetails } from "../../core/gateway/error-details.js";
+import { LIBRARY_API_BASE_PATH } from "../paths.js";
 
 type LibraryApiMutationMethod =
   | "POST"
@@ -53,29 +54,6 @@ function appendLibraryApiQuery(
   return search ? `${path}?${search}` : path;
 }
 
-function extractLibraryApiErrorMessage(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return null;
-  }
-  const record = payload as Record<string, unknown>;
-  if (typeof record.message === "string" && record.message.trim()) {
-    return record.message;
-  }
-  const nestedError = record.error;
-  if (
-    nestedError &&
-    typeof nestedError === "object" &&
-    !Array.isArray(nestedError) &&
-    typeof (nestedError as Record<string, unknown>).message === "string"
-  ) {
-    return ((nestedError as Record<string, unknown>).message as string).trim() || null;
-  }
-  if (typeof record.error === "string" && record.error.trim()) {
-    return record.error;
-  }
-  return null;
-}
-
 export async function fetchLibraryApiJson<T>(
   path: string,
   clientId: string,
@@ -98,7 +76,7 @@ export async function fetchLibraryApiJson<T>(
     init.body = JSON.stringify(options.body);
   }
   const credentials = gatewayRequestCredentials();
-  const client = createCaviRawHttpClient({
+  const client = createRawHttpApiClient({
     surface: "library-api",
     baseUrl: "",
     authToken: credentials ? null : authToken,
@@ -118,7 +96,7 @@ export async function fetchLibraryApiJson<T>(
     if (error instanceof HttpApiError && error.status > 0) {
       const payload = parseLibraryApiPayload(error.body, error.status);
       const fallbackMessage = error.body.trim() || `Request failed (${error.status})`;
-      throw new Error(extractLibraryApiErrorMessage(payload) ?? fallbackMessage);
+      throw new Error(extractGatewayErrorDetails(payload).message ?? fallbackMessage);
     }
     throw error;
   });

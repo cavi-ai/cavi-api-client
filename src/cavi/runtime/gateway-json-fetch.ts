@@ -3,15 +3,15 @@ import {
   parseGatewayErrorText,
 } from "../data/cavi-control/api-error.js";
 import { HttpApiError } from "../../core/http/errors.js";
-import { resolveGatewayHttpBase } from "../data/cavi-control/runtime-paths.js";
 import {
-  createCaviRawHttpClient,
+  createRawHttpApiClient,
   toHttpRequestInit,
-} from "./http-transport.js";
+} from "../../core/http/raw-client.js";
+import { resolveGatewayHttpBase } from "../data/cavi-control/runtime-paths.js";
 import {
   PORTAL_CLIENT_ID_HEADER,
   requirePortalClientId,
-} from "../portal/client-id.js";
+} from "../../core/http/client-id.js";
 import { isSessionAuthMode } from "./standalone-mode.js";
 
 export function gatewayAuthHeaders(
@@ -106,7 +106,7 @@ async function requestGatewayRaw(
     ...init
   } = options;
   const sessionMode = isSessionAuthMode();
-  const client = createCaviRawHttpClient({
+  const client = createRawHttpApiClient({
     surface: "gateway-api",
     baseUrl: resolveGatewayHttpBase(gatewayBaseUrl),
     authToken: sessionMode ? null : authToken,

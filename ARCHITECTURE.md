@@ -75,6 +75,10 @@ implementations live in `src/core/gateway/**`; provider adapters live under
 
 - HTTP: `GatewayApiClient` is the base client; Hermes and OpenClaw expose thin
   provider clients selected by `createGatewayApiClient`.
+- Raw HTTP access, request-init conversion, portal client-id validation, gateway
+  error-detail parsing, and runtime HTTP/WS target resolution live under
+  `src/core/http/**` or `src/core/gateway/**`. CAVI may wrap these for product
+  fallbacks, but must not duplicate the transport rules.
 - SSE: `GatewaySseRunEventProvider` owns SSE parsing, canonical run-event
   translation, and polling fallback. Provider adapters only add endpoint maps
   and required routing/session headers.

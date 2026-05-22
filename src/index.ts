@@ -10,6 +10,11 @@ export {
   type HttpApiTrace,
   type HttpApiTransport,
 } from "./core/http/types.js";
+export {
+  isValidPortalClientId,
+  normalizePortalClientId,
+  requirePortalClientId,
+} from "./core/http/client-id.js";
 
 export {
   HTTP_API_CLIENT_ENV_ALIASES,
@@ -22,6 +27,11 @@ export {
 } from "./core/env/config.js";
 
 export { BaseHttpApiClient } from "./core/http/client.js";
+export {
+  RawHttpApiClient,
+  createRawHttpApiClient,
+  toHttpRequestInit,
+} from "./core/http/raw-client.js";
 
 export {
   DEFAULT_PREVIEW_MAX_CHARS,
@@ -35,7 +45,9 @@ export {
 } from "./core/http/redaction.js";
 
 export * from "./cavi/domain/index.js";
+export * from "./core/gateway/error-details.js";
 export * from "./core/gateway/rpc.js";
+export * from "./core/gateway/runtime-targets.js";
 export * from "./core/gateway/websocket.js";
 export * from "./react/gateway-provider.js";
 export * from "./core/gateway/transforms.js";

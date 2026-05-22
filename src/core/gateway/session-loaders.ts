@@ -1,6 +1,6 @@
 // CANONICAL — single source of truth for sessions.{list,usage,preview,detail} loaders.
-// Lifted from cavi-control web's `gateway-ws-loaders.ts` so mobile + web share one cache shape.
-// No web behavioral change: web still owns `withFallback`, mock fallbacks, and snapshot builders.
+// Shared by CAVI and other gateway clients so frontend surfaces use one cache shape.
+// Product adapters still own fallback envelopes and snapshot builders.
 //
 // Pure transport orchestration: takes a `GatewayRpcClient`, returns typed payload accessors with
 // per-instance request coalescing and TTL caches. UI layers wrap these for read-aloud, drawers,
