@@ -36,6 +36,7 @@ export {
 
 export * from "./cavi/domain/index.js";
 export * from "./core/gateway/rpc.js";
+export * from "./core/gateway/websocket.js";
 export * from "./react/gateway-provider.js";
 export * from "./core/gateway/transforms.js";
 export {
@@ -53,12 +54,16 @@ export {
   GATEWAY_MEDIA_API_BASE_PATH,
   GATEWAY_MEDIA_API_ENDPOINTS,
   GATEWAY_PROBE_ENDPOINTS,
+  GATEWAY_WIKI_API_BASE_PATH,
+  GATEWAY_WIKI_API_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
   HERMES_MEDIA_API_ENDPOINTS,
+  HERMES_WIKI_API_ENDPOINTS,
   LIBRARY_API_BASE_PATH,
   LIBRARY_API_ENDPOINTS,
   OPENCLAW_MEDIA_API_ENDPOINTS,
+  OPENCLAW_WIKI_API_ENDPOINTS,
   OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
 } from "./contracts/paths.js";
@@ -103,12 +108,37 @@ export {
 export {
   createGatewayApiClient,
   createGatewayMediaClient,
+  createGatewayRpcClient,
+  createGatewaySseRunEventProvider,
+  createGatewayWebSocketClient,
+  createGatewayWikiClient,
   GATEWAY_PROVIDER_ENV_KEYS,
   resolveGatewayProviderKind,
+  type CreateGatewaySseRunEventProviderOptions,
   type GatewayProviderEnv,
   type GatewayProviderKind,
   type ResolveGatewayProviderOptions,
 } from "./providers/gateway-provider.js";
+
+export {
+  GatewayWikiApiClient,
+  GATEWAY_WIKI_FORMATS,
+  type GatewayWikiApiClientOptions,
+  type GatewayWikiArtifactRequest,
+  type GatewayWikiClient,
+  type GatewayWikiCompileRequest,
+  type GatewayWikiEndpointMap,
+  type GatewayWikiFormat,
+  type GatewayWikiIngestRequest,
+  type GatewayWikiJobResult,
+  type GatewayWikiJsonValue,
+  type GatewayWikiPage,
+  type GatewayWikiPromoteRequest,
+  type GatewayWikiTree,
+  type GatewayWikiTreeEntry,
+  type GatewayWikiVault,
+  type GatewayWikiVaultList,
+} from "./core/gateway/wiki.js";
 
 export {
   createTeamRegistry,
@@ -144,7 +174,12 @@ export {
 } from "./providers/hermes/client.js";
 
 export { HermesMediaApiClient } from "./providers/hermes/media.js";
+export { OpenClawApiClient, type OpenClawCapabilities, type OpenClawRunStatus } from "./providers/openclaw/client.js";
 export { OpenClawMediaApiClient } from "./providers/openclaw/media.js";
+export { HermesWikiApiClient } from "./providers/hermes/wiki.js";
+export { OpenClawWikiApiClient } from "./providers/openclaw/wiki.js";
+export { HermesWebSocketClient, type HermesWebSocketClientOptions } from "./providers/hermes/websocket.js";
+export { OpenClawWebSocketClient, type OpenClawWebSocketClientOptions } from "./providers/openclaw/websocket.js";
 
 export {
   HERMES_HTTP_API_ENV_ALIASES,
@@ -168,10 +203,21 @@ export {
 
 export {
   GatewaySseRunEventProvider,
-  HermesSseRunEventProvider,
+  type GatewaySseRunEventEndpointMap,
+  type GatewaySseRunEventHeaderResolver,
+  type GatewaySseRunEventPhase,
   type GatewaySseRunEventProviderOptions,
+} from "./core/gateway/sse-run-event-provider.js";
+
+export {
+  HermesSseRunEventProvider,
   type HermesSseRunEventProviderOptions,
 } from "./providers/hermes/sse-run-event-provider.js";
+
+export {
+  OpenClawSseRunEventProvider,
+  type OpenClawSseRunEventProviderOptions,
+} from "./providers/openclaw/sse-run-event-provider.js";
 
 export {
   resolveGatewayChatRunApproval,

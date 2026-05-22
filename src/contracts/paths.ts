@@ -1,68 +1,68 @@
 export const CAVI_CONTROL_API_ENDPOINTS = {
-  costHistory: "/cavi-control/api/cost/history",
-  scoringModel: "/cavi-control/api/scoring/model",
+  costHistory: "/api/plugins/cavi-control/cost/history",
+  scoringModel: "/api/plugins/cavi-control/scoring/model",
   deb: {
-    root: "/cavi-control/api/deb",
-    profile: "/cavi-control/api/deb/profile",
-    sprint: "/cavi-control/api/deb/sprint",
-    backlog: "/cavi-control/api/deb/backlog",
-    call: "/cavi-control/api/deb/call",
+    root: "/api/plugins/cavi-control/deb",
+    profile: "/api/plugins/cavi-control/deb/profile",
+    sprint: "/api/plugins/cavi-control/deb/sprint",
+    backlog: "/api/plugins/cavi-control/deb/backlog",
+    call: "/api/plugins/cavi-control/deb/call",
     backlogItem: (itemId: string) =>
-      `/cavi-control/api/deb/backlog/${encodeURIComponent(itemId)}`,
+      `/api/plugins/cavi-control/deb/backlog/${encodeURIComponent(itemId)}`,
   },
   operator: {
-    root: "/cavi-control/api/operator",
-    snapshot: "/cavi-control/api/operator/snapshot",
-    status: "/cavi-control/api/operator/status",
-    registry: "/cavi-control/api/operator/registry",
-    tasks: "/cavi-control/api/operator/tasks",
+    root: "/api/plugins/cavi-control/operator",
+    snapshot: "/api/plugins/cavi-control/operator/snapshot",
+    status: "/api/plugins/cavi-control/operator/status",
+    registry: "/api/plugins/cavi-control/operator/registry",
+    tasks: "/api/plugins/cavi-control/operator/tasks",
     task: (taskId: string) =>
-      `/cavi-control/api/operator/tasks/${encodeURIComponent(taskId)}`,
+      `/api/plugins/cavi-control/operator/tasks/${encodeURIComponent(taskId)}`,
     taskDiscourse: (taskId: string) =>
-      `/cavi-control/api/operator/tasks/${encodeURIComponent(taskId)}/discourse`,
-    memory: "/cavi-control/api/operator/memory",
-    workerReady: "/cavi-control/api/operator/worker/ready",
-    workerTasks: "/cavi-control/api/operator/worker/tasks",
+      `/api/plugins/cavi-control/operator/tasks/${encodeURIComponent(taskId)}/discourse`,
+    memory: "/api/plugins/cavi-control/operator/memory",
+    workerReady: "/api/plugins/cavi-control/operator/worker/ready",
+    workerTasks: "/api/plugins/cavi-control/operator/worker/tasks",
   },
   portals: {
     martina: {
-      dashboard: "/martina/api/dashboard",
-      config: "/martina/api/config",
-      runs: "/martina/api/runs",
-      run: (runId: string) => `/martina/api/runs/${encodeURIComponent(runId)}`,
-      doctor: "/martina/api/doctor",
-      queuesMove: "/martina/api/queues/move",
+      dashboard: "/api/plugins/portal/martina/dashboard",
+      config: "/api/plugins/portal/martina/config",
+      runs: "/api/plugins/portal/martina/runs",
+      run: (runId: string) => `/api/plugins/portal/martina/runs/${encodeURIComponent(runId)}`,
+      doctor: "/api/plugins/portal/martina/doctor",
+      queuesMove: "/api/plugins/portal/martina/queues/move",
       artifactFile: (bucket: string, name: string) =>
-        `/martina/api/artifacts/${encodeURIComponent(bucket)}/${encodeURIComponent(name)}`,
+        `/api/plugins/portal/martina/artifacts/${encodeURIComponent(bucket)}/${encodeURIComponent(name)}`,
       artifactPreview: (bucket: string, name: string) =>
-        `/martina/api/artifacts/${encodeURIComponent(bucket)}/${encodeURIComponent(name)}/preview`,
+        `/api/plugins/portal/martina/artifacts/${encodeURIComponent(bucket)}/${encodeURIComponent(name)}/preview`,
     },
-    scout: { dashboard: "/scout/api/dashboard" },
-    angela: { dashboard: "/angela/api/dashboard" },
+    scout: { dashboard: "/api/plugins/portal/scout/dashboard" },
+    angela: { dashboard: "/api/plugins/portal/angela/dashboard" },
     machine: {
-      dashboard: "/machine/api/dashboard",
-      inbox: "/machine/api/inbox",
+      dashboard: "/api/plugins/machine/dashboard",
+      inbox: "/api/plugins/machine/inbox",
       media: (filename: string) =>
-        `/machine/api/media?name=${encodeURIComponent(filename)}`,
-      tts: "/machine/api/tts",
-      memeJobs: "/machine/api/meme/jobs",
-      ttsProviders: "/machine/api/tts/providers",
+        `/api/plugins/machine/media?name=${encodeURIComponent(filename)}`,
+      tts: "/api/plugins/machine/tts",
+      memeJobs: "/api/plugins/machine/meme/jobs",
+      ttsProviders: "/api/plugins/machine/tts/providers",
     },
     frontDoor: {
-      dashboard: "/front-door/api/dashboard",
-      ideas: "/front-door/api/ideas",
-      idea: (id: string) => `/front-door/api/ideas/${encodeURIComponent(id)}`,
+      dashboard: "/api/plugins/front-door/dashboard",
+      ideas: "/api/plugins/front-door/ideas",
+      idea: (id: string) => `/api/plugins/front-door/ideas/${encodeURIComponent(id)}`,
       ideaPromote: (id: string) =>
-        `/front-door/api/ideas/${encodeURIComponent(id)}/promote`,
-      projects: "/front-door/api/projects",
-      project: (id: string) => `/front-door/api/projects/${encodeURIComponent(id)}`,
-      articles: "/front-door/api/articles",
-      memory: "/front-door/api/memory",
-      inbox: "/front-door/api/inbox",
+        `/api/plugins/front-door/ideas/${encodeURIComponent(id)}/promote`,
+      projects: "/api/plugins/front-door/projects",
+      project: (id: string) => `/api/plugins/front-door/projects/${encodeURIComponent(id)}`,
+      articles: "/api/plugins/front-door/articles",
+      memory: "/api/plugins/front-door/memory",
+      inbox: "/api/plugins/front-door/inbox",
     },
   },
   portalMemorySnapshot: (teamSlug: string, memberId: string, memoryKey: string) =>
-    `/cavi-control/api/portal-memory/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(memberId)}/${encodeURIComponent(memoryKey)}`,
+    `/api/plugins/portal-memory/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(memberId)}/${encodeURIComponent(memoryKey)}`,
 } as const;
 
 export const LIBRARY_API_BASE_PATH = "/library/api" as const;
@@ -148,6 +148,35 @@ export const GATEWAY_MEDIA_API_ENDPOINTS = {
 export const HERMES_MEDIA_API_ENDPOINTS = GATEWAY_MEDIA_API_ENDPOINTS;
 export const OPENCLAW_MEDIA_API_ENDPOINTS = GATEWAY_MEDIA_API_ENDPOINTS;
 
+export const GATEWAY_WIKI_API_BASE_PATH = "/v1/wiki" as const;
+
+export const GATEWAY_WIKI_API_ENDPOINTS = {
+  root: GATEWAY_WIKI_API_BASE_PATH,
+  vaults: `${GATEWAY_WIKI_API_BASE_PATH}/vaults`,
+  vault: (vaultId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}`,
+  tree: (vaultId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/tree`,
+  read: (vaultId: string, path: string) =>
+    appendHttpQuery(
+      `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/read`,
+      { path },
+    ),
+  ingest: (vaultId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/ingest`,
+  compile: (vaultId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/compile`,
+  promote: (vaultId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/promote`,
+  job: (vaultId: string, jobId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/jobs/${encodeURIComponent(jobId)}`,
+  artifact: (vaultId: string, artifactId: string) =>
+    `${GATEWAY_WIKI_API_BASE_PATH}/vaults/${encodeURIComponent(vaultId)}/artifacts/${encodeURIComponent(artifactId)}`,
+} as const;
+
+export const HERMES_WIKI_API_ENDPOINTS = GATEWAY_WIKI_API_ENDPOINTS;
+export const OPENCLAW_WIKI_API_ENDPOINTS = GATEWAY_WIKI_API_ENDPOINTS;
+
 export const GATEWAY_SESSION_API_PATHS = {
   list: "/api/sessions/list",
   usage: "/api/sessions/usage",
@@ -155,6 +184,19 @@ export const GATEWAY_SESSION_API_PATHS = {
   detail: "/api/sessions/detail",
   patch: "/api/sessions/patch",
 } as const;
+
+export const GATEWAY_AGENT_CONFIG_API_ENDPOINTS = {
+  profiles: "/api/profiles",
+  config: "/api/config",
+  configDefaults: "/api/config/defaults",
+  configSchema: "/api/config/schema",
+  agentConfigs: "/api/agent-configs",
+  agentConfig: (agentId: string) =>
+    `/api/agent-configs/${encodeURIComponent(agentId)}/config`,
+} as const;
+
+export const HERMES_AGENT_CONFIG_API_ENDPOINTS = GATEWAY_AGENT_CONFIG_API_ENDPOINTS;
+export const OPENCLAW_AGENT_CONFIG_API_ENDPOINTS = GATEWAY_AGENT_CONFIG_API_ENDPOINTS;
 
 export const GATEWAY_PROBE_ENDPOINTS = {
   healthz: "/healthz",

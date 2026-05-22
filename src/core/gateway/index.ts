@@ -1,6 +1,8 @@
 export * from "./client.js";
 export * from "./media.js";
+export * from "./wiki.js";
 export * from "./rpc.js";
+export * from "./websocket.js";
 export * from "./rpc-error.js";
 export * from "./device-crypto.js";
 export * from "./device-store.js";
@@ -9,5 +11,6 @@ export * from "./session-loaders.js";
 export * from "./stream-failure.js";
 export * from "./portal-config-patch.js";
 export * from "./run-event-stream.js";
+export * from "./sse-run-event-provider.js";
 export * from "./run-stream-contracts.js";
 export * from "./transforms.js";

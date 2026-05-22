@@ -53,8 +53,8 @@ describe("api-paths", () => {
   });
 
   it("exposes cost and scoring path constants", () => {
-    expect(API_COST_HISTORY).toBe("/cavi-control/api/cost/history");
-    expect(API_SCORING_MODEL).toBe("/cavi-control/api/scoring/model");
+    expect(API_COST_HISTORY).toBe("/api/plugins/cavi-control/cost/history");
+    expect(API_SCORING_MODEL).toBe("/api/plugins/cavi-control/scoring/model");
   });
 
   it("debBacklogItemPath encodes item ids", () => {
@@ -79,12 +79,12 @@ describe("api-paths", () => {
     );
   });
 
-  it("debWorkspaceExpectedContractSummary lists split endpoints and compat", () => {
+  it("debWorkspaceExpectedContractSummary lists split endpoints and aggregate fallback", () => {
     const summary = debWorkspaceExpectedContractSummary();
     expect(summary).toContain(DEB_API.profile);
     expect(summary).toContain(DEB_API.sprint);
     expect(summary).toContain(DEB_API.backlog);
-    expect(summary).toContain(`compat: GET ${API_DEB}`);
+    expect(summary).toContain(`aggregate: GET ${API_DEB}`);
   });
 
   it("debWorkspaceDiagnosticRouteHint lists deb routes", () => {

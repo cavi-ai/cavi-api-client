@@ -6,6 +6,7 @@ import {
   appendHttpQuery,
   CAVI_CONTROL_API_ENDPOINTS,
   GATEWAY_MEDIA_API_ENDPOINTS,
+  GATEWAY_WIKI_API_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
   LIBRARY_API_ENDPOINTS,
@@ -15,14 +16,28 @@ import {
 import {
   GatewayApiClient,
   GatewayMediaApiClient,
+  GatewaySseRunEventProvider,
+  GatewayWikiApiClient,
   GATEWAY_MEDIA_KINDS,
+  GATEWAY_WIKI_FORMATS,
   HermesMediaApiClient,
+  HermesSseRunEventProvider,
+  HermesWebSocketClient,
+  HermesWikiApiClient,
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
   OpenClawMediaApiClient,
+  OpenClawSseRunEventProvider,
+  OpenClawWebSocketClient,
+  OpenClawWikiApiClient,
+  PortalApiClient,
   PORTAL_DASHBOARD_IDS,
+  RUN_STREAM_EVENT_NAMES,
   createContractGap,
   createDefaultTeamManifest,
   createGatewayMediaClient,
+  createGatewaySseRunEventProvider,
+  createGatewayWebSocketClient,
+  createGatewayWikiClient,
   getMobileGatewayEndpointPath,
   normalizeTeamManifest,
   portalDashboardPath,
@@ -103,16 +118,16 @@ describe("agnostic HTTP API client package", () => {
 
   it("keeps extracted endpoint builders encoded and aligned", () => {
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.root).toBe(
-      "/cavi-control/api/operator",
+      "/api/plugins/cavi-control/operator",
     );
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.task("task/a b")).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b",
+      "/api/plugins/cavi-control/operator/tasks/task%2Fa%20b",
     );
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.taskDiscourse("task/a b")).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
+      "/api/plugins/cavi-control/operator/tasks/task%2Fa%20b/discourse",
     );
     expect(CAVI_CONTROL_API_ENDPOINTS.portals.martina.artifactPreview("docs", "a b.md")).toBe(
-      "/martina/api/artifacts/docs/a%20b.md/preview",
+      "/api/plugins/portal/martina/artifacts/docs/a%20b.md/preview",
     );
     expect(HERMES_API_ENDPOINTS.runApproval("run/1")).toBe("/v1/runs/run%2F1/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.runApproval).toBe("/v1/runs/{run_id}/approval");
@@ -130,6 +145,23 @@ describe("agnostic HTTP API client package", () => {
     );
     expect(GATEWAY_MEDIA_API_ENDPOINTS.asset("asset/a b")).toBe(
       "/v1/media/assets/asset%2Fa%20b",
+    );
+    expect(GATEWAY_WIKI_FORMATS).toEqual(["qmd", "markdown", "html", "pdf", "text", "json"]);
+    expect(GATEWAY_WIKI_API_ENDPOINTS.vaults).toBe("/v1/wiki/vaults");
+    expect(GATEWAY_WIKI_API_ENDPOINTS.tree("research vault")).toBe(
+      "/v1/wiki/vaults/research%20vault/tree",
+    );
+    expect(GATEWAY_WIKI_API_ENDPOINTS.read("research", "notes/index.qmd")).toBe(
+      "/v1/wiki/vaults/research/read?path=notes%2Findex.qmd",
+    );
+    expect(GATEWAY_WIKI_API_ENDPOINTS.ingest("research")).toBe(
+      "/v1/wiki/vaults/research/ingest",
+    );
+    expect(GATEWAY_WIKI_API_ENDPOINTS.compile("research")).toBe(
+      "/v1/wiki/vaults/research/compile",
+    );
+    expect(GATEWAY_WIKI_API_ENDPOINTS.promote("research")).toBe(
+      "/v1/wiki/vaults/research/promote",
     );
     expect(OPERATOR_DISPATCH_ENDPOINTS.operatorEvents).toBe("/operator/events");
     expect(OPERATOR_DISPATCH_ENDPOINTS.taskReceiptsTemplate).toBe(
@@ -221,6 +253,23 @@ describe("agnostic HTTP API client package", () => {
     expect(resolvePath("gateway.mediaMusicGenerate", "canonical")).toBe(
       "/v1/media/music/generate",
     );
+    expect(resolvePath("gateway.wikiVaults", "canonical")).toBe("/v1/wiki/vaults");
+    expect(resolvePath("gateway.wikiTree", "canonical", { vaultId: "research vault" })).toBe(
+      "/v1/wiki/vaults/research%20vault/tree",
+    );
+    expect(resolvePath("gateway.wikiRead", "canonical", {
+      vaultId: "research",
+      path: "notes/index.qmd",
+    })).toBe("/v1/wiki/vaults/research/read?path=notes%2Findex.qmd");
+    expect(resolvePath("gateway.wikiIngest", "canonical", { vaultId: "research" })).toBe(
+      "/v1/wiki/vaults/research/ingest",
+    );
+    expect(resolvePath("gateway.wikiCompile", "canonical", { vaultId: "research" })).toBe(
+      "/v1/wiki/vaults/research/compile",
+    );
+    expect(resolvePath("gateway.wikiPromote", "canonical", { vaultId: "research" })).toBe(
+      "/v1/wiki/vaults/research/promote",
+    );
 
     expect(SURFACE_CONTRACTS["frontDoor.ideaList"]?.method).toBe("GET");
     expect(SURFACE_CONTRACTS["frontDoor.ideaCreate"]?.method).toBe("POST");
@@ -291,6 +340,21 @@ describe("agnostic HTTP API client package", () => {
     );
     expect(getMobileGatewayEndpointPath("gatewayMediaMusic", "canonical")).toBe(
       "/v1/media/music/generate",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayWikiVaults", "canonical")).toBe(
+      "/v1/wiki/vaults",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayWikiRead", "canonical")).toBe(
+      "/v1/wiki/vaults/default/read?path=index.qmd",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayWikiIngest", "canonical")).toBe(
+      "/v1/wiki/vaults/default/ingest",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayWikiCompile", "canonical")).toBe(
+      "/v1/wiki/vaults/default/compile",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayWikiPromote", "canonical")).toBe(
+      "/v1/wiki/vaults/default/promote",
     );
     expect(MOBILE_GATEWAY_ENDPOINT_CONTRACTS.machineComedyRun.hermesPath).toBe("/v1/runs");
     expect(createContractGap("preflightCapabilities", "missing auth")).toEqual({
@@ -624,6 +688,23 @@ describe("agnostic HTTP API client package", () => {
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example/library/api/search?q=research&archived=false");
   });
 
+  it("uses canonical API-first portal routes by default", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const client = new PortalApiClient({
+      baseUrl: "https://gateway.example",
+      portalId: "martina",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(client.getDashboard()).resolves.toEqual({ ok: true });
+    await expect(client.getFromPortal("runs")).resolves.toEqual({ ok: true });
+
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
+      "https://gateway.example/api/plugins/portal/martina/dashboard",
+      "https://gateway.example/api/plugins/portal/martina/runs",
+    ]);
+  });
+
   it("keeps targeted fleet-router chat runs on the gateway run surface", async () => {
     const fetchImpl = vi.fn(
       async () =>
@@ -791,5 +872,286 @@ describe("agnostic HTTP API client package", () => {
     expect(() =>
       generic.generateMedia({ kind: "image" as never, input: "cover art" }),
     ).toThrow(/unsupported media kind/u);
+  });
+
+  it("uses one gateway wiki interface across generic, Hermes, and OpenClaw providers", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = String(url);
+      if (requestUrl.endsWith("/v1/wiki/vaults")) {
+        return new Response(
+          JSON.stringify({
+            vaults: [{ id: "research", defaultFormat: "qmd" }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/tree")) {
+        return new Response(
+          JSON.stringify({
+            vaultId: "research",
+            entries: [{ path: "index.qmd", kind: "file", format: "qmd" }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/read?path=index.qmd")) {
+        return new Response(
+          JSON.stringify({
+            vaultId: "research",
+            path: "index.qmd",
+            format: "qmd",
+            content: "# Research",
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/ingest")) {
+        return new Response(
+          JSON.stringify({ jobId: "ingest_1", vaultId: "research", status: "queued" }),
+          { status: 202 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/compile")) {
+        return new Response(
+          JSON.stringify({
+            jobId: "compile_1",
+            vaultId: "research",
+            status: "running",
+          }),
+          { status: 202 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/promote")) {
+        return new Response(
+          JSON.stringify({
+            jobId: "promote_1",
+            vaultId: "research",
+            status: "completed",
+            outputPath: "published/index.qmd",
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/jobs/compile%2F1")) {
+        return new Response(
+          JSON.stringify({
+            jobId: "compile/1",
+            vaultId: "research",
+            status: "completed",
+            artifactId: "artifact_1",
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/wiki/vaults/research/artifacts/artifact%2F1")) {
+        return new Response("qmd-artifact", {
+          status: 200,
+          headers: { "Content-Type": "text/markdown" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "ok", init }), { status: 200 });
+    });
+    const generic = new GatewayWikiApiClient({
+      baseUrl: "https://gateway.example",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const hermes = createGatewayWikiClient(
+      { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
+      { provider: "hermes" },
+    );
+    const openclaw = createGatewayWikiClient(
+      { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
+      { provider: "openclaw" },
+    );
+
+    expect(generic.surface).toBe("gateway-wiki-api");
+    expect(hermes).toBeInstanceOf(HermesWikiApiClient);
+    expect(hermes.surface).toBe("hermes-wiki-api");
+    expect(openclaw).toBeInstanceOf(OpenClawWikiApiClient);
+    expect(openclaw.surface).toBe("openclaw-wiki-api");
+    await expect(generic.listWikiVaults()).resolves.toEqual({
+      vaults: [{ id: "research", defaultFormat: "qmd" }],
+    });
+    await expect(generic.getWikiTree("research")).resolves.toMatchObject({
+      vaultId: "research",
+      entries: [{ path: "index.qmd", kind: "file", format: "qmd" }],
+    });
+    await expect(generic.readWikiPage("research", "index.qmd")).resolves.toMatchObject({
+      vaultId: "research",
+      path: "index.qmd",
+      content: "# Research",
+    });
+    await expect(hermes.ingestWiki("research", {
+      path: "drafts/inbox.qmd",
+      content: "# Inbox",
+      format: "qmd",
+    }, "wiki-ingest-1")).resolves.toMatchObject({
+      jobId: "ingest_1",
+      status: "queued",
+    });
+    await expect(openclaw.compileWiki("research", {
+      path: "index.qmd",
+      target: "html",
+    })).resolves.toMatchObject({
+      jobId: "compile_1",
+      status: "running",
+    });
+    await expect(generic.promoteWiki("research", {
+      sourcePath: "drafts/inbox.qmd",
+      targetPath: "published/index.qmd",
+    })).resolves.toMatchObject({
+      jobId: "promote_1",
+      status: "completed",
+      outputPath: "published/index.qmd",
+    });
+    await expect(generic.getWikiJob("research", "compile/1")).resolves.toMatchObject({
+      jobId: "compile/1",
+      artifactId: "artifact_1",
+      status: "completed",
+    });
+    const artifact = await generic.getWikiArtifact("research", "artifact/1", {
+      accept: "text/markdown",
+    });
+
+    expect(await artifact.text()).toBe("qmd-artifact");
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
+      "https://gateway.example/v1/wiki/vaults",
+      "https://gateway.example/v1/wiki/vaults/research/tree",
+      "https://gateway.example/v1/wiki/vaults/research/read?path=index.qmd",
+      "https://gateway.example/v1/wiki/vaults/research/ingest",
+      "https://gateway.example/v1/wiki/vaults/research/compile",
+      "https://gateway.example/v1/wiki/vaults/research/promote",
+      "https://gateway.example/v1/wiki/vaults/research/jobs/compile%2F1",
+      "https://gateway.example/v1/wiki/vaults/research/artifacts/artifact%2F1",
+    ]);
+    expect(fetchImpl.mock.calls[3]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        path: "drafts/inbox.qmd",
+        content: "# Inbox",
+        format: "qmd",
+      }),
+    });
+    expect(fetchImpl.mock.calls[3]?.[1]?.headers).toMatchObject({
+      "Idempotency-Key": "wiki-ingest-1",
+    });
+    expect(fetchImpl.mock.calls[7]?.[1]?.headers).toMatchObject({
+      Accept: "text/markdown",
+    });
+    expect(() => generic.readWikiPage("research", " ")).toThrow(/missing wiki page path/u);
+  });
+
+  it("uses core SSE and WebSocket transports with provider adapters", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+      const requestUrl = String(url);
+      if (requestUrl.endsWith("/v1/runs/run%2F1/events")) {
+        return new Response(
+          `data: ${JSON.stringify({
+            event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+            run_id: "run/1",
+            delta: "hello",
+          })}\n\n`,
+          { status: 200, headers: { "Content-Type": "text/event-stream" } },
+        );
+      }
+      return new Response(JSON.stringify({ status: "completed", run_id: "run/1" }), {
+        status: 200,
+      });
+    });
+    const events: unknown[] = [];
+    const provider = new GatewaySseRunEventProvider({
+      httpBase: "https://gateway.example/",
+      authToken: "test-token",
+      clientId: "client-1",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      void provider.subscribe(
+        { runId: "run/1" },
+        {
+          onEvent: (event) => events.push(event),
+          onError: reject,
+          onComplete: resolve,
+        },
+      );
+    });
+
+    expect(events).toEqual([
+      {
+        event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+        runId: "run/1",
+        delta: "hello",
+        at: undefined,
+      },
+    ]);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(
+      "https://gateway.example/v1/runs/run%2F1/events",
+    );
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Accept: "text/event-stream",
+      Authorization: "Bearer test-token",
+      "X-Portal-Client-Id": "client-1",
+    });
+
+    const hermes = createGatewaySseRunEventProvider(
+      {
+        httpBase: "https://gateway.example",
+        authToken: "test-token",
+        clientId: "client-1",
+        sessionKey: "session-1",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      },
+      { provider: "hermes" },
+    );
+    await new Promise<void>((resolve, reject) => {
+      void hermes.subscribe(
+        { runId: "run/1" },
+        {
+          onEvent: () => undefined,
+          onError: reject,
+          onComplete: resolve,
+        },
+      );
+    });
+    const openclaw = createGatewaySseRunEventProvider(
+      {
+        httpBase: "https://gateway.example",
+        authToken: "test-token",
+        clientId: "client-1",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      },
+      { provider: "openclaw" },
+    );
+    const hermesWs = createGatewayWebSocketClient(
+      "wss://gateway.example/api/ws",
+      "test-token",
+      { clientId: "client-1" },
+      { provider: "hermes" },
+    );
+    const openclawWs = createGatewayWebSocketClient(
+      "wss://gateway.example/ws",
+      "test-token",
+      { clientId: "client-1" },
+      { provider: "openclaw" },
+    );
+
+    expect(hermes).toBeInstanceOf(HermesSseRunEventProvider);
+    expect(openclaw).toBeInstanceOf(OpenClawSseRunEventProvider);
+    expect(hermesWs).toBeInstanceOf(HermesWebSocketClient);
+    expect(openclawWs).toBeInstanceOf(OpenClawWebSocketClient);
+    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "X-Hermes-Session-Key": "session-1",
+    });
+    expect(() =>
+      createGatewaySseRunEventProvider(
+        {
+          httpBase: "https://gateway.example",
+          authToken: "test-token",
+          clientId: "client-1",
+        },
+        { provider: "hermes" },
+      ),
+    ).toThrow(/sessionKey/u);
   });
 });

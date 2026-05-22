@@ -1,8 +1,21 @@
 import { GatewayApiClient } from "../core/gateway/client.js";
 import { GatewayMediaApiClient } from "../core/gateway/media.js";
+import { GatewayRpcClient, type GatewayRpcClientOptions } from "../core/gateway/rpc.js";
+import {
+  GatewaySseRunEventProvider,
+  type GatewaySseRunEventProviderOptions,
+} from "../core/gateway/sse-run-event-provider.js";
+import { GatewayWikiApiClient } from "../core/gateway/wiki.js";
 import { HermesApiClient } from "./hermes/client.js";
 import { HermesMediaApiClient } from "./hermes/media.js";
+import { HermesSseRunEventProvider } from "./hermes/sse-run-event-provider.js";
+import { HermesWebSocketClient } from "./hermes/websocket.js";
+import { HermesWikiApiClient } from "./hermes/wiki.js";
+import { OpenClawApiClient } from "./openclaw/client.js";
 import { OpenClawMediaApiClient } from "./openclaw/media.js";
+import { OpenClawSseRunEventProvider } from "./openclaw/sse-run-event-provider.js";
+import { OpenClawWebSocketClient } from "./openclaw/websocket.js";
+import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
 import type { HttpApiClientOptions } from "../core/http/types.js";
 
 export type GatewayProviderKind = "gateway" | "hermes" | "openclaw";
@@ -53,10 +66,51 @@ export function createGatewayApiClient(
   if (provider === "hermes") {
     return new HermesApiClient(clientOptions);
   }
-  return new GatewayApiClient(
-    clientOptions,
-    provider === "openclaw" ? "openclaw-api" : "gateway-api",
-  );
+  if (provider === "openclaw") {
+    return new OpenClawApiClient(clientOptions);
+  }
+  return new GatewayApiClient(clientOptions);
+}
+
+export function createGatewayWebSocketClient(
+  wsUrl: string,
+  authToken: string | null,
+  clientOptions: GatewayRpcClientOptions = {},
+  providerOptions: ResolveGatewayProviderOptions = {},
+): GatewayRpcClient {
+  const provider = resolveGatewayProviderKind(providerOptions);
+  if (provider === "hermes") {
+    return new HermesWebSocketClient(wsUrl, authToken, clientOptions);
+  }
+  if (provider === "openclaw") {
+    return new OpenClawWebSocketClient(wsUrl, authToken, clientOptions);
+  }
+  return new GatewayRpcClient(wsUrl, authToken, clientOptions);
+}
+
+export const createGatewayRpcClient = createGatewayWebSocketClient;
+
+export type CreateGatewaySseRunEventProviderOptions =
+  GatewaySseRunEventProviderOptions & {
+    sessionKey?: string;
+  };
+
+export function createGatewaySseRunEventProvider(
+  options: CreateGatewaySseRunEventProviderOptions,
+  providerOptions: ResolveGatewayProviderOptions = {},
+): GatewaySseRunEventProvider {
+  const provider = resolveGatewayProviderKind(providerOptions);
+  if (provider === "hermes") {
+    const sessionKey = options.sessionKey?.trim();
+    if (!sessionKey) {
+      throw new Error("createGatewaySseRunEventProvider: Hermes requires sessionKey");
+    }
+    return new HermesSseRunEventProvider({ ...options, sessionKey });
+  }
+  if (provider === "openclaw") {
+    return new OpenClawSseRunEventProvider(options);
+  }
+  return new GatewaySseRunEventProvider(options);
 }
 
 export function createGatewayMediaClient(
@@ -71,4 +125,18 @@ export function createGatewayMediaClient(
     return new OpenClawMediaApiClient(clientOptions);
   }
   return new GatewayMediaApiClient(clientOptions);
+}
+
+export function createGatewayWikiClient(
+  clientOptions: HttpApiClientOptions,
+  providerOptions: ResolveGatewayProviderOptions = {},
+): GatewayWikiApiClient {
+  const provider = resolveGatewayProviderKind(providerOptions);
+  if (provider === "hermes") {
+    return new HermesWikiApiClient(clientOptions);
+  }
+  if (provider === "openclaw") {
+    return new OpenClawWikiApiClient(clientOptions);
+  }
+  return new GatewayWikiApiClient(clientOptions);
 }

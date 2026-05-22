@@ -1,3 +1,7 @@
+export * from "./client.js";
 export * from "./media.js";
+export * from "./sse-run-event-provider.js";
 export * from "./team-registry.js";
 export * from "./team-registry-config.js";
+export * from "./websocket.js";
+export * from "./wiki.js";

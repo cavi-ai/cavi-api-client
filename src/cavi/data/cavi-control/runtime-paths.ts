@@ -90,7 +90,7 @@ function resolveSameOriginRuntimeBase(): string {
   if (typeof window === "undefined") {
     return "";
   }
-  // Gateway APIs are mounted at origin root (`/machine/api/*`, `/cavi-control/api/*`),
+  // Gateway APIs are mounted at origin root (`/api/plugins/*`, `/v1/*`),
   // even when the UI itself is served from a base path like `/cavi-control/`.
   return window.location.origin;
 }

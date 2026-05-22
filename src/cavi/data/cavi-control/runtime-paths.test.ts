@@ -65,9 +65,9 @@ describe("runtime paths", () => {
     expect(
       resolveGatewayHttpUrl(
         "https://gateway.example",
-        "/machine/api/dashboard",
+        "/api/plugins/machine/dashboard",
       ),
-    ).toBe(`${window.location.origin}/machine/api/dashboard`);
+    ).toBe(`${window.location.origin}/api/plugins/machine/dashboard`);
   });
 
   it("uses the runtime base path for local session endpoints", () => {

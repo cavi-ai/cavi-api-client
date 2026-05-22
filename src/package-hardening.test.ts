@@ -6,17 +6,30 @@ import {
   GATEWAY_PROVIDER_ENV_KEYS,
   GatewayApiClient,
   GatewayMediaApiClient,
+  GatewayRpcClient,
+  GatewaySseRunEventProvider,
+  GatewayWikiApiClient,
   HERMES_HTTP_API_ENV_ALIASES,
   HERMES_HTTP_API_ENV_KEYS,
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   HermesApiClient,
   HermesMediaApiClient,
+  HermesSseRunEventProvider,
+  HermesWebSocketClient,
+  HermesWikiApiClient,
+  OpenClawApiClient,
   OpenClawMediaApiClient,
+  OpenClawSseRunEventProvider,
+  OpenClawWebSocketClient,
+  OpenClawWikiApiClient,
   SURFACE_CONTRACTS,
   TEAM_REGISTRY_CONFIG,
   createGatewayApiClient,
   createGatewayMediaClient,
+  createGatewaySseRunEventProvider,
+  createGatewayWebSocketClient,
+  createGatewayWikiClient,
   createHermesTeamRegistry,
   createOpenClawTeamRegistry,
   requireRepoRoot,
@@ -468,11 +481,14 @@ describe("package hardening", () => {
       Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))) as typeof fetch;
     const client = new GatewayApiClient({ baseUrl: "https://gateway.example", fetchImpl });
     const media = new GatewayMediaApiClient({ baseUrl: "https://gateway.example", fetchImpl });
+    const wiki = new GatewayWikiApiClient({ baseUrl: "https://gateway.example", fetchImpl });
 
     expect(client.surface).toBe("gateway-api");
     expect(client.endpoints.runs).toBe("/v1/runs");
     expect(media.surface).toBe("gateway-media-api");
     expect(media.endpoints.generate("audio")).toBe("/v1/media/audio/generate");
+    expect(wiki.surface).toBe("gateway-wiki-api");
+    expect(wiki.endpoints.compile("research")).toBe("/v1/wiki/vaults/research/compile");
   });
 
   it("selects gateway implementations by explicit provider or env", () => {
@@ -494,6 +510,57 @@ describe("package hardening", () => {
       { baseUrl: "https://gateway.example", fetchImpl },
       { provider: "openclaw" },
     );
+    const hermesWiki = createGatewayWikiClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "hermes" },
+    );
+    const openclawWiki = createGatewayWikiClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "openclaw" },
+    );
+    const genericWs = createGatewayWebSocketClient(
+      "wss://gateway.example/ws",
+      "token",
+      { clientId: "client-1" },
+      { provider: "gateway" },
+    );
+    const hermesWs = createGatewayWebSocketClient(
+      "wss://gateway.example/api/ws",
+      "token",
+      { clientId: "client-1" },
+      { provider: "hermes" },
+    );
+    const openclawWs = createGatewayWebSocketClient(
+      "wss://gateway.example/ws",
+      "token",
+      { clientId: "client-1" },
+      { provider: "openclaw" },
+    );
+    const genericSse = createGatewaySseRunEventProvider(
+      {
+        httpBase: "https://gateway.example",
+        authToken: "token",
+        clientId: "client-1",
+      },
+      { provider: "gateway" },
+    );
+    const hermesSse = createGatewaySseRunEventProvider(
+      {
+        httpBase: "https://gateway.example",
+        authToken: "token",
+        clientId: "client-1",
+        sessionKey: "session-1",
+      },
+      { provider: "hermes" },
+    );
+    const openclawSse = createGatewaySseRunEventProvider(
+      {
+        httpBase: "https://gateway.example",
+        authToken: "token",
+        clientId: "client-1",
+      },
+      { provider: "openclaw" },
+    );
 
     expect(resolveGatewayProviderKind({ env: { GATEWAY_PROVIDER: "generic" } })).toBe("gateway");
     expect(GATEWAY_PROVIDER_ENV_KEYS).toEqual(["CAVI_GATEWAY_PROVIDER", "GATEWAY_PROVIDER"]);
@@ -503,12 +570,23 @@ describe("package hardening", () => {
     );
     expect(hermes).toBeInstanceOf(HermesApiClient);
     expect(hermes.surface).toBe("hermes-api-server");
+    expect(openclaw).toBeInstanceOf(OpenClawApiClient);
     expect(openclaw).toBeInstanceOf(GatewayApiClient);
     expect(openclaw.surface).toBe("openclaw-api");
     expect(hermesMedia).toBeInstanceOf(HermesMediaApiClient);
     expect(hermesMedia.surface).toBe("hermes-media-api");
     expect(openclawMedia).toBeInstanceOf(OpenClawMediaApiClient);
     expect(openclawMedia.surface).toBe("openclaw-media-api");
+    expect(hermesWiki).toBeInstanceOf(HermesWikiApiClient);
+    expect(hermesWiki.surface).toBe("hermes-wiki-api");
+    expect(openclawWiki).toBeInstanceOf(OpenClawWikiApiClient);
+    expect(openclawWiki.surface).toBe("openclaw-wiki-api");
+    expect(genericWs).toBeInstanceOf(GatewayRpcClient);
+    expect(hermesWs).toBeInstanceOf(HermesWebSocketClient);
+    expect(openclawWs).toBeInstanceOf(OpenClawWebSocketClient);
+    expect(genericSse).toBeInstanceOf(GatewaySseRunEventProvider);
+    expect(hermesSse).toBeInstanceOf(HermesSseRunEventProvider);
+    expect(openclawSse).toBeInstanceOf(OpenClawSseRunEventProvider);
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {

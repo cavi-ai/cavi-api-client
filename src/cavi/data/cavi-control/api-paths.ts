@@ -61,7 +61,7 @@ export function describeHttpContract(
 }
 
 export function debWorkspaceExpectedContractSummary(): string {
-  return `GET ${DEB_API.profile} + ${DEB_API.sprint} + ${DEB_API.backlog} (compat: GET ${API_DEB})`;
+  return `GET ${DEB_API.profile} + ${DEB_API.sprint} + ${DEB_API.backlog} (aggregate: GET ${API_DEB})`;
 }
 
 /** Operator-facing hint when Deb workspace load fails (keep in sync with Deb adapters). */

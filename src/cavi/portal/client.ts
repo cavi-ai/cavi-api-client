@@ -1,5 +1,6 @@
 import { BaseHttpApiClient } from "../../core/http/client.js";
 import { CAVI_CONTROL_API_ENDPOINTS } from "../paths.js";
+import { resolvePath } from "../../contracts/resolve.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 
 export type PortalApiClientOptions = HttpApiClientOptions & {
@@ -25,11 +26,13 @@ export class PortalApiClient extends BaseHttpApiClient {
   }
 
   protected portalPath(path: string): string {
-    return `/${this.portalId}/api/${path.replace(/^\/+/, "")}`;
+    return `/api/plugins/portal/${encodeURIComponent(this.portalId)}/${path.replace(/^\/+/, "")}`;
   }
 
   getDashboard<T = unknown>(): Promise<T> {
-    return this.request<T>(this.portalPath("dashboard"));
+    return this.request<T>(
+      resolvePath("portal.dashboard", "canonical", { portal: this.portalId }),
+    );
   }
 
   getFromPortal<T = unknown>(relativePath: string): Promise<T> {

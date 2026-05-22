@@ -1,4 +1,7 @@
-import { GATEWAY_MEDIA_API_ENDPOINTS } from "./paths.js";
+import {
+  GATEWAY_MEDIA_API_ENDPOINTS,
+  GATEWAY_WIKI_API_ENDPOINTS,
+} from "./paths.js";
 import { resolveTeamRoutePath } from "./team-manifest.js";
 
 export type GatewayMode = "legacy" | "canonical";
@@ -198,6 +201,64 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     degradation: "hard",
     owner: "gateway/media contract",
     note: "Gateway-native music generation route implemented by Hermes and OpenClaw media clients.",
+  },
+  "gateway.wikiVaults": {
+    key: "gateway.wikiVaults",
+    method: "GET",
+    canonicalPath: () => GATEWAY_WIKI_API_ENDPOINTS.vaults,
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/wiki contract",
+    note: "Gateway-native wiki vault inventory for external Obsidian/QMD plugin vaults.",
+  },
+  "gateway.wikiTree": {
+    key: "gateway.wikiTree",
+    method: "GET",
+    canonicalPath: (params) => GATEWAY_WIKI_API_ENDPOINTS.tree(raw(params, "vaultId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/wiki contract",
+    note: "Gateway-native wiki tree route shared by Hermes and OpenClaw wiki plugins.",
+  },
+  "gateway.wikiRead": {
+    key: "gateway.wikiRead",
+    method: "GET",
+    canonicalPath: (params) =>
+      GATEWAY_WIKI_API_ENDPOINTS.read(raw(params, "vaultId"), raw(params, "path")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/wiki contract",
+    note: "Gateway-native wiki page read route for QMD/Markdown-backed plugin vaults.",
+  },
+  "gateway.wikiIngest": {
+    key: "gateway.wikiIngest",
+    method: "POST",
+    canonicalPath: (params) =>
+      GATEWAY_WIKI_API_ENDPOINTS.ingest(raw(params, "vaultId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/wiki contract",
+    note: "Gateway-native wiki ingest route shared by Hermes and OpenClaw wiki plugins.",
+  },
+  "gateway.wikiCompile": {
+    key: "gateway.wikiCompile",
+    method: "POST",
+    canonicalPath: (params) =>
+      GATEWAY_WIKI_API_ENDPOINTS.compile(raw(params, "vaultId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/wiki contract",
+    note: "Gateway-native QMD compile route for wiki pages and collections.",
+  },
+  "gateway.wikiPromote": {
+    key: "gateway.wikiPromote",
+    method: "POST",
+    canonicalPath: (params) =>
+      GATEWAY_WIKI_API_ENDPOINTS.promote(raw(params, "vaultId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/wiki contract",
+    note: "Gateway-native promotion route for moving drafts/artifacts into a durable wiki vault.",
   },
   "hermes.runs": {
     key: "hermes.runs",

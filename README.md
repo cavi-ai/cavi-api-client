@@ -26,6 +26,8 @@ For workspace consumers, depend on the workspace package through the repo packag
 - `CaviControlApiClient` for CAVI Control HTTP endpoints.
 - `GatewayApiClient` and `createGatewayApiClient` for gateway-agnostic run and capability APIs.
 - `GatewayMediaApiClient`, `createGatewayMediaClient`, `HermesMediaApiClient`, and `OpenClawMediaApiClient` for gateway-native audio, video, and music generation.
+- `GatewayWikiApiClient`, `createGatewayWikiClient`, `HermesWikiApiClient`, and `OpenClawWikiApiClient` for gateway-native Obsidian/QMD wiki vault operations.
+- `GatewaySseRunEventProvider`, `createGatewaySseRunEventProvider`, `GatewayWebSocketClient`, and `createGatewayWebSocketClient` for shared run-event SSE and WebSocket/RPC transports.
 - `HermesApiClient` and Hermes run-stream helpers as provider-specific compatibility exports.
 - `TeamRegistry`, `TEAM_REGISTRY_CONFIG`, `configureTeamRegistryConfig`, `createHermesTeamRegistry`, and `createOpenClawTeamRegistry` for runtime-loaded team registry config.
 - `TeamManifest`, `normalizeTeamManifest`, `resolveTeamRoutePath`, `resolveTeamWorkspaceApiPath`, `resolveTeamWorkspacePath`, `resolveTeamActionContract`, and `resolveTeamActionApiPath` for agnostic team/member/workspace/action contracts.
@@ -150,7 +152,40 @@ const gateway = createGatewayApiClient(
 );
 ```
 
-Provider resolution checks an explicit `provider` first, then `CAVI_GATEWAY_PROVIDER`, then `GATEWAY_PROVIDER`, and defaults to `gateway`. Supported provider values are `gateway`, `hermes`, and `openclaw`. Hermes-specific exports remain available for existing callers, but new shared code should use `GatewayApiClient`, `GatewayCapabilities`, `GatewayRunStatus`, `streamGatewayChatRun`, and `GatewaySseRunEventProvider` unless it is binding to a Hermes-only behavior.
+Provider resolution checks an explicit `provider` first, then `CAVI_GATEWAY_PROVIDER`, then `GATEWAY_PROVIDER`, and defaults to `gateway`. Supported provider values are `gateway`, `hermes`, and `openclaw`. Hermes-specific exports remain available for existing callers, but new shared code should use `GatewayApiClient`, `GatewayCapabilities`, `GatewayRunStatus`, `streamGatewayChatRun`, `GatewaySseRunEventProvider`, and `GatewayWebSocketClient` unless it is binding to provider-only behavior.
+
+## Gateway Transports
+
+HTTP, run-event SSE, and WebSocket/RPC follow the same shape: core owns the
+base contract, while Hermes and OpenClaw provide thin adapters for
+provider-specific headers, endpoint maps, or default client surfaces.
+
+```ts
+import {
+  createGatewaySseRunEventProvider,
+  createGatewayWebSocketClient,
+} from "@cavi/api-client";
+
+const sse = createGatewaySseRunEventProvider(
+  {
+    httpBase: config.gateway.baseUrl,
+    authToken: config.gateway.authToken,
+    clientId: config.gateway.clientId,
+    sessionKey: session.id, // required by the Hermes adapter
+  },
+  { provider },
+);
+
+const ws = createGatewayWebSocketClient(
+  target.wsUrl,
+  config.gateway.authToken,
+  { clientId: config.gateway.clientId },
+  { provider },
+);
+```
+
+OpenClaw WebSocket clients and Hermes SSE clients should still be selected
+through these provider-aware factories in shared frontend code.
 
 ## Gateway Media
 
@@ -188,6 +223,51 @@ const asset = music.asset?.id
 The same interface is implemented by the generic gateway client plus
 `HermesMediaApiClient` and `OpenClawMediaApiClient`. Provider-specific routing
 stays behind `createGatewayMediaClient`.
+
+## Gateway Wiki
+
+Wiki operations are also core gateway features. Hermes and OpenClaw both expose
+external wiki plugins as specialized Obsidian-style vaults backed by QMD. Use
+the wiki client for ingest, compile, promote, tree/read, job polling, and
+artifact download instead of product-specific vault shims.
+
+```ts
+import { createGatewayWikiClient } from "@cavi/api-client";
+
+const wiki = createGatewayWikiClient(
+  {
+    baseUrl: config.gateway.baseUrl,
+    auth: {
+      bearerToken: config.gateway.authToken,
+      clientId: config.gateway.clientId,
+    },
+  },
+  { provider },
+);
+
+const vaults = await wiki.listWikiVaults();
+const tree = await wiki.getWikiTree("research");
+const page = await wiki.readWikiPage("research", "index.qmd");
+
+const ingest = await wiki.ingestWiki("research", {
+  path: "drafts/market-note.qmd",
+  content: "# Market note",
+  format: "qmd",
+});
+
+const compiled = await wiki.compileWiki("research", {
+  path: "drafts/market-note.qmd",
+  target: "html",
+});
+
+await wiki.promoteWiki("research", {
+  sourcePath: "drafts/market-note.qmd",
+  targetPath: "published/market-note.qmd",
+});
+```
+
+Legacy `/api/obsidian/*` vault helpers remain compatibility routes. New shared
+frontend code should prefer `GatewayWikiApiClient` and `createGatewayWikiClient`.
 
 ## Team Registry
 

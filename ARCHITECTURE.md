@@ -55,11 +55,32 @@ CAVI must not duplicate:
 
 - HTTP client implementation
 - gateway RPC implementation
+- gateway SSE run-event parsing or polling fallback
 - gateway media interfaces for audio, video, or music
+- gateway wiki interfaces for Obsidian/QMD vault ingest, compile, or promote
 - route resolver logic
 - static team registry defaults
 
 CAVI should call shared core methods and shared contract helpers.
+
+## Gateway Transports
+
+HTTP, run-event SSE, and WebSocket/RPC are core gateway contracts. The base
+implementations live in `src/core/gateway/**`; provider adapters live under
+`src/providers/hermes/**` and `src/providers/openclaw/**`.
+
+- HTTP: `GatewayApiClient` is the base client; Hermes and OpenClaw expose thin
+  provider clients selected by `createGatewayApiClient`.
+- SSE: `GatewaySseRunEventProvider` owns SSE parsing, canonical run-event
+  translation, and polling fallback. Provider adapters only add endpoint maps
+  and required routing/session headers.
+- WebSocket/RPC: `GatewayRpcClient` / `GatewayWebSocketClient` own the shared
+  protocol implementation. Provider clients are selected through
+  `createGatewayWebSocketClient` or the `createGatewayRpcClient` alias.
+
+New transport behavior should enter through these core contracts first. A
+provider module may customize headers, endpoint maps, or defaults, but it
+should not fork the parser, RPC protocol, retry semantics, or trace behavior.
 
 ## Gateway Media
 
@@ -69,6 +90,17 @@ Audio, video, and music are core gateway features. The shared interface lives in
 as Machine TTS may remain as compatibility helpers, but new media generation
 should use `GatewayMediaApiClient` or `createGatewayMediaClient` so Hermes and
 OpenClaw stay behind the same contract.
+
+## Gateway Wiki
+
+Wiki support is also a core gateway feature. The shared interface lives in
+`src/core/gateway/wiki.ts`; provider-specific clients live under
+`src/providers/hermes/**` and `src/providers/openclaw/**`. The gateway wiki
+contract treats external wiki plugins as specialized Obsidian-style vaults
+backed by QMD and owns common methods such as vault listing, tree/read, ingest,
+compile, promote, job lookup, and artifact download. Legacy `/api/obsidian/*`
+routes are compatibility shims only; new frontend code should use
+`GatewayWikiApiClient` or `createGatewayWikiClient`.
 
 ## Registry Model
 
