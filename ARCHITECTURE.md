@@ -96,11 +96,11 @@ Completed cleanup passes:
 - Shared JSON HTTP request helpers and gateway HTTP errors moved to `src/core/http/**`.
 - Gateway envelope/fallback contracts moved to `src/core/gateway/**`.
 - Gateway health/log tail system loaders and shared TTL cache plumbing moved to `src/core/gateway/**`.
-- Gateway-derived overview, run, routing, and incident snapshot orchestration moved to `src/core/gateway/snapshot-loaders.ts`, with fallbacks and source bindings injected by callers.
+- Gateway-derived overview, run, routing, and incident snapshot orchestration moved to `src/core/gateway/snapshots/loaders.ts`, with fallbacks and source bindings injected by callers.
 - Generic runtime base-path helpers moved to `src/core/runtime/**`, with CAVI runtime wrappers under `src/cavi/runtime/**`.
 - Generic SSE stream parsing and consumption moved to `src/core/sse/**`; gateway run-event providers now compose those helpers.
 - Deb and operator route aliases moved to `src/cavi/paths.ts`; operator defaults and section helpers remain in `src/cavi/operator/**`.
-- Gateway raw fetch helpers moved to `src/core/gateway/fetch.ts`; CAVI library code now only adapts session-auth runtime details before using core HTTP transports.
+- Gateway raw fetch helpers moved to `src/core/gateway/client/fetch.ts`; CAVI library code now only adapts session-auth runtime details before using core HTTP transports.
 - Generic WebSocket target resolution and close-event normalization moved to `src/core/ws/**`; the stale `src/core/gateway/websocket.ts` alias was quarantined.
 - Legacy `src/cavi/data/**` re-export/path shims were moved to quarantine; canonical folders and `src/contracts/paths.ts` are imported directly.
 - Dynamic portal route construction moved to `src/contracts/paths.ts`; CAVI portal clients now call the shared path helper instead of assembling API templates inline.
@@ -128,13 +128,19 @@ live in `src/core/gateway/**`; provider adapters live under
   `src/core/gateway/**`. CAVI may wrap these for product fallbacks, but must
   not duplicate the transport rules.
 - SSE: `core/sse/**` owns SSE parsing and stream consumption.
-  `GatewaySseRunEventProvider` owns canonical run-event translation and polling
+  `core/gateway/run/**` owns canonical run-event contracts, translation, and polling
   fallback. Provider adapters only add endpoint maps and required
   routing/session headers.
 - WebSocket/RPC: `GatewayRpcClient` owns the gateway JSON-RPC protocol while
   `core/ws/**` owns generic target and close-event helpers. Provider clients
   are selected through
   `createGatewayWebSocketClient` or the `createGatewayRpcClient` alias.
+- Agent config: `core/gateway/agent/**` owns the provider-neutral native
+  `/api/agent-configs/:id/config` contract, command parsing, voice parsing, and
+  generic config normalization.
+  Provider compatibility fallbacks, provider cookies, provider source paths,
+  and WebUI-shaped payload adapters belong in the provider implementation,
+  currently `providers/hermes/agent-config.ts`.
 
 New transport behavior should enter through these core contracts first. A
 provider module may customize headers, endpoint maps, factories, or defaults,
@@ -155,16 +161,16 @@ Provider selection is a plugin boundary, not a core gateway concern:
   registries by the host app instead of being added to this package.
 
 CAVI adapter modules should stay as composition layers over those contracts.
-For gateway WebSocket-backed control surfaces, `core/gateway/session-loaders.ts`
+For gateway WebSocket-backed control surfaces, `core/gateway/snapshots/session-loaders.ts`
 owns `sessions.*` request coalescing and cache behavior, while
-`core/gateway/snapshot-loaders.ts` owns reusable snapshot assembly. CAVI
+`core/gateway/snapshots/loaders.ts` owns reusable snapshot assembly. CAVI
 adapters inject compatibility fallbacks and keep CAVI-only surfaces such as
 operator control, Deb, Discourse, cost history, and library loading.
 
 ## Gateway Media
 
 Audio, video, and music are core gateway features. The shared interface lives in
-`src/core/gateway/media.ts`; provider-specific clients live under
+`src/core/gateway/resources/media.ts`; provider-specific clients live under
 `src/providers/hermes/**` and `src/providers/openclaw/**`. Product surfaces such
 as Machine TTS may remain as compatibility helpers, but new media generation
 should use `GatewayMediaApiClient` or `createGatewayMediaClient` so Hermes and
@@ -173,7 +179,7 @@ OpenClaw stay behind the same contract.
 ## Gateway Wiki
 
 Wiki support is also a core gateway feature. The shared interface lives in
-`src/core/gateway/wiki.ts`; provider-specific clients live under
+`src/core/gateway/resources/wiki.ts`; provider-specific clients live under
 `src/providers/hermes/**` and `src/providers/openclaw/**`. The gateway wiki
 contract treats external wiki plugins as specialized Obsidian-style vaults
 backed by QMD and owns common methods such as vault listing, tree/read, ingest,

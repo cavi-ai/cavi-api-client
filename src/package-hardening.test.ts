@@ -15,12 +15,14 @@ import {
   HERMES_HTTP_API_ENV_KEYS,
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
+  HermesAgentConfigApiClient,
   HermesApiClient,
   HermesMediaApiClient,
   HermesSseRunEventProvider,
   HermesWebSocketClient,
   HermesWikiApiClient,
   OpenClawApiClient,
+  OpenClawAgentConfigApiClient,
   OpenClawMediaApiClient,
   OpenClawSseRunEventProvider,
   OpenClawWebSocketClient,
@@ -51,6 +53,8 @@ const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
 const PROVIDERS_GATEWAY_ROOT = path.join(SRC_ROOT, "providers", "gateway");
 const CORE_ENV_CONFIG = path.join(SRC_ROOT, "core", "env", "config.ts");
 const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
+const CORE_GATEWAY_AGENT_CONFIG = path.join(SRC_ROOT, "core", "gateway", "agent", "config.ts");
+const CORE_GATEWAY_ROOT = path.join(SRC_ROOT, "core", "gateway");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
 const CAVI_PATHS = path.join(SRC_ROOT, "cavi", "paths.ts");
 const CAVI_ROOT = path.join(SRC_ROOT, "cavi");
@@ -64,8 +68,8 @@ const CORE_GATEWAY_WEBSOCKET = path.join(SRC_ROOT, "core", "gateway", "websocket
 const CORE_SSE_INDEX = path.join(SRC_ROOT, "core", "sse", "index.ts");
 const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
 const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
-const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "fetch.ts");
-const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshot-loaders.ts");
+const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "client", "fetch.ts");
+const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshots", "loaders.ts");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -396,6 +400,87 @@ describe("package hardening", () => {
     expect(read(CORE_HTTP_TYPES)).not.toContain("hermes-api-server");
   });
 
+  it("keeps provider-specific agent config compatibility out of core", () => {
+    const coreSource = read(CORE_GATEWAY_AGENT_CONFIG);
+    const hermesSource = read(path.join(SRC_ROOT, "providers", "hermes", "agent-config.ts"));
+
+    expect(coreSource).not.toMatch(/\b(?:Hermes|hermes|WebUI|webui)\b/u);
+    expect(hermesSource).toContain("HERMES_PROFILE_COOKIE_NAME");
+    expect(hermesSource).toContain("buildAgentConfigFromHermesWebuiSnapshot");
+  });
+
+  it("keeps gateway implementations in owner folders with compatibility barrels", () => {
+    const expectedOwnerFiles = [
+      "src/core/gateway/README.md",
+      "src/core/gateway/client/index.ts",
+      "src/core/gateway/client/client.ts",
+      "src/core/gateway/client/error-details.ts",
+      "src/core/gateway/client/fetch.ts",
+      "src/core/gateway/client/runtime-targets.ts",
+      "src/core/gateway/agent/index.ts",
+      "src/core/gateway/agent/commands.ts",
+      "src/core/gateway/agent/config.ts",
+      "src/core/gateway/agent/voice-config.ts",
+      "src/core/gateway/run/index.ts",
+      "src/core/gateway/run/contracts.ts",
+      "src/core/gateway/run/event-stream.ts",
+      "src/core/gateway/run/sse-run-event-provider.ts",
+      "src/core/gateway/run/stream-failure.ts",
+      "src/core/gateway/snapshots/index.ts",
+      "src/core/gateway/snapshots/loaders.ts",
+      "src/core/gateway/snapshots/session-loaders.ts",
+      "src/core/gateway/snapshots/system-loaders.ts",
+      "src/core/gateway/snapshots/transforms.ts",
+      "src/core/gateway/envelope/index.ts",
+      "src/core/gateway/envelope/envelope.ts",
+      "src/core/gateway/envelope/types.ts",
+      "src/core/gateway/resources/index.ts",
+      "src/core/gateway/resources/media.ts",
+      "src/core/gateway/resources/wiki.ts",
+    ];
+    const expectedBarrels = new Map([
+      ["src/core/gateway/client.ts", 'export * from "./client/client.js";'],
+      ["src/core/gateway/error-details.ts", 'export * from "./client/error-details.js";'],
+      ["src/core/gateway/fetch.ts", 'export * from "./client/fetch.js";'],
+      ["src/core/gateway/runtime-targets.ts", 'export * from "./client/runtime-targets.js";'],
+      ["src/core/gateway/agent-commands.ts", 'export * from "./agent/commands.js";'],
+      ["src/core/gateway/agent-config.ts", 'export * from "./agent/config.js";'],
+      ["src/core/gateway/agent-voice-config.ts", 'export * from "./agent/voice-config.js";'],
+      ["src/core/gateway/run-event-stream.ts", 'export * from "./run/event-stream.js";'],
+      ["src/core/gateway/run-stream-contracts.ts", 'export * from "./run/contracts.js";'],
+      ["src/core/gateway/sse-run-event-provider.ts", 'export * from "./run/sse-run-event-provider.js";'],
+      ["src/core/gateway/stream-failure.ts", 'export * from "./run/stream-failure.js";'],
+      ["src/core/gateway/session-loaders.ts", 'export * from "./snapshots/session-loaders.js";'],
+      ["src/core/gateway/snapshot-loaders.ts", 'export * from "./snapshots/loaders.js";'],
+      ["src/core/gateway/system-loaders.ts", 'export * from "./snapshots/system-loaders.js";'],
+      ["src/core/gateway/transforms.ts", 'export * from "./snapshots/transforms.js";'],
+      ["src/core/gateway/envelope.ts", 'export * from "./envelope/index.js";'],
+      ["src/core/gateway/envelope-types.ts", 'export type * from "./envelope/types.js";'],
+      ["src/core/gateway/media.ts", 'export * from "./resources/media.js";'],
+      ["src/core/gateway/wiki.ts", 'export * from "./resources/wiki.js";'],
+    ]);
+
+    expect(expectedOwnerFiles.filter((relative) =>
+      !existsSync(path.join(PACKAGE_ROOT, relative)),
+    )).toEqual([]);
+    expect(read(path.join(CORE_GATEWAY_ROOT, "README.md"))).toMatch(
+      /New implementation should prefer the canonical\s+folder owner/u,
+    );
+    for (const [relative, expected] of expectedBarrels) {
+      expect(read(path.join(PACKAGE_ROOT, relative)).trim()).toBe(expected);
+    }
+    const flatGatewayImportOffenders = productionSourceFiles()
+      .filter((filePath) => !expectedBarrels.has(rel(filePath)))
+      .filter((filePath) =>
+        /from\s+["'][^"']*core\/gateway\/(?:agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms)\.js["']/u.test(
+          read(filePath),
+        ),
+      )
+      .map(rel);
+
+    expect(flatGatewayImportOffenders).toEqual([]);
+  });
+
   it("keeps production code independent from test fixtures", () => {
     const offenders = productionSourceFiles()
       .filter((filePath) => /from\s+["'][^"']*(?:test-support|__tests__)\//u.test(read(filePath)))
@@ -475,7 +560,7 @@ describe("package hardening", () => {
     const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
       exports: Record<string, unknown>;
     };
-    const gatewaySseSource = read(path.join(SRC_ROOT, "core", "gateway", "sse-run-event-provider.ts"));
+    const gatewaySseSource = read(path.join(SRC_ROOT, "core", "gateway", "run", "sse-run-event-provider.ts"));
 
     expect(read(CORE_SSE_INDEX)).toContain('export * from "./stream.js";');
     expect(packageJson.exports["./core/sse"]).toEqual({
@@ -483,7 +568,7 @@ describe("package hardening", () => {
       import: "./dist/core/sse/index.js",
       default: "./dist/core/sse/index.js",
     });
-    expect(gatewaySseSource).toContain('from "../sse/index.js";');
+    expect(gatewaySseSource).toContain('from "../../sse/index.js";');
     expect(gatewaySseSource).not.toMatch(/\bfunction\s+(?:parseSseBlock|takeNextSseBlock|drainBlocks|combineSignals)\b/u);
   });
 
@@ -673,6 +758,14 @@ describe("package hardening", () => {
       { baseUrl: "https://gateway.example", fetchImpl },
       { provider: "openclaw" },
     );
+    const hermesAgentConfig = createGatewayAgentConfigClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "hermes" },
+    );
+    const openclawAgentConfig = createGatewayAgentConfigClient(
+      { baseUrl: "https://gateway.example", fetchImpl },
+      { provider: "openclaw" },
+    );
     const genericWs = createGatewayWebSocketClient(
       "wss://gateway.example/ws",
       "token",
@@ -736,6 +829,10 @@ describe("package hardening", () => {
     expect(hermesWiki.surface).toBe("hermes-wiki-api");
     expect(openclawWiki).toBeInstanceOf(OpenClawWikiApiClient);
     expect(openclawWiki.surface).toBe("openclaw-wiki-api");
+    expect(hermesAgentConfig).toBeInstanceOf(HermesAgentConfigApiClient);
+    expect(hermesAgentConfig.surface).toBe("hermes-agent-config-api");
+    expect(openclawAgentConfig).toBeInstanceOf(OpenClawAgentConfigApiClient);
+    expect(openclawAgentConfig.surface).toBe("openclaw-agent-config-api");
     expect(genericWs).toBeInstanceOf(GatewayRpcClient);
     expect(hermesWs).toBeInstanceOf(HermesWebSocketClient);
     expect(openclawWs).toBeInstanceOf(OpenClawWebSocketClient);

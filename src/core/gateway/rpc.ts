@@ -54,7 +54,7 @@ export {
   type SessionsListRpcPayload,
   type SessionsListUnchangedPayload,
   type SessionsPreviewRequestParams,
-} from "./session-loaders.js";
+} from "./snapshots/session-loaders.js";
 
 type GatewayRpcRequest = {
   type: "req";

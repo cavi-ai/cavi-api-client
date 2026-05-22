@@ -72,11 +72,11 @@ export {
 } from "./core/gateway/fetch.js";
 export * from "./core/gateway/rpc.js";
 export * from "./core/gateway/runtime-targets.js";
-export * from "./core/gateway/snapshot-loaders.js";
+export * from "./core/gateway/snapshots/loaders.js";
 export * from "./core/sse/index.js";
 export * from "./core/ws/index.js";
 export * from "./react/gateway-provider.js";
-export * from "./core/gateway/transforms.js";
+export * from "./core/gateway/snapshots/transforms.js";
 export {
   createCaviControlAdapters,
   type CaviControlAdapters,
@@ -155,7 +155,7 @@ export {
   type GatewayCommandCapabilities,
   type GatewayCommandCatalog,
   type GatewayCommandSpec,
-} from "./core/gateway/agent-commands.js";
+} from "./core/gateway/agent/commands.js";
 
 export {
   GatewayMediaApiClient,
@@ -203,9 +203,32 @@ export {
 
 export {
   GatewayAgentConfigApiClient,
+  agentProfileConfigPath,
+  agentProfileConfigSourcePath,
+  assertAgentProfileId,
+  buildAgentConfigFromConfigSnapshot,
+  buildAgentProfileConfigPatchBody,
+  findAgentProfile,
+  isMissingAgentConfigRouteError,
+  normalizeAgentProfiles,
+  setAgentConfigPathValue,
+  type AgentConfig,
+  type AgentConfigDraftDiff,
+  type AgentConfigField,
+  type AgentConfigFieldKind,
+  type AgentConfigFieldValue,
+  type AgentConfigSection,
+  type AgentConfigSectionId,
+  type AgentProfileConfigPatchBody,
+  type AgentProfileSourcePathResolver,
+  type AgentProfileSummary,
+  type GatewayAgentConfigClient,
   type GatewayAgentConfigApiClientOptions,
   type GatewayAgentConfigEndpointMap,
-} from "./core/gateway/agent-config.js";
+  type GatewayConfigSchemaField,
+  type GatewayConfigSchemaPayload,
+  type PatchProfileConfigOptions,
+} from "./core/gateway/agent/config.js";
 
 export {
   GatewayWikiApiClient,
@@ -263,6 +286,15 @@ export {
 export { HermesMediaApiClient } from "./providers/hermes/media.js";
 export { OpenClawApiClient, type OpenClawCapabilities, type OpenClawRunStatus } from "./providers/openclaw/client.js";
 export { OpenClawMediaApiClient } from "./providers/openclaw/media.js";
+export {
+  HERMES_PROFILE_COOKIE_NAME,
+  HermesAgentConfigApiClient,
+  buildAgentConfigFromHermesConfigSnapshot,
+  buildAgentConfigFromHermesWebuiSnapshot,
+  hermesAgentProfileConfigYamlPath,
+  hermesProfileCookieHeader,
+} from "./providers/hermes/agent-config.js";
+export { OpenClawAgentConfigApiClient } from "./providers/openclaw/agent-config.js";
 export { HermesWikiApiClient } from "./providers/hermes/wiki.js";
 export { OpenClawWikiApiClient } from "./providers/openclaw/wiki.js";
 export { HermesWebSocketClient, type HermesWebSocketClientOptions } from "./providers/hermes/websocket.js";
@@ -286,7 +318,7 @@ export {
   type RunEventStreamSubscription,
   type RunPreviewPollProviderOptions,
   type RunPreviewSnapshotFetcher,
-} from "./core/gateway/run-event-stream.js";
+} from "./core/gateway/run/event-stream.js";
 
 export {
   GatewaySseRunEventProvider,
@@ -294,7 +326,7 @@ export {
   type GatewaySseRunEventHeaderResolver,
   type GatewaySseRunEventPhase,
   type GatewaySseRunEventProviderOptions,
-} from "./core/gateway/sse-run-event-provider.js";
+} from "./core/gateway/run/sse-run-event-provider.js";
 
 export {
   HermesSseRunEventProvider,

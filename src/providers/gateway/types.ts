@@ -1,10 +1,10 @@
-import type { GatewayAgentConfigApiClient } from "../../core/gateway/agent-config.js";
+import type { GatewayAgentConfigApiClient } from "../../core/gateway/agent/config.js";
 import type { GatewayApiClient } from "../../core/gateway/client.js";
 import type { GatewayMediaApiClient } from "../../core/gateway/media.js";
 import type {
   GatewaySseRunEventProvider,
   GatewaySseRunEventProviderOptions,
-} from "../../core/gateway/sse-run-event-provider.js";
+} from "../../core/gateway/run/sse-run-event-provider.js";
 import type { GatewayWikiApiClient } from "../../core/gateway/wiki.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 import type {

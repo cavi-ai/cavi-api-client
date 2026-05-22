@@ -10,7 +10,7 @@ import {
   createRunStreamWithToolFallback,
   type RunEventStreamSubscription,
   type RunPreviewSnapshotFetcher,
-} from "../../core/gateway/run-event-stream.js";
+} from "../../core/gateway/run/event-stream.js";
 
 /**
  * Provider-neutral metadata bag attached to a Hermes chat run. Free-form by

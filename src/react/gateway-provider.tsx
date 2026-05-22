@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { normalizeGatewayStreamFailure } from "../core/gateway/stream-failure.js";
+import { normalizeGatewayStreamFailure } from "../core/gateway/run/stream-failure.js";
 import {
   GatewayRpcError,
   type GatewayConnectionState,

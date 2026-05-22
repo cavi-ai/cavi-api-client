@@ -13,7 +13,7 @@ core modules:
 
 - `src/core/http/**` owns raw/JSON HTTP clients, gateway HTTP errors, request helpers, and error-detail parsing.
 - `src/core/data/**` owns generic data guards and coercion helpers.
-- `src/core/gateway/**` owns gateway envelope/fallback contracts, RPC, SSE, media, wiki, and run-event contracts.
+- `src/core/gateway/**` owns gateway HTTP clients, agent config/commands, envelope/fallback contracts, snapshot loaders/transforms, RPC, run-event SSE, media, and wiki. New implementation should follow the folder map in `src/core/gateway/README.md`.
 - `src/core/sse/**` owns reusable Server-Sent Events stream parsing, stream consumption, and abort-signal helpers.
 - `src/core/ws/**` owns reusable WebSocket target resolution, close-event normalization, and WebSocket-facing aliases.
 - `src/core/runtime/**` owns generic runtime base-path helpers.
@@ -57,6 +57,7 @@ For workspace consumers, depend on the workspace package through the repo packag
 - `extractGatewayCommandCatalog`, `buildAgentSlashShortcuts`, `buildAgentMentionChips`, and `buildAgentCommandSurface` for slash-command and mention UI data sourced from `/v1/capabilities`.
 - `GatewayMediaApiClient`, `createGatewayMediaClient`, `HermesMediaApiClient`, and `OpenClawMediaApiClient` for gateway-native audio, video, and music generation.
 - `GatewayWikiApiClient`, `createGatewayWikiClient`, `HermesWikiApiClient`, and `OpenClawWikiApiClient` for gateway-native Obsidian/QMD wiki vault operations.
+- `GatewayAgentConfigApiClient`, `createGatewayAgentConfigClient`, `HermesAgentConfigApiClient`, and `OpenClawAgentConfigApiClient` for agent config. Core owns the provider-neutral native contract; Hermes WebUI compatibility is isolated in the Hermes provider implementation.
 - `GatewaySseRunEventProvider`, `createGatewaySseRunEventProvider`, `GatewayWebSocketClient`, and `createGatewayWebSocketClient` for shared run-event SSE and WebSocket/RPC transports.
 - `createGatewaySnapshotLoaders`, `createEmptyGatewaySnapshotFallbacks`, and `createDemoGatewaySnapshotFallbacks` for gateway-derived overview, run, routing, and incident snapshots with injected fallbacks.
 - Core SSE helpers such as `parseSseBlock`, `drainSseMessages`, `consumeSseStream`, and `combineAbortSignals`.

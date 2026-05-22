@@ -3,7 +3,7 @@ import {
   GatewaySseRunEventProvider as CoreGatewaySseRunEventProvider,
   type GatewaySseRunEventHeaderResolver,
   type GatewaySseRunEventProviderOptions,
-} from "../../core/gateway/sse-run-event-provider.js";
+} from "../../core/gateway/run/sse-run-event-provider.js";
 
 export type HermesSseRunEventProviderOptions = GatewaySseRunEventProviderOptions & {
   /** Required for `X-Hermes-Session-Key` on both the SSE request and the poll fallback. */

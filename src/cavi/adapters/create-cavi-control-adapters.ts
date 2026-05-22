@@ -3,7 +3,7 @@ import type {
   SessionsListPayload,
   SessionsPreviewPayload,
   SessionsUsagePayload,
-} from "../../core/gateway/transforms.js";
+} from "../../core/gateway/snapshots/transforms.js";
 import {
   type DataEnvelope,
   type MutationResult,

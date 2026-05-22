@@ -1,10 +1,10 @@
-import type { SessionLoaders } from "../../../core/gateway/session-loaders.js";
+import type { SessionLoaders } from "../../../core/gateway/snapshots/session-loaders.js";
 import {
   createEmptyGatewaySnapshotFallbacks,
   createGatewaySnapshotLoaders,
   type GatewaySnapshotBindingResolver,
   type GatewaySnapshotFallbacks,
-} from "../../../core/gateway/snapshot-loaders.js";
+} from "../../../core/gateway/snapshots/loaders.js";
 import { type DataEnvelope, withFallback } from "../../../core/gateway/envelope.js";
 import {
   type JsonHttpRequest,
@@ -30,7 +30,7 @@ import {
   fallbackRoutingMatrix,
   fallbackRunDetailForKey,
 } from "../../fallbacks/snapshots/index.js";
-import type { GatewaySystemLoaders } from "../../../core/gateway/system-loaders.js";
+import type { GatewaySystemLoaders } from "../../../core/gateway/snapshots/system-loaders.js";
 
 export type CaviSnapshotFallbackMode = "compat" | "empty" | "none";
 

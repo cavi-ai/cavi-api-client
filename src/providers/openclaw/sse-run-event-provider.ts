@@ -1,7 +1,7 @@
 import {
   GatewaySseRunEventProvider,
   type GatewaySseRunEventProviderOptions,
-} from "../../core/gateway/sse-run-event-provider.js";
+} from "../../core/gateway/run/sse-run-event-provider.js";
 import { GATEWAY_API_ENDPOINTS } from "../../contracts/paths.js";
 
 export type OpenClawSseRunEventProviderOptions = GatewaySseRunEventProviderOptions;

@@ -1,8 +1,8 @@
 // Universal agent-run and run-stream contracts are owned by core. Cavi only adds
 // its domain-specific aggregate shapes on top of them.
-export * from "../../core/gateway/run-stream-contracts.js";
+export * from "../../core/gateway/run/contracts.js";
 
-import type { AgentRun } from "../../core/gateway/run-stream-contracts.js";
+import type { AgentRun } from "../../core/gateway/run/contracts.js";
 
 export type AgentRunsSnapshot = {
   live: AgentRun[];

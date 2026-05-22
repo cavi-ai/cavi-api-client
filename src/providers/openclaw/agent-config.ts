@@ -1,4 +1,4 @@
-import { GatewayAgentConfigApiClient } from "../../core/gateway/agent-config.js";
+import { GatewayAgentConfigApiClient } from "../../core/gateway/agent/config.js";
 import { OPENCLAW_AGENT_CONFIG_API_ENDPOINTS } from "../../contracts/paths.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 
