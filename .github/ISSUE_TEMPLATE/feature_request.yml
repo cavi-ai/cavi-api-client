@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a new provider, feature, or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you solving?
+      description: The use case or pain point. What are you unable to do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        What would the API look like? If this is a new gateway provider, note which
+        parts genuinely differ from the existing ones (headers, endpoint map, default
+        surface) vs. what can reuse the gateway-agnostic core.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - New gateway provider
+        - New feature on an existing surface
+        - New core capability
+        - Developer experience / docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

@@ -2,7 +2,7 @@ import {
   GatewayApiClient,
   type GatewayCapabilities,
   type GatewayRunStatus,
-} from "../../core/gateway/client.js";
+} from "../../core/gateway/client/client.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 
 export type HermesCapabilities = GatewayCapabilities & {

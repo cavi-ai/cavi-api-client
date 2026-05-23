@@ -3,9 +3,9 @@ import {
   createEmptyGatewaySnapshotFallbacks,
   createGatewaySnapshotLoaders,
   type GatewaySnapshotFallbacks,
-} from "../../../core/gateway/snapshot-loaders";
-import type { SessionLoaders } from "../../../core/gateway/session-loaders";
-import type { GatewaySystemLoaders } from "../../../core/gateway/system-loaders";
+} from "../../../core/gateway/snapshots/loaders";
+import type { SessionLoaders } from "../../../core/gateway/snapshots/session-loaders";
+import type { GatewaySystemLoaders } from "../../../core/gateway/snapshots/system-loaders";
 
 function createSessionLoaders(
   overrides: Partial<SessionLoaders> = {},

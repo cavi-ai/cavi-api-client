@@ -17,7 +17,7 @@ import type { GatewayRpcClient } from "../rpc/client.js";
 import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
-} from "../cache.js";
+} from "./cache.js";
 
 export type SessionHttpRequestJson = <T>(
   path: string,

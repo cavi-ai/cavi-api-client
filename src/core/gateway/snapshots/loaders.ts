@@ -5,7 +5,7 @@ import {
   classifyFallbackError,
   type DataEnvelope,
   withFallback,
-} from "../envelope.js";
+} from "../envelope/index.js";
 import {
   BASELINE_SESSIONS_LIST_PARAMS,
   EMPTY_SESSIONS_USAGE,

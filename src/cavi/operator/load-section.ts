@@ -6,7 +6,7 @@ import {
   classifyFallbackError,
   fallbackGap,
   type ContractGap,
-} from "../../core/gateway/envelope.js";
+} from "../../core/gateway/envelope/index.js";
 import { GatewayHttpError } from "../../core/http/gateway-error.js";
 
 export type OperatorSectionLoadResult<

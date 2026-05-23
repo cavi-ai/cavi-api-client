@@ -1,8 +1,36 @@
 {
   "name": "@cavi/api-client",
-  "version": "0.2.1",
-  "description": "Gateway-agnostic TypeScript API client package for runtime surfaces",
+  "version": "1.0.0",
+  "description": "Gateway-agnostic TypeScript client for agent runtimes — one HTTP + WebSocket surface, provider adapters, and graceful degradation across workspaces, UIs, and gateways",
   "type": "module",
+  "license": "MIT",
+  "author": "sasan1200 <sasan.sotoodehfar@gmail.com>",
+  "homepage": "https://github.com/sasan1200/cavi-api-client#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sasan1200/cavi-api-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sasan1200/cavi-api-client/issues"
+  },
+  "keywords": [
+    "api-client",
+    "gateway",
+    "websocket",
+    "rpc",
+    "sse",
+    "typescript",
+    "esm",
+    "agent",
+    "llm",
+    "hermes",
+    "openclaw",
+    "fetch",
+    "react"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "!dist/test-support",
@@ -86,10 +114,12 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/react": "^19.2.15",
+    "@vitest/coverage-v8": "^4.1.5",
     "jsdom": "^29.1.1",
     "react": "^19.2.6",
     "typescript": "^6.0.3",

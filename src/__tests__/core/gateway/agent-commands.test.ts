@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildAgentSlashShortcuts,
   extractGatewayCommandCatalog,
-} from "../../../core/gateway/agent-commands";
-import type { GatewayCapabilities } from "../../../core/gateway/client";
+} from "../../../core/gateway/agent/commands";
+import type { GatewayCapabilities } from "../../../core/gateway/client/client";
 
 describe("gateway agent commands", () => {
   it("extracts slash commands from /v1/capabilities commands", () => {

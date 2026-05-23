@@ -8,7 +8,7 @@ import type { JsonHttpRequest } from "../../core/http/json-client.js";
 import {
   type MutationResult,
   withMutationResult,
-} from "../../core/gateway/envelope.js";
+} from "../../core/gateway/envelope/index.js";
 import { describeHttpContract } from "../../core/http/contracts.js";
 import {
   DEB_API,

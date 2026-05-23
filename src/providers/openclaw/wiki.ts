@@ -1,4 +1,4 @@
-import { GatewayWikiApiClient } from "../../core/gateway/wiki.js";
+import { GatewayWikiApiClient } from "../../core/gateway/resources/wiki.js";
 import { OPENCLAW_WIKI_API_ENDPOINTS } from "../../contracts/paths.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 

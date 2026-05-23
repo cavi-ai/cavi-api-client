@@ -4,7 +4,7 @@ import {
   fetchGatewayExpectOk,
   fetchGatewayJson,
   resolveGatewayRequestCredentials,
-} from "../../../core/gateway/fetch";
+} from "../../../core/gateway/client/fetch";
 import { PORTAL_CLIENT_ID_HEADER } from "../../../core/http/client-id";
 
 describe("gateway fetch helpers", () => {

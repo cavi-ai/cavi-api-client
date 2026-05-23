@@ -3,7 +3,7 @@ import {
   fallbackGap,
   type ContractGap,
   type DataEnvelope,
-} from "../../../core/gateway/envelope.js";
+} from "../../../core/gateway/envelope/index.js";
 import {
   type JsonHttpRequest,
   withQuery,

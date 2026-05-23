@@ -3,7 +3,7 @@ import {
   extractGatewayErrorDetails,
   formatGatewayHttpErrorMessage,
   parseGatewayErrorText,
-} from "../gateway/error-details.js";
+} from "../gateway/client/error-details.js";
 
 export {
   cleanGatewayErrorText,

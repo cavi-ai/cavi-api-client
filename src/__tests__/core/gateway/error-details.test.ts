@@ -3,7 +3,7 @@ import {
   extractGatewayErrorDetails,
   formatGatewayHttpErrorMessage,
   parseGatewayErrorText,
-} from "../../../core/gateway/error-details";
+} from "../../../core/gateway/client/error-details";
 
 describe("gateway error details", () => {
   it("extracts nested gateway error messages and codes", () => {

@@ -6,8 +6,8 @@ import {
 import {
   buildGatewayAuthHeaders,
   resolveGatewayRequestCredentials,
-} from "../../core/gateway/fetch.js";
-import { extractGatewayErrorDetails } from "../../core/gateway/error-details.js";
+} from "../../core/gateway/client/fetch.js";
+import { extractGatewayErrorDetails } from "../../core/gateway/client/error-details.js";
 import { appendHttpQuery, resolveLibraryApiPath } from "../paths.js";
 import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 

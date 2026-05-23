@@ -1,8 +1,8 @@
 import { GatewayAgentConfigApiClient } from "../../core/gateway/agent/config.js";
-import { GatewayApiClient } from "../../core/gateway/client.js";
-import { GatewayMediaApiClient } from "../../core/gateway/media.js";
+import { GatewayApiClient } from "../../core/gateway/client/client.js";
+import { GatewayMediaApiClient } from "../../core/gateway/resources/media.js";
 import { GatewaySseRunEventProvider } from "../../core/gateway/run/sse-run-event-provider.js";
-import { GatewayWikiApiClient } from "../../core/gateway/wiki.js";
+import { GatewayWikiApiClient } from "../../core/gateway/resources/wiki.js";
 import { GatewayWebSocketClient } from "../../core/ws/index.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 import { resolveGatewayProviderModule } from "./registry.js";

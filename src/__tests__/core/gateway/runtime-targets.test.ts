@@ -4,7 +4,7 @@ import {
   resolveGatewayRuntimeHttpUrl,
   resolveGatewayRuntimeWsUrl,
   sameGatewayDaemon,
-} from "../../../core/gateway/runtime-targets";
+} from "../../../core/gateway/client/runtime-targets";
 
 describe("gateway runtime targets", () => {
   it("treats localhost and 127.0.0.1 as the same loopback daemon when ports match", () => {

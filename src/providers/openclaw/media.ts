@@ -1,4 +1,4 @@
-import { GatewayMediaApiClient } from "../../core/gateway/media.js";
+import { GatewayMediaApiClient } from "../../core/gateway/resources/media.js";
 import { OPENCLAW_MEDIA_API_ENDPOINTS } from "../../contracts/paths.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 

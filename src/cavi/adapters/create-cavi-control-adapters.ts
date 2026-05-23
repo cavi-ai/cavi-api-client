@@ -8,7 +8,7 @@ import {
   type DataEnvelope,
   type MutationResult,
   withFallback,
-} from "../../core/gateway/envelope.js";
+} from "../../core/gateway/envelope/index.js";
 import { createJsonHttpRequest } from "../../core/http/json-client.js";
 import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 import type {

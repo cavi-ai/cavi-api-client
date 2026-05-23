@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFallbackError, withFallback } from "../../../core/gateway/envelope";
+import { classifyFallbackError, withFallback } from "../../../core/gateway/envelope/index";
 
 describe("envelope fallback classification", () => {
   it("treats unknown-method WS errors as fallback-eligible (old gateway binary)", async () => {

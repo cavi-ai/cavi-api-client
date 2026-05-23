@@ -5,7 +5,7 @@ import {
   type GatewaySnapshotBindingResolver,
   type GatewaySnapshotFallbacks,
 } from "../../../core/gateway/snapshots/loaders.js";
-import { type DataEnvelope, withFallback } from "../../../core/gateway/envelope.js";
+import { type DataEnvelope, withFallback } from "../../../core/gateway/envelope/index.js";
 import {
   type JsonHttpRequest,
   withQuery,

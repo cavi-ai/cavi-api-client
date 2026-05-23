@@ -39,6 +39,7 @@ import {
   createGatewayWikiClient,
   createHermesTeamRegistry,
   createOpenClawTeamRegistry,
+  portalConfigPatchPath,
   requireRepoRoot,
   resolveGatewayProviderKind,
   resolvePath,
@@ -48,13 +49,19 @@ import {
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
+const DIST_CORE_GATEWAY_ROOT = path.join(PACKAGE_ROOT, "dist", "core", "gateway");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
 const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
 const PROVIDERS_GATEWAY_ROOT = path.join(SRC_ROOT, "providers", "gateway");
 const CORE_ENV_CONFIG = path.join(SRC_ROOT, "core", "env", "config.ts");
 const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
 const CORE_GATEWAY_AGENT_CONFIG = path.join(SRC_ROOT, "core", "gateway", "agent", "config.ts");
+const CORE_GATEWAY_INDEX = path.join(SRC_ROOT, "core", "gateway", "index.ts");
+const CORE_GATEWAY_PROVIDER = path.join(SRC_ROOT, "core", "gateway", "provider.ts");
 const CORE_GATEWAY_ROOT = path.join(SRC_ROOT, "core", "gateway");
+const QUARANTINE_CORE_GATEWAY_INDEX = path.join(PACKAGE_ROOT, "quarantine", "src", "core", "gateway", "index.ts");
+const QUARANTINE_CORE_GATEWAY_PROVIDER = path.join(PACKAGE_ROOT, "quarantine", "src", "core", "gateway", "provider.ts");
+const QUARANTINE_DIST_CORE_GATEWAY_ROOT = path.join(PACKAGE_ROOT, "quarantine", "dist-stale", "core", "gateway");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
 const CAVI_PATHS = path.join(SRC_ROOT, "cavi", "paths.ts");
 const CAVI_ROOT = path.join(SRC_ROOT, "cavi");
@@ -170,6 +177,8 @@ const EXPECTED_TS_INCLUDE = [
 const ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE =
   /from "\.\/(?:base-client|types|config|repo-root|paths|surface-paths|surfaces|resolve|portal-paths|mobile-gateway-contracts|gateway-client|gateway-provider|cavi-control-client|library-client|portal-client|run-event-stream|run-stream-contracts|team-registry|team-registry-config|domain\/|gateway\/|gateway-transforms\/|data\/|hermes\/|openclaw\/)/u;
 const PROVIDER_FACTORY_ROOT_EXPORT_RE = /from "\.\/core\/gateway\/provider\.js"/u;
+const CORE_GATEWAY_COMPAT_BARREL_IMPORT_RE =
+  /from\s+["'][^"']*(?:core\/gateway\/|(?:\.\.\/)+gateway\/)(?:client|error-details|fetch|runtime-targets|media|wiki|envelope|envelope-types|cache|agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms|rpc|rpc-error|device-crypto|device-store|preauth-handshake|portal-config-patch)(?:\.js)?["']/u;
 const TEAM_REGISTRY_OWNER_FILES = [
   "src/cavi/registry/team-registry-config.ts",
   "src/providers/hermes/team-registry-config.ts",
@@ -376,12 +385,32 @@ describe("package hardening", () => {
   });
 
   it("points the package root at canonical implementation folders", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+
     expect(read(path.join(SRC_ROOT, "index.ts"))).not.toMatch(
       ROOT_INDEX_FORBIDDEN_SHIM_EXPORT_RE,
     );
     expect(read(path.join(SRC_ROOT, "index.ts"))).not.toMatch(
       PROVIDER_FACTORY_ROOT_EXPORT_RE,
     );
+    expect(packageJson.exports["./core/gateway"]).toEqual({
+      types: "./dist/core/gateway/index.d.ts",
+      import: "./dist/core/gateway/index.js",
+      default: "./dist/core/gateway/index.js",
+    });
+    expect(read(CORE_GATEWAY_INDEX).trim()).toBe([
+      'export * from "./client/index.js";',
+      'export * from "./agent/index.js";',
+      'export * from "./run/index.js";',
+      'export * from "./rpc/index.js";',
+      'export * from "./snapshots/index.js";',
+      'export * from "./resources/index.js";',
+      'export * from "./envelope/index.js";',
+      'export * from "./portal/index.js";',
+    ].join("\n"));
+    expect(read(QUARANTINE_CORE_GATEWAY_INDEX).trim()).toBe("export {};");
   });
 
   it("keeps core gateway independent from CAVI and provider implementations", () => {
@@ -393,6 +422,18 @@ describe("package hardening", () => {
       .map(rel);
 
     expect(offenders).toEqual([]);
+  });
+
+  it("keeps provider resolution out of core gateway", () => {
+    expect(existsSync(CORE_GATEWAY_PROVIDER)).toBe(false);
+    expect(read(QUARANTINE_CORE_GATEWAY_PROVIDER).trim()).toBe("export {};");
+    expect(read(QUARANTINE_CORE_GATEWAY_PROVIDER)).not.toMatch(
+      /\b(?:resolveGatewayProviderKind|GATEWAY_PROVIDER_ENV_KEYS|GatewayProviderKind)\b/u,
+    );
+    for (const file of ["provider.js", "provider.d.ts", "provider.d.ts.map"]) {
+      expect(existsSync(path.join(DIST_CORE_GATEWAY_ROOT, file))).toBe(false);
+      expect(existsSync(path.join(QUARANTINE_DIST_CORE_GATEWAY_ROOT, file))).toBe(true);
+    }
   });
 
   it("keeps provider-specific env naming out of core config", () => {
@@ -409,9 +450,10 @@ describe("package hardening", () => {
     expect(hermesSource).toContain("buildAgentConfigFromHermesWebuiSnapshot");
   });
 
-  it("keeps gateway implementations in owner folders with compatibility barrels", () => {
+  it("keeps gateway implementations in owner folders with quarantined flat shims", () => {
     const expectedOwnerFiles = [
       "src/core/gateway/README.md",
+      "src/core/gateway/index.ts",
       "src/core/gateway/client/index.ts",
       "src/core/gateway/client/client.ts",
       "src/core/gateway/client/error-details.ts",
@@ -427,6 +469,7 @@ describe("package hardening", () => {
       "src/core/gateway/run/sse-run-event-provider.ts",
       "src/core/gateway/run/stream-failure.ts",
       "src/core/gateway/snapshots/index.ts",
+      "src/core/gateway/snapshots/cache.ts",
       "src/core/gateway/snapshots/loaders.ts",
       "src/core/gateway/snapshots/session-loaders.ts",
       "src/core/gateway/snapshots/system-loaders.ts",
@@ -437,6 +480,8 @@ describe("package hardening", () => {
       "src/core/gateway/rpc/device-store.ts",
       "src/core/gateway/rpc/error.ts",
       "src/core/gateway/rpc/preauth-handshake.ts",
+      "src/core/gateway/portal/index.ts",
+      "src/core/gateway/portal/config-patch.ts",
       "src/core/gateway/envelope/index.ts",
       "src/core/gateway/envelope/envelope.ts",
       "src/core/gateway/envelope/types.ts",
@@ -444,7 +489,7 @@ describe("package hardening", () => {
       "src/core/gateway/resources/media.ts",
       "src/core/gateway/resources/wiki.ts",
     ];
-    const expectedBarrels = new Map([
+    const expectedQuarantinedShims = new Map([
       ["src/core/gateway/client.ts", 'export * from "./client/client.js";'],
       ["src/core/gateway/error-details.ts", 'export * from "./client/error-details.js";'],
       ["src/core/gateway/fetch.ts", 'export * from "./client/fetch.js";'],
@@ -465,8 +510,10 @@ describe("package hardening", () => {
       ["src/core/gateway/device-crypto.ts", 'export * from "./rpc/device-crypto.js";'],
       ["src/core/gateway/device-store.ts", 'export * from "./rpc/device-store.js";'],
       ["src/core/gateway/preauth-handshake.ts", 'export * from "./rpc/preauth-handshake.js";'],
+      ["src/core/gateway/portal-config-patch.ts", 'export * from "./portal/config-patch.js";'],
       ["src/core/gateway/envelope.ts", 'export * from "./envelope/index.js";'],
       ["src/core/gateway/envelope-types.ts", 'export type * from "./envelope/types.js";'],
+      ["src/core/gateway/cache.ts", 'export * from "./snapshots/cache.js";'],
       ["src/core/gateway/media.ts", 'export * from "./resources/media.js";'],
       ["src/core/gateway/wiki.ts", 'export * from "./resources/wiki.js";'],
     ]);
@@ -475,18 +522,24 @@ describe("package hardening", () => {
       !existsSync(path.join(PACKAGE_ROOT, relative)),
     )).toEqual([]);
     expect(read(path.join(CORE_GATEWAY_ROOT, "README.md"))).toMatch(
-      /New implementation should prefer the canonical\s+folder owner/u,
+      /Old flat gateway files are quarantined/u,
     );
-    for (const [relative, expected] of expectedBarrels) {
-      expect(read(path.join(PACKAGE_ROOT, relative)).trim()).toBe(expected);
+    for (const [relative, expected] of expectedQuarantinedShims) {
+      const activeSource = path.join(PACKAGE_ROOT, relative);
+      const quarantinedSource = path.join(PACKAGE_ROOT, relative.replace(/^src\//u, "quarantine/src/"));
+      const basename = path.basename(relative, ".ts");
+
+      expect(existsSync(activeSource)).toBe(false);
+      expect(read(quarantinedSource).trim()).toBe(expected);
+      for (const suffix of [".js", ".d.ts", ".d.ts.map"]) {
+        const distFile = path.join(DIST_CORE_GATEWAY_ROOT, `${basename}${suffix}`);
+        const quarantinedDistFile = path.join(QUARANTINE_DIST_CORE_GATEWAY_ROOT, `${basename}${suffix}`);
+        expect(existsSync(distFile)).toBe(false);
+        expect(existsSync(quarantinedDistFile)).toBe(true);
+      }
     }
     const flatGatewayImportOffenders = productionSourceFiles()
-      .filter((filePath) => !expectedBarrels.has(rel(filePath)))
-      .filter((filePath) =>
-        /from\s+["'][^"']*core\/gateway\/(?:agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms|rpc|rpc-error|device-crypto|device-store|preauth-handshake)\.js["']/u.test(
-          read(filePath),
-        ),
-      )
+      .filter((filePath) => CORE_GATEWAY_COMPAT_BARREL_IMPORT_RE.test(read(filePath)))
       .map(rel);
 
     expect(flatGatewayImportOffenders).toEqual([]);
@@ -719,12 +772,28 @@ describe("package hardening", () => {
       memberId: "chris",
       memoryKey: "comedy-room",
     })).toBe("/api/plugins/portal-memory/teams/machine/members/chris/comedy-room");
+    expect(portalConfigPatchPath("martina")).toBe(
+      resolvePath("portal.config", "canonical", { portal: "martina" }),
+    );
   });
 
   it("resolves repo roots only from explicit or REPO_ROOT-backed inputs", () => {
     expect(resolveRepoRoot({ repoRoot: " /workspace/project/ " })).toBe("/workspace/project");
     expect(resolveRepoRoot({ env: { REPO_ROOT: "/workspace/from-env/" } })).toBe("/workspace/from-env");
-    expect(() => requireRepoRoot({ env: {} })).toThrow(/Missing REPO_ROOT/u);
+
+    // resolveRepoRoot falls back to the ambient process.env as a last resort, so
+    // this assertion must clear it to stay hermetic on dev machines that export REPO_ROOT.
+    const priorRepoRoot = process.env.REPO_ROOT;
+    delete process.env.REPO_ROOT;
+    try {
+      expect(() => requireRepoRoot({ env: {} })).toThrow(/Missing REPO_ROOT/u);
+    } finally {
+      if (priorRepoRoot === undefined) {
+        delete process.env.REPO_ROOT;
+      } else {
+        process.env.REPO_ROOT = priorRepoRoot;
+      }
+    }
   });
 
   it("exposes the gateway-agnostic client alias", () => {

@@ -4,7 +4,7 @@ import {
   agentProfileConfigSourcePath,
   buildAgentConfigFromConfigSnapshot,
   buildAgentProfileConfigPatchBody,
-} from "../../../core/gateway/agent-config";
+} from "../../../core/gateway/agent/config";
 
 describe("gateway agent config client", () => {
   it("uses provider-neutral source paths for generic config snapshots", () => {

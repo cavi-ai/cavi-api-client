@@ -1000,4 +1000,4 @@ export {
   unflattenPortalConfigPatchKeys,
   type PortalConfigPatchRequestBody,
   type PostPortalConfigPatchParams,
-} from "../portal-config-patch.js";
+} from "../portal/config-patch.js";

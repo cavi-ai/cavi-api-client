@@ -1,9 +1,10 @@
-import { PORTAL_CLIENT_ID_HEADER } from "../http/types.js";
+import { resolvePath } from "../../../contracts/resolve.js";
+import { PORTAL_CLIENT_ID_HEADER } from "../../http/types.js";
 
 /**
  * Shared HTTP contract for portal dashboard config updates (POST).
  * Any client (mobile, web, scripts) may call {@link postPortalConfigPatch} against
- * `POST /{portalSlug}/api/config` once the gateway implements the route.
+ * the portal config surface once the gateway implements the route.
  */
 
 export const PORTAL_CONFIG_PATCH_CONTRACT = "PORTAL_CONFIG_PATCH_V1" as const;
@@ -52,7 +53,7 @@ export function portalConfigPatchPath(portalSlug: string): string {
   if (!slug || slug.includes("/")) {
     throw new Error(`portalConfigPatchPath: invalid portal slug "${portalSlug}"`);
   }
-  return `/${slug}/api/config`;
+  return resolvePath("portal.config", "canonical", { portal: slug });
 }
 
 /**
@@ -118,7 +119,7 @@ export async function postPortalConfigPatch(
   if (!res.ok) {
     const hint =
       res.status === 404 || res.status === 501
-        ? " (gateway may not expose POST …/api/config yet)"
+        ? " (gateway may not expose the portal.config surface yet)"
         : "";
     throw new PortalConfigPatchError(
       res.status,

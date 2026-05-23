@@ -58,8 +58,8 @@ export {
 } from "./core/http/redaction.js";
 
 export * from "./cavi/domain/index.js";
-export * from "./core/gateway/envelope.js";
-export * from "./core/gateway/error-details.js";
+export * from "./core/gateway/envelope/index.js";
+export * from "./core/gateway/client/error-details.js";
 export {
   buildGatewayAuthHeaders,
   fetchGatewayBlob,
@@ -69,9 +69,9 @@ export {
   requestGatewayRaw,
   resolveGatewayRequestCredentials,
   type GatewayHttpFetchOptions,
-} from "./core/gateway/fetch.js";
+} from "./core/gateway/client/fetch.js";
 export * from "./core/gateway/rpc/index.js";
-export * from "./core/gateway/runtime-targets.js";
+export * from "./core/gateway/client/runtime-targets.js";
 export * from "./core/gateway/snapshots/loaders.js";
 export * from "./core/sse/index.js";
 export * from "./core/ws/index.js";
@@ -140,7 +140,7 @@ export {
   type GatewayRunStartBody,
   type GatewayCapabilities,
   type GatewayRunStatus,
-} from "./core/gateway/client.js";
+} from "./core/gateway/client/client.js";
 
 export {
   FALLBACK_CORE_SLASH_COMMANDS,
@@ -172,7 +172,7 @@ export {
   type GatewayMediaKind,
   type GatewayMediaProvider,
   type GatewayMediaProviderList,
-} from "./core/gateway/media.js";
+} from "./core/gateway/resources/media.js";
 
 export {
   BUILT_IN_GATEWAY_PROVIDER_MODULES,
@@ -248,7 +248,7 @@ export {
   type GatewayWikiTreeEntry,
   type GatewayWikiVault,
   type GatewayWikiVaultList,
-} from "./core/gateway/wiki.js";
+} from "./core/gateway/resources/wiki.js";
 
 export {
   createTeamRegistry,

@@ -10,6 +10,14 @@ src/
     data/
     env/
     gateway/
+      agent/
+      client/
+      envelope/
+      portal/
+      resources/
+      rpc/
+      run/
+      snapshots/
     http/
     runtime/
     sse/
@@ -35,10 +43,14 @@ src/
   index.ts
 ```
 
-The build includes canonical folders only. Old root/source paths are not
-supported, are not package exports, and are not built. They are preserved only under
-`quarantine/src/**` or `quarantine/dist-stale/**` because this repo forbids
-deletion.
+Active source is organized under canonical folders. `src/core/gateway/index.ts`
+is the single canonical aggregate for gateway owner folders and backs the
+published `./core/gateway` subpath. Old flat `src/core/gateway/*.ts` shim paths
+are not active source, are not package-owned import targets, and live under
+`quarantine/src/**` with their stale generated outputs under
+`quarantine/dist-stale/**` because this repo forbids deletion.
+Provider resolution has one boundary in `src/providers/gateway/**`; the old core
+gateway provider-resolution file lives in quarantine.
 
 ## Dependency Direction
 
@@ -95,12 +107,13 @@ Completed cleanup passes:
 - Generic data guards moved to `src/core/data/**`.
 - Shared JSON HTTP request helpers and gateway HTTP errors moved to `src/core/http/**`.
 - Gateway envelope/fallback contracts moved to `src/core/gateway/**`.
-- Gateway health/log tail system loaders and shared TTL cache plumbing moved to `src/core/gateway/**`.
+- Gateway health/log tail system loaders moved to `src/core/gateway/snapshots/system-loaders.ts`.
 - Gateway-derived overview, run, routing, and incident snapshot orchestration moved to `src/core/gateway/snapshots/loaders.ts`, with fallbacks and source bindings injected by callers.
 - Generic runtime base-path helpers moved to `src/core/runtime/**`, with CAVI runtime wrappers under `src/cavi/runtime/**`.
 - Generic SSE stream parsing and consumption moved to `src/core/sse/**`; gateway run-event providers now compose those helpers.
 - Deb and operator route aliases moved to `src/cavi/paths.ts`; operator defaults and section helpers remain in `src/cavi/operator/**`.
 - Gateway raw fetch helpers moved to `src/core/gateway/client/fetch.ts`; CAVI library code now only adapts session-auth runtime details before using core HTTP transports.
+- Gateway snapshot TTL cache helpers moved to `src/core/gateway/snapshots/cache.ts`; the old `src/core/gateway/cache.ts` path is a compatibility barrel only.
 - Generic WebSocket target resolution and close-event normalization moved to `src/core/ws/**`; the stale `src/core/gateway/websocket.ts` alias was quarantined.
 - Legacy `src/cavi/data/**` re-export/path shims were moved to quarantine; canonical folders and `src/contracts/paths.ts` are imported directly.
 - Dynamic portal route construction moved to `src/contracts/paths.ts`; CAVI portal clients now call the shared path helper instead of assembling API templates inline.
@@ -159,6 +172,8 @@ Provider selection is a plugin boundary, not a core gateway concern:
 - `providers/gateway/built-ins.ts` is the built-in implementation wiring for
   Hermes and OpenClaw. New third-party providers should be passed as modules or
   registries by the host app instead of being added to this package.
+- Core gateway does not own provider resolution; provider selection has one
+  boundary in `src/providers/gateway/**`.
 
 CAVI adapter modules should stay as composition layers over those contracts.
 For gateway WebSocket-backed control surfaces, `core/gateway/snapshots/session-loaders.ts`

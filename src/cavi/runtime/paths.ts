@@ -3,7 +3,7 @@ import {
   resolveGatewayRuntimeHttpBase,
   resolveGatewayRuntimeHttpUrl,
   resolveGatewayRuntimeWsUrl,
-} from "../../core/gateway/runtime-targets.js";
+} from "../../core/gateway/client/runtime-targets.js";
 import {
   getBrowserWindowOrigin,
   normalizeRuntimeBasePath,
