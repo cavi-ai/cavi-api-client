@@ -1,4 +1,4 @@
-import type { OperatorControlSnapshot } from "../../../../../cavi/domain/index.js";
+import type { OperatorControlSnapshot } from "../../../../../extensions/cavi/domain/index.js";
 
 export const mockOperatorControlWorkerReady: OperatorControlSnapshot["workerReady"] =
   {

@@ -57,7 +57,6 @@ export {
   stringifyRedacted,
 } from "./core/http/redaction.js";
 
-export * from "./cavi/domain/index.js";
 export * from "./core/gateway/envelope/index.js";
 export * from "./core/gateway/client/error-details.js";
 export {
@@ -80,29 +79,34 @@ export * from "./core/gateway/snapshots/transforms.js";
 export {
   createCaviControlAdapters,
   type CaviControlAdapters,
-} from "./cavi/adapters/create-cavi-control-adapters.js";
+} from "./extensions/cavi/adapters/create-cavi-control-adapters.js";
 export {
   type CaviSnapshotFallbackMode,
   type CreateGatewayWsSnapshotLoadersOptions,
-} from "./cavi/adapters/cavi-control-adapters/gateway-ws-snapshot-loaders.js";
-export { normalizeDiscourseEvent } from "./cavi/discourse/normalize.js";
+} from "./extensions/cavi/adapters/cavi-control-adapters/gateway-ws-snapshot-loaders.js";
+export { normalizeDiscourseEvent } from "./extensions/cavi/discourse/normalize.js";
 
 export {
-  API_DEB,
+  API_PROJECT_BOARD,
   API_OPERATOR,
-  DEB_API,
   OPERATOR_API,
-  debBacklogItemPath,
-  debWorkspaceDiagnosticRouteHint,
-  debWorkspaceExpectedContractSummary,
+  PROJECT_BOARD_API,
   operatorControlExpectedContractSummary,
   operatorTaskDiscoursePath,
-} from "./cavi/paths.js";
+  projectBoardBacklogItemPath,
+  projectBoardWorkspaceDiagnosticRouteHint,
+  projectBoardWorkspaceExpectedContractSummary,
+  CAVI_CONTROL_BASE_PATH,
+  CAVI_CONTROL_API_ENDPOINTS,
+  LIBRARY_API_BASE_PATH,
+  LIBRARY_API_ENDPOINTS,
+  OPERATOR_DISPATCH_ENDPOINTS,
+  resolveLibraryApiPath,
+  resolvePortalApiPath,
+} from "./extensions/cavi/paths.js";
 
 export {
   appendHttpQuery,
-  CAVI_CONTROL_BASE_PATH,
-  CAVI_CONTROL_API_ENDPOINTS,
   GATEWAY_API_ENDPOINTS,
   GATEWAY_API_ENDPOINT_TEMPLATES,
   GATEWAY_MEDIA_API_BASE_PATH,
@@ -114,12 +118,8 @@ export {
   HERMES_API_ENDPOINT_TEMPLATES,
   HERMES_MEDIA_API_ENDPOINTS,
   HERMES_WIKI_API_ENDPOINTS,
-  LIBRARY_API_BASE_PATH,
-  LIBRARY_API_ENDPOINTS,
   OPENCLAW_MEDIA_API_ENDPOINTS,
   OPENCLAW_WIKI_API_ENDPOINTS,
-  OPERATOR_DISPATCH_ENDPOINTS,
-  resolveLibraryApiPath,
 } from "./contracts/paths.js";
 
 export {
@@ -131,7 +131,7 @@ export {
   type ResolveRepoRootOptions,
 } from "./core/env/repo-root.js";
 
-export { CaviControlApiClient } from "./cavi/client.js";
+export { CaviControlApiClient } from "./extensions/cavi/client.js";
 
 export {
   GatewayApiClient,
@@ -175,7 +175,6 @@ export {
 } from "./core/gateway/resources/media.js";
 
 export {
-  BUILT_IN_GATEWAY_PROVIDER_MODULES,
   createGatewayAgentConfigClient,
   createGatewayApiClient,
   createGatewayMediaClient,
@@ -185,10 +184,7 @@ export {
   createGatewayWebSocketClient,
   createGatewayWikiClient,
   GATEWAY_PROVIDER_ENV_KEYS,
-  GATEWAY_PROVIDER_MODULE,
-  HERMES_PROVIDER_MODULE,
   normalizeGatewayProviderToken,
-  OPENCLAW_PROVIDER_MODULE,
   resolveGatewayProviderKind,
   resolveGatewayProviderModule,
   type CreateGatewaySseRunEventProviderOptions,
@@ -199,7 +195,9 @@ export {
   type GatewayProviderModule,
   type GatewayProviderRegistry,
   type ResolveGatewayProviderOptions,
-} from "./providers/gateway-provider.js";
+} from "./core/gateway/providers/index.js";
+export { HERMES_PROVIDER_MODULE } from "./providers/hermes/provider-module.js";
+export { OPENCLAW_PROVIDER_MODULE } from "./providers/openclaw/provider-module.js";
 
 export {
   GatewayAgentConfigApiClient,
@@ -265,14 +263,14 @@ export {
   type TeamRegistryLibraryRefConfig,
   type TeamRegistryProviderKind,
   type TeamRegistryTeamConfig,
-} from "./cavi/registry/team-registry.js";
+} from "./extensions/cavi/registry/team-registry.js";
 
 export {
   TEAM_REGISTRY_CONFIG,
   configureTeamRegistryConfig,
   getConfiguredTeamRegistry,
   resetTeamRegistryConfig,
-} from "./cavi/registry/team-registry-config.js";
+} from "./extensions/cavi/registry/team-registry-config.js";
 
 export { createHermesTeamRegistry } from "./providers/hermes/team-registry.js";
 export { createOpenClawTeamRegistry } from "./providers/openclaw/team-registry.js";
@@ -366,7 +364,7 @@ export {
   type LibraryIngestRequest,
   type LibraryIngestResult,
   type LibraryIngestSource,
-} from "./cavi/library/client.js";
+} from "./extensions/cavi/library/client.js";
 
 export {
   LIBRARY_CLIP_DEFAULT_TEAM,
@@ -390,30 +388,34 @@ export {
   type LibraryClipSchemaSnapshot,
   type LibraryClipTransport,
   type LibraryManualFileClipInput,
-} from "./cavi/library/clip.js";
+} from "./extensions/cavi/library/clip.js";
 
-export { PortalApiClient, type PortalApiClientOptions } from "./cavi/portal/client.js";
+export { PortalApiClient, type PortalApiClientOptions } from "./extensions/cavi/portal/client.js";
 
 export {
-  MACHINE_TTS_PATH,
-  MACHINE_TTS_PROVIDERS_PATH,
-  buildMachineTtsVoiceOptions,
-  createMachineTtsAgentVoiceAssignment,
-  getMachineTtsProviderLabel,
-  requestMachineTtsAudio,
-  requestMachineTtsProviders,
-  type MachineTtsAgentVoiceAssignment,
-  type MachineTtsAudioTransport,
-  type MachineTtsBlobRequester,
-  type MachineTtsDashboardVoiceLike,
-  type MachineTtsJsonRequester,
-  type MachineTtsProviderLike,
-  type MachineTtsProviderVoiceLike,
-  type MachineTtsVoiceOption,
-} from "./cavi/portal/machine-tts.js";
+  PORTAL_TTS_PATH,
+  PORTAL_TTS_PROVIDERS_PATH,
+  buildPortalTtsVoiceOptions,
+  createPortalTtsAgentVoiceAssignment,
+  getPortalTtsProviderLabel,
+  requestPortalTtsAudio,
+  requestPortalTtsProviders,
+  type PortalTtsAgentVoiceAssignment,
+  type PortalTtsAudioTransport,
+  type PortalTtsBlobRequester,
+  type PortalTtsDashboardVoiceLike,
+  type PortalTtsJsonRequester,
+  type PortalTtsProviderLike,
+  type PortalTtsProviderVoiceLike,
+  type PortalTtsVoiceOption,
+} from "./extensions/cavi/portal/tts.js";
 
 export { SURFACE_CONTRACTS, type GatewayMode, type SurfaceContract } from "./contracts/surfaces.js";
 export { resolvePath } from "./contracts/resolve.js";
+export {
+  CAVI_SURFACE_CONTRACTS,
+  resolveCaviPath,
+} from "./extensions/cavi/contracts/index.js";
 export {
   DEFAULT_TEAM_ID,
   DEFAULT_TEAM_MEMBER_ID,
@@ -480,7 +482,7 @@ export {
   type PortalDashboardId,
   type PortalLibraryRef,
   type PortalMemoryEnvelope,
-} from "./contracts/portals.js";
+} from "./extensions/cavi/contracts/portals.js";
 export {
   GATEWAY_KANBAN_BOARD_PATH,
   GATEWAY_KANBAN_TASKS_PATH,
@@ -501,4 +503,4 @@ export {
   type MobileGatewaySurfaceClass,
   type MobileGatewaySurfaceKey,
   type OperatorTaskDispatchMode,
-} from "./contracts/mobile.js";
+} from "./extensions/cavi/contracts/mobile.js";

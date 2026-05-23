@@ -1,4 +1,8 @@
-import type { AgentRun, AgentRunDetailSnapshot, AgentRunsSnapshot } from "../../../../cavi/domain/index.js";
+import type { AgentRun } from "../../../../core/gateway/run/contracts.js";
+import type {
+  GatewaySessionRunDetailSnapshot,
+  GatewaySessionRunsSnapshot,
+} from "../../../../core/gateway/snapshots/contracts.js";
 import { mockNow as now } from "./shared.js";
 
 const mockRuns: AgentRun[] = [
@@ -63,7 +67,7 @@ const mockRuns: AgentRun[] = [
     totalCostUsd: 0.28,
   },
 ];
-export const mockAgentRuns: AgentRunsSnapshot = {
+export const mockAgentRuns: GatewaySessionRunsSnapshot = {
   live: mockRuns.filter((run) => run.status === "active" || run.status === "idle"),
   history: mockRuns,
   summary: {
@@ -74,7 +78,7 @@ export const mockAgentRuns: AgentRunsSnapshot = {
   },
 };
 
-export function mockRunDetailForKey(key: string): AgentRunDetailSnapshot {
+export function mockRunDetailForKey(key: string): GatewaySessionRunDetailSnapshot {
   const run = mockRuns.find((entry) => entry.key === key) ?? mockRuns[0] ?? null;
 
   return {

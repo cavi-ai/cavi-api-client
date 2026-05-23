@@ -2,7 +2,7 @@ import {
   createTeamRegistry,
   type TeamRegistry,
   type TeamRegistryConfig,
-} from "../../cavi/registry/team-registry.js";
+} from "../../extensions/cavi/registry/team-registry.js";
 import { TEAM_REGISTRY_CONFIG } from "./team-registry-config.js";
 
 export function createHermesTeamRegistry(

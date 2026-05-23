@@ -1,5 +1,5 @@
-import type { OperatorControlSnapshot } from "../../../../../cavi/domain/index.js";
-import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../../../cavi/paths.js";
+import type { OperatorControlSnapshot } from "../../../../../extensions/cavi/domain/index.js";
+import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../../../extensions/cavi/paths.js";
 import { mockNow as now } from "../shared.js";
 import { agentDefaults, k8sDefaults, teamDefaults } from "./defaults.js";
 

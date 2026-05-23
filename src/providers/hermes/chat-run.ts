@@ -2,7 +2,7 @@ import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamApprovalChoice,
   type RunStreamEvent,
-} from "../../cavi/domain/runs.js";
+} from "../../core/gateway/run/contracts.js";
 import { HERMES_API_ENDPOINTS } from "../../contracts/paths.js";
 import { HermesSseRunEventProvider } from "./sse-run-event-provider.js";
 import {

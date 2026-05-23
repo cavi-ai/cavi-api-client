@@ -1,4 +1,3 @@
-import { resolvePath } from "../../../contracts/resolve.js";
 import { PORTAL_CLIENT_ID_HEADER } from "../../http/types.js";
 
 /**
@@ -53,7 +52,7 @@ export function portalConfigPatchPath(portalSlug: string): string {
   if (!slug || slug.includes("/")) {
     throw new Error(`portalConfigPatchPath: invalid portal slug "${portalSlug}"`);
   }
-  return resolvePath("portal.config", "canonical", { portal: slug });
+  return `/api/plugins/portal/${encodeURIComponent(slug)}/config`;
 }
 
 /**

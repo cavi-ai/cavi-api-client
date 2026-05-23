@@ -46,11 +46,10 @@ src/
 Active source is organized under canonical folders. `src/core/gateway/index.ts`
 is the single canonical aggregate for gateway owner folders and backs the
 published `./core/gateway` subpath. Old flat `src/core/gateway/*.ts` shim paths
-are not active source, are not package-owned import targets, and live under
-`quarantine/src/**` with their stale generated outputs under
-`quarantine/dist-stale/**` because this repo forbids deletion.
+are not active source, are not package-owned import targets, and must not be
+reintroduced.
 Provider resolution has one boundary in `src/providers/gateway/**`; the old core
-gateway provider-resolution file lives in quarantine.
+gateway provider-resolution file is not active source.
 
 ## Dependency Direction
 
@@ -67,13 +66,13 @@ gateway provider-resolution file lives in quarantine.
   `providers/gateway/built-ins.ts`.
 - `react/**` may import from `core/gateway/**` and React only.
 - `cavi/fallbacks/snapshots/**` contains runtime fallback snapshots used by degraded gateway flows. These are production fallback data, not test mocks.
-- `cavi/data/**` is quarantined legacy shim space. Active source should import named folders such as `cavi/deb/**`, `cavi/operator/**`, `cavi/portal/**`, `cavi/registry/**`, `cavi/runtime/**`, or `cavi/library/**` directly.
+- `cavi/data/**` is removed legacy shim space. Active source should import named folders such as `cavi/deb/**`, `cavi/operator/**`, `cavi/portal/**`, `cavi/registry/**`, `cavi/runtime/**`, or `cavi/library/**` directly.
 - `__tests__/cavi/**` contains CAVI tests. Test files should not live under production `cavi/**` folders.
 - `__tests__/fixtures/**` contains test-only fixtures and helpers. Production modules must not depend on it and it is not part of the build include.
 
 ## CAVI Boundary
 
-Current CAVI paths such as `/cavi-control/api/*`, `/library/api/*`, dynamic portal plugin routes, and portal-memory routes are active CAVI contracts. Route literals and dynamic route helpers are owned by `src/contracts/paths.ts`; CAVI-facing aliases such as `DEB_API` and `OPERATOR_API` are centralized in `src/cavi/paths.ts`. Feature folders should not hide their own path owners. They are not treated as quarantine.
+Current CAVI paths such as `/cavi-control/api/*`, `/library/api/*`, dynamic portal plugin routes, and portal-memory routes are active CAVI contracts. Route literals and dynamic route helpers are owned by `src/contracts/paths.ts`; CAVI-facing aliases such as `DEB_API` and `OPERATOR_API` are centralized in `src/cavi/paths.ts`. Feature folders should not hide their own path owners or pretend active contracts are removed legacy paths.
 
 CAVI must not duplicate:
 
@@ -113,13 +112,13 @@ Completed cleanup passes:
 - Generic SSE stream parsing and consumption moved to `src/core/sse/**`; gateway run-event providers now compose those helpers.
 - Deb and operator route aliases moved to `src/cavi/paths.ts`; operator defaults and section helpers remain in `src/cavi/operator/**`.
 - Gateway raw fetch helpers moved to `src/core/gateway/client/fetch.ts`; CAVI library code now only adapts session-auth runtime details before using core HTTP transports.
-- Gateway snapshot TTL cache helpers moved to `src/core/gateway/snapshots/cache.ts`; the old `src/core/gateway/cache.ts` path is a compatibility barrel only.
-- Generic WebSocket target resolution and close-event normalization moved to `src/core/ws/**`; the stale `src/core/gateway/websocket.ts` alias was quarantined.
-- Legacy `src/cavi/data/**` re-export/path shims were moved to quarantine; canonical folders and `src/contracts/paths.ts` are imported directly.
+- Gateway snapshot TTL cache helpers moved to `src/core/gateway/snapshots/cache.ts`; the old `src/core/gateway/cache.ts` path is not active source.
+- Generic WebSocket target resolution and close-event normalization moved to `src/core/ws/**`; the stale `src/core/gateway/websocket.ts` alias is not active source.
+- Legacy `src/cavi/data/**` re-export/path shims are not active source; canonical folders and `src/contracts/paths.ts` are imported directly.
 - Dynamic portal route construction moved to `src/contracts/paths.ts`; CAVI portal clients now call the shared path helper instead of assembling API templates inline.
 - Portal envelope/library/memory contracts moved to `src/contracts/portals.ts`; CAVI registry and adapter code now imports those shared contracts directly.
-- CAVI-labeled core re-export shims for runtime HTTP transport and portal client-id validation were moved to quarantine; active modules import `core/http/**` and `contracts/**` directly.
-- Duplicate Deb/Discourse mock fixtures and stale generated `dist` outputs were moved to quarantine.
+- CAVI-labeled core re-export shims for runtime HTTP transport and portal client-id validation are not active source; active modules import `core/http/**` and `contracts/**` directly.
+- Duplicate Deb/Discourse mock fixtures and stale generated `dist` outputs are not active source.
 
 Remaining cleanup should focus on reducing the active `src/cavi/**` surface to
 actual CAVI-specific behavior, especially any lingering compatibility shims,
@@ -224,10 +223,8 @@ Deb, Martina, Machine, Front Door, and portal-memory paths are compatibility
 contracts and should not be expanded unless a gateway compatibility boundary
 requires it.
 
-## Quarantine
+## Removed Legacy Paths
 
-`quarantine/src/**` contains stale source and test fixture paths retained only
-because deletion is disallowed. `quarantine/dist-stale/**` contains generated
-output from source files that no longer exist in active source; TypeScript does
-not clean those files automatically. Nothing in `src/**`, `package.json`
-exports, `tsconfig.json`, or active tests may point at quarantine.
+Legacy shim paths are not retained as active source, generated output, package
+exports, `tsconfig.json` inputs, or test fixtures. Reintroducing a removed path
+requires updating the hardening tests with a concrete compatibility reason.

@@ -1,5 +1,5 @@
-import type { OverviewSnapshot } from "../../../../cavi/domain/index.js";
-import { GATEWAY_PROBE_ENDPOINTS } from "../../../../cavi/paths.js";
+import type { OverviewSnapshot } from "../../../../core/gateway/snapshots/contracts.js";
+import { GATEWAY_PROBE_ENDPOINTS } from "../../../../contracts/paths.js";
 import { mockNow as now } from "./shared.js";
 
 export const mockOverview: OverviewSnapshot = {

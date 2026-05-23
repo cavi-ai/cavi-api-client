@@ -1,233 +1,70 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
 import { GATEWAY_PROBE_ENDPOINTS } from "../../../contracts/paths.js";
-import type { GatewayResolvedRouteBinding } from "../../../contracts/team-manifest.js";
 import { asNumber, asString } from "../../data/guards.js";
+import type {
+  BuildOverviewSnapshotOptions,
+  GatewayIncidentRecord,
+  GatewayIncidentsSnapshot,
+  GatewayOverviewSnapshot,
+  GatewaySessionRun,
+  GatewaySessionRunStatus,
+  GatewaySessionRunDetailSnapshot,
+  GatewaySessionRunsSnapshot,
+  GatewayRoutingMatrixSnapshot,
+  LogsTailPayload,
+  RawSessionRow,
+  RawUsageSession,
+  ReadinessInput,
+  SessionsListPayload,
+  SessionsPreviewPayload,
+  SessionsUsagePayload,
+} from "./contracts.js";
 
 export { asNumber, asString };
-
-/**
- * Pure data transformation functions for Gateway / Cavi Control.
- * Zero dependencies. Takes raw gateway WS response payloads and returns
- * composite snapshots the UI needs.
- */
-
-export type GatewayHealthSnapshot = {
-  live: boolean;
-  ready: boolean;
-  checkedAt: number;
-  probes: {
-    healthz: {
-      path: typeof GATEWAY_PROBE_ENDPOINTS.healthz;
-      ok: boolean;
-      statusCode: 200;
-    };
-    readyz: {
-      path: typeof GATEWAY_PROBE_ENDPOINTS.readyz;
-      ok: boolean;
-      statusCode: 200 | 503;
-      failing: string[];
-      uptimeMs: number | null;
-    };
-  };
-};
-
-export type GatewayOverviewSnapshot = {
-  health: GatewayHealthSnapshot;
-  kpis: {
-    activeSessions: number;
-    totalSessions: number;
-    totalMessages: number;
-    totalToolCalls: number;
-    totalErrors: number;
-    estimatedCostUsd: number;
-  };
-  providerBreakdown: Array<{ provider: string; tokens: number; cost: number }>;
-  topAgents: Array<{ agentId: string; messages: number; cost: number }>;
-};
-
-/** Optional overrides when assembling an overview from paginated gateway payloads. */
-export type BuildOverviewSnapshotOptions = {
-  /**
-   * Authoritative total from `sessions.list` `count` when the returned `sessions`
-   * array is only one page; defaults to `sessions.length` when omitted or invalid.
-   */
-  totalSessions?: number;
-};
-
-export type GatewaySessionRunStatus = "active" | "idle" | "stalled" | "error";
-
-export type GatewaySessionRun = {
-  key: string;
-  title: string;
-  agentId: string;
-  channel: string;
-  updatedAt: number | null;
-  status: GatewaySessionRunStatus;
-  totalTokens: number;
-  errors: number;
-  /** Model identifier (e.g. "anthropic/claude-opus-4-6") when usage data provides it */
-  model?: string;
-  /** Estimated cost in USD when usage data provides it */
-  totalCostUsd?: number;
-  /** Optional manifest-derived binding for source/channel/team routing diagnostics. */
-  binding?: GatewayResolvedRouteBinding | null;
-};
-
-export type GatewaySessionRunsSnapshot = {
-  live: GatewaySessionRun[];
-  history: GatewaySessionRun[];
-  summary: {
-    active: number;
-    idle: number;
-    stalled: number;
-    error: number;
-  };
-};
-
-export type GatewaySessionRunDetailSnapshot = {
-  run: GatewaySessionRun | null;
-  preview: {
-    status: string;
-    items: Array<{
-      role: string;
-      text: string;
-      at: number | null;
-    }>;
-  };
-  usage: {
-    totalTokens: number;
-    totalCostUsd: number;
-    messages: number;
-    toolCalls: number;
-    errors: number;
-  };
-};
-
-export type GatewayRoutingMatrixSnapshot = {
-  rows: Array<{
-    channel: string;
-    handler: string;
-    totalRuns: number;
-    successRuns: number;
-    failedRuns: number;
-    successRate: number;
-    messages: number;
-    binding?: GatewayResolvedRouteBinding | null;
-  }>;
-  totals: {
-    totalRuns: number;
-    successRuns: number;
-    failedRuns: number;
-  };
-};
-
-export type GatewayIncidentRecord = {
-  id: string;
-  title: string;
-  summary: string;
-  severity: "critical" | "high" | "medium" | "low";
-  status: "open" | "investigating" | "blocked" | "resolved";
-  firstSeenAt: number;
-  lastSeenAt: number;
-  count: number;
-  owner: string;
-};
-
-export type GatewayIncidentsSnapshot = {
-  incidents: GatewayIncidentRecord[];
-  blockers: GatewayIncidentRecord[];
-};
-
-export type RawSessionRow = {
-  key?: string;
-  label?: string;
-  derivedTitle?: string;
-  agentId?: string;
-  channel?: string;
-  updatedAt?: number | null;
-  abortedLastRun?: boolean;
-  totalTokens?: number;
-  origin?: {
-    provider?: string;
-    surface?: string;
-  };
-};
-
-export type RawUsageSession = {
-  key?: string;
-  agentId?: string;
-  channel?: string;
-  modelProvider?: string;
-  model?: string;
-  modelOverride?: string;
-  providerOverride?: string;
-  origin?: {
-    provider?: string;
-    surface?: string;
-  };
-  usage?: {
-    totalTokens?: number;
-    totalCost?: number;
-    messageCounts?: {
-      total?: number;
-      toolCalls?: number;
-      errors?: number;
-    };
-  } | null;
-};
-
-export type SessionsListPayload = {
-  sessions?: RawSessionRow[];
-  /** Present when the gateway includes a total session count alongside the page. */
-  count?: number;
-};
-
-export type SessionsUsagePayload = {
-  sessions?: RawUsageSession[];
-  aggregates?: {
-    byProvider?: Array<{
-      provider?: string;
-      totals?: { totalTokens?: number; totalCost?: number };
-    }>;
-    byAgent?: Array<{
-      agentId?: string;
-      totals?: { totalCost?: number };
-      messages?: number;
-    }>;
-    messages?: {
-      total?: number;
-      toolCalls?: number;
-      errors?: number;
-    };
-  };
-  totals?: {
-    totalCost?: number;
-  };
-};
-
-export type SessionsPreviewPayload = {
-  previews?: Array<{
-    key?: string;
-    status?: string;
-    items?: Array<{
-      role?: string;
-      text?: string;
-      at?: number;
-    }>;
-  }>;
-};
-
-export type LogsTailPayload = {
-  lines?: string[];
-};
-
-export type ReadinessInput = {
-  ready: boolean;
-  failing: string[];
-  uptimeMs: number | null;
-  statusCode: 200 | 503;
-};
+export type {
+  ActivityEvent,
+  ActivityFilters,
+  AgentRunsFilters,
+  BuildOverviewSnapshotOptions,
+  CostBucket,
+  CostHistoryFilters,
+  CostHistoryRange,
+  CostHistorySnapshot,
+  GatewayActivityEvent,
+  GatewayActivityFilters,
+  GatewayCostBucket,
+  GatewayCostHistoryFilters,
+  GatewayCostHistoryRange,
+  GatewayCostHistorySnapshot,
+  GatewayHealthSnapshot,
+  GatewayIncidentRecord,
+  GatewayIncidentsSnapshot,
+  GatewayIncidentSeverity,
+  GatewayIncidentStatus,
+  GatewayOverviewKpis,
+  GatewayOverviewSnapshot,
+  GatewayRoutingMatrixSnapshot,
+  GatewaySessionRun,
+  GatewaySessionRunDetailSnapshot,
+  GatewaySessionRunsSnapshot,
+  GatewaySessionRunStatus,
+  HealthSnapshot,
+  IncidentRecord,
+  IncidentsSnapshot,
+  IncidentSeverity,
+  IncidentStatus,
+  LogsTailPayload,
+  OverviewKpis,
+  OverviewSnapshot,
+  RawSessionRow,
+  RawUsageSession,
+  ReadinessInput,
+  RoutingMatrixSnapshot,
+  SessionsListPayload,
+  SessionsPreviewPayload,
+  SessionsUsagePayload,
+} from "./contracts.js";
 
 const ACTIVE_WINDOW_MS = 5 * 60_000;
 const STALLED_WINDOW_MS = 30 * 60_000;

@@ -1,4 +1,4 @@
-import type { AgentMemorySnapshot } from "../../../../cavi/domain/index.js";
+import type { AgentMemorySnapshot } from "../../../../extensions/cavi/domain/index.js";
 
 export const mockAgentMemory: AgentMemorySnapshot = {
   agentId: "unknown",

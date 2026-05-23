@@ -16,8 +16,9 @@ composition belongs in `src/cavi/**`.
 - `envelope/` owns data envelopes, fallback gaps, and mutation result helpers.
 - `portal/` owns portal-specific gateway bridge helpers.
 
-Old flat gateway files are quarantined. New implementation and package-owned
-imports must use a canonical folder owner or the single `index.ts` aggregate.
+Old flat gateway files are not active source. New implementation and
+package-owned imports must use a canonical folder owner or the single
+`index.ts` aggregate.
 
 ## Rules
 
@@ -29,4 +30,4 @@ imports must use a canonical folder owner or the single `index.ts` aggregate.
 - Keep public exports stable through the root package export, supported package
   subpaths, and this folder's single canonical `index.ts`.
 - Do not reintroduce root flat shim files or provider-resolution modules in this
-  folder; those old paths are quarantined.
+  folder.

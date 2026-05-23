@@ -153,8 +153,8 @@ Gateway internals are organized by owner folder (`client/`, `agent/`, `run/`,
 `rpc/`, `snapshots/`, `resources/`, `envelope/`, `portal/`). The published
 `./core/gateway` subpath is backed by one canonical `src/core/gateway/index.ts`
 that exports those owner folders. Old flat `src/core/gateway/*.ts` shim files
-are quarantined; package source and new contributions should import from the
-owner folder directly or from the canonical aggregate.
+are not active source; package source and new contributions should import from
+the owner folder directly or from the canonical aggregate.
 
 ---
 

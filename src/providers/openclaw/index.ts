@@ -1,6 +1,7 @@
 export * from "./client.js";
 export * from "./agent-config.js";
 export * from "./media.js";
+export * from "./provider-module.js";
 export * from "./sse-run-event-provider.js";
 export * from "./team-registry.js";
 export * from "./team-registry-config.js";

@@ -20,8 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Prevented core gateway provider resolution from becoming a second provider
   boundary; provider selection stays in `src/providers/gateway/**`.
-- Moved old flat gateway shim files, the old provider-resolution file, and stale
-  generated output to quarantine.
+- Removed old flat gateway shim files, the old provider-resolution file, and
+  stale generated output from active source and package output.
 - Aligned portal config patch paths with the `portal.config` surface contract.
 
 ## [1.0.0] - 2026-05-22

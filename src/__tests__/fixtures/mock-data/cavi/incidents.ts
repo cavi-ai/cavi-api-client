@@ -1,4 +1,7 @@
-import type { IncidentRecord, IncidentsSnapshot } from "../../../../cavi/domain/index.js";
+import type {
+  IncidentRecord,
+  IncidentsSnapshot,
+} from "../../../../core/gateway/snapshots/contracts.js";
 import { mockNow as now } from "./shared.js";
 
 const incidents: IncidentRecord[] = [

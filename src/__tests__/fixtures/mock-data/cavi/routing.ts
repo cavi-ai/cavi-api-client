@@ -1,4 +1,4 @@
-import type { RoutingMatrixSnapshot } from "../../../../cavi/domain/index.js";
+import type { RoutingMatrixSnapshot } from "../../../../core/gateway/snapshots/contracts.js";
 
 export const mockRoutingMatrix: RoutingMatrixSnapshot = {
   rows: [

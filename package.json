@@ -35,7 +35,7 @@
     "dist",
     "!dist/test-support",
     "!dist/__tests__",
-    "!dist/cavi/fallbacks/mock-data"
+    "!dist/extensions/cavi/fallbacks/mock-data"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -85,10 +85,10 @@
       "import": "./dist/contracts/index.js",
       "default": "./dist/contracts/index.js"
     },
-    "./cavi": {
-      "types": "./dist/cavi/index.d.ts",
-      "import": "./dist/cavi/index.js",
-      "default": "./dist/cavi/index.js"
+    "./extensions/cavi": {
+      "types": "./dist/extensions/cavi/index.d.ts",
+      "import": "./dist/extensions/cavi/index.js",
+      "default": "./dist/extensions/cavi/index.js"
     },
     "./providers/hermes": {
       "types": "./dist/providers/hermes/index.d.ts",
@@ -99,11 +99,6 @@
       "types": "./dist/providers/openclaw/index.d.ts",
       "import": "./dist/providers/openclaw/index.js",
       "default": "./dist/providers/openclaw/index.js"
-    },
-    "./providers/gateway": {
-      "types": "./dist/providers/gateway/index.d.ts",
-      "import": "./dist/providers/gateway/index.js",
-      "default": "./dist/providers/gateway/index.js"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",

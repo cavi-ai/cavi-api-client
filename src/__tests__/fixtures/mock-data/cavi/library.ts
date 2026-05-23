@@ -1,4 +1,4 @@
-import type { FleetLibrarySnapshot } from "../../../../cavi/domain/index.js";
+import type { FleetLibrarySnapshot } from "../../../../extensions/cavi/domain/index.js";
 
 export const mockFleetLibrary: FleetLibrarySnapshot = {
   generatedAt: Date.now(),

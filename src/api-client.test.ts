@@ -4,15 +4,17 @@ import { resolveHttpApiConfigFromEnv } from "./core/env/config";
 import { resolveHermesHttpApiConfigFromEnv } from "./providers/hermes/env-config";
 import {
   appendHttpQuery,
-  CAVI_CONTROL_API_ENDPOINTS,
   GATEWAY_MEDIA_API_ENDPOINTS,
   GATEWAY_WIKI_API_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
+} from "./contracts/paths";
+import {
+  CAVI_CONTROL_API_ENDPOINTS,
   LIBRARY_API_ENDPOINTS,
   OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
-} from "./contracts/paths";
+} from "./extensions/cavi/contracts/paths";
 import {
   GatewayApiClient,
   GatewayMediaApiClient,
@@ -45,6 +47,8 @@ import {
   portalDashboardPath,
   resolveOperatorTaskDispatchPath,
   SURFACE_CONTRACTS,
+  CAVI_SURFACE_CONTRACTS,
+  resolveCaviPath,
   resolvePath,
   resolveGatewayRouteBinding,
   resolveTeamActionApiPath,
@@ -54,7 +58,7 @@ import {
   resolveTeamWorkspacePath,
   DEFAULT_TEAM_ROUTE_KEYS,
 } from "./index";
-import { LibraryApiClient } from "./cavi/library/client";
+import { LibraryApiClient } from "./extensions/cavi/library/client";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "./core/http/types";
 
 class TestApiClient extends BaseHttpApiClient {
@@ -184,25 +188,25 @@ describe("agnostic HTTP API client package", () => {
   });
 
   it("resolves surface paths in legacy and canonical modes", () => {
-    expect(SURFACE_CONTRACTS["portal.dashboard"]?.method).toBe("GET");
-    expect(resolvePath("portal.dashboard", "legacy", { portal: "martina" })).toBe(
+    expect(CAVI_SURFACE_CONTRACTS["portal.dashboard"]?.method).toBe("GET");
+    expect(resolveCaviPath("portal.dashboard", "legacy", { portal: "martina" })).toBe(
       "/martina/api/dashboard",
     );
-    expect(resolvePath("portal.dashboard", "canonical", { portal: "martina" })).toBe(
+    expect(resolveCaviPath("portal.dashboard", "canonical", { portal: "martina" })).toBe(
       "/api/plugins/portal/martina/dashboard",
     );
-    expect(resolvePath("machine.media", "legacy", { filename: "a/b c.png" })).toBe(
+    expect(resolveCaviPath("machine.media", "legacy", { filename: "a/b c.png" })).toBe(
       "/machine/api/media?name=a%2Fb%20c.png",
     );
-    expect(resolvePath("cavi.deb.root", "legacy")).toBe("/cavi-control/api/deb");
-    expect(resolvePath("cavi.deb.profile", "canonical")).toBe("/api/plugins/cavi-control/deb/profile");
-    expect(resolvePath("cavi.deb.sprint", "legacy")).toBe("/cavi-control/api/deb/sprint");
-    expect(resolvePath("cavi.deb.backlog", "canonical")).toBe("/api/plugins/cavi-control/deb/backlog");
-    expect(resolvePath("cavi.deb.call", "canonical")).toBe("/api/plugins/cavi-control/deb/call");
-    expect(resolvePath("cavi.operator.registry", "legacy")).toBe(
+    expect(resolveCaviPath("cavi.projectBoard.root", "legacy")).toBe("/cavi-control/api/deb");
+    expect(resolveCaviPath("cavi.projectBoard.profile", "canonical")).toBe("/api/plugins/cavi-control/deb/profile");
+    expect(resolveCaviPath("cavi.projectBoard.sprint", "legacy")).toBe("/cavi-control/api/deb/sprint");
+    expect(resolveCaviPath("cavi.projectBoard.backlog", "canonical")).toBe("/api/plugins/cavi-control/deb/backlog");
+    expect(resolveCaviPath("cavi.projectBoard.call", "canonical")).toBe("/api/plugins/cavi-control/deb/call");
+    expect(resolveCaviPath("cavi.operator.registry", "legacy")).toBe(
       "/cavi-control/api/operator/registry",
     );
-    expect(resolvePath("cavi.operator.snapshot", "canonical")).toBe(
+    expect(resolveCaviPath("cavi.operator.snapshot", "canonical")).toBe(
       "/api/plugins/cavi-control/operator/snapshot",
     );
     expect(resolvePath("kanban.board", "canonical")).toBe("/api/plugins/kanban/board");
@@ -231,19 +235,19 @@ describe("agnostic HTTP API client package", () => {
       agentId: "scout/a",
       workspacePath: "media/images",
     })).toBe("/api/teams/research/agents/scout%2Fa/workspace/media/images");
-    expect(resolvePath("cavi.operator.memory", "canonical")).toBe(
+    expect(resolveCaviPath("cavi.operator.memory", "canonical")).toBe(
       "/api/plugins/cavi-control/operator/memory",
     );
-    expect(resolvePath("cavi.operator.workerReady", "legacy")).toBe(
+    expect(resolveCaviPath("cavi.operator.workerReady", "legacy")).toBe(
       "/cavi-control/api/operator/worker/ready",
     );
-    expect(resolvePath("cavi.operator.workerTasks", "canonical")).toBe(
+    expect(resolveCaviPath("cavi.operator.workerTasks", "canonical")).toBe(
       "/api/plugins/cavi-control/operator/worker/tasks",
     );
-    expect(resolvePath("cavi.operator.task", "legacy", { taskId: "task/a b" })).toBe(
+    expect(resolveCaviPath("cavi.operator.task", "legacy", { taskId: "task/a b" })).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b",
     );
-    expect(resolvePath("cavi.operator.taskDiscourse", "canonical", { taskId: "task/a b" })).toBe(
+    expect(resolveCaviPath("cavi.operator.taskDiscourse", "canonical", { taskId: "task/a b" })).toBe(
       "/api/plugins/cavi-control/operator/tasks/task%2Fa%20b/discourse",
     );
     expect(resolvePath("gateway.mediaProviders", "canonical")).toBe("/v1/media/providers");
@@ -274,36 +278,36 @@ describe("agnostic HTTP API client package", () => {
       "/v1/wiki/vaults/research/promote",
     );
 
-    expect(SURFACE_CONTRACTS["frontDoor.ideaList"]?.method).toBe("GET");
-    expect(SURFACE_CONTRACTS["frontDoor.ideaCreate"]?.method).toBe("POST");
-    expect(SURFACE_CONTRACTS["frontDoor.ideaDetail"]?.method).toBe("GET");
-    expect(SURFACE_CONTRACTS["frontDoor.ideaPatch"]?.method).toBe("PATCH");
-    expect(SURFACE_CONTRACTS["frontDoor.ideaPromote"]?.method).toBe("POST");
-    expect(SURFACE_CONTRACTS["frontDoor.projectList"]?.method).toBe("GET");
-    expect(SURFACE_CONTRACTS["frontDoor.projectDetail"]?.method).toBe("GET");
-    expect(SURFACE_CONTRACTS["frontDoor.articleList"]?.method).toBe("GET");
-    expect(SURFACE_CONTRACTS["frontDoor.articleCreate"]?.method).toBe("POST");
-    expect(SURFACE_CONTRACTS["frontDoor.memoryList"]?.method).toBe("GET");
-    expect(SURFACE_CONTRACTS["frontDoor.memoryCreate"]?.method).toBe("POST");
-    expect(SURFACE_CONTRACTS["frontDoor.inboxUpload"]?.method).toBe("POST");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaList"]?.method).toBe("GET");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaCreate"]?.method).toBe("POST");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaDetail"]?.method).toBe("GET");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaPatch"]?.method).toBe("PATCH");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaPromote"]?.method).toBe("POST");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.projectList"]?.method).toBe("GET");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.projectDetail"]?.method).toBe("GET");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.articleList"]?.method).toBe("GET");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.articleCreate"]?.method).toBe("POST");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.memoryList"]?.method).toBe("GET");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.memoryCreate"]?.method).toBe("POST");
+    expect(CAVI_SURFACE_CONTRACTS["frontDoor.inboxUpload"]?.method).toBe("POST");
 
-    expect(resolvePath("frontDoor.ideaList", "canonical")).toBe("/api/plugins/front-door/ideas");
-    expect(resolvePath("frontDoor.ideaDetail", "canonical", { id: "idea/a b" })).toBe(
+    expect(resolveCaviPath("frontDoor.ideaList", "canonical")).toBe("/api/plugins/front-door/ideas");
+    expect(resolveCaviPath("frontDoor.ideaDetail", "canonical", { id: "idea/a b" })).toBe(
       "/api/plugins/front-door/ideas/idea%2Fa%20b",
     );
-    expect(resolvePath("frontDoor.projectDetail", "legacy", { id: "proj/a b" })).toBe(
+    expect(resolveCaviPath("frontDoor.projectDetail", "legacy", { id: "proj/a b" })).toBe(
       "/front-door/api/projects/proj%2Fa%20b",
     );
-    expect(resolvePath("frontDoor.articleList", "legacy")).toBe("/front-door/api/articles");
-    expect(resolvePath("frontDoor.memoryList", "canonical")).toBe("/api/plugins/front-door/memory");
-    expect(resolvePath("frontDoor.inboxUpload", "legacy")).toBe("/front-door/api/inbox");
+    expect(resolveCaviPath("frontDoor.articleList", "legacy")).toBe("/front-door/api/articles");
+    expect(resolveCaviPath("frontDoor.memoryList", "canonical")).toBe("/api/plugins/front-door/memory");
+    expect(resolveCaviPath("frontDoor.inboxUpload", "legacy")).toBe("/front-door/api/inbox");
 
-    expect(resolvePath("trading.dashboard", "legacy")).toBe("/trading/api/dashboard");
-    expect(resolvePath("trading.dashboard", "canonical")).toBe("/api/plugins/trading/dashboard");
-    expect(resolvePath("trading.researchPackets", "legacy")).toBe("/trading/api/research-packets");
-    expect(resolvePath("trading.researchPackets", "canonical")).toBe("/api/plugins/trading/research-packets");
-    expect(resolvePath("trading.sourceRegistry", "legacy")).toBe("/trading/api/source-registry");
-    expect(resolvePath("trading.sourceRegistry", "canonical")).toBe("/api/plugins/trading/source-registry");
+    expect(resolveCaviPath("trading.dashboard", "legacy")).toBe("/trading/api/dashboard");
+    expect(resolveCaviPath("trading.dashboard", "canonical")).toBe("/api/plugins/trading/dashboard");
+    expect(resolveCaviPath("trading.researchPackets", "legacy")).toBe("/trading/api/research-packets");
+    expect(resolveCaviPath("trading.researchPackets", "canonical")).toBe("/api/plugins/trading/research-packets");
+    expect(resolveCaviPath("trading.sourceRegistry", "legacy")).toBe("/trading/api/source-registry");
+    expect(resolveCaviPath("trading.sourceRegistry", "canonical")).toBe("/api/plugins/trading/source-registry");
   });
 
   it("keeps mobile portal/workspace contracts in the shared package", () => {
@@ -647,14 +651,14 @@ describe("agnostic HTTP API client package", () => {
 
   it("throws for unknown surface and missing required path params", () => {
     expect(() => resolvePath("nope.surface")).toThrow('resolvePath: unknown surface "nope.surface"');
-    expect(() => resolvePath("frontDoor.idea", "legacy")).toThrow(
-      'SURFACE_CONTRACTS: missing path param "id"',
+    expect(() => resolveCaviPath("frontDoor.ideaDetail", "legacy")).toThrow(
+      'CAVI_SURFACE_CONTRACTS: missing path param "id"',
     );
-    expect(() => resolvePath("portal.dashboard", "canonical", { portal: "" })).toThrow(
-      'SURFACE_CONTRACTS: missing path param "portal"',
+    expect(() => resolveCaviPath("portal.dashboard", "canonical", { portal: "" })).toThrow(
+      'CAVI_SURFACE_CONTRACTS: missing path param "portal"',
     );
-    expect(() => resolvePath("cavi.operator.task", "legacy")).toThrow(
-      'SURFACE_CONTRACTS: missing path param "taskId"',
+    expect(() => resolveCaviPath("cavi.operator.task", "legacy")).toThrow(
+      'CAVI_SURFACE_CONTRACTS: missing path param "taskId"',
     );
     expect(() => resolvePath("team.agent.config", "canonical", { teamId: "research" })).toThrow(
       'SURFACE_CONTRACTS: missing path param "agentId"',
@@ -901,11 +905,11 @@ describe("agnostic HTTP API client package", () => {
     });
     const hermes = createGatewayMediaClient(
       { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclaw = createGatewayMediaClient(
       { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
 
     expect(generic.surface).toBe("gateway-media-api");
@@ -1040,11 +1044,11 @@ describe("agnostic HTTP API client package", () => {
     });
     const hermes = createGatewayWikiClient(
       { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclaw = createGatewayWikiClient(
       { baseUrl: "https://gateway.example", fetchImpl: fetchImpl as unknown as typeof fetch },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
 
     expect(generic.surface).toBe("gateway-wiki-api");
@@ -1185,7 +1189,7 @@ describe("agnostic HTTP API client package", () => {
         sessionKey: "session-1",
         fetchImpl: fetchImpl as unknown as typeof fetch,
       },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     await new Promise<void>((resolve, reject) => {
       void hermes.subscribe(
@@ -1204,19 +1208,19 @@ describe("agnostic HTTP API client package", () => {
         clientId: "client-1",
         fetchImpl: fetchImpl as unknown as typeof fetch,
       },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const hermesWs = createGatewayWebSocketClient(
       "wss://gateway.example/api/ws",
       "test-token",
       { clientId: "client-1" },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclawWs = createGatewayWebSocketClient(
       "wss://gateway.example/ws",
       "test-token",
       { clientId: "client-1" },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
 
     expect(hermes).toBeInstanceOf(HermesSseRunEventProvider);
@@ -1233,7 +1237,7 @@ describe("agnostic HTTP API client package", () => {
           authToken: "test-token",
           clientId: "client-1",
         },
-        { provider: "hermes" },
+        { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
       ),
     ).toThrow(/sessionKey/u);
   });

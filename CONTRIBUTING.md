@@ -31,8 +31,7 @@ The boundary is enforced by tests, not honor system. Before you start, skim
 authoritative contract. It fails the build on:
 
 - Imports of forbidden host packages (`@cavi/data`, `@cavi/domain`,
-  `@cavi/gateway-client`, `@cavi/gateway-transforms`, `@mobile-cavi/*`) or
-  quarantined paths.
+  `@cavi/gateway-client`, `@cavi/gateway-transforms`, `@mobile-cavi/*`).
 - API route literals (bare or URL-embedded) outside `*paths.ts` and
   `contracts/surfaces.ts`.
 - Layout drift (reappearance of the pre-restructure flat layout, non-allowlisted
@@ -67,8 +66,8 @@ Gateway internals are grouped by owner folder under `src/core/gateway/`
 (`client`, `agent`, `run`, `rpc`, `snapshots`, `resources`, `envelope`,
 `portal`). `src/core/gateway/index.ts` is the only aggregate in that folder and
 must re-export owner-folder indexes directly. Old flat shim files and the old
-provider-resolution file are quarantined. New source should import from the
-owner folder or from the canonical aggregate, never from a flat shim path.
+provider-resolution file are not active source. New source should import from
+the owner folder or from the canonical aggregate, never from a flat shim path.
 
 ## Adding a gateway provider
 

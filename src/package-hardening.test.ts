@@ -27,9 +27,9 @@ import {
   OpenClawSseRunEventProvider,
   OpenClawWebSocketClient,
   OpenClawWikiApiClient,
+  CAVI_SURFACE_CONTRACTS,
   SURFACE_CONTRACTS,
   TEAM_REGISTRY_CONFIG,
-  BUILT_IN_GATEWAY_PROVIDER_MODULES,
   createGatewayApiClient,
   createGatewayAgentConfigClient,
   createGatewayMediaClient,
@@ -41,6 +41,7 @@ import {
   createOpenClawTeamRegistry,
   portalConfigPatchPath,
   requireRepoRoot,
+  resolveCaviPath,
   resolveGatewayProviderKind,
   resolvePath,
   resolveRepoRoot,
@@ -52,25 +53,22 @@ const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
 const DIST_CORE_GATEWAY_ROOT = path.join(PACKAGE_ROOT, "dist", "core", "gateway");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
 const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
-const PROVIDERS_GATEWAY_ROOT = path.join(SRC_ROOT, "providers", "gateway");
+const CORE_GATEWAY_PROVIDERS_ROOT = path.join(SRC_ROOT, "core", "gateway", "providers");
 const CORE_ENV_CONFIG = path.join(SRC_ROOT, "core", "env", "config.ts");
 const CORE_HTTP_TYPES = path.join(SRC_ROOT, "core", "http", "types.ts");
 const CORE_GATEWAY_AGENT_CONFIG = path.join(SRC_ROOT, "core", "gateway", "agent", "config.ts");
 const CORE_GATEWAY_INDEX = path.join(SRC_ROOT, "core", "gateway", "index.ts");
 const CORE_GATEWAY_PROVIDER = path.join(SRC_ROOT, "core", "gateway", "provider.ts");
 const CORE_GATEWAY_ROOT = path.join(SRC_ROOT, "core", "gateway");
-const QUARANTINE_CORE_GATEWAY_INDEX = path.join(PACKAGE_ROOT, "quarantine", "src", "core", "gateway", "index.ts");
-const QUARANTINE_CORE_GATEWAY_PROVIDER = path.join(PACKAGE_ROOT, "quarantine", "src", "core", "gateway", "provider.ts");
-const QUARANTINE_DIST_CORE_GATEWAY_ROOT = path.join(PACKAGE_ROOT, "quarantine", "dist-stale", "core", "gateway");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
-const CAVI_PATHS = path.join(SRC_ROOT, "cavi", "paths.ts");
-const CAVI_ROOT = path.join(SRC_ROOT, "cavi");
-const CAVI_DATA_ROOT = path.join(SRC_ROOT, "cavi", "data");
-const CAVI_DATA_LIB_ROOT = path.join(SRC_ROOT, "cavi", "data", "lib");
-const CAVI_RUNTIME_GATEWAY_FETCH = path.join(SRC_ROOT, "cavi", "runtime", "gateway-json-fetch.ts");
-const CAVI_RUNTIME_HTTP_TRANSPORT = path.join(SRC_ROOT, "cavi", "runtime", "http-transport.ts");
-const CAVI_PORTAL_CLIENT_ID = path.join(SRC_ROOT, "cavi", "portal", "client-id.ts");
-const CAVI_PORTAL_CONTRACTS = path.join(SRC_ROOT, "cavi", "portal", "contracts.ts");
+const CAVI_PATHS = path.join(SRC_ROOT, "extensions", "cavi", "paths.ts");
+const CAVI_ROOT = path.join(SRC_ROOT, "extensions", "cavi");
+const CAVI_DATA_ROOT = path.join(SRC_ROOT, "extensions", "cavi", "data");
+const CAVI_DATA_LIB_ROOT = path.join(SRC_ROOT, "extensions", "cavi", "data", "lib");
+const CAVI_RUNTIME_GATEWAY_FETCH = path.join(SRC_ROOT, "extensions", "cavi", "runtime", "gateway-json-fetch.ts");
+const CAVI_RUNTIME_HTTP_TRANSPORT = path.join(SRC_ROOT, "extensions", "cavi", "runtime", "http-transport.ts");
+const CAVI_PORTAL_CLIENT_ID = path.join(SRC_ROOT, "extensions", "cavi", "portal", "client-id.ts");
+const CAVI_PORTAL_CONTRACTS = path.join(SRC_ROOT, "extensions", "cavi", "portal", "contracts.ts");
 const CORE_GATEWAY_WEBSOCKET = path.join(SRC_ROOT, "core", "gateway", "websocket.ts");
 const CORE_SSE_INDEX = path.join(SRC_ROOT, "core", "sse", "index.ts");
 const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
@@ -103,7 +101,10 @@ const MARTINA_COMPAT_IDENTIFIER_RE = /\b(?:MARTINA_|Martina[A-Z]\w*|normalizeMar
 const BAKED_TEAM_REGISTRY_VALUE_RE = /(["'`])(?:angela|deb|front-door|machine|martina|run-dmc|scout|wu-tang|angels|paw-and-order|griselda|headhunter|scout-school)\1/u;
 const PATH_OWNER_RE = /(?:^|[-_/])paths\.ts$/u;
 const PATH_COMPAT_FILES = new Set<string>();
-const CONTRACT_OWNER_FILES = new Set(["src/contracts/surfaces.ts"]);
+const CONTRACT_OWNER_FILES = new Set([
+  "src/contracts/surfaces.ts",
+  "src/extensions/cavi/contracts/surfaces.ts",
+]);
 const ALLOWED_SRC_ROOT_FILES = new Set([
   "src/api-client.test.ts",
   "src/index.ts",
@@ -146,7 +147,7 @@ const LEGACY_SOURCE_PREFIXES = [
   "src/openclaw/",
   "src/portals/",
   "src/compat/legacy/",
-  "src/cavi/domain/domain/",
+  "src/extensions/cavi/domain/domain/",
 ] as const;
 const REMOVED_PACKAGE_EXPORTS = [
   "./team-registry",
@@ -169,7 +170,7 @@ const EXPECTED_TS_INCLUDE = [
   "src/index.ts",
   "src/core/**/*.ts",
   "src/contracts/**/*.ts",
-  "src/cavi/**/*.ts",
+  "src/extensions/**/*.ts",
   "src/providers/**/*.ts",
   "src/react/**/*.ts",
   "src/react/**/*.tsx",
@@ -180,11 +181,11 @@ const PROVIDER_FACTORY_ROOT_EXPORT_RE = /from "\.\/core\/gateway\/provider\.js"/
 const CORE_GATEWAY_COMPAT_BARREL_IMPORT_RE =
   /from\s+["'][^"']*(?:core\/gateway\/|(?:\.\.\/)+gateway\/)(?:client|error-details|fetch|runtime-targets|media|wiki|envelope|envelope-types|cache|agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms|rpc|rpc-error|device-crypto|device-store|preauth-handshake|portal-config-patch)(?:\.js)?["']/u;
 const TEAM_REGISTRY_OWNER_FILES = [
-  "src/cavi/registry/team-registry-config.ts",
+  "src/extensions/cavi/registry/team-registry-config.ts",
   "src/providers/hermes/team-registry-config.ts",
   "src/providers/openclaw/team-registry-config.ts",
-  "src/cavi/registry/canonical-team-registry.ts",
-  "src/cavi/registry/portal-library-registry.ts",
+  "src/extensions/cavi/registry/canonical-team-registry.ts",
+  "src/extensions/cavi/registry/portal-library-registry.ts",
 ] as const;
 function walkFiles(root: string): string[] {
   const files: string[] = [];
@@ -328,12 +329,12 @@ describe("package hardening", () => {
       .filter((relative) => relative.endsWith("/paths.ts"))
       .filter(
         (relative) =>
-          relative !== "src/cavi/paths.ts" &&
-          relative !== "src/cavi/runtime/paths.ts",
+          relative !== "src/extensions/cavi/paths.ts" &&
+          relative !== "src/extensions/cavi/runtime/paths.ts",
       );
 
-    expect(source).toContain('export * from "../contracts/paths.js";');
-    expect(source).toContain("export const DEB_API");
+    expect(source).toContain('export * from "./contracts/paths.js";');
+    expect(source).toContain("export const PROJECT_BOARD_API");
     expect(source).toContain("export const OPERATOR_API");
     expect(hiddenFeaturePathOwners).toEqual([]);
   });
@@ -381,7 +382,7 @@ describe("package hardening", () => {
     expect(compatLegacyTargets).toEqual([]);
     expect(packageJson.files).toContain("!dist/test-support");
     expect(packageJson.files).toContain("!dist/__tests__");
-    expect(packageJson.files).toContain("!dist/cavi/fallbacks/mock-data");
+    expect(packageJson.files).toContain("!dist/extensions/cavi/fallbacks/mock-data");
   });
 
   it("points the package root at canonical implementation folders", () => {
@@ -410,7 +411,6 @@ describe("package hardening", () => {
       'export * from "./envelope/index.js";',
       'export * from "./portal/index.js";',
     ].join("\n"));
-    expect(read(QUARANTINE_CORE_GATEWAY_INDEX).trim()).toBe("export {};");
   });
 
   it("keeps core gateway independent from CAVI and provider implementations", () => {
@@ -426,13 +426,8 @@ describe("package hardening", () => {
 
   it("keeps provider resolution out of core gateway", () => {
     expect(existsSync(CORE_GATEWAY_PROVIDER)).toBe(false);
-    expect(read(QUARANTINE_CORE_GATEWAY_PROVIDER).trim()).toBe("export {};");
-    expect(read(QUARANTINE_CORE_GATEWAY_PROVIDER)).not.toMatch(
-      /\b(?:resolveGatewayProviderKind|GATEWAY_PROVIDER_ENV_KEYS|GatewayProviderKind)\b/u,
-    );
     for (const file of ["provider.js", "provider.d.ts", "provider.d.ts.map"]) {
       expect(existsSync(path.join(DIST_CORE_GATEWAY_ROOT, file))).toBe(false);
-      expect(existsSync(path.join(QUARANTINE_DIST_CORE_GATEWAY_ROOT, file))).toBe(true);
     }
   });
 
@@ -450,7 +445,7 @@ describe("package hardening", () => {
     expect(hermesSource).toContain("buildAgentConfigFromHermesWebuiSnapshot");
   });
 
-  it("keeps gateway implementations in owner folders with quarantined flat shims", () => {
+  it("keeps gateway implementations in owner folders without flat shims", () => {
     const expectedOwnerFiles = [
       "src/core/gateway/README.md",
       "src/core/gateway/index.ts",
@@ -489,53 +484,49 @@ describe("package hardening", () => {
       "src/core/gateway/resources/media.ts",
       "src/core/gateway/resources/wiki.ts",
     ];
-    const expectedQuarantinedShims = new Map([
-      ["src/core/gateway/client.ts", 'export * from "./client/client.js";'],
-      ["src/core/gateway/error-details.ts", 'export * from "./client/error-details.js";'],
-      ["src/core/gateway/fetch.ts", 'export * from "./client/fetch.js";'],
-      ["src/core/gateway/runtime-targets.ts", 'export * from "./client/runtime-targets.js";'],
-      ["src/core/gateway/agent-commands.ts", 'export * from "./agent/commands.js";'],
-      ["src/core/gateway/agent-config.ts", 'export * from "./agent/config.js";'],
-      ["src/core/gateway/agent-voice-config.ts", 'export * from "./agent/voice-config.js";'],
-      ["src/core/gateway/run-event-stream.ts", 'export * from "./run/event-stream.js";'],
-      ["src/core/gateway/run-stream-contracts.ts", 'export * from "./run/contracts.js";'],
-      ["src/core/gateway/sse-run-event-provider.ts", 'export * from "./run/sse-run-event-provider.js";'],
-      ["src/core/gateway/stream-failure.ts", 'export * from "./run/stream-failure.js";'],
-      ["src/core/gateway/session-loaders.ts", 'export * from "./snapshots/session-loaders.js";'],
-      ["src/core/gateway/snapshot-loaders.ts", 'export * from "./snapshots/loaders.js";'],
-      ["src/core/gateway/system-loaders.ts", 'export * from "./snapshots/system-loaders.js";'],
-      ["src/core/gateway/transforms.ts", 'export * from "./snapshots/transforms.js";'],
-      ["src/core/gateway/rpc.ts", 'export * from "./rpc/client.js";'],
-      ["src/core/gateway/rpc-error.ts", 'export * from "./rpc/error.js";'],
-      ["src/core/gateway/device-crypto.ts", 'export * from "./rpc/device-crypto.js";'],
-      ["src/core/gateway/device-store.ts", 'export * from "./rpc/device-store.js";'],
-      ["src/core/gateway/preauth-handshake.ts", 'export * from "./rpc/preauth-handshake.js";'],
-      ["src/core/gateway/portal-config-patch.ts", 'export * from "./portal/config-patch.js";'],
-      ["src/core/gateway/envelope.ts", 'export * from "./envelope/index.js";'],
-      ["src/core/gateway/envelope-types.ts", 'export type * from "./envelope/types.js";'],
-      ["src/core/gateway/cache.ts", 'export * from "./snapshots/cache.js";'],
-      ["src/core/gateway/media.ts", 'export * from "./resources/media.js";'],
-      ["src/core/gateway/wiki.ts", 'export * from "./resources/wiki.js";'],
-    ]);
+    const oldFlatGatewayFiles = [
+      "src/core/gateway/client.ts",
+      "src/core/gateway/error-details.ts",
+      "src/core/gateway/fetch.ts",
+      "src/core/gateway/runtime-targets.ts",
+      "src/core/gateway/agent-commands.ts",
+      "src/core/gateway/agent-config.ts",
+      "src/core/gateway/agent-voice-config.ts",
+      "src/core/gateway/run-event-stream.ts",
+      "src/core/gateway/run-stream-contracts.ts",
+      "src/core/gateway/sse-run-event-provider.ts",
+      "src/core/gateway/stream-failure.ts",
+      "src/core/gateway/session-loaders.ts",
+      "src/core/gateway/snapshot-loaders.ts",
+      "src/core/gateway/system-loaders.ts",
+      "src/core/gateway/transforms.ts",
+      "src/core/gateway/rpc.ts",
+      "src/core/gateway/rpc-error.ts",
+      "src/core/gateway/device-crypto.ts",
+      "src/core/gateway/device-store.ts",
+      "src/core/gateway/preauth-handshake.ts",
+      "src/core/gateway/portal-config-patch.ts",
+      "src/core/gateway/envelope.ts",
+      "src/core/gateway/envelope-types.ts",
+      "src/core/gateway/cache.ts",
+      "src/core/gateway/media.ts",
+      "src/core/gateway/wiki.ts",
+    ];
 
     expect(expectedOwnerFiles.filter((relative) =>
       !existsSync(path.join(PACKAGE_ROOT, relative)),
     )).toEqual([]);
     expect(read(path.join(CORE_GATEWAY_ROOT, "README.md"))).toMatch(
-      /Old flat gateway files are quarantined/u,
+      /Old flat gateway files are not active source/u,
     );
-    for (const [relative, expected] of expectedQuarantinedShims) {
+    for (const relative of oldFlatGatewayFiles) {
       const activeSource = path.join(PACKAGE_ROOT, relative);
-      const quarantinedSource = path.join(PACKAGE_ROOT, relative.replace(/^src\//u, "quarantine/src/"));
       const basename = path.basename(relative, ".ts");
 
       expect(existsSync(activeSource)).toBe(false);
-      expect(read(quarantinedSource).trim()).toBe(expected);
       for (const suffix of [".js", ".d.ts", ".d.ts.map"]) {
         const distFile = path.join(DIST_CORE_GATEWAY_ROOT, `${basename}${suffix}`);
-        const quarantinedDistFile = path.join(QUARANTINE_DIST_CORE_GATEWAY_ROOT, `${basename}${suffix}`);
         expect(existsSync(distFile)).toBe(false);
-        expect(existsSync(quarantinedDistFile)).toBe(true);
       }
     }
     const flatGatewayImportOffenders = productionSourceFiles()
@@ -555,7 +546,7 @@ describe("package hardening", () => {
 
   it("keeps runtime CAVI fallbacks out of mock-data paths", () => {
     const offenders = productionSourceFiles()
-      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => rel(filePath).startsWith("src/extensions/cavi/"))
       .filter((filePath) => /fallbacks\/mock-data/u.test(read(filePath)))
       .map(rel);
 
@@ -578,7 +569,7 @@ describe("package hardening", () => {
 
   it("does not keep CAVI data compatibility shims in active source", () => {
     const importOffenders = productionSourceFiles()
-      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => rel(filePath).startsWith("src/extensions/cavi/"))
       .filter((filePath) => /["'][^"']*(?:cavi\/data|(?:\.\.\/)+data\/)/u.test(read(filePath)))
       .map(rel);
 
@@ -589,7 +580,7 @@ describe("package hardening", () => {
 
   it("does not keep CAVI core re-export shims in active source", () => {
     const importOffenders = productionSourceFiles()
-      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => rel(filePath).startsWith("src/extensions/cavi/"))
       .filter((filePath) =>
         /["'][^"']*(?:portal\/client-id|portal\/contracts|runtime\/http-transport)/u.test(read(filePath)),
       )
@@ -611,7 +602,7 @@ describe("package hardening", () => {
   it("keeps gateway fetch helpers in core gateway", () => {
     const source = read(CORE_GATEWAY_FETCH);
     const importOffenders = productionSourceFiles()
-      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => rel(filePath).startsWith("src/extensions/cavi/"))
       .filter((filePath) => /gateway-json-fetch/u.test(read(filePath)))
       .map(rel);
 
@@ -662,9 +653,7 @@ describe("package hardening", () => {
     const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
       exports: Record<string, unknown>;
     };
-    const providerBarrel = read(path.join(SRC_ROOT, "providers", "gateway-provider.ts")).trim();
     const expectedProviderFiles = [
-      "built-ins.ts",
       "factory.ts",
       "index.ts",
       "normalize.ts",
@@ -673,34 +662,39 @@ describe("package hardening", () => {
     ];
     const providerSpecificFiles = ["factory.ts", "normalize.ts", "registry.ts", "types.ts"];
 
-    expect(packageJson.exports["./providers/gateway"]).toEqual({
-      types: "./dist/providers/gateway/index.d.ts",
-      import: "./dist/providers/gateway/index.js",
-      default: "./dist/providers/gateway/index.js",
+    expect(packageJson.exports["./providers/hermes"]).toEqual({
+      types: "./dist/providers/hermes/index.d.ts",
+      import: "./dist/providers/hermes/index.js",
+      default: "./dist/providers/hermes/index.js",
     });
-    expect(providerBarrel).toBe('export * from "./gateway/index.js";');
+    expect(packageJson.exports["./providers/openclaw"]).toEqual({
+      types: "./dist/providers/openclaw/index.d.ts",
+      import: "./dist/providers/openclaw/index.js",
+      default: "./dist/providers/openclaw/index.js",
+    });
+    expect(read(path.join(SRC_ROOT, "index.ts"))).toContain(
+      'from "./core/gateway/providers/index.js"',
+    );
     expect(expectedProviderFiles.filter((file) =>
-      !existsSync(path.join(PROVIDERS_GATEWAY_ROOT, file)),
+      !existsSync(path.join(CORE_GATEWAY_PROVIDERS_ROOT, file)),
     )).toEqual([]);
-    expect(read(path.join(PROVIDERS_GATEWAY_ROOT, "types.ts"))).toContain(
+    expect(read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, "types.ts"))).toContain(
       "export interface GatewayProviderModule extends GatewayProviderFactories",
     );
-    expect(read(path.join(PROVIDERS_GATEWAY_ROOT, "built-ins.ts"))).toContain(
-      "HermesApiClient",
-    );
     expect(providerSpecificFiles.filter((file) =>
-      /\b(?:Hermes|OpenClaw)\b/u.test(read(path.join(PROVIDERS_GATEWAY_ROOT, file))),
+      /\b(?:Hermes|OpenClaw)\b/u.test(read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, file))),
     )).toEqual([]);
-    expect(BUILT_IN_GATEWAY_PROVIDER_MODULES.map((module) => module.kind)).toEqual([
-      "gateway",
-      "hermes",
-      "openclaw",
-    ]);
+    expect(read(path.join(SRC_ROOT, "providers", "hermes", "provider-module.ts"))).toContain(
+      "HERMES_PROVIDER_MODULE",
+    );
+    expect(read(path.join(SRC_ROOT, "providers", "openclaw", "provider-module.ts"))).toContain(
+      "OPENCLAW_PROVIDER_MODULE",
+    );
   });
 
   it("keeps CAVI production modules on shared HTTP transports", () => {
     const offenders = productionSourceFiles()
-      .filter((filePath) => rel(filePath).startsWith("src/cavi/"))
+      .filter((filePath) => rel(filePath).startsWith("src/extensions/cavi/"))
       .filter((filePath) => /\bfetch\s*\(/u.test(read(filePath)))
       .map(rel);
 
@@ -718,7 +712,6 @@ describe("package hardening", () => {
     expect(tsconfig.include).not.toContain("src/**/*.tsx");
     expect(tsconfig.include).not.toContain("src/compat/**/*.ts");
     expect(tsconfig.exclude).toContain("src/__tests__/**");
-    expect(tsconfig.exclude).toContain("quarantine/**");
   });
 
   it("does not keep Martina compatibility implementation modules in active source", () => {
@@ -763,17 +756,22 @@ describe("package hardening", () => {
       .map(([key, contract]) => `${key} -> ${contract.key}`);
 
     expect(mismatchedKeys).toEqual([]);
-    expect(resolvePath("cavi.operator.tasks", "canonical")).toBe("/api/plugins/kanban/tasks");
-    expect(resolvePath("cavi.operator.snapshot", "canonical")).toBe(
+    const mismatchedCaviKeys = Object.entries(CAVI_SURFACE_CONTRACTS)
+      .filter(([key, contract]) => contract.key !== key)
+      .map(([key, contract]) => `${key} -> ${contract.key}`);
+
+    expect(mismatchedCaviKeys).toEqual([]);
+    expect(resolveCaviPath("cavi.operator.tasks", "canonical")).toBe("/api/plugins/kanban/tasks");
+    expect(resolveCaviPath("cavi.operator.snapshot", "canonical")).toBe(
       "/api/plugins/cavi-control/operator/snapshot",
     );
-    expect(resolvePath("portalMemory.snapshot", "canonical", {
+    expect(resolveCaviPath("portalMemory.snapshot", "canonical", {
       teamSlug: "machine",
       memberId: "chris",
       memoryKey: "comedy-room",
     })).toBe("/api/plugins/portal-memory/teams/machine/members/chris/comedy-room");
     expect(portalConfigPatchPath("martina")).toBe(
-      resolvePath("portal.config", "canonical", { portal: "martina" }),
+      resolveCaviPath("portal.config", "canonical", { portal: "martina" }),
     );
   });
 
@@ -816,35 +814,35 @@ describe("package hardening", () => {
       Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))) as typeof fetch;
     const hermes = createGatewayApiClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclaw = createGatewayApiClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { env: { CAVI_GATEWAY_PROVIDER: "openclaw" } },
+      { env: { CAVI_GATEWAY_PROVIDER: "openclaw" }, providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const hermesMedia = createGatewayMediaClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclawMedia = createGatewayMediaClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const hermesWiki = createGatewayWikiClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclawWiki = createGatewayWikiClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const hermesAgentConfig = createGatewayAgentConfigClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclawAgentConfig = createGatewayAgentConfigClient(
       { baseUrl: "https://gateway.example", fetchImpl },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const genericWs = createGatewayWebSocketClient(
       "wss://gateway.example/ws",
@@ -856,13 +854,13 @@ describe("package hardening", () => {
       "wss://gateway.example/api/ws",
       "token",
       { clientId: "client-1" },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclawWs = createGatewayWebSocketClient(
       "wss://gateway.example/ws",
       "token",
       { clientId: "client-1" },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const genericSse = createGatewaySseRunEventProvider(
       {
@@ -879,7 +877,7 @@ describe("package hardening", () => {
         clientId: "client-1",
         sessionKey: "session-1",
       },
-      { provider: "hermes" },
+      { provider: "hermes", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
     const openclawSse = createGatewaySseRunEventProvider(
       {
@@ -887,12 +885,12 @@ describe("package hardening", () => {
         authToken: "token",
         clientId: "client-1",
       },
-      { provider: "openclaw" },
+      { provider: "openclaw", providerModules: BUILT_IN_PROVIDER_MODULES },
     );
 
     expect(resolveGatewayProviderKind({ env: { GATEWAY_PROVIDER: "generic" } })).toBe("gateway");
     expect(GATEWAY_PROVIDER_ENV_KEYS).toEqual(["CAVI_GATEWAY_PROVIDER", "GATEWAY_PROVIDER"]);
-    expect(resolveGatewayProviderKind({ provider: "open-claw" })).toBe("openclaw");
+    expect(resolveGatewayProviderKind({ provider: "open-claw", providerModules: BUILT_IN_PROVIDER_MODULES })).toBe("openclaw");
     expect(() => resolveGatewayProviderKind({ provider: "martina" })).toThrow(
       'Unknown gateway provider "martina"',
     );

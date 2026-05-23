@@ -2,7 +2,7 @@ import type {
   OperatorRegistryAgent,
   OperatorRegistryRuntime,
   OperatorRegistryTeam,
-} from "../../../../../cavi/domain/index.js";
+} from "../../../../../extensions/cavi/domain/index.js";
 
 /** Default values for new agent fields — spread into each mock agent. */
 export const agentDefaults: Pick<

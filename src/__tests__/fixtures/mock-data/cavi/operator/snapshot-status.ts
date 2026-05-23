@@ -1,6 +1,6 @@
-import type { OperatorControlSnapshot } from "../../../../../cavi/domain/index.js";
+import type { OperatorControlSnapshot } from "../../../../../extensions/cavi/domain/index.js";
 import { mockNow as now } from "../shared.js";
-import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../../../cavi/paths.js";
+import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../../../extensions/cavi/paths.js";
 import { mockDelegatedTransport, mockLegacyWorkerFleet } from "./transports.js";
 
 export const mockOperatorControlStatus: OperatorControlSnapshot["status"] = {

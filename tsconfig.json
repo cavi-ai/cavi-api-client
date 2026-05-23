@@ -16,7 +16,7 @@
     "src/index.ts",
     "src/core/**/*.ts",
     "src/contracts/**/*.ts",
-    "src/cavi/**/*.ts",
+    "src/extensions/**/*.ts",
     "src/providers/**/*.ts",
     "src/react/**/*.ts",
     "src/react/**/*.tsx"
@@ -26,7 +26,6 @@
     "dist",
     "src/__tests__/**",
     "**/*.test.ts",
-    "**/*.test.tsx",
-    "quarantine/**"
+    "**/*.test.tsx"
   ]
 }

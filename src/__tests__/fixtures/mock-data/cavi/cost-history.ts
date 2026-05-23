@@ -1,4 +1,8 @@
-import type { CostBucket, CostHistoryRange, CostHistorySnapshot } from "../../../../cavi/domain/index.js";
+import type {
+  CostBucket,
+  CostHistoryRange,
+  CostHistorySnapshot,
+} from "../../../../core/gateway/snapshots/contracts.js";
 import { mockNow as now } from "./shared.js";
 
 const PROVIDERS = ["anthropic", "openai", "google"];

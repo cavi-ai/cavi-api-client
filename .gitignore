@@ -7,21 +7,5 @@ node_modules
 dist
 # Added by code-review-graph
 .code-review-graph/
-quarantine/*
-!quarantine/src/
-quarantine/src/*
-!quarantine/src/core/
-quarantine/src/core/*
-!quarantine/src/core/gateway/
-quarantine/src/core/gateway/*
-!quarantine/src/core/gateway/*.ts
-!quarantine/dist-stale/
-quarantine/dist-stale/*
-!quarantine/dist-stale/core/
-quarantine/dist-stale/core/*
-!quarantine/dist-stale/core/gateway/
-quarantine/dist-stale/core/gateway/*
-!quarantine/dist-stale/core/gateway/*.js
-!quarantine/dist-stale/core/gateway/*.d.ts
-!quarantine/dist-stale/core/gateway/*.d.ts.map
 .remember/
+quarantine/
