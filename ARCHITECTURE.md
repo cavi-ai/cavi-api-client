@@ -131,9 +131,9 @@ live in `src/core/gateway/**`; provider adapters live under
   `core/gateway/run/**` owns canonical run-event contracts, translation, and polling
   fallback. Provider adapters only add endpoint maps and required
   routing/session headers.
-- WebSocket/RPC: `GatewayRpcClient` owns the gateway JSON-RPC protocol while
-  `core/ws/**` owns generic target and close-event helpers. Provider clients
-  are selected through
+- WebSocket/RPC: `core/gateway/rpc/**` owns the gateway JSON-RPC protocol,
+  device identity auth, and preauth handshakes while `core/ws/**` owns generic
+  target and close-event helpers. Provider clients are selected through
   `createGatewayWebSocketClient` or the `createGatewayRpcClient` alias.
 - Agent config: `core/gateway/agent/**` owns the provider-neutral native
   `/api/agent-configs/:id/config` contract, command parsing, voice parsing, and

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getBrowserWindowOrigin } from "../../../core/runtime/paths";
 import {
   resolveGatewayHttpBase,
   resolveGatewayHttpUrl,
@@ -9,6 +10,7 @@ import {
 
 describe("runtime paths", () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     delete (
       window as typeof window & {
         __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
@@ -20,6 +22,12 @@ describe("runtime paths", () => {
         __OPENCLAW_GATEWAY_URL__?: string;
       }
     ).__OPENCLAW_GATEWAY_URL__;
+  });
+
+  it("treats React Native's window without browser location as no origin", () => {
+    vi.stubGlobal("window", {});
+
+    expect(getBrowserWindowOrigin()).toBeNull();
   });
 
   it("maps localhost gateway to configured 127.x for same-origin dev proxy routing", () => {

@@ -9,7 +9,7 @@ composition belongs in `src/cavi/**`.
 - `client/` owns HTTP-facing gateway client helpers.
 - `agent/` owns agent capabilities, config, and voice config.
 - `run/` owns run contracts, run-event streams, SSE, and stream failures.
-- `rpc/` will own WebSocket RPC, device auth, and preauth handshakes.
+- `rpc/` owns WebSocket RPC, device auth, and preauth handshakes.
 - `snapshots/` owns session/system loaders, snapshot loaders, and snapshot
   transforms.
 - `resources/` owns gateway resource clients such as media and wiki.

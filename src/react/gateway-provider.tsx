@@ -17,7 +17,7 @@ import {
   type GatewayConnectionState,
   type GatewayRpcTraceEntry,
   type GatewayStreamEvent,
-} from "../core/gateway/rpc.js";
+} from "../core/gateway/rpc/client.js";
 import {
   GatewayWebSocketClient,
   tryResolveGatewayTargets,

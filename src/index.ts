@@ -70,7 +70,7 @@ export {
   resolveGatewayRequestCredentials,
   type GatewayHttpFetchOptions,
 } from "./core/gateway/fetch.js";
-export * from "./core/gateway/rpc.js";
+export * from "./core/gateway/rpc/index.js";
 export * from "./core/gateway/runtime-targets.js";
 export * from "./core/gateway/snapshots/loaders.js";
 export * from "./core/sse/index.js";

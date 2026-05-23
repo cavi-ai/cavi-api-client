@@ -1,6 +1,6 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
-import { GatewayRpcError } from "../rpc-error.js";
+import { GatewayRpcError } from "../rpc/error.js";
 
 const TERMINAL_GATEWAY_RPC_CODES = new Set(
   [

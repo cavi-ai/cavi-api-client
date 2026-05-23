@@ -2,7 +2,7 @@ import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
 } from "../cache.js";
-import type { GatewayRpcClient } from "../rpc.js";
+import type { GatewayRpcClient } from "../rpc/client.js";
 import type { LogsTailPayload } from "./transforms.js";
 
 export type HealthSnapshotPayload = {

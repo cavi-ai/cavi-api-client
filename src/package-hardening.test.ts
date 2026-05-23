@@ -431,6 +431,12 @@ describe("package hardening", () => {
       "src/core/gateway/snapshots/session-loaders.ts",
       "src/core/gateway/snapshots/system-loaders.ts",
       "src/core/gateway/snapshots/transforms.ts",
+      "src/core/gateway/rpc/index.ts",
+      "src/core/gateway/rpc/client.ts",
+      "src/core/gateway/rpc/device-crypto.ts",
+      "src/core/gateway/rpc/device-store.ts",
+      "src/core/gateway/rpc/error.ts",
+      "src/core/gateway/rpc/preauth-handshake.ts",
       "src/core/gateway/envelope/index.ts",
       "src/core/gateway/envelope/envelope.ts",
       "src/core/gateway/envelope/types.ts",
@@ -454,6 +460,11 @@ describe("package hardening", () => {
       ["src/core/gateway/snapshot-loaders.ts", 'export * from "./snapshots/loaders.js";'],
       ["src/core/gateway/system-loaders.ts", 'export * from "./snapshots/system-loaders.js";'],
       ["src/core/gateway/transforms.ts", 'export * from "./snapshots/transforms.js";'],
+      ["src/core/gateway/rpc.ts", 'export * from "./rpc/client.js";'],
+      ["src/core/gateway/rpc-error.ts", 'export * from "./rpc/error.js";'],
+      ["src/core/gateway/device-crypto.ts", 'export * from "./rpc/device-crypto.js";'],
+      ["src/core/gateway/device-store.ts", 'export * from "./rpc/device-store.js";'],
+      ["src/core/gateway/preauth-handshake.ts", 'export * from "./rpc/preauth-handshake.js";'],
       ["src/core/gateway/envelope.ts", 'export * from "./envelope/index.js";'],
       ["src/core/gateway/envelope-types.ts", 'export type * from "./envelope/types.js";'],
       ["src/core/gateway/media.ts", 'export * from "./resources/media.js";'],
@@ -472,7 +483,7 @@ describe("package hardening", () => {
     const flatGatewayImportOffenders = productionSourceFiles()
       .filter((filePath) => !expectedBarrels.has(rel(filePath)))
       .filter((filePath) =>
-        /from\s+["'][^"']*core\/gateway\/(?:agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms)\.js["']/u.test(
+        /from\s+["'][^"']*core\/gateway\/(?:agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms|rpc|rpc-error|device-crypto|device-store|preauth-handshake)\.js["']/u.test(
           read(filePath),
         ),
       )

@@ -10,7 +10,7 @@ export function normalizeRuntimeBasePath(
 }
 
 export function getBrowserWindowOrigin(): string | null {
-  return typeof window === "undefined" ? null : window.location.origin;
+  return typeof window === "undefined" ? null : (window.location?.origin ?? null);
 }
 
 export function withRuntimeBasePath(

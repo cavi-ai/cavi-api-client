@@ -13,7 +13,7 @@ import type {
 } from "./transforms.js";
 import { GATEWAY_SESSION_API_PATHS } from "../../../contracts/paths.js";
 
-import type { GatewayRpcClient } from "../rpc.js";
+import type { GatewayRpcClient } from "../rpc/client.js";
 import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
