@@ -1,26 +1,8 @@
-export const HTTP_API_CLIENT_ENV_KEYS = {
-  caviBaseUrl: "CAVI_API_BASE_URL",
-  caviAuthToken: "CAVI_API_AUTH_TOKEN",
-  caviClientId: "CAVI_API_CLIENT_ID",
-  gatewayBaseUrl: "GATEWAY_API_BASE_URL",
-  gatewayAuthToken: "GATEWAY_API_AUTH_TOKEN",
-  gatewayClientId: "GATEWAY_API_CLIENT_ID",
-  libraryBaseUrl: "LIBRARY_API_BASE_URL",
-  libraryAuthToken: "LIBRARY_API_AUTH_TOKEN",
-  libraryClientId: "LIBRARY_API_CLIENT_ID",
-} as const;
-
-export const HTTP_API_CLIENT_ENV_ALIASES = {
-  caviBaseUrl: ["EXPO_PUBLIC_CAVI_API_BASE_URL", "EXPO_PUBLIC_CAVI_CONTROL_COMPAT_BASE_URL", "VITE_CAVI_API_BASE_URL"],
-  caviAuthToken: ["EXPO_PUBLIC_CAVI_API_AUTH_TOKEN", "EXPO_PUBLIC_GATEWAY_TOKEN", "VITE_CAVI_API_AUTH_TOKEN"],
-  caviClientId: ["EXPO_PUBLIC_CAVI_API_CLIENT_ID", "EXPO_PUBLIC_GATEWAY_CLIENT_ID", "VITE_CAVI_API_CLIENT_ID"],
-  gatewayBaseUrl: ["EXPO_PUBLIC_GATEWAY_API_BASE_URL", "VITE_GATEWAY_API_BASE_URL"],
-  gatewayAuthToken: ["EXPO_PUBLIC_GATEWAY_TOKEN", "EXPO_PUBLIC_GATEWAY_API_AUTH_TOKEN", "VITE_GATEWAY_API_AUTH_TOKEN"],
-  gatewayClientId: ["EXPO_PUBLIC_GATEWAY_CLIENT_ID", "EXPO_PUBLIC_GATEWAY_API_CLIENT_ID", "VITE_GATEWAY_API_CLIENT_ID"],
-  libraryBaseUrl: ["EXPO_PUBLIC_LIBRARY_API_BASE_URL", "EXPO_PUBLIC_CAVI_LIBRARY_API_BASE_URL", "VITE_LIBRARY_API_BASE_URL"],
-  libraryAuthToken: ["EXPO_PUBLIC_LIBRARY_API_AUTH_TOKEN", "EXPO_PUBLIC_GATEWAY_TOKEN", "VITE_LIBRARY_API_AUTH_TOKEN"],
-  libraryClientId: ["EXPO_PUBLIC_LIBRARY_API_CLIENT_ID", "EXPO_PUBLIC_GATEWAY_CLIENT_ID", "VITE_LIBRARY_API_CLIENT_ID"],
-} as const;
+// Gateway-agnostic env resolution primitive. Core knows how to read a single
+// HTTP surface's config from an env bag with primary keys + ordered aliases +
+// caller-supplied fallbacks. It deliberately knows NOTHING about CAVI, Hermes,
+// OpenClaw, or any specific surface/env-var name or default — those live in the
+// owning layer (extensions/cavi, providers/*) which composes this primitive.
 
 export type HttpApiEnvSource = Record<string, string | undefined>;
 
@@ -30,14 +12,35 @@ export type HttpApiSurfaceConfig = {
   clientId: string;
 };
 
-export type HttpApiResolvedConfig = {
-  cavi: HttpApiSurfaceConfig;
-  gateway: HttpApiSurfaceConfig;
-  library: HttpApiSurfaceConfig;
+/** Primary env-var names for one HTTP surface. */
+export type HttpSurfaceEnvKeys = {
+  baseUrl: string;
+  authToken: string;
+  clientId: string;
 };
 
-export type ResolveHttpApiConfigOptions = {
-  defaults?: Partial<HttpApiResolvedConfig>;
+/** Fallback env-var names checked (in order) when the primary key is unset. */
+export type HttpSurfaceEnvAliases = {
+  baseUrl?: readonly string[];
+  authToken?: readonly string[];
+  clientId?: readonly string[];
+};
+
+/** Last-resort values used when neither the primary nor any alias env var is set. */
+export type HttpSurfaceEnvFallback = {
+  baseUrl: string;
+  authToken?: string | null;
+  clientId: string;
+};
+
+export type HttpSurfaceEnvSpec = {
+  keys: HttpSurfaceEnvKeys;
+  aliases?: HttpSurfaceEnvAliases;
+  fallback: HttpSurfaceEnvFallback;
+};
+
+export type ResolveHttpSurfaceConfigOptions = {
+  defaults?: Partial<HttpApiSurfaceConfig>;
   trimValues?: boolean;
   includeAliases?: boolean;
 };
@@ -69,45 +72,26 @@ function cleanToken(value: string | undefined): string | null {
   return value || null;
 }
 
-export function resolveHttpApiConfigFromEnv(
+/**
+ * Resolve a single HTTP surface's config from an env bag.
+ * Precedence per field: primary key → aliases → caller `defaults` → spec `fallback`.
+ */
+export function resolveHttpSurfaceConfigFromEnv(
   env: HttpApiEnvSource,
-  options: ResolveHttpApiConfigOptions = {},
-): HttpApiResolvedConfig {
+  spec: HttpSurfaceEnvSpec,
+  options: ResolveHttpSurfaceConfigOptions = {},
+): HttpApiSurfaceConfig {
   const trim = options.trimValues ?? true;
   const includeAliases = options.includeAliases ?? true;
   const defaults = options.defaults;
 
-  const caviBaseUrl = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.caviBaseUrl, HTTP_API_CLIENT_ENV_ALIASES.caviBaseUrl, trim, includeAliases);
-  const caviAuthToken = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.caviAuthToken, HTTP_API_CLIENT_ENV_ALIASES.caviAuthToken, trim, includeAliases);
-  const caviClientId = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.caviClientId, HTTP_API_CLIENT_ENV_ALIASES.caviClientId, trim, includeAliases);
-
-  const gatewayBaseUrl = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.gatewayBaseUrl, HTTP_API_CLIENT_ENV_ALIASES.gatewayBaseUrl, trim, includeAliases);
-  const gatewayAuthToken = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.gatewayAuthToken, HTTP_API_CLIENT_ENV_ALIASES.gatewayAuthToken, trim, includeAliases);
-  const gatewayClientId = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.gatewayClientId, HTTP_API_CLIENT_ENV_ALIASES.gatewayClientId, trim, includeAliases);
-
-  const libraryBaseUrl = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.libraryBaseUrl, HTTP_API_CLIENT_ENV_ALIASES.libraryBaseUrl, trim, includeAliases);
-  const libraryAuthToken = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.libraryAuthToken, HTTP_API_CLIENT_ENV_ALIASES.libraryAuthToken, trim, includeAliases);
-  const libraryClientId = firstEnvValue(env, HTTP_API_CLIENT_ENV_KEYS.libraryClientId, HTTP_API_CLIENT_ENV_ALIASES.libraryClientId, trim, includeAliases);
-
-  const cavi: HttpApiSurfaceConfig = {
-    baseUrl: caviBaseUrl ?? defaults?.cavi?.baseUrl ?? "http://127.0.0.1:8787",
-    authToken: cleanToken(caviAuthToken) ?? defaults?.cavi?.authToken ?? null,
-    clientId: caviClientId ?? defaults?.cavi?.clientId ?? "cavi-api-client",
-  };
-  const gateway: HttpApiSurfaceConfig = {
-    baseUrl: gatewayBaseUrl ?? defaults?.gateway?.baseUrl ?? "http://127.0.0.1:8787",
-    authToken: cleanToken(gatewayAuthToken) ?? defaults?.gateway?.authToken ?? null,
-    clientId: gatewayClientId ?? defaults?.gateway?.clientId ?? "cavi-api-client",
-  };
-  const library: HttpApiSurfaceConfig = {
-    baseUrl: libraryBaseUrl ?? defaults?.library?.baseUrl ?? cavi.baseUrl,
-    authToken: cleanToken(libraryAuthToken) ?? defaults?.library?.authToken ?? cavi.authToken,
-    clientId: libraryClientId ?? defaults?.library?.clientId ?? cavi.clientId,
-  };
+  const baseUrl = firstEnvValue(env, spec.keys.baseUrl, spec.aliases?.baseUrl ?? [], trim, includeAliases);
+  const authToken = firstEnvValue(env, spec.keys.authToken, spec.aliases?.authToken ?? [], trim, includeAliases);
+  const clientId = firstEnvValue(env, spec.keys.clientId, spec.aliases?.clientId ?? [], trim, includeAliases);
 
   return {
-    cavi,
-    gateway,
-    library,
+    baseUrl: baseUrl ?? defaults?.baseUrl ?? spec.fallback.baseUrl,
+    authToken: cleanToken(authToken) ?? defaults?.authToken ?? spec.fallback.authToken ?? null,
+    clientId: clientId ?? defaults?.clientId ?? spec.fallback.clientId,
   };
 }

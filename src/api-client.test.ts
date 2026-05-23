@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BaseHttpApiClient } from "./core/http/client";
-import { resolveHttpApiConfigFromEnv } from "./core/env/config";
+import { resolveHttpApiConfigFromEnv } from "./extensions/cavi/runtime/env-config";
 import { resolveHermesHttpApiConfigFromEnv } from "./providers/hermes/env-config";
 import {
   appendHttpQuery,

@@ -1,6 +1,7 @@
 export * from "./client.js";
 export * from "./contracts/index.js";
 export * from "./runtime/paths.js";
+export * from "./runtime/env-config.js";
 export * from "./library/client.js";
 export * from "./library/clip.js";
 export * from "./portal/client.js";

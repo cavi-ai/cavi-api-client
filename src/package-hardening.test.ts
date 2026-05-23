@@ -387,7 +387,11 @@ describe("package hardening", () => {
     expect(compatLegacyTargets).toEqual([]);
     expect(packageJson.files).toContain("!dist/test-support");
     expect(packageJson.files).toContain("!dist/__tests__");
-    expect(packageJson.files).toContain("!dist/extensions/cavi/fallbacks/mock-data");
+    // Runtime withFallback() data lives in extensions/cavi/fallbacks/snapshots and
+    // is imported by the shipped ./extensions/cavi adapters, so it MUST ship.
+    // Guard against anyone re-adding an exclusion that would strip it from dist.
+    expect(packageJson.files).not.toContain("!dist/extensions/cavi/fallbacks");
+    expect(packageJson.files).not.toContain("!dist/extensions/cavi/fallbacks/snapshots");
   });
 
   it("points the package root at canonical implementation folders", () => {

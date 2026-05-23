@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Gateway-agnostic TypeScript client for agent runtimes — one HTTP + WebSocket surface, provider adapters, and graceful degradation across workspaces, UIs, and gateways",
   "type": "module",
+  "sideEffects": false,
   "license": "MIT",
   "author": "sasan1200 <sasan.sotoodehfar@gmail.com>",
   "homepage": "https://github.com/sasan1200/cavi-api-client#readme",
@@ -34,8 +35,7 @@
   "files": [
     "dist",
     "!dist/test-support",
-    "!dist/__tests__",
-    "!dist/extensions/cavi/fallbacks/mock-data"
+    "!dist/__tests__"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -123,6 +123,11 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20.0.0"

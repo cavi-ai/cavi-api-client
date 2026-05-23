@@ -1,6 +1,7 @@
-import type {
-  HttpApiEnvSource,
-  HttpApiSurfaceConfig,
+import {
+  resolveHttpSurfaceConfigFromEnv,
+  type HttpApiEnvSource,
+  type HttpApiSurfaceConfig,
 } from "../../core/env/config.js";
 
 export const HERMES_HTTP_API_ENV_KEYS = {
@@ -41,66 +42,17 @@ export type ResolveHermesHttpApiConfigOptions = {
   includeAliases?: boolean;
 };
 
-function clean(value: string | undefined, trim: boolean): string | undefined {
-  if (value === undefined) return undefined;
-  const cleaned = trim ? value.trim() : value;
-  return cleaned || undefined;
-}
-
-function firstEnvValue(
-  env: HttpApiEnvSource,
-  primary: string,
-  aliases: readonly string[],
-  trim: boolean,
-  includeAliases: boolean,
-): string | undefined {
-  const primaryValue = clean(env[primary], trim);
-  if (primaryValue !== undefined) return primaryValue;
-  if (!includeAliases) return undefined;
-  for (const alias of aliases) {
-    const value = clean(env[alias], trim);
-    if (value !== undefined) return value;
-  }
-  return undefined;
-}
-
-function cleanToken(value: string | undefined): string | null {
-  return value || null;
-}
-
 export function resolveHermesHttpApiConfigFromEnv(
   env: HttpApiEnvSource,
   options: ResolveHermesHttpApiConfigOptions = {},
 ): HttpApiSurfaceConfig {
-  const trim = options.trimValues ?? true;
-  const includeAliases = options.includeAliases ?? true;
-  const defaults = options.defaults;
-
-  const baseUrl = firstEnvValue(
+  return resolveHttpSurfaceConfigFromEnv(
     env,
-    HERMES_HTTP_API_ENV_KEYS.baseUrl,
-    HERMES_HTTP_API_ENV_ALIASES.baseUrl,
-    trim,
-    includeAliases,
+    {
+      keys: HERMES_HTTP_API_ENV_KEYS,
+      aliases: HERMES_HTTP_API_ENV_ALIASES,
+      fallback: { baseUrl: "http://127.0.0.1:8787", clientId: "cavi-api-client" },
+    },
+    options,
   );
-  const authToken = firstEnvValue(
-    env,
-    HERMES_HTTP_API_ENV_KEYS.authToken,
-    HERMES_HTTP_API_ENV_ALIASES.authToken,
-    trim,
-    includeAliases,
-  );
-  const clientId = firstEnvValue(
-    env,
-    HERMES_HTTP_API_ENV_KEYS.clientId,
-    HERMES_HTTP_API_ENV_ALIASES.clientId,
-    trim,
-    includeAliases,
-  );
-
-  return {
-    baseUrl: baseUrl ?? defaults?.baseUrl ?? "http://127.0.0.1:8787",
-    authToken: cleanToken(authToken) ?? defaults?.authToken ?? null,
-    clientId: clientId ?? defaults?.clientId ?? "cavi-api-client",
-  };
 }

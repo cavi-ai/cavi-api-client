@@ -17,14 +17,26 @@ export {
 } from "./core/http/client-id.js";
 
 export {
+  resolveHttpSurfaceConfigFromEnv,
+  type HttpApiEnvSource,
+  type HttpApiSurfaceConfig,
+  type HttpSurfaceEnvSpec,
+  type HttpSurfaceEnvKeys,
+  type HttpSurfaceEnvAliases,
+  type HttpSurfaceEnvFallback,
+  type ResolveHttpSurfaceConfigOptions,
+} from "./core/env/config.js";
+
+// CAVI surface composition (cavi/gateway/library env vars + CAVI defaults) lives
+// in extensions/cavi; core stays surface-agnostic. Re-exported here under the
+// same names the root entry has always used.
+export {
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   resolveHttpApiConfigFromEnv,
-  type HttpApiEnvSource,
   type HttpApiResolvedConfig,
-  type HttpApiSurfaceConfig,
   type ResolveHttpApiConfigOptions,
-} from "./core/env/config.js";
+} from "./extensions/cavi/runtime/env-config.js";
 
 export { BaseHttpApiClient } from "./core/http/client.js";
 export {
@@ -74,7 +86,10 @@ export * from "./core/gateway/client/runtime-targets.js";
 export * from "./core/gateway/snapshots/loaders.js";
 export * from "./core/sse/index.js";
 export * from "./core/ws/index.js";
-export * from "./react/gateway-provider.js";
+// NOTE: React hooks/provider are intentionally NOT re-exported here. They live
+// behind the optional `react` peer dependency and are reachable only via the
+// "@cavi/api-client/react" subpath, so importing the root entry never pulls
+// React into a non-React consumer's module graph.
 export * from "./core/gateway/snapshots/transforms.js";
 export {
   createCaviControlAdapters,

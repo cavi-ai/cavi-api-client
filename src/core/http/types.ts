@@ -1,11 +1,12 @@
 export const PORTAL_CLIENT_ID_HEADER = "X-Portal-Client-Id" as const;
 export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key" as const;
 
-export type HttpApiClientSurface =
-  | "cavi-control-api"
-  | "library-api"
-  | "portal-api"
-  | string;
+// A free-form surface label used only for tracing/observability. Core stays
+// surface-agnostic: callers (extensions/cavi, providers/*) pass whatever name
+// identifies their surface. (A `"literal" | string` union collapses to `string`
+// in TypeScript, so naming specific surfaces here bought no type safety — only
+// leaked domain names into core.)
+export type HttpApiClientSurface = string;
 
 export type HttpApiHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
