@@ -105,6 +105,11 @@ export const GATEWAY_AGENT_CONFIG_API_ENDPOINTS = {
 export const HERMES_AGENT_CONFIG_API_ENDPOINTS = GATEWAY_AGENT_CONFIG_API_ENDPOINTS;
 export const OPENCLAW_AGENT_CONFIG_API_ENDPOINTS = GATEWAY_AGENT_CONFIG_API_ENDPOINTS;
 
+export const GATEWAY_PORTAL_API_ENDPOINTS = {
+  config: (portalSlug: string) =>
+    `/api/plugins/portal/${encodeURIComponent(portalSlug)}/config`,
+} as const;
+
 export const GATEWAY_PROBE_ENDPOINTS = {
   healthz: "/healthz",
   readyz: "/readyz",

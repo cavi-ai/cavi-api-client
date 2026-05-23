@@ -1,6 +1,6 @@
 import type { OperatorControlSnapshot } from "../../../domain/index.js";
 import { fallbackSnapshotNow as now } from "../shared.js";
-import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../paths.js";
+import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../contracts/paths.js";
 import { fallbackDelegatedTransport, fallbackLegacyWorkerFleet } from "./transports.js";
 
 export const fallbackOperatorControlStatus: OperatorControlSnapshot["status"] = {

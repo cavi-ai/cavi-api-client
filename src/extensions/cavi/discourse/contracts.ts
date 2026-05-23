@@ -1,4 +1,4 @@
-import { API_OPERATOR } from "../paths.js";
+import { API_OPERATOR } from "../contracts/paths.js";
 
 export const GATEWAY_RPC_METHODS = {
   discourseTree: "discourse.tree",

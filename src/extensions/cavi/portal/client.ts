@@ -1,5 +1,5 @@
 import { BaseHttpApiClient } from "../../../core/http/client.js";
-import { CAVI_CONTROL_API_ENDPOINTS, resolvePortalApiPath } from "../paths.js";
+import { CAVI_CONTROL_API_ENDPOINTS, resolvePortalApiPath } from "../contracts/paths.js";
 import { resolvePath } from "../contracts/resolve.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../../core/http/types.js";
 

@@ -27,7 +27,7 @@ import {
 import {
   OPERATOR_API,
   operatorControlExpectedContractSummary,
-} from "../../paths.js";
+} from "../../contracts/paths.js";
 import { loadOperatorControlSection } from "../../operator-control/load-section.js";
 import { fallbackOperatorControl } from "../../fallbacks/snapshots/index.js";
 

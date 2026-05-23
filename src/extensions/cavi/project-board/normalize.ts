@@ -20,7 +20,7 @@ import type {
   ProjectBoardProfileApiResponse,
   ProjectBoardSprintApiResponse,
 } from "./constants.js";
-import { CAVI_CONTROL_BASE_PATH } from "../paths.js";
+import { CAVI_CONTROL_BASE_PATH } from "../contracts/paths.js";
 import {
   PROJECT_BOARD_CANONICAL_AVATAR_CANDIDATES,
   PROJECT_BOARD_FALLBACK_LIMITATIONS,

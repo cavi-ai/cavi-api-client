@@ -103,7 +103,7 @@ export {
   OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
   resolvePortalApiPath,
-} from "./extensions/cavi/paths.js";
+} from "./extensions/cavi/contracts/paths.js";
 
 export {
   appendHttpQuery,
@@ -306,17 +306,22 @@ export {
 } from "./providers/hermes/env-config.js";
 
 export {
+  RUN_STREAM_EVENT_NAMES,
   RunPreviewPollProvider,
   composeRunEventProviders,
   createRunStreamWithToolFallback,
+  type AgentRun,
+  type AgentRunDetailSnapshot,
   type CreateRunStreamWithToolFallbackOptions,
+  type RunStreamEvent,
+  type RunStreamEventName,
   type RunEventStreamHandlers,
   type RunEventStreamProvider,
   type RunEventStreamSubscribeParams,
   type RunEventStreamSubscription,
   type RunPreviewPollProviderOptions,
   type RunPreviewSnapshotFetcher,
-} from "./core/gateway/run/event-stream.js";
+} from "./core/gateway/run/index.js";
 
 export {
   GatewaySseRunEventProvider,

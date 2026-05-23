@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getBrowserWindowOrigin } from "../../../core/runtime/paths";
+import { getBrowserWindowOrigin } from "../../../../core/runtime/paths";
 import {
   resolveGatewayHttpBase,
   resolveGatewayHttpUrl,

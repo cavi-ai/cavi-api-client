@@ -14,6 +14,7 @@ src/
       client/
       envelope/
       portal/
+      providers/
       resources/
       rpc/
       run/
@@ -23,22 +24,26 @@ src/
     sse/
     ws/
   contracts/
-  cavi/
-    adapters/
-    domain/
-    fallbacks/
-    library/
-    operator/
-    portal/
-    registry/
-    runtime/
+  extensions/
+    cavi/
+      adapters/
+      contracts/
+      discourse/
+      domain/
+      fallbacks/
+      library/
+      operator-control/
+      portal/
+      project-board/
+      registry/
+      runtime/
   providers/
-    gateway/
     hermes/
     openclaw/
   react/
   __tests__/
-    cavi/
+    extensions/
+      cavi/
     fixtures/
   index.ts
 ```
@@ -48,31 +53,32 @@ is the single canonical aggregate for gateway owner folders and backs the
 published `./core/gateway` subpath. Old flat `src/core/gateway/*.ts` shim paths
 are not active source, are not package-owned import targets, and must not be
 reintroduced.
-Provider resolution has one boundary in `src/providers/gateway/**`; the old core
+Provider resolution has one boundary in `src/core/gateway/providers/**`; the old core
 gateway provider-resolution file is not active source.
 
 ## Dependency Direction
 
-- `core/**` contains shared data, env, gateway, HTTP, runtime, and WebSocket behavior. It must not import from `cavi/**`, `providers/**`, `react/**`, or compatibility shims.
+- `core/**` contains shared data, env, gateway, HTTP, runtime, and WebSocket behavior. It must not import from `extensions/cavi/**`, concrete `providers/**`, `react/**`, or compatibility shims.
 - `core/sse/**` owns generic Server-Sent Events parsing, stream consumption, and abort-signal helpers. Gateway-specific run-event translation and polling fallback remain in `core/gateway/**`.
 - `core/ws/**` owns generic WebSocket target resolution, close-event normalization, and WebSocket-facing aliases. Gateway-specific connect/auth protocol remains in `core/gateway/**`.
 - `core/runtime/**` contains generic base-path helpers only. It must not know product globals such as OpenClaw/CAVI base-path keys; CAVI runtime wrappers read those globals and call core helpers.
-- `contracts/**` contains route, surface, and agnostic team-manifest contracts. It must not import from `cavi/**` or providers.
-- `cavi/**` may import from `core/**` and `contracts/**`. It owns CAVI clients, data, adapters, domain DTOs, and registry wrappers.
-- `providers/**` may import from `core/**`, `contracts/**`, and shared CAVI registry/domain types when needed.
-- `providers/gateway/**` owns the gateway provider plugin boundary. Its
+- `contracts/**` contains global route, surface, and agnostic team-manifest contracts. It must not import from `extensions/**` or providers.
+- `extensions/cavi/**` may import from `core/**` and `contracts/**`. It owns CAVI clients, extension contracts, adapters, domain DTOs, and registry wrappers.
+- `providers/hermes/**` and `providers/openclaw/**` may import from `core/**` and `contracts/**`.
+- `core/gateway/providers/**` owns the gateway provider plugin boundary. Its
   `types.ts`, `normalize.ts`, `registry.ts`, and `factory.ts` modules must stay
-  provider-implementation agnostic. Built-in provider wiring belongs in
-  `providers/gateway/built-ins.ts`.
+  provider-implementation agnostic. Built-in provider modules belong in
+  `src/providers/hermes/provider-module.ts` and
+  `src/providers/openclaw/provider-module.ts`.
 - `react/**` may import from `core/gateway/**` and React only.
-- `cavi/fallbacks/snapshots/**` contains runtime fallback snapshots used by degraded gateway flows. These are production fallback data, not test mocks.
-- `cavi/data/**` is removed legacy shim space. Active source should import named folders such as `cavi/deb/**`, `cavi/operator/**`, `cavi/portal/**`, `cavi/registry/**`, `cavi/runtime/**`, or `cavi/library/**` directly.
-- `__tests__/cavi/**` contains CAVI tests. Test files should not live under production `cavi/**` folders.
+- `extensions/cavi/fallbacks/snapshots/**` contains runtime fallback snapshots used by degraded gateway flows. These are production fallback data, not test mocks.
+- `extensions/cavi/data/**` is removed legacy shim space. Active source should import named folders such as `extensions/cavi/project-board/**`, `extensions/cavi/operator-control/**`, `extensions/cavi/portal/**`, `extensions/cavi/registry/**`, `extensions/cavi/runtime/**`, or `extensions/cavi/library/**` directly.
+- `__tests__/extensions/cavi/**` contains CAVI tests. Test files should not live under production `extensions/cavi/**` folders.
 - `__tests__/fixtures/**` contains test-only fixtures and helpers. Production modules must not depend on it and it is not part of the build include.
 
 ## CAVI Boundary
 
-Current CAVI paths such as `/cavi-control/api/*`, `/library/api/*`, dynamic portal plugin routes, and portal-memory routes are active CAVI contracts. Route literals and dynamic route helpers are owned by `src/contracts/paths.ts`; CAVI-facing aliases such as `DEB_API` and `OPERATOR_API` are centralized in `src/cavi/paths.ts`. Feature folders should not hide their own path owners or pretend active contracts are removed legacy paths.
+Current CAVI paths such as `/cavi-control/api/*`, `/library/api/*`, dynamic portal plugin routes, and portal-memory routes are active CAVI extension contracts. Route literals and dynamic route helpers are owned by `src/extensions/cavi/contracts/paths.ts`; CAVI surface keys are owned by `src/extensions/cavi/contracts/surfaces.ts`. Global gateway/team/kanban contracts stay in `src/contracts/**`.
 
 CAVI must not duplicate:
 
@@ -93,37 +99,37 @@ CAVI must not duplicate:
 CAVI should call shared core methods and shared contract helpers.
 
 CAVI data behavior should live in named feature folders. Generic helpers belong
-in `core/**`; route literals belong in `src/contracts/paths.ts`; CAVI feature
-route aliases and route helper functions belong in `src/cavi/paths.ts`;
-operator defaults and section helpers live in `src/cavi/operator/**`.
+in `core/**`; global route literals belong in `src/contracts/paths.ts`; CAVI feature
+route aliases and route helper functions belong in `src/extensions/cavi/contracts/paths.ts`;
+operator defaults and section helpers live in `src/extensions/cavi/operator-control/**`.
 
 ## Cleanup Progress
 
 Completed cleanup passes:
 
-- Deb active implementation is consolidated under `src/cavi/deb/**`.
-- Discourse active implementation is consolidated under `src/cavi/discourse/**`.
+- Project Board active implementation is consolidated under `src/extensions/cavi/project-board/**`.
+- Discourse active implementation is consolidated under `src/extensions/cavi/discourse/**`.
 - Generic data guards moved to `src/core/data/**`.
 - Shared JSON HTTP request helpers and gateway HTTP errors moved to `src/core/http/**`.
 - Gateway envelope/fallback contracts moved to `src/core/gateway/**`.
 - Gateway health/log tail system loaders moved to `src/core/gateway/snapshots/system-loaders.ts`.
 - Gateway-derived overview, run, routing, and incident snapshot orchestration moved to `src/core/gateway/snapshots/loaders.ts`, with fallbacks and source bindings injected by callers.
-- Generic runtime base-path helpers moved to `src/core/runtime/**`, with CAVI runtime wrappers under `src/cavi/runtime/**`.
+- Generic runtime base-path helpers moved to `src/core/runtime/**`, with CAVI runtime wrappers under `src/extensions/cavi/runtime/**`.
 - Generic SSE stream parsing and consumption moved to `src/core/sse/**`; gateway run-event providers now compose those helpers.
-- Deb and operator route aliases moved to `src/cavi/paths.ts`; operator defaults and section helpers remain in `src/cavi/operator/**`.
+- Project Board and operator route aliases moved to `src/extensions/cavi/contracts/paths.ts`; operator defaults and section helpers remain in `src/extensions/cavi/operator-control/**`.
 - Gateway raw fetch helpers moved to `src/core/gateway/client/fetch.ts`; CAVI library code now only adapts session-auth runtime details before using core HTTP transports.
 - Gateway snapshot TTL cache helpers moved to `src/core/gateway/snapshots/cache.ts`; the old `src/core/gateway/cache.ts` path is not active source.
 - Generic WebSocket target resolution and close-event normalization moved to `src/core/ws/**`; the stale `src/core/gateway/websocket.ts` alias is not active source.
-- Legacy `src/cavi/data/**` re-export/path shims are not active source; canonical folders and `src/contracts/paths.ts` are imported directly.
-- Dynamic portal route construction moved to `src/contracts/paths.ts`; CAVI portal clients now call the shared path helper instead of assembling API templates inline.
-- Portal envelope/library/memory contracts moved to `src/contracts/portals.ts`; CAVI registry and adapter code now imports those shared contracts directly.
+- Legacy `src/extensions/cavi/data/**` re-export/path shims are not active source; canonical folders and path-owner modules are imported directly.
+- Dynamic CAVI portal route construction lives in `src/extensions/cavi/contracts/paths.ts`; CAVI portal clients call that helper instead of assembling API templates inline.
+- Portal envelope/library/memory contracts moved to `src/extensions/cavi/contracts/portals.ts`; CAVI registry and adapter code imports those extension contracts directly.
 - CAVI-labeled core re-export shims for runtime HTTP transport and portal client-id validation are not active source; active modules import `core/http/**` and `contracts/**` directly.
-- Duplicate Deb/Discourse mock fixtures and stale generated `dist` outputs are not active source.
+- Duplicate Project Board/Discourse mock fixtures and stale generated `dist` outputs are not active source.
 
-Remaining cleanup should focus on reducing the active `src/cavi/**` surface to
+Remaining cleanup should focus on reducing the active `src/extensions/cavi/**` surface to
 actual CAVI-specific behavior, especially any lingering compatibility shims,
 operator fallback modules, or generic helpers that still live under CAVI names.
-`src/cavi/data/**` should not return to active source.
+`src/extensions/cavi/data/**` should not return to active source.
 
 ## Gateway Transports
 
@@ -161,25 +167,26 @@ behavior.
 
 Provider selection is a plugin boundary, not a core gateway concern:
 
-- `providers/gateway/types.ts` defines `GatewayProviderModule` and the factory
+- `core/gateway/providers/types.ts` defines `GatewayProviderModule` and the factory
   interface each plugin implements.
-- `providers/gateway/registry.ts` resolves explicit provider choices,
+- `core/gateway/providers/registry.ts` resolves explicit provider choices,
   `CAVI_GATEWAY_PROVIDER`, `GATEWAY_PROVIDER`, aliases, and default providers.
   It rejects duplicate provider keys unless an override is explicit.
-- `providers/gateway/factory.ts` adapts resolved provider modules into the
+- `core/gateway/providers/factory.ts` adapts resolved provider modules into the
   public `createGateway*` factory functions.
-- `providers/gateway/built-ins.ts` is the built-in implementation wiring for
-  Hermes and OpenClaw. New third-party providers should be passed as modules or
-  registries by the host app instead of being added to this package.
+- `providers/hermes/provider-module.ts` and
+  `providers/openclaw/provider-module.ts` expose the built-in provider modules.
+  New third-party providers should be passed as modules or registries by the
+  host app instead of being added to this package.
 - Core gateway does not own provider resolution; provider selection has one
-  boundary in `src/providers/gateway/**`.
+  boundary in `src/core/gateway/providers/**`.
 
 CAVI adapter modules should stay as composition layers over those contracts.
 For gateway WebSocket-backed control surfaces, `core/gateway/snapshots/session-loaders.ts`
 owns `sessions.*` request coalescing and cache behavior, while
 `core/gateway/snapshots/loaders.ts` owns reusable snapshot assembly. CAVI
 adapters inject compatibility fallbacks and keep CAVI-only surfaces such as
-operator control, Deb, Discourse, cost history, and library loading.
+operator control, Project Board, Discourse, cost history, and library loading.
 
 ## Gateway Media
 
@@ -209,7 +216,7 @@ Team manifests are the preferred agnostic input shape for dynamic frontend
 compatibility. A manifest has a `teams` array, a default team-of-one helper for
 minimal setups, shared generated routes such as team Kanban/runs/config and
 team/member workspace APIs, and per-team or per-member workspace roots with
-explicit whitelisted relative paths. Product names such as Deb or Martina
+explicit whitelisted relative paths. Product names such as Project Board or Martina
 should not define core route grammar; they may supply manifest entries,
 workspace folders, capabilities, or compatibility adapters.
 
@@ -219,7 +226,7 @@ rooms, workplace tools, or deployment-specific channels should be expressed as
 instead of adding package-owned route literals or hardcoded channel names.
 
 New team-shaped CAVI paths should use the `team.*` contracts first. Existing
-Deb, Martina, Machine, Front Door, and portal-memory paths are compatibility
+Project Board, Martina, Machine, Front Door, and portal-memory paths are compatibility
 contracts and should not be expanded unless a gateway compatibility boundary
 requires it.
 

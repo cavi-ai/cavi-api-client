@@ -18,12 +18,14 @@ import {
   HermesAgentConfigApiClient,
   HermesApiClient,
   HermesMediaApiClient,
+  HERMES_PROVIDER_MODULE,
   HermesSseRunEventProvider,
   HermesWebSocketClient,
   HermesWikiApiClient,
   OpenClawApiClient,
   OpenClawAgentConfigApiClient,
   OpenClawMediaApiClient,
+  OPENCLAW_PROVIDER_MODULE,
   OpenClawSseRunEventProvider,
   OpenClawWebSocketClient,
   OpenClawWikiApiClient,
@@ -49,6 +51,10 @@ import {
 } from "./index";
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+const BUILT_IN_PROVIDER_MODULES = [
+  HERMES_PROVIDER_MODULE,
+  OPENCLAW_PROVIDER_MODULE,
+] as const;
 const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
 const DIST_CORE_GATEWAY_ROOT = path.join(PACKAGE_ROOT, "dist", "core", "gateway");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
@@ -61,7 +67,7 @@ const CORE_GATEWAY_INDEX = path.join(SRC_ROOT, "core", "gateway", "index.ts");
 const CORE_GATEWAY_PROVIDER = path.join(SRC_ROOT, "core", "gateway", "provider.ts");
 const CORE_GATEWAY_ROOT = path.join(SRC_ROOT, "core", "gateway");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
-const CAVI_PATHS = path.join(SRC_ROOT, "extensions", "cavi", "paths.ts");
+const CAVI_CONTRACT_PATHS = path.join(SRC_ROOT, "extensions", "cavi", "contracts", "paths.ts");
 const CAVI_ROOT = path.join(SRC_ROOT, "extensions", "cavi");
 const CAVI_DATA_ROOT = path.join(SRC_ROOT, "extensions", "cavi", "data");
 const CAVI_DATA_LIB_ROOT = path.join(SRC_ROOT, "extensions", "cavi", "data", "lib");
@@ -322,18 +328,17 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps CAVI route aliases in the top-level CAVI path owner", () => {
-    const source = read(CAVI_PATHS);
+  it("keeps CAVI route aliases in the CAVI extension path owner", () => {
+    const source = read(CAVI_CONTRACT_PATHS);
     const hiddenFeaturePathOwners = walkFiles(CAVI_ROOT)
       .map(rel)
       .filter((relative) => relative.endsWith("/paths.ts"))
       .filter(
         (relative) =>
-          relative !== "src/extensions/cavi/paths.ts" &&
+          relative !== "src/extensions/cavi/contracts/paths.ts" &&
           relative !== "src/extensions/cavi/runtime/paths.ts",
       );
 
-    expect(source).toContain('export * from "./contracts/paths.js";');
     expect(source).toContain("export const PROJECT_BOARD_API");
     expect(source).toContain("export const OPERATOR_API");
     expect(hiddenFeaturePathOwners).toEqual([]);
@@ -410,6 +415,7 @@ describe("package hardening", () => {
       'export * from "./resources/index.js";',
       'export * from "./envelope/index.js";',
       'export * from "./portal/index.js";',
+      'export * from "./providers/index.js";',
     ].join("\n"));
   });
 
@@ -417,7 +423,7 @@ describe("package hardening", () => {
     const offenders = walkFiles(path.join(SRC_ROOT, "core"))
       .filter((filePath) => {
         const source = read(filePath);
-        return /from\s+["'][^"']*(?:providers\/|cavi\/)/u.test(source);
+        return /from\s+["'][^"']*(?:(?:\.\.\/)+providers\/|extensions\/cavi|cavi\/)/u.test(source);
       })
       .map(rel);
 
@@ -1012,13 +1018,12 @@ describe("package hardening", () => {
     expect(() => resolveGatewayProviderKind({
       provider: "acme",
     })).toThrow('Unknown gateway provider "acme"');
-    expect(() => createGatewayProviderRegistry({
-      modules: [{ kind: "gateway" }],
-    })).toThrow('Duplicate gateway provider key "gateway"');
     expect(createGatewayProviderRegistry({
       modules: [{ kind: "gateway" }],
-      allowOverrides: true,
     }).resolveProvider("generic")?.kind).toBe("gateway");
+    expect(() => createGatewayProviderRegistry({
+      modules: [{ kind: "gateway" }, { kind: "generic" }],
+    })).toThrow('Duplicate gateway provider key "gateway"');
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {

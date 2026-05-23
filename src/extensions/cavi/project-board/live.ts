@@ -7,7 +7,7 @@ import type {
 } from "../domain/index.js";
 import { GatewayHttpError } from "../../../core/http/gateway-error.js";
 import type { JsonHttpRequest } from "../../../core/http/json-client.js";
-import { API_PROJECT_BOARD, PROJECT_BOARD_API } from "../paths.js";
+import { API_PROJECT_BOARD, PROJECT_BOARD_API } from "../contracts/paths.js";
 import {
   normalizeEmailList,
   toProjectBoardProfile,

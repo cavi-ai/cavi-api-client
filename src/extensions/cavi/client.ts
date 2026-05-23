@@ -1,5 +1,5 @@
 import { BaseHttpApiClient } from "../../core/http/client.js";
-import { CAVI_CONTROL_API_ENDPOINTS } from "./paths.js";
+import { CAVI_CONTROL_API_ENDPOINTS } from "./contracts/paths.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 
 export class CaviControlApiClient extends BaseHttpApiClient {

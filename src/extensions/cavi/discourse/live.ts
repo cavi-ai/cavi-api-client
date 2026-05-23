@@ -1,6 +1,6 @@
 import type { GatewayWebSocketClient } from "../../../core/ws/index.js";
 import type { TaskDiscourseSnapshot } from "../domain/index.js";
-import { operatorTaskDiscoursePath } from "../paths.js";
+import { operatorTaskDiscoursePath } from "../contracts/paths.js";
 import type { JsonHttpRequest } from "../../../core/http/json-client.js";
 import { GATEWAY_RPC_METHODS } from "./contracts.js";
 import { normalizeTaskDiscourseSnapshot } from "./normalize.js";

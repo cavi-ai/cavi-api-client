@@ -1,5 +1,5 @@
 import type { OperatorControlSnapshot } from "../../../../../extensions/cavi/domain/index.js";
-import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../../../extensions/cavi/paths.js";
+import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../../../extensions/cavi/contracts/paths.js";
 
 const TWO_TONY_INTERNAL_BASE_URL = "http://2tony.internal:3009";
 const ANGELA_INTERNAL_BASE_URL = "http://angela.internal:18789";

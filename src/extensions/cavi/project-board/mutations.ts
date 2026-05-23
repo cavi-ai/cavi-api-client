@@ -13,7 +13,7 @@ import { describeHttpContract } from "../../../core/http/contracts.js";
 import {
   PROJECT_BOARD_API,
   projectBoardBacklogItemPath,
-} from "../paths.js";
+} from "../contracts/paths.js";
 import {
   PROJECT_BOARD_FALLBACK_LIMITATIONS,
   type ProjectBoardCallApiAckResponse,

@@ -64,7 +64,7 @@ Full export catalog is in [Reference](#reference) below.
 - Uses the platform `fetch` by default. Pass `fetchImpl` when a runtime needs an explicit implementation.
 
 The package exposes **subpath exports** so you import only the slice you need:
-`@cavi/api-client` (root), `./core/http`, `./core/data`, `./core/runtime`, `./core/sse`, `./core/ws`, `./core/gateway`, `./core/env`, `./contracts`, `./cavi`, `./providers/gateway`, `./providers/hermes`, `./providers/openclaw`, `./react`.
+`@cavi/api-client` (root), `./core/http`, `./core/data`, `./core/runtime`, `./core/sse`, `./core/ws`, `./core/gateway`, `./core/env`, `./contracts`, `./extensions/cavi`, `./providers/hermes`, `./providers/openclaw`, `./react`.
 
 ---
 
@@ -75,6 +75,7 @@ import {
   createGatewayApiClient,
   CaviControlApiClient,
   HttpApiError,
+  OPENCLAW_PROVIDER_MODULE,
 } from "@cavi/api-client";
 
 const auth = {
@@ -85,7 +86,7 @@ const auth = {
 // Pick a provider; the returned client is the same gateway-agnostic shape.
 const gateway = createGatewayApiClient(
   { baseUrl: "https://gateway.example.com", auth },
-  { provider: "openclaw" }, // or "hermes", "gateway", or your own
+  { provider: "openclaw", providerModules: [OPENCLAW_PROVIDER_MODULE] },
 );
 
 const run = await gateway.startRun({
@@ -117,9 +118,9 @@ That is the whole mental model: **pick a provider, get a client, call methods.**
 
 ### One model, provider overrides
 
-HTTP REST (`BaseHttpApiClient`) and WebSocket RPC (`GatewayRpcClient`) are the only two things that touch the network. Both stay **gateway-agnostic** in `core/`. `createGatewayApiClient(opts, { provider | env })` returns the right implementation:
+HTTP REST (`BaseHttpApiClient`) and WebSocket RPC (`GatewayRpcClient`) are the only two things that touch the network. Both stay **gateway-agnostic** in `core/`. `createGatewayApiClient(opts, { provider | env | providerModules })` returns the right implementation:
 
-- Provider kinds `gateway` | `hermes` | `openclaw` map to surfaces `gateway-api` / `hermes-api-server` / `openclaw-api`.
+- Provider kind `gateway` is the core fallback. Hermes/OpenClaw are provider modules exported from `./providers/hermes` and `./providers/openclaw`.
 - Resolution order: explicit `provider` → `CAVI_GATEWAY_PROVIDER` → `GATEWAY_PROVIDER` → default `gateway`.
 - `Gateway*` names are canonical. `Hermes*` / `OpenClaw*` names are provider-specific compatibility exports — prefer the gateway-agnostic name in new code.
 
@@ -131,20 +132,23 @@ Universal concepts (agent runs, run-stream events) live in `core`; product code 
 
 ### Paths are owned, never scattered
 
-Every API route literal lives in a `*paths.ts` file — chiefly `src/contracts/paths.ts` (endpoint tables and dynamic route helpers) and `src/cavi/paths.ts` (CAVI-facing aliases such as `DEB_API`, `OPERATOR_API`). `src/contracts/surfaces.ts` holds the surface contract map; `resolvePath(key, mode)` picks the path for a `GatewayMode`. A hardening test fails the build if a route string leaks anywhere else.
+Every API route literal lives in a `*paths.ts` file. Global gateway/team/kanban routes live in `src/contracts/paths.ts`; CAVI extension routes live in `src/extensions/cavi/contracts/paths.ts`. Global surface keys live in `src/contracts/surfaces.ts`; CAVI extension surface keys live in `src/extensions/cavi/contracts/surfaces.ts`. A hardening test fails the build if a route string leaks anywhere else.
 
 ### Layered architecture
 
 Strict, one-directional dependency flow — lower layers never import upward:
 
 ```
-core → contracts → cavi → providers / react
+core → contracts
+core/contracts → extensions/cavi
+core/contracts → providers/hermes | providers/openclaw | react
 ```
 
 - **`core/`** — gateway-agnostic foundation (`http`, `data`, `env`, `runtime`, `sse`, `ws`, `gateway`). No product knowledge.
-- **`contracts/`** — path & surface contracts, the agnostic team manifest.
-- **`cavi/`** — CAVI-specific clients, adapters, domain DTOs, registry wrappers.
-- **`providers/`** — `gateway` (the plugin boundary), `hermes`, `openclaw`.
+- **`contracts/`** — global path & surface contracts, the agnostic team manifest.
+- **`extensions/cavi/`** — CAVI-specific clients, extension contracts, adapters, domain DTOs, registry wrappers.
+- **`core/gateway/providers/`** — provider plugin interface, registry, normalization, and generic factories.
+- **`providers/hermes` / `providers/openclaw`** — built-in provider implementations and modules.
 - **`react/`** — context/hooks over the gateway client.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full layout and dependency rules.
@@ -160,7 +164,7 @@ the owner folder directly or from the canonical aggregate.
 
 ## Adding a gateway provider
 
-This is the part the package is built for. A new gateway is a **module you register at the factory boundary** — you do not edit this package or fork it. The provider plugin surface lives at `@cavi/api-client/providers/gateway`.
+This is the part the package is built for. A new gateway is a **module you register at the factory boundary** — you do not edit this package or fork it. The provider plugin surface lives at `@cavi/api-client/core/gateway`.
 
 ```ts
 import {
@@ -168,7 +172,7 @@ import {
   createGatewayApiClient,
   createGatewayProviderRegistry,
 } from "@cavi/api-client";
-import { type GatewayProviderModule } from "@cavi/api-client/providers/gateway";
+import { type GatewayProviderModule } from "@cavi/api-client/core/gateway";
 
 const acmeProvider: GatewayProviderModule = {
   kind: "acme",
@@ -186,9 +190,9 @@ const gateway = createGatewayApiClient(
 );
 ```
 
-Provider keys are normalized (trimmed, lowercased); `generic` is an alias for `gateway`. Duplicate keys throw by default so a plugin cannot silently replace a built-in — pass `{ includeBuiltIns: false }` for a standalone registry or `{ allowOverrides: true }` for an intentional override.
+Provider keys are normalized (trimmed, lowercased); `generic` is an alias for `gateway`. Duplicate keys throw by default; pass `{ allowOverrides: true }` only for an intentional override. Built-in providers are explicit modules, not hidden registry state.
 
-A provider module may customize headers, endpoint maps, factories, or defaults. It should **not** fork the parser, the RPC protocol, retry semantics, or trace behavior — those are written once in `core`. The same module shape carries the media, wiki, agent-config, SSE, and WebSocket factories — implement only the `create*` factories your app actually uses; calling a factory the module does not provide (e.g. `createGatewayMediaClient` for a provider with no `createMediaClient`) throws at construction time. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full provider-author checklist.
+A provider module may customize headers, endpoint maps, factories, or defaults. It should **not** fork the parser, the RPC protocol, retry semantics, or trace behavior — those are written once in `core`. The same module shape carries the media, wiki, agent-config, SSE, and WebSocket factories; implement only the `create*` factories your gateway actually needs, and missing factories fall back to the generic gateway implementation. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full provider-author checklist.
 
 ---
 
@@ -482,7 +486,7 @@ The workspace resolver accepts only paths declared in `workspace.paths`, so cust
 
 ### Path contracts
 
-Route literals belong in path-owner files (`src/contracts/paths.ts`, `src/cavi/paths.ts`) and `src/contracts/surfaces.ts`. Use exported constants, `resolvePath`, or helpers — never recreate route strings.
+Route literals belong in path-owner files (`src/contracts/paths.ts`, `src/extensions/cavi/contracts/paths.ts`) and surface-owner files (`src/contracts/surfaces.ts`, `src/extensions/cavi/contracts/surfaces.ts`). Use exported constants, `resolvePath`, `resolveCaviPath`, or helpers — never recreate route strings.
 
 ```ts
 import {

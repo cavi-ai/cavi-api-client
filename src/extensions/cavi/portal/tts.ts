@@ -1,4 +1,4 @@
-import { CAVI_CONTROL_API_ENDPOINTS } from "../paths.js";
+import { CAVI_CONTROL_API_ENDPOINTS } from "../contracts/paths.js";
 import type { HttpApiRequestInit } from "../../../core/http/types.js";
 
 export const PORTAL_TTS_PROVIDERS_PATH = CAVI_CONTROL_API_ENDPOINTS.portals.machine.ttsProviders;

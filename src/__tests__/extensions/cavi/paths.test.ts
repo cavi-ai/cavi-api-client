@@ -10,7 +10,7 @@ import {
   projectBoardWorkspaceExpectedContractSummary,
   operatorTaskDiscoursePath,
   resolvePortalApiPath,
-} from "../../../extensions/cavi/paths";
+} from "../../../extensions/cavi/contracts/paths";
 import { describeHttpContract } from "../../../core/http/contracts";
 
 describe("api-paths", () => {

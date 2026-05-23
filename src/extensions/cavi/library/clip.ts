@@ -1,4 +1,4 @@
-import { LIBRARY_API_ENDPOINTS, resolveLibraryApiPath } from "../paths.js";
+import { LIBRARY_API_ENDPOINTS, resolveLibraryApiPath } from "../contracts/paths.js";
 
 export const LIBRARY_CLIP_ENDPOINT = LIBRARY_API_ENDPOINTS.clip;
 export const LIBRARY_CLIP_HEALTH_ENDPOINT = LIBRARY_API_ENDPOINTS.clipHealth;

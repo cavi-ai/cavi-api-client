@@ -1,5 +1,5 @@
 import type { OperatorControlSnapshot } from "../../../domain/index.js";
-import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../paths.js";
+import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../contracts/paths.js";
 
 const SECONDARY_OPERATOR_INTERNAL_BASE_URL = "http://primary-operator-2.internal:3009";
 const SERVICE_OPERATOR_INTERNAL_BASE_URL = "http://service-operator.internal:18789";

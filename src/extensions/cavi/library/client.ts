@@ -1,5 +1,5 @@
 import { BaseHttpApiClient } from "../../../core/http/client.js";
-import { appendHttpQuery, LIBRARY_API_ENDPOINTS } from "../paths.js";
+import { appendHttpQuery, LIBRARY_API_ENDPOINTS } from "../contracts/paths.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../../core/http/types.js";
 
 export type LibraryIngestSource = {

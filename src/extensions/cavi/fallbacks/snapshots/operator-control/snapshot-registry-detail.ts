@@ -1,5 +1,5 @@
 import type { OperatorControlSnapshot } from "../../../domain/index.js";
-import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../paths.js";
+import { OPERATOR_DISPATCH_ENDPOINTS } from "../../../contracts/paths.js";
 import { fallbackSnapshotNow as now } from "../shared.js";
 import { agentDefaults, k8sDefaults, teamDefaults } from "./defaults.js";
 

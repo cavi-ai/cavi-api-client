@@ -45,18 +45,21 @@ so explicitly in your PR.
 ### Dependency direction
 
 ```
-core → contracts → cavi → providers / react
+core → contracts
+core/contracts → extensions/cavi
+core/contracts → providers/hermes | providers/openclaw | react
 ```
 
 Lower layers never import upward. Concretely:
 
-- **`core/`** is gateway-agnostic. No product knowledge, no `cavi/`/`providers/`/
-  `react/` imports. Universal concepts (runs, run-stream events, transports) live
+- **`core/`** is gateway-agnostic. No product knowledge, no `extensions/cavi/`,
+  concrete `providers/`, or `react/` imports. Universal concepts (runs, run-stream events, transports) live
   here.
-- **`contracts/`** owns paths, surfaces, and the agnostic team manifest. No imports
-  from `cavi/` or providers.
-- **`cavi/`** owns CAVI-specific clients, adapters, domain DTOs, registry wrappers.
-- **`providers/gateway/`** is the plugin boundary; `providers/hermes` and
+- **`contracts/`** owns global paths, surfaces, and the agnostic team manifest. No imports
+  from `extensions/` or providers.
+- **`extensions/cavi/`** owns CAVI-specific clients, extension contracts, adapters,
+  domain DTOs, registry wrappers.
+- **`core/gateway/providers/`** is the plugin boundary; `providers/hermes` and
   `providers/openclaw` are the built-in adapters.
 - **`react/`** imports `core/gateway` and React only.
 
@@ -73,8 +76,9 @@ the owner folder or from the canonical aggregate, never from a flat shim path.
 
 The whole point of the provider model is that you do **not** edit core to add a
 gateway. A provider is a `GatewayProviderModule`. Built-in wiring (Hermes,
-OpenClaw) lives only in `src/providers/gateway/built-ins.ts`; third-party
-providers are passed as modules/registries by the host app.
+OpenClaw) lives in `src/providers/hermes/provider-module.ts` and
+`src/providers/openclaw/provider-module.ts`; third-party providers are passed as
+modules/registries by the host app.
 
 Checklist:
 
@@ -84,7 +88,7 @@ Checklist:
 
    ```ts
    import { GatewayApiClient } from "@cavi/api-client";
-   import { type GatewayProviderModule } from "@cavi/api-client/providers/gateway";
+   import { type GatewayProviderModule } from "@cavi/api-client/core/gateway";
 
    export const acmeProvider: GatewayProviderModule = {
      kind: "acme",
@@ -107,8 +111,8 @@ Checklist:
 ## Adding a feature
 
 1. **Decide the layer.** Generic transport/data/runtime → `core/`. A route or
-   surface contract → `contracts/`. CAVI-specific shaping → `cavi/`. Provider-only
-   behavior → `providers/<name>/`.
+   global surface contract → `contracts/`. CAVI-specific shaping or routes →
+   `extensions/cavi/`. Provider-only behavior → `providers/<name>/`.
 2. **Don't duplicate a core type.** If `core` already models the concept (a run, a
    run-stream event), re-export and extend — never copy it downstream.
 3. **Route every loader through degradation.** New data loaders use `withFallback`

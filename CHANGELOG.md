@@ -15,11 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/core/gateway/index.ts` aggregate that points at owner-folder indexes.
 - Moved snapshot TTL cache helpers to `src/core/gateway/snapshots/cache.ts`.
 - Published `./core/gateway` from the canonical gateway aggregate.
+- Moved CAVI-specific paths, surfaces, mobile contracts, and portal contracts
+  under `src/extensions/cavi/contracts/**`.
+- Renamed the active Deb feature surface to Project Board under
+  `src/extensions/cavi/project-board/**`.
 
 ### Fixed
 
 - Prevented core gateway provider resolution from becoming a second provider
-  boundary; provider selection stays in `src/providers/gateway/**`.
+  boundary; provider plugin plumbing stays in `src/core/gateway/providers/**`
+  and concrete Hermes/OpenClaw provider modules stay in `src/providers/**`.
 - Removed old flat gateway shim files, the old provider-resolution file, and
   stale generated output from active source and package output.
 - Aligned portal config patch paths with the `portal.config` surface contract.
@@ -42,7 +47,7 @@ registries, and fleet snapshots, with structured graceful degradation built in.
   `gateway` / `hermes` / `openclaw` implementations behind one interface, with
   `Hermes*` / `OpenClaw*` names as provider-specific compatibility exports.
 - **Provider plugin boundary.** `createGatewayProviderRegistry` and
-  `GatewayProviderModule` (exported from `@cavi/api-client/providers/gateway`) so
+  `GatewayProviderModule` (exported from `@cavi/api-client/core/gateway`) so
   third-party gateways register at the factory boundary without forking the package.
 - **Gateway resources.** Media (`GatewayMediaApiClient`), wiki
   (`GatewayWikiApiClient`), and agent-config (`GatewayAgentConfigApiClient`)
@@ -56,7 +61,8 @@ registries, and fleet snapshots, with structured graceful degradation built in.
   a typed `DataEnvelope` with `source: "mock"` and a structured `contractGap` on
   transport/backend failure; 401/403 and `unknown`-classified errors still throw.
 - **Path contracts.** Route literals owned by `*paths.ts` files
-  (`src/contracts/paths.ts`, `src/cavi/paths.ts`) and `src/contracts/surfaces.ts`,
+  (`src/contracts/paths.ts`, `src/extensions/cavi/contracts/paths.ts`) and
+  surface owner files,
   with `resolvePath(key, mode)` for `GatewayMode` resolution.
 - **Team manifest.** Runtime-supplied team / member / workspace / action routing
   via `normalizeTeamManifest`, generated route grammar, workspace-path
@@ -68,7 +74,8 @@ registries, and fleet snapshots, with structured graceful degradation built in.
   RPC with HTTP and mock fallbacks.
 - **Environment + repo-root resolution.** `resolveHttpApiConfigFromEnv`,
   `requireRepoRoot` / `resolveRepoRoot`.
-- **Subpath exports** for `core/*`, `contracts`, `cavi`, `providers/*`, and `react`.
+- **Subpath exports** for `core/*`, `contracts`, `extensions/cavi`,
+  `providers/hermes`, `providers/openclaw`, and `react`.
 - **Tooling.** MIT license, `vitest run --coverage` via `@vitest/coverage-v8`,
   and package-boundary hardening tests in `src/package-hardening.test.ts`.
 
@@ -77,7 +84,7 @@ registries, and fleet snapshots, with structured graceful degradation built in.
 This package was extracted and consolidated from per-app API clients that had
 forked across multiple harnesses (mobile, portal, and several gateways). The
 pre-1.0 development era (internal `0.x`) restructured that scattered code into a
-strict `core → contracts → cavi → providers/react` layering, moved shared
+strict `core/contracts → extensions/cavi/providers/react` layering, moved shared
 transport/HTTP/SSE/WebSocket behavior into `core`, replaced baked-in product
 registries with a runtime team manifest, and established the package-boundary
 hardening tests. `1.0.0` is the first release published for external use.

@@ -1,8 +1,8 @@
 # Gateway Core
 
 This folder owns provider-neutral gateway contracts and shared runtime behavior.
-Provider-specific compatibility belongs in `src/providers/**`; product-specific
-composition belongs in `src/cavi/**`.
+Provider-specific implementations belong in `src/providers/**`; product-specific
+composition belongs in `src/extensions/cavi/**`.
 
 ## Folder Map
 
@@ -15,6 +15,8 @@ composition belongs in `src/cavi/**`.
 - `resources/` owns gateway resource clients such as media and wiki.
 - `envelope/` owns data envelopes, fallback gaps, and mutation result helpers.
 - `portal/` owns portal-specific gateway bridge helpers.
+- `providers/` owns the provider plugin interface, registry, normalization, and
+  generic factory dispatch. It must not import concrete provider implementations.
 
 Old flat gateway files are not active source. New implementation and
 package-owned imports must use a canonical folder owner or the single
@@ -22,7 +24,7 @@ package-owned imports must use a canonical folder owner or the single
 
 ## Rules
 
-- Do not import from `src/providers/**`, `src/cavi/**`, or `src/react/**`.
+- Do not import concrete `src/providers/**`, `src/extensions/cavi/**`, or `src/react/**`.
 - Do not add provider names, provider cookies, provider filesystem paths, or
   provider WebUI compatibility here.
 - Do not add API route literals outside `src/contracts/paths.ts` or

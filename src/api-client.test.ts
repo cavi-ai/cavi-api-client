@@ -23,11 +23,13 @@ import {
   GATEWAY_MEDIA_KINDS,
   GATEWAY_WIKI_FORMATS,
   HermesMediaApiClient,
+  HERMES_PROVIDER_MODULE,
   HermesSseRunEventProvider,
   HermesWebSocketClient,
   HermesWikiApiClient,
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
   OpenClawMediaApiClient,
+  OPENCLAW_PROVIDER_MODULE,
   OpenClawSseRunEventProvider,
   OpenClawWebSocketClient,
   OpenClawWikiApiClient,
@@ -60,6 +62,11 @@ import {
 } from "./index";
 import { LibraryApiClient } from "./extensions/cavi/library/client";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "./core/http/types";
+
+const BUILT_IN_PROVIDER_MODULES = [
+  HERMES_PROVIDER_MODULE,
+  OPENCLAW_PROVIDER_MODULE,
+] as const;
 
 class TestApiClient extends BaseHttpApiClient {
   constructor(options: HttpApiClientOptions) {

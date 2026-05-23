@@ -8,7 +8,7 @@ import {
   resolveGatewayRequestCredentials,
 } from "../../../core/gateway/client/fetch.js";
 import { extractGatewayErrorDetails } from "../../../core/gateway/client/error-details.js";
-import { appendHttpQuery, resolveLibraryApiPath } from "../paths.js";
+import { appendHttpQuery, resolveLibraryApiPath } from "../contracts/paths.js";
 import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 
 type LibraryApiMutationMethod =

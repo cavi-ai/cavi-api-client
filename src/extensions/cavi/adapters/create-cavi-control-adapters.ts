@@ -32,7 +32,7 @@ import type {
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
 import { fallbackProjectBoardWorkspace, fallbackTaskDiscourse } from "../fallbacks/snapshots/index.js";
-import { projectBoardWorkspaceExpectedContractSummary } from "../paths.js";
+import { projectBoardWorkspaceExpectedContractSummary } from "../contracts/paths.js";
 import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
 import { resolveGatewayHttpBase } from "../runtime/paths.js";
 import { createProjectBoardLiveHelpers } from "../project-board/live.js";

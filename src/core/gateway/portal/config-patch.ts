@@ -1,4 +1,5 @@
 import { PORTAL_CLIENT_ID_HEADER } from "../../http/types.js";
+import { GATEWAY_PORTAL_API_ENDPOINTS } from "../../../contracts/paths.js";
 
 /**
  * Shared HTTP contract for portal dashboard config updates (POST).
@@ -25,7 +26,7 @@ export type PostPortalConfigPatchParams = {
   httpBase: string;
   /** Bearer secret without the `Bearer ` prefix. */
   authToken: string;
-  /** URL segment only, e.g. `martina`. */
+  /** URL segment only, e.g. `portal-a`. */
   portalSlug: string;
   scope: string;
   patch: Record<string, unknown>;
@@ -52,11 +53,11 @@ export function portalConfigPatchPath(portalSlug: string): string {
   if (!slug || slug.includes("/")) {
     throw new Error(`portalConfigPatchPath: invalid portal slug "${portalSlug}"`);
   }
-  return `/api/plugins/portal/${encodeURIComponent(slug)}/config`;
+  return GATEWAY_PORTAL_API_ENDPOINTS.config(slug);
 }
 
 /**
- * Turns flat keys like `foo › bar` (Martina KV editor) into `{ foo: { bar: value } }`.
+ * Turns flat keys like `foo › bar` into `{ foo: { bar: value } }`.
  */
 export function unflattenPortalConfigPatchKeys(
   flat: Record<string, unknown>,

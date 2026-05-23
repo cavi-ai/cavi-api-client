@@ -1,5 +1,4 @@
 export * from "./client.js";
-export * from "./paths.js";
 export * from "./contracts/index.js";
 export * from "./runtime/paths.js";
 export * from "./library/client.js";
