@@ -7,16 +7,18 @@ import {
 } from "../../../../extensions/cavi/project-board/normalize";
 
 type RuntimeBaseOverrideGlobal = typeof globalThis & {
+  __CAVI_CONTROL_BASE_PATH__?: string;
   __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
 };
 
 function setRuntimeBaseOverride(value: string | undefined) {
   const runtimeGlobal = globalThis as RuntimeBaseOverrideGlobal;
   if (value === undefined) {
+    delete runtimeGlobal.__CAVI_CONTROL_BASE_PATH__;
     delete runtimeGlobal.__OPENCLAW_CAVI_CONTROL_BASE_PATH__;
     return;
   }
-  runtimeGlobal.__OPENCLAW_CAVI_CONTROL_BASE_PATH__ = value;
+  runtimeGlobal.__CAVI_CONTROL_BASE_PATH__ = value;
 }
 
 describe("Project Board asset path normalization", () => {

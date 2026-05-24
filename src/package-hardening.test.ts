@@ -406,7 +406,19 @@ describe("package hardening", () => {
   });
 
   it("keeps React bindings under strict TypeScript", () => {
-    expect(read(REACT_GATEWAY_PROVIDER)).not.toMatch(/@ts-nocheck/u);
+    const reactSource = read(REACT_GATEWAY_PROVIDER);
+    expect(reactSource).not.toMatch(/@ts-nocheck/u);
+    for (const optionName of [
+      "GatewayClientOverrideOptions",
+      "defaultRequestedScopes",
+      "preauthHandshakeEnvKeys",
+      "requestTimeoutMs",
+      "maxConcurrentRequests",
+      "minProtocol",
+      "maxProtocol",
+    ]) {
+      expect(reactSource).toContain(optionName);
+    }
   });
 
   it("points the package root at canonical implementation folders", () => {
@@ -839,6 +851,7 @@ describe("package hardening", () => {
     expect(client.endpoints.runs).toBe("/v1/runs");
     expect(media.surface).toBe("gateway-media-api");
     expect(media.endpoints.generate("audio")).toBe("/v1/media/audio/generate");
+    expect(media.endpoints.generate("image")).toBe("/v1/media/image/generate");
     expect(wiki.surface).toBe("gateway-wiki-api");
     expect(wiki.endpoints.compile("research")).toBe("/v1/wiki/vaults/research/compile");
   });

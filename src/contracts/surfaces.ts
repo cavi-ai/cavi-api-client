@@ -93,7 +93,7 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     classification: "gateway-native",
     degradation: "hard",
     owner: "gateway/media contract",
-    note: "Gateway-native media provider inventory shared by audio, video, and music generation.",
+    note: "Gateway-native media provider inventory shared by audio, image, video, and music generation.",
   },
   "gateway.mediaAudioGenerate": {
     key: "gateway.mediaAudioGenerate",
@@ -103,6 +103,15 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     degradation: "hard",
     owner: "gateway/media contract",
     note: "Gateway-native audio generation route.",
+  },
+  "gateway.mediaImageGenerate": {
+    key: "gateway.mediaImageGenerate",
+    method: "POST",
+    canonicalPath: () => GATEWAY_MEDIA_API_ENDPOINTS.generate("image"),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native image generation route.",
   },
   "gateway.mediaVideoGenerate": {
     key: "gateway.mediaVideoGenerate",

@@ -180,6 +180,7 @@ export {
 
 export {
   GatewayMediaApiClient,
+  GATEWAY_MEDIA_ACCEPT_HEADERS,
   GATEWAY_MEDIA_KINDS,
   type GatewayMediaApiClientOptions,
   type GatewayMediaAsset,
@@ -193,6 +194,7 @@ export {
   type GatewayMediaKind,
   type GatewayMediaProvider,
   type GatewayMediaProviderList,
+  type GatewayTextToSpeechRequest,
 } from "./core/gateway/resources/media.js";
 
 export {
@@ -427,6 +429,7 @@ export {
   requestPortalTtsAudio,
   requestPortalTtsProviders,
   type PortalTtsAgentVoiceAssignment,
+  type PortalTtsAudioRequest,
   type PortalTtsAudioTransport,
   type PortalTtsBlobRequester,
   type PortalTtsDashboardVoiceLike,

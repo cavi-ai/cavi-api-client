@@ -5,6 +5,7 @@ import {
   type GatewaySnapshotBindingResolver,
   type GatewaySnapshotFallbackMode,
   type GatewaySnapshotFallbacks,
+  type GatewaySnapshotFallbackOverrides,
   type GatewaySnapshotFallbackProvider,
   type GatewayCostHistoryFallback,
 } from "../../../../core/gateway/snapshots/loaders.js";
@@ -59,16 +60,17 @@ export function resolveCaviSnapshotFallbacks(
   options: CreateGatewayWsSnapshotLoadersOptions = {},
 ): ReturnType<typeof resolveGatewaySnapshotFallbacks> {
   const mode = options.fallbackMode ?? "empty";
+  const overrides: GatewaySnapshotFallbackOverrides = {
+    ...(options.snapshotFallbacks ?? {}),
+  };
+  if ("costHistoryFallback" in options) {
+    overrides.costHistory = options.costHistoryFallback ?? null;
+  }
   const resolved = resolveGatewaySnapshotFallbacks({
     mode: mode === "compat" ? "empty" : mode,
     provider: options.fallbackProvider ??
       (mode === "compat" ? createCaviSnapshotFallbackProvider() : null),
-    overrides: {
-      ...(options.snapshotFallbacks ?? {}),
-      ...(options.costHistoryFallback
-        ? { costHistory: options.costHistoryFallback }
-        : {}),
-    },
+    overrides,
   });
   return resolved;
 }

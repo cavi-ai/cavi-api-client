@@ -191,16 +191,13 @@ export type GatewayRpcClientOptions = {
   onRpcTrace?: (entry: GatewayRpcTraceEntry) => void;
 };
 
-export function resolveGatewayConnectScopes(
-  options?: GatewayRpcClientOptions,
-): string[] {
-  const requested = options?.requestedScopes;
-  if (!requested || requested.length === 0) {
-    return [...(options?.defaultRequestedScopes ?? DEFAULT_GATEWAY_RPC_CLIENT_SCOPES)];
+function normalizeGatewayScopes(scopes: readonly string[] | undefined): string[] {
+  if (!scopes || scopes.length === 0) {
+    return [];
   }
   const seen = new Set<string>();
   const result: string[] = [];
-  for (const scope of requested) {
+  for (const scope of scopes) {
     if (typeof scope !== "string") {
       continue;
     }
@@ -211,10 +208,21 @@ export function resolveGatewayConnectScopes(
     seen.add(trimmed);
     result.push(trimmed);
   }
-  if (result.length === 0) {
-    return [...(options?.defaultRequestedScopes ?? DEFAULT_GATEWAY_RPC_CLIENT_SCOPES)];
-  }
   return result;
+}
+
+export function resolveGatewayConnectScopes(
+  options?: GatewayRpcClientOptions,
+): string[] {
+  const requested = normalizeGatewayScopes(options?.requestedScopes);
+  if (requested.length > 0) {
+    return requested;
+  }
+  const defaultRequested = normalizeGatewayScopes(options?.defaultRequestedScopes);
+  if (defaultRequested.length > 0) {
+    return defaultRequested;
+  }
+  return [...DEFAULT_GATEWAY_RPC_CLIENT_SCOPES];
 }
 
 /** Resolved client fields for `connect` and device-auth v3 signing (must stay aligned). */

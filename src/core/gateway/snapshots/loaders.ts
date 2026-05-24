@@ -74,7 +74,7 @@ export type GatewaySnapshotFallbackProvider = {
 export type GatewaySnapshotFallbackMode = "none" | "empty" | "demo";
 
 export type GatewaySnapshotFallbackOverrides = Partial<GatewaySnapshotFallbacks> & {
-  costHistory?: GatewayCostHistoryFallback;
+  costHistory?: GatewayCostHistoryFallback | null;
 };
 
 export type ResolvedGatewaySnapshotFallbacks = {
@@ -511,13 +511,14 @@ export function resolveGatewaySnapshotFallbacks(
     resolveFallbackProviderSnapshots(provider) ??
     resolveFallbackProviderSnapshots(defaultProvider) ??
     createEmptyGatewaySnapshotFallbacks();
+  const hasCostHistoryOverride =
+    !!options.overrides && "costHistory" in options.overrides;
   return {
     snapshots: mergeGatewaySnapshotFallbacks(baseSnapshots, options.overrides),
     costHistory:
-      options.overrides?.costHistory ??
-      provider.costHistory ??
-      defaultProvider.costHistory ??
-      null,
+      hasCostHistoryOverride
+        ? options.overrides?.costHistory ?? null
+        : provider.costHistory ?? defaultProvider.costHistory ?? null,
   };
 }
 

@@ -1,5 +1,9 @@
 type CaviControlGlobals = {
+  __CAVI_STANDALONE_MODE__?: boolean;
+  __CAVI_AUTH_MODE__?: string;
+  /** @deprecated Use __CAVI_STANDALONE_MODE__. */
   __OPENCLAW_STANDALONE_MODE__?: boolean;
+  /** @deprecated Use __CAVI_AUTH_MODE__. */
   __OPENCLAW_AUTH_MODE__?: string;
 };
 
@@ -10,9 +14,15 @@ function getGlobals(): CaviControlGlobals {
 }
 
 export function isStandaloneMode(): boolean {
-  return getGlobals().__OPENCLAW_STANDALONE_MODE__ === true;
+  const globals = getGlobals();
+  return (
+    globals.__CAVI_STANDALONE_MODE__ ??
+    globals.__OPENCLAW_STANDALONE_MODE__
+  ) === true;
 }
 
 export function isSessionAuthMode(): boolean {
-  return isStandaloneMode() && getGlobals().__OPENCLAW_AUTH_MODE__ === "session";
+  const globals = getGlobals();
+  const authMode = globals.__CAVI_AUTH_MODE__ ?? globals.__OPENCLAW_AUTH_MODE__;
+  return isStandaloneMode() && authMode === "session";
 }

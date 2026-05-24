@@ -146,13 +146,16 @@ describe("agnostic HTTP API client package", () => {
     expect(HERMES_API_ENDPOINTS.runApproval("run/1")).toBe("/v1/runs/run%2F1/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.runApproval).toBe("/v1/runs/{run_id}/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.ecgSharedFiles).toBe("/api/v1/files?agent={agent}&folder={folder}");
-    expect(GATEWAY_MEDIA_KINDS).toEqual(["audio", "video", "music"]);
+    expect(GATEWAY_MEDIA_KINDS).toEqual(["audio", "image", "video", "music"]);
     expect(GATEWAY_MEDIA_API_ENDPOINTS.providers()).toBe("/v1/media/providers");
     expect(GATEWAY_MEDIA_API_ENDPOINTS.providers("audio")).toBe(
       "/v1/media/audio/providers",
     );
     expect(GATEWAY_MEDIA_API_ENDPOINTS.generate("music")).toBe(
       "/v1/media/music/generate",
+    );
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.generate("image")).toBe(
+      "/v1/media/image/generate",
     );
     expect(GATEWAY_MEDIA_API_ENDPOINTS.job("video", "job/a b")).toBe(
       "/v1/media/video/jobs/job%2Fa%20b",
@@ -888,6 +891,26 @@ describe("agnostic HTTP API client package", () => {
           { status: 202 },
         );
       }
+      if (requestUrl.endsWith("/v1/media/image/generate")) {
+        return new Response(
+          JSON.stringify({
+            id: "image_1",
+            kind: "image",
+            status: "queued",
+          }),
+          { status: 202 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/audio/generate")) {
+        return new Response(
+          JSON.stringify({
+            id: "tts_1",
+            kind: "audio",
+            status: "queued",
+          }),
+          { status: 202 },
+        );
+      }
       if (requestUrl.endsWith("/v1/media/video/jobs/job%2Fa%20b")) {
         return new Response(
           JSON.stringify({
@@ -920,6 +943,7 @@ describe("agnostic HTTP API client package", () => {
     );
 
     expect(generic.surface).toBe("gateway-media-api");
+    expect(GATEWAY_MEDIA_KINDS).toContain("image");
     expect(hermes).toBeInstanceOf(HermesMediaApiClient);
     expect(hermes.surface).toBe("hermes-media-api");
     expect(openclaw).toBeInstanceOf(OpenClawMediaApiClient);
@@ -935,17 +959,36 @@ describe("agnostic HTTP API client package", () => {
       kind: "music",
       status: "queued",
     });
+    await expect(generic.generateImage({
+      input: "cover art for the research dashboard",
+      format: "png",
+    })).resolves.toMatchObject({
+      id: "image_1",
+      kind: "image",
+      status: "queued",
+    });
+    await expect(generic.generateTextToSpeech({
+      text: "Status report ready",
+      voiceId: "voice-1",
+      format: "mp3",
+    }, "tts-1")).resolves.toMatchObject({
+      id: "tts_1",
+      kind: "audio",
+      status: "queued",
+    });
     await expect(openclaw.getMediaJob("video", "job/a b")).resolves.toMatchObject({
       id: "job/a b",
       kind: "video",
       status: "running",
     });
-    const asset = await generic.getMediaAsset("asset/a b", { accept: "audio/mpeg" });
+    const asset = await generic.getImageAsset("asset/a b");
 
     expect(await asset.text()).toBe("asset-bytes");
     expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
       "https://gateway.example/v1/media/audio/providers",
       "https://gateway.example/v1/media/music/generate",
+      "https://gateway.example/v1/media/image/generate",
+      "https://gateway.example/v1/media/audio/generate",
       "https://gateway.example/v1/media/video/jobs/job%2Fa%20b",
       "https://gateway.example/v1/media/assets/asset%2Fa%20b",
     ]);
@@ -960,11 +1003,23 @@ describe("agnostic HTTP API client package", () => {
     expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
       "Idempotency-Key": "media-1",
     });
+    expect(fetchImpl.mock.calls[3]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        voiceId: "voice-1",
+        format: "mp3",
+        input: "Status report ready",
+        kind: "audio",
+      }),
+    });
     expect(fetchImpl.mock.calls[3]?.[1]?.headers).toMatchObject({
-      Accept: "audio/mpeg",
+      "Idempotency-Key": "tts-1",
+    });
+    expect(fetchImpl.mock.calls[5]?.[1]?.headers).toMatchObject({
+      Accept: "image/*",
     });
     expect(() =>
-      generic.generateMedia({ kind: "image" as never, input: "cover art" }),
+      generic.generateMedia({ kind: "document" as never, input: "cover art" }),
     ).toThrow(/unsupported media kind/u);
   });
 

@@ -292,5 +292,11 @@ describe("createGatewaySnapshotLoaders", () => {
       },
     });
     expect(typeof partialProvider.costHistory).toBe("function");
+
+    const disabledCostHistory = resolveGatewaySnapshotFallbacks({
+      mode: "empty",
+      overrides: { costHistory: null },
+    });
+    expect(disabledCostHistory.costHistory).toBeNull();
   });
 });

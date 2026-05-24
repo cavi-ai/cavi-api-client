@@ -43,7 +43,7 @@ The goal is simple: **you spend your time on the workflows you want, not the plu
 | Agent runs + capabilities, gateway-agnostic | `GatewayApiClient`, `createGatewayApiClient` |
 | Live data over WebSocket RPC | `GatewayRpcClient`, `createGatewayWebSocketClient` |
 | Streaming run events (SSE) | `GatewaySseRunEventProvider`, `createGatewaySseRunEventProvider` |
-| Generated audio / video / music | `GatewayMediaApiClient`, `createGatewayMediaClient` |
+| Generated audio / images / video / music / TTS | `GatewayMediaApiClient`, `createGatewayMediaClient` |
 | Obsidian/QMD wiki vault ops | `GatewayWikiApiClient`, `createGatewayWikiClient` |
 | Slash-command / mention UI from `/v1/capabilities` | `extractGatewayCommandCatalog`, `buildAgentSlashShortcuts` |
 | React context + hooks for a live gateway client | `GatewayClientProvider`, `useGatewayClient`, `useGatewayEvents` |
@@ -335,6 +335,15 @@ const music = await media.generateMusic({
   format: "mp3",
   options: { bpm: 90 },
 });
+const image = await media.generateImage({
+  input: "cover art for a research dashboard",
+  format: "png",
+});
+const voice = await media.generateTextToSpeech({
+  text: "The dashboard summary is ready.",
+  voiceId: "host-voice",
+  format: "mp3",
+});
 ```
 
 Implemented by the generic gateway client plus `HermesMediaApiClient` and `OpenClawMediaApiClient`; routing stays behind `createGatewayMediaClient`.
@@ -398,6 +407,7 @@ function OperatorPanel() {
 ```
 
 Also exported: `useGatewayClient`, `useGatewayRpc`, `useGatewayEvents`, `useGatewayConnectionState`, `useGatewayEventStream`. React must be available in the application runtime.
+Use `gatewayClientOverrides` on the React hooks/provider for lower-level RPC knobs such as protocol range, default scopes, pre-auth env keys, request timeout, and concurrency.
 
 ### UI data adapters
 

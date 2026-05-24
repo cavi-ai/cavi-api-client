@@ -30,6 +30,17 @@ type GatewayRpcClientOptions = GatewayWebSocketClientOptions;
 
 export type { GatewayConnectionState, GatewayRpcTraceEntry, GatewayStreamEvent };
 
+export type GatewayClientOverrideOptions = Pick<
+  GatewayRpcClientOptions,
+  | "minProtocol"
+  | "maxProtocol"
+  | "defaultRequestedScopes"
+  | "preauthHandshakeEnv"
+  | "preauthHandshakeEnvKeys"
+  | "requestTimeoutMs"
+  | "maxConcurrentRequests"
+>;
+
 export type GatewayClientContextValue = {
   client: GatewayRpcClient | null;
   state: GatewayConnectionState;
@@ -58,6 +69,8 @@ export type UseGatewayClientOptions = {
   requestedScopes?: readonly string[];
   /** See `GatewayRpcClientOptions.preauthHandshakeTimeoutMs` (browser deploys need this when gateway timeout is non-default). */
   preauthHandshakeTimeoutMs?: number;
+  /** Core GatewayRpcClient override knobs that are safe to express as React props. */
+  gatewayClientOverrides?: GatewayClientOverrideOptions;
   /**
    * Set to `false` to skip the device-identity challenge handshake on connect.
    * Deployments that require paired devices should keep this enabled and
@@ -83,6 +96,7 @@ function resolveGatewayRpcClientOptions(params: {
   clientVersion?: string;
   requestedScopes?: readonly string[];
   preauthHandshakeTimeoutMs?: number;
+  gatewayClientOverrides?: GatewayClientOverrideOptions;
   enableDeviceIdentity?: boolean;
   clientPlatform?: string;
   clientMode?: string;
@@ -90,6 +104,7 @@ function resolveGatewayRpcClientOptions(params: {
   deviceIdentityLoader?: GatewayRpcClientOptions["deviceIdentityLoader"];
 }): GatewayRpcClientOptions {
   return {
+    ...params.gatewayClientOverrides,
     clientId: params.clientId,
     clientVersion: params.clientVersion,
     requestedScopes: params.requestedScopes,
@@ -118,7 +133,16 @@ function buildGatewayClientConnectionKey(params: {
     requestedScopes: params.clientOptions.requestedScopes
       ? [...params.clientOptions.requestedScopes]
       : null,
+    defaultRequestedScopes: params.clientOptions.defaultRequestedScopes
+      ? [...params.clientOptions.defaultRequestedScopes]
+      : null,
     preauthHandshakeTimeoutMs: params.clientOptions.preauthHandshakeTimeoutMs ?? null,
+    preauthHandshakeEnv: params.clientOptions.preauthHandshakeEnv ?? null,
+    preauthHandshakeEnvKeys: params.clientOptions.preauthHandshakeEnvKeys ?? null,
+    requestTimeoutMs: params.clientOptions.requestTimeoutMs ?? null,
+    maxConcurrentRequests: params.clientOptions.maxConcurrentRequests ?? null,
+    minProtocol: params.clientOptions.minProtocol ?? null,
+    maxProtocol: params.clientOptions.maxProtocol ?? null,
     enableDeviceIdentity: params.clientOptions.enableDeviceIdentity ?? null,
     clientPlatform: params.clientOptions.clientPlatform ?? null,
     clientMode: params.clientOptions.clientMode ?? null,
@@ -137,6 +161,7 @@ export function useGatewayClient(options: UseGatewayClientOptions): GatewayClien
     clientVersion,
     requestedScopes,
     preauthHandshakeTimeoutMs,
+    gatewayClientOverrides,
     enableDeviceIdentity,
     clientPlatform,
     clientMode,
@@ -157,6 +182,7 @@ export function useGatewayClient(options: UseGatewayClientOptions): GatewayClien
         clientVersion,
         requestedScopes,
         preauthHandshakeTimeoutMs,
+        gatewayClientOverrides,
         enableDeviceIdentity,
         clientPlatform,
         clientMode,
@@ -170,6 +196,7 @@ export function useGatewayClient(options: UseGatewayClientOptions): GatewayClien
       clientVersion,
       requestedScopes,
       preauthHandshakeTimeoutMs,
+      gatewayClientOverrides,
       enableDeviceIdentity,
       clientPlatform,
       clientMode,
@@ -521,6 +548,7 @@ export function useGatewayEventStream(params: {
   /** See `GatewayRpcClientOptions.requestedScopes`. Defaults to `["operator.read"]` when omitted. */
   requestedScopes?: readonly string[];
   preauthHandshakeTimeoutMs?: number;
+  gatewayClientOverrides?: GatewayClientOverrideOptions;
   /** See `UseGatewayClientOptions.enableDeviceIdentity`. */
   enableDeviceIdentity?: boolean;
   enabled?: boolean;
@@ -538,6 +566,7 @@ export function useGatewayEventStream(params: {
         clientVersion: params.clientVersion,
         requestedScopes: params.requestedScopes,
         preauthHandshakeTimeoutMs: params.preauthHandshakeTimeoutMs,
+        gatewayClientOverrides: params.gatewayClientOverrides,
         enableDeviceIdentity: params.enableDeviceIdentity,
       }),
     [
@@ -545,6 +574,7 @@ export function useGatewayEventStream(params: {
       params.clientVersion,
       params.requestedScopes,
       params.preauthHandshakeTimeoutMs,
+      params.gatewayClientOverrides,
       params.enableDeviceIdentity,
     ],
   );
@@ -740,6 +770,8 @@ export type GatewayClientProviderProps = {
   requestedScopes?: readonly string[];
   /** Same as `GatewayRpcClientOptions.preauthHandshakeTimeoutMs`. */
   preauthHandshakeTimeoutMs?: number;
+  /** Same as `UseGatewayClientOptions.gatewayClientOverrides`. */
+  gatewayClientOverrides?: GatewayClientOverrideOptions;
   /** Same as `UseGatewayClientOptions.enableDeviceIdentity`. */
   enableDeviceIdentity?: boolean;
   clientPlatform?: string;
@@ -763,6 +795,7 @@ export function GatewayClientProvider({
   clientVersion,
   requestedScopes,
   preauthHandshakeTimeoutMs,
+  gatewayClientOverrides,
   enableDeviceIdentity,
   clientPlatform,
   clientMode,
@@ -778,6 +811,7 @@ export function GatewayClientProvider({
     clientVersion,
     requestedScopes,
     preauthHandshakeTimeoutMs,
+    gatewayClientOverrides,
     enableDeviceIdentity,
     clientPlatform,
     clientMode,

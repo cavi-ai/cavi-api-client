@@ -1,5 +1,6 @@
 import { CAVI_CONTROL_API_ENDPOINTS } from "../contracts/paths.js";
 import type { HttpApiRequestInit } from "../../../core/http/types.js";
+import type { GatewayMediaJsonValue } from "../../../core/gateway/resources/media.js";
 
 export const PORTAL_TTS_PROVIDERS_PATH = CAVI_CONTROL_API_ENDPOINTS.portals.machine.ttsProviders;
 export const PORTAL_TTS_PATH = CAVI_CONTROL_API_ENDPOINTS.portals.machine.tts;
@@ -56,6 +57,15 @@ export type PortalTtsBlobRequester = (
 
 export type PortalTtsAudioTransport = {
   requestBlob: PortalTtsBlobRequester;
+};
+
+export type PortalTtsAudioRequest = {
+  text: string;
+  voiceId?: string | null;
+  providerId?: string | null;
+  format?: string | null;
+  accept?: string | null;
+  options?: Record<string, GatewayMediaJsonValue>;
 };
 
 function cleanString(value: unknown): string {
@@ -175,22 +185,29 @@ export function requestPortalTtsProviders(
 
 export async function requestPortalTtsAudio(
   transport: PortalTtsAudioTransport,
-  body: { text: string; voiceId?: string },
+  body: PortalTtsAudioRequest,
 ): Promise<Blob> {
-  const text = body.text.trim();
+  const text = cleanString(body.text);
   if (!text) {
     throw new Error("Enter text to synthesize.");
   }
+  const voiceId = cleanString(body.voiceId);
+  const providerId = cleanString(body.providerId);
+  const format = cleanString(body.format);
+  const accept = cleanString(body.accept) || "audio/mpeg";
 
   return transport.requestBlob(PORTAL_TTS_PATH, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "audio/mpeg",
+      Accept: accept,
     },
     body: {
       text,
-      ...(body.voiceId ? { voiceId: body.voiceId } : {}),
+      ...(voiceId ? { voiceId } : {}),
+      ...(providerId ? { providerId } : {}),
+      ...(format ? { format } : {}),
+      ...(body.options ? { options: body.options } : {}),
     },
   });
 }

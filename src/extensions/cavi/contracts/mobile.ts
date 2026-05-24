@@ -95,7 +95,7 @@ export const MOBILE_GATEWAY_ENDPOINT_CONTRACTS = {
     method: "GET",
     hermesPath: canonicalPath("gateway.mediaProviders"),
     owner: "gateway/media contract",
-    note: "Shared media provider inventory for audio, video, and music generation across Hermes and OpenClaw.",
+    note: "Shared media provider inventory for audio, image, video, and music generation across Hermes and OpenClaw.",
   },
   gatewayMediaAudio: {
     surface: "gateway-media-audio",
@@ -104,6 +104,14 @@ export const MOBILE_GATEWAY_ENDPOINT_CONTRACTS = {
     hermesPath: canonicalPath("gateway.mediaAudioGenerate"),
     owner: "gateway/media contract",
     note: "Core audio generation route; Machine TTS remains only a compatibility shim.",
+  },
+  gatewayMediaImage: {
+    surface: "gateway-media-image",
+    classification: "gateway-native",
+    method: "POST",
+    hermesPath: canonicalPath("gateway.mediaImageGenerate"),
+    owner: "gateway/media contract",
+    note: "Core image generation route exposed through the provider-neutral media client.",
   },
   gatewayMediaVideo: {
     surface: "gateway-media-video",

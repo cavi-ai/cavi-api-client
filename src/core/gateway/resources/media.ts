@@ -2,9 +2,16 @@ import { GATEWAY_MEDIA_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { BaseHttpApiClient } from "../../http/client.js";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "../../http/types.js";
 
-export const GATEWAY_MEDIA_KINDS = ["audio", "video", "music"] as const;
+export const GATEWAY_MEDIA_KINDS = ["audio", "image", "video", "music"] as const;
 
 export type GatewayMediaKind = (typeof GATEWAY_MEDIA_KINDS)[number];
+
+export const GATEWAY_MEDIA_ACCEPT_HEADERS = {
+  audio: "audio/*",
+  image: "image/*",
+  video: "video/*",
+  music: "audio/*",
+} as const satisfies Record<GatewayMediaKind, string>;
 
 export type GatewayMediaJsonValue =
   | string
@@ -55,6 +62,13 @@ export type GatewayMediaGenerateRequest = {
 };
 
 export type GatewayMediaGenerateInput = Omit<GatewayMediaGenerateRequest, "kind">;
+
+export type GatewayTextToSpeechRequest = Omit<
+  GatewayMediaGenerateInput,
+  "input"
+> & {
+  text: string;
+};
 
 export type GatewayMediaAsset = {
   id?: string;
@@ -111,6 +125,10 @@ export interface GatewayMediaClient {
     body: GatewayMediaGenerateInput,
     idempotencyKey?: string,
   ): Promise<GatewayMediaGenerationResult>;
+  generateImage(
+    body: GatewayMediaGenerateInput,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaGenerationResult>;
   generateVideo(
     body: GatewayMediaGenerateInput,
     idempotencyKey?: string,
@@ -119,11 +137,19 @@ export interface GatewayMediaClient {
     body: GatewayMediaGenerateInput,
     idempotencyKey?: string,
   ): Promise<GatewayMediaGenerationResult>;
+  generateTextToSpeech(
+    body: GatewayTextToSpeechRequest,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaGenerationResult>;
   getMediaJob(
     kind: GatewayMediaKind,
     jobId: string,
   ): Promise<GatewayMediaGenerationResult>;
   getMediaAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
+  getAudioAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
+  getImageAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
+  getVideoAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
+  getMusicAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
 }
 
 function normalizeMediaKind(kind: GatewayMediaKind | string): GatewayMediaKind {
@@ -187,6 +213,13 @@ export class GatewayMediaApiClient
     return this.generateMedia({ ...body, kind: "audio" }, idempotencyKey);
   }
 
+  generateImage(
+    body: GatewayMediaGenerateInput,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaGenerationResult> {
+    return this.generateMedia({ ...body, kind: "image" }, idempotencyKey);
+  }
+
   generateVideo(
     body: GatewayMediaGenerateInput,
     idempotencyKey?: string,
@@ -199,6 +232,20 @@ export class GatewayMediaApiClient
     idempotencyKey?: string,
   ): Promise<GatewayMediaGenerationResult> {
     return this.generateMedia({ ...body, kind: "music" }, idempotencyKey);
+  }
+
+  generateTextToSpeech(
+    body: GatewayTextToSpeechRequest,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaGenerationResult> {
+    const { text, ...mediaBody } = body;
+    return this.generateAudio(
+      {
+        ...mediaBody,
+        input: requiredText(text, "text-to-speech text"),
+      },
+      idempotencyKey,
+    );
   }
 
   getMediaJob(
@@ -217,6 +264,34 @@ export class GatewayMediaApiClient
         Accept: init.accept ?? "application/octet-stream",
         ...(init.headers ?? {}),
       },
+    });
+  }
+
+  getAudioAsset(assetId: string, init: GatewayMediaAssetRequest = {}): Promise<Blob> {
+    return this.getMediaAsset(assetId, {
+      ...init,
+      accept: init.accept ?? GATEWAY_MEDIA_ACCEPT_HEADERS.audio,
+    });
+  }
+
+  getImageAsset(assetId: string, init: GatewayMediaAssetRequest = {}): Promise<Blob> {
+    return this.getMediaAsset(assetId, {
+      ...init,
+      accept: init.accept ?? GATEWAY_MEDIA_ACCEPT_HEADERS.image,
+    });
+  }
+
+  getVideoAsset(assetId: string, init: GatewayMediaAssetRequest = {}): Promise<Blob> {
+    return this.getMediaAsset(assetId, {
+      ...init,
+      accept: init.accept ?? GATEWAY_MEDIA_ACCEPT_HEADERS.video,
+    });
+  }
+
+  getMusicAsset(assetId: string, init: GatewayMediaAssetRequest = {}): Promise<Blob> {
+    return this.getMediaAsset(assetId, {
+      ...init,
+      accept: init.accept ?? GATEWAY_MEDIA_ACCEPT_HEADERS.music,
     });
   }
 }

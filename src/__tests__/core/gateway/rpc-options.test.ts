@@ -16,9 +16,16 @@ describe("GatewayRpcClient override options", () => {
     expect(
       resolveGatewayConnectScopes({
         requestedScopes: ["", "  "],
-        defaultRequestedScopes: ["operator.admin"],
+        defaultRequestedScopes: [" operator.admin ", "operator.admin"],
       }),
     ).toEqual(["operator.admin"]);
+
+    expect(
+      resolveGatewayConnectScopes({
+        requestedScopes: [],
+        defaultRequestedScopes: ["", "  "],
+      }),
+    ).toEqual(["operator.read"]);
   });
 
   it("resolves pre-auth timing from provider-specific env keys", () => {

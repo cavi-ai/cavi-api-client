@@ -9,19 +9,20 @@ import {
 } from "../../../../extensions/cavi/runtime/paths";
 
 describe("runtime paths", () => {
+  type RuntimePathGlobals = typeof window & {
+    __CAVI_CONTROL_BASE_PATH__?: string;
+    __CAVI_GATEWAY_URL__?: string;
+    __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
+    __OPENCLAW_GATEWAY_URL__?: string;
+  };
+
   afterEach(() => {
     vi.unstubAllGlobals();
-    delete (
-      window as typeof window & {
-        __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
-        __OPENCLAW_GATEWAY_URL__?: string;
-      }
-    ).__OPENCLAW_CAVI_CONTROL_BASE_PATH__;
-    delete (
-      window as typeof window & {
-        __OPENCLAW_GATEWAY_URL__?: string;
-      }
-    ).__OPENCLAW_GATEWAY_URL__;
+    const runtimeWindow = window as RuntimePathGlobals;
+    delete runtimeWindow.__CAVI_CONTROL_BASE_PATH__;
+    delete runtimeWindow.__CAVI_GATEWAY_URL__;
+    delete runtimeWindow.__OPENCLAW_CAVI_CONTROL_BASE_PATH__;
+    delete runtimeWindow.__OPENCLAW_GATEWAY_URL__;
   });
 
   it("treats React Native's window without browser location as no origin", () => {
@@ -31,11 +32,8 @@ describe("runtime paths", () => {
   });
 
   it("maps localhost gateway to configured 127.x for same-origin dev proxy routing", () => {
-    (
-      window as typeof window & {
-        __OPENCLAW_GATEWAY_URL__?: string;
-      }
-    ).__OPENCLAW_GATEWAY_URL__ = "http://127.0.0.1:18789";
+    (window as RuntimePathGlobals).__CAVI_GATEWAY_URL__ =
+      "http://127.0.0.1:18789";
 
     expect(resolveGatewayHttpBase("http://localhost:18789")).toBe(
       window.location.origin,
@@ -43,11 +41,8 @@ describe("runtime paths", () => {
   });
 
   it("still routes to direct gateway HTTP when loopback ports differ", () => {
-    (
-      window as typeof window & {
-        __OPENCLAW_GATEWAY_URL__?: string;
-      }
-    ).__OPENCLAW_GATEWAY_URL__ = "http://127.0.0.1:18789";
+    (window as RuntimePathGlobals).__CAVI_GATEWAY_URL__ =
+      "http://127.0.0.1:18789";
 
     expect(resolveGatewayHttpBase("http://localhost:9999")).toBe(
       "http://localhost:9999",
@@ -55,17 +50,9 @@ describe("runtime paths", () => {
   });
 
   it("keeps same-origin gateway HTTP calls at origin root", () => {
-    (
-      window as typeof window & {
-        __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
-        __OPENCLAW_GATEWAY_URL__?: string;
-      }
-    ).__OPENCLAW_CAVI_CONTROL_BASE_PATH__ = "/operator";
-    (
-      window as typeof window & {
-        __OPENCLAW_GATEWAY_URL__?: string;
-      }
-    ).__OPENCLAW_GATEWAY_URL__ = "https://gateway.example";
+    (window as RuntimePathGlobals).__CAVI_CONTROL_BASE_PATH__ = "/operator";
+    (window as RuntimePathGlobals).__CAVI_GATEWAY_URL__ =
+      "https://gateway.example";
 
     expect(resolveGatewayHttpBase("https://gateway.example")).toBe(
       window.location.origin,
@@ -79,14 +66,24 @@ describe("runtime paths", () => {
   });
 
   it("uses the runtime base path for local session endpoints", () => {
-    (
-      window as typeof window & {
-        __OPENCLAW_CAVI_CONTROL_BASE_PATH__?: string;
-      }
-    ).__OPENCLAW_CAVI_CONTROL_BASE_PATH__ = "/operator";
+    (window as RuntimePathGlobals).__CAVI_CONTROL_BASE_PATH__ = "/operator";
 
     expect(resolveSessionApiPath("/api/__session/status")).toBe(
       "/operator/api/__session/status",
+    );
+  });
+
+  it("keeps legacy OpenClaw globals as compatibility fallbacks", () => {
+    (window as RuntimePathGlobals).__OPENCLAW_CAVI_CONTROL_BASE_PATH__ =
+      "/operator";
+    (window as RuntimePathGlobals).__OPENCLAW_GATEWAY_URL__ =
+      "https://gateway.example";
+
+    expect(resolveSessionApiPath("/api/__session/status")).toBe(
+      "/operator/api/__session/status",
+    );
+    expect(resolveGatewayHttpBase("https://gateway.example")).toBe(
+      window.location.origin,
     );
   });
 });
