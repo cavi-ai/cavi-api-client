@@ -129,6 +129,33 @@ export const MOBILE_GATEWAY_ENDPOINT_CONTRACTS = {
     owner: "gateway/media contract",
     note: "Core music generation route exposed through the provider-neutral media client.",
   },
+  gatewayMediaJob: {
+    surface: "gateway-media-job",
+    classification: "gateway-native",
+    method: "GET",
+    hermesPath: canonicalPath("gateway.mediaJob", {
+      kind: "video",
+      jobId: "job",
+    }),
+    owner: "gateway/media contract",
+    note: "Core media job status route used by audio, image, video, and music generation.",
+  },
+  gatewayMediaAssets: {
+    surface: "gateway-media-assets",
+    classification: "gateway-native",
+    method: "GET",
+    hermesPath: canonicalPath("gateway.mediaAssets", { kind: "image" }),
+    owner: "gateway/media contract",
+    note: "Core media asset inventory route.",
+  },
+  gatewayMediaAsset: {
+    surface: "gateway-media-asset",
+    classification: "gateway-native",
+    method: "GET",
+    hermesPath: canonicalPath("gateway.mediaAsset", { assetId: "asset" }),
+    owner: "gateway/media contract",
+    note: "Core media asset bytes and metadata route.",
+  },
   gatewayWikiVaults: {
     surface: "gateway-wiki-vaults",
     classification: "gateway-native",

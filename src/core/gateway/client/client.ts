@@ -2,6 +2,11 @@ import { GATEWAY_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { BaseHttpApiClient } from "../../http/client.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../http/types.js";
 import type { GatewayCommandCapabilities } from "../agent/commands.js";
+import {
+  normalizeGatewayFeatureCapabilities,
+  type NormalizeGatewayFeatureCapabilitiesOptions,
+  type NormalizedGatewayFeatureCapabilities,
+} from "./capabilities.js";
 
 export type GatewayCapabilities = GatewayCommandCapabilities & {
   object?: string;
@@ -90,6 +95,15 @@ export class GatewayApiClient extends BaseHttpApiClient {
 
   getCapabilities(): Promise<GatewayCapabilities> {
     return this.request<GatewayCapabilities>(this.endpoints.capabilities);
+  }
+
+  async getFeatureCapabilities(
+    options: Omit<NormalizeGatewayFeatureCapabilitiesOptions, "capabilities"> = {},
+  ): Promise<NormalizedGatewayFeatureCapabilities> {
+    return normalizeGatewayFeatureCapabilities({
+      ...options,
+      capabilities: await this.getCapabilities(),
+    });
   }
 
   startRun(body: GatewayRunStartBody): Promise<GatewayRunStatus> {

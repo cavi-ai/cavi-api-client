@@ -7,3 +7,4 @@ export * from "./resources/index.js";
 export * from "./envelope/index.js";
 export * from "./portal/index.js";
 export * from "./providers/index.js";
+export * from "./jobs.js";

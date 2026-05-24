@@ -238,6 +238,32 @@ export function resolveTeamFromCollection(
   );
 }
 
+function assertUniqueTeamRegistryLookups(teams: readonly OperatorRegistryTeam[]): void {
+  const lookupOwners = new Map<string, string>();
+  const portalOwners = new Map<string, string>();
+  for (const team of teams) {
+    if (team.portalId?.trim()) {
+      const portalId = normalizeTeamLookupValue(team.portalId);
+      const owner = portalOwners.get(portalId);
+      if (owner && owner !== team.id) {
+        throw new Error(
+          `Team registry has duplicate portal id "${portalId}" for teams "${owner}" and "${team.id}".`,
+        );
+      }
+      portalOwners.set(portalId, team.id);
+    }
+    for (const key of getTeamLookupKeys(team)) {
+      const owner = lookupOwners.get(key);
+      if (owner && owner !== team.id) {
+        throw new Error(
+          `Team registry has ambiguous lookup key "${key}" for teams "${owner}" and "${team.id}".`,
+        );
+      }
+      lookupOwners.set(key, team.id);
+    }
+  }
+}
+
 export function createTeamRegistry(
   config: TeamRegistryConfig = {},
   options: CreateTeamRegistryOptions = {},
@@ -246,6 +272,7 @@ export function createTeamRegistry(
   const teams = configuredTeams(config).map((team) =>
     normalizeTeamRegistryTeam(team, null),
   );
+  assertUniqueTeamRegistryLookups(teams);
   const fleetLibrary = config.libraries?.fleet ?? null;
   const teamLibraries = config.libraries?.teams ?? [];
 

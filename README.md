@@ -322,8 +322,12 @@ const ws = createGatewayWebSocketClient(
 ### Gateway media
 
 ```ts
-import { createGatewayMediaClient } from "@cavi/api-client";
+import { createGatewayApiClient, createGatewayMediaClient } from "@cavi/api-client";
 
+const gateway = createGatewayApiClient(
+  { baseUrl: config.gateway.baseUrl, auth },
+  { provider },
+);
 const media = createGatewayMediaClient(
   { baseUrl: config.gateway.baseUrl, auth },
   { provider },
@@ -344,9 +348,34 @@ const voice = await media.generateTextToSpeech({
   voiceId: "host-voice",
   format: "mp3",
 });
+
+const finished = await media.waitForMediaJob("music", music.jobId ?? music.id!);
+const assets = await media.listMediaAssets({ kind: "image" });
+const imageBytes = await media.getImageAsset(assets.assets[0]!.id!);
+const imageMetadata = await media.getMediaAssetMetadata(assets.assets[0]!.id!);
 ```
 
-Implemented by the generic gateway client plus `HermesMediaApiClient` and `OpenClawMediaApiClient`; routing stays behind `createGatewayMediaClient`.
+Implemented by the generic gateway client plus `HermesMediaApiClient` and `OpenClawMediaApiClient`; routing stays behind `createGatewayMediaClient`. For provider-aware UI, normalize `/v1/capabilities` and optional media provider inventories:
+
+```ts
+import {
+  gatewaySupportsMediaKind,
+  gatewaySupportsTextToSpeech,
+  normalizeGatewayFeatureCapabilities,
+} from "@cavi/api-client";
+
+const features = normalizeGatewayFeatureCapabilities({
+  capabilities: await gateway.getCapabilities(),
+  mediaProviders: await media.listMediaProviders(),
+});
+
+if (gatewaySupportsMediaKind(features, "image")) {
+  // show image controls
+}
+if (gatewaySupportsTextToSpeech(features)) {
+  // show voice controls
+}
+```
 
 ### Gateway wiki
 
@@ -492,7 +521,7 @@ resolveTeamWorkspaceApiPath(team!, "media.images", { memberId: "scout" });
 // /api/teams/research/agents/scout/workspace/media/images
 ```
 
-The workspace resolver accepts only paths declared in `workspace.paths`, so custom folders need no new endpoint constants. Gateway route bindings are declarative manifest entries resolved through `resolveGatewayRouteBinding`. See [`docs/team-manifest.md`](docs/team-manifest.md) and [`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts) for the add/remove-agent template.
+The workspace resolver accepts only paths declared in `workspace.paths`, so custom folders need no new endpoint constants. Team/member/action IDs are validated as single path segments, workspace entries reject traversal, and ambiguous registry lookup keys fail during registry creation. Gateway route bindings are declarative manifest entries resolved through `resolveGatewayRouteBinding`. See [`docs/team-manifest.md`](docs/team-manifest.md) and [`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts) for the add/remove-agent template.
 
 ### Path contracts
 

@@ -1,6 +1,10 @@
 import { GATEWAY_MEDIA_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { BaseHttpApiClient } from "../../http/client.js";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "../../http/types.js";
+import {
+  waitForGatewayJob,
+  type GatewayJobWaitOptions,
+} from "../jobs.js";
 
 export const GATEWAY_MEDIA_KINDS = ["audio", "image", "video", "music"] as const;
 
@@ -25,6 +29,7 @@ export type GatewayMediaEndpointMap = {
   providers: (kind?: GatewayMediaKind | null) => string;
   generate: (kind: GatewayMediaKind) => string;
   job: (kind: GatewayMediaKind, jobId: string) => string;
+  assets: (query?: GatewayMediaAssetListOptions | null) => string;
   asset: (assetId: string) => string;
 };
 
@@ -81,6 +86,41 @@ export type GatewayMediaAsset = {
   metadata?: Record<string, unknown>;
 };
 
+export type GatewayMediaAssetListOptions = {
+  kind?: GatewayMediaKind | string | null;
+  cursor?: string | null;
+  limit?: number | null;
+};
+
+export type GatewayMediaAssetList = {
+  object?: string;
+  kind?: GatewayMediaKind | string;
+  assets: readonly GatewayMediaAsset[];
+  nextCursor?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type GatewayMediaAssetUploadRequest = {
+  kind: GatewayMediaKind | string;
+  input?: string;
+  filename?: string;
+  contentType?: string;
+  dataBase64?: string;
+  url?: string;
+  size?: number;
+  options?: Record<string, GatewayMediaJsonValue>;
+  metadata?: Record<string, unknown>;
+};
+
+export type GatewayMediaAssetDeleteResult = {
+  object?: string;
+  id?: string;
+  assetId?: string;
+  deleted?: boolean;
+  status: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type GatewayMediaGenerationResult = {
   object?: string;
   id?: string;
@@ -100,6 +140,11 @@ export type GatewayMediaGenerationResult = {
   error?: string;
   metadata?: Record<string, unknown>;
 };
+
+export type GatewayMediaJobWaitOptions = Omit<
+  GatewayJobWaitOptions<GatewayMediaGenerationResult>,
+  "fetchJob"
+>;
 
 export type GatewayMediaAssetRequest = Pick<
   HttpApiRequestInit,
@@ -145,6 +190,24 @@ export interface GatewayMediaClient {
     kind: GatewayMediaKind,
     jobId: string,
   ): Promise<GatewayMediaGenerationResult>;
+  waitForMediaJob(
+    kind: GatewayMediaKind,
+    jobId: string,
+    options?: GatewayMediaJobWaitOptions,
+  ): Promise<GatewayMediaGenerationResult>;
+  listMediaAssets(
+    options?: GatewayMediaAssetListOptions,
+  ): Promise<GatewayMediaAssetList>;
+  getMediaAssetMetadata(assetId: string): Promise<GatewayMediaAsset>;
+  createMediaAsset(
+    body: GatewayMediaAssetUploadRequest,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaAsset>;
+  uploadMediaAsset(
+    body: GatewayMediaAssetUploadRequest,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaAsset>;
+  deleteMediaAsset(assetId: string): Promise<GatewayMediaAssetDeleteResult>;
   getMediaAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
   getAudioAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
   getImageAsset(assetId: string, init?: GatewayMediaAssetRequest): Promise<Blob>;
@@ -166,6 +229,63 @@ function requiredText(value: string | null | undefined, label: string): string {
     throw new Error(`gateway media: missing ${label}`);
   }
   return normalized;
+}
+
+function optionalText(value: string | null | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
+}
+
+function normalizeListOptions(
+  options: GatewayMediaAssetListOptions = {},
+): GatewayMediaAssetListOptions {
+  const kind = options.kind == null ? undefined : normalizeMediaKind(options.kind);
+  const cursor = optionalText(options.cursor);
+  const limit = options.limit ?? undefined;
+  if (
+    limit !== undefined &&
+    (!Number.isFinite(limit) || limit <= 0 || Math.floor(limit) !== limit)
+  ) {
+    throw new Error("gateway media: asset list limit must be a positive integer");
+  }
+  return {
+    ...(kind ? { kind } : {}),
+    ...(cursor ? { cursor } : {}),
+    ...(limit !== undefined ? { limit } : {}),
+  };
+}
+
+function normalizeAssetUploadRequest(
+  body: GatewayMediaAssetUploadRequest,
+): GatewayMediaAssetUploadRequest {
+  const kind = normalizeMediaKind(body.kind);
+  const input = optionalText(body.input);
+  const dataBase64 = optionalText(body.dataBase64);
+  const url = optionalText(body.url);
+  const {
+    contentType,
+    dataBase64: _dataBase64,
+    filename,
+    input: _input,
+    url: _url,
+    ...rest
+  } = body;
+  if (!input && !dataBase64 && !url) {
+    throw new Error("gateway media: missing media asset source");
+  }
+  return {
+    ...rest,
+    kind,
+    ...(input ? { input } : {}),
+    ...(dataBase64 ? { dataBase64 } : {}),
+    ...(url ? { url } : {}),
+    ...(filename !== undefined
+      ? { filename: requiredText(filename, "media asset filename") }
+      : {}),
+    ...(contentType !== undefined
+      ? { contentType: requiredText(contentType, "media asset content type") }
+      : {}),
+  };
 }
 
 export class GatewayMediaApiClient
@@ -254,6 +374,63 @@ export class GatewayMediaApiClient
   ): Promise<GatewayMediaGenerationResult> {
     return this.requestJson<GatewayMediaGenerationResult>(
       this.endpoints.job(normalizeMediaKind(kind), requiredText(jobId, "media job id")),
+    );
+  }
+
+  waitForMediaJob(
+    kind: GatewayMediaKind,
+    jobId: string,
+    options: GatewayMediaJobWaitOptions = {},
+  ): Promise<GatewayMediaGenerationResult> {
+    return waitForGatewayJob({
+      ...options,
+      fetchJob: () => this.getMediaJob(kind, jobId),
+    });
+  }
+
+  listMediaAssets(
+    options: GatewayMediaAssetListOptions = {},
+  ): Promise<GatewayMediaAssetList> {
+    return this.requestJson<GatewayMediaAssetList>(
+      this.endpoints.assets(normalizeListOptions(options)),
+    );
+  }
+
+  getMediaAssetMetadata(assetId: string): Promise<GatewayMediaAsset> {
+    return this.requestJson<GatewayMediaAsset>(
+      this.endpoints.asset(requiredText(assetId, "media asset id")),
+      {
+        headers: { Accept: "application/json" },
+      },
+    );
+  }
+
+  createMediaAsset(
+    body: GatewayMediaAssetUploadRequest,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaAsset> {
+    const normalized = normalizeAssetUploadRequest(body);
+    return this.requestJson<GatewayMediaAsset>(
+      this.endpoints.assets({ kind: normalized.kind }),
+      {
+        method: "POST",
+        body: normalized,
+        idempotencyKey,
+      },
+    );
+  }
+
+  uploadMediaAsset(
+    body: GatewayMediaAssetUploadRequest,
+    idempotencyKey?: string,
+  ): Promise<GatewayMediaAsset> {
+    return this.createMediaAsset(body, idempotencyKey);
+  }
+
+  deleteMediaAsset(assetId: string): Promise<GatewayMediaAssetDeleteResult> {
+    return this.requestJson<GatewayMediaAssetDeleteResult>(
+      this.endpoints.asset(requiredText(assetId, "media asset id")),
+      { method: "DELETE" },
     );
   }
 

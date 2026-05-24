@@ -131,6 +131,56 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     owner: "gateway/media contract",
     note: "Gateway-native music generation route.",
   },
+  "gateway.mediaJob": {
+    key: "gateway.mediaJob",
+    method: "GET",
+    canonicalPath: (params) =>
+      GATEWAY_MEDIA_API_ENDPOINTS.job(raw(params, "kind"), raw(params, "jobId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native media job status route.",
+  },
+  "gateway.mediaAssets": {
+    key: "gateway.mediaAssets",
+    method: "GET",
+    canonicalPath: (params) =>
+      GATEWAY_MEDIA_API_ENDPOINTS.assets({ kind: params?.kind }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native media asset inventory route.",
+  },
+  "gateway.mediaAssetCreate": {
+    key: "gateway.mediaAssetCreate",
+    method: "POST",
+    canonicalPath: (params) =>
+      GATEWAY_MEDIA_API_ENDPOINTS.assets({ kind: params?.kind }),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native media asset creation route.",
+  },
+  "gateway.mediaAsset": {
+    key: "gateway.mediaAsset",
+    method: "GET",
+    canonicalPath: (params) =>
+      GATEWAY_MEDIA_API_ENDPOINTS.asset(raw(params, "assetId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native media asset retrieval and metadata route.",
+  },
+  "gateway.mediaAssetDelete": {
+    key: "gateway.mediaAssetDelete",
+    method: "DELETE",
+    canonicalPath: (params) =>
+      GATEWAY_MEDIA_API_ENDPOINTS.asset(raw(params, "assetId")),
+    classification: "gateway-native",
+    degradation: "hard",
+    owner: "gateway/media contract",
+    note: "Gateway-native media asset deletion route.",
+  },
   "gateway.wikiVaults": {
     key: "gateway.wikiVaults",
     method: "GET",

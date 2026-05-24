@@ -48,6 +48,16 @@ export const GATEWAY_MEDIA_API_ENDPOINTS = {
     `${GATEWAY_MEDIA_API_BASE_PATH}/${encodeURIComponent(kind)}/generate`,
   job: (kind: string, jobId: string) =>
     `${GATEWAY_MEDIA_API_BASE_PATH}/${encodeURIComponent(kind)}/jobs/${encodeURIComponent(jobId)}`,
+  assets: (query?: {
+    kind?: string | null;
+    cursor?: string | null;
+    limit?: number | null;
+  } | null) =>
+    appendHttpQuery(`${GATEWAY_MEDIA_API_BASE_PATH}/assets`, {
+      kind: query?.kind ?? undefined,
+      cursor: query?.cursor ?? undefined,
+      limit: query?.limit ?? undefined,
+    }),
   asset: (assetId: string) =>
     `${GATEWAY_MEDIA_API_BASE_PATH}/assets/${encodeURIComponent(assetId)}`,
 } as const;

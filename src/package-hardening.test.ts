@@ -67,7 +67,9 @@ const CORE_GATEWAY_INDEX = path.join(SRC_ROOT, "core", "gateway", "index.ts");
 const CORE_GATEWAY_PROVIDER = path.join(SRC_ROOT, "core", "gateway", "provider.ts");
 const CORE_GATEWAY_ROOT = path.join(SRC_ROOT, "core", "gateway");
 const SURFACE_PATHS = path.join(SRC_ROOT, "contracts", "surfaces.ts");
+const TEAM_MANIFEST_CONTRACT = path.join(SRC_ROOT, "contracts", "team-manifest.ts");
 const CAVI_CONTRACT_PATHS = path.join(SRC_ROOT, "extensions", "cavi", "contracts", "paths.ts");
+const CAVI_TEAM_REGISTRY = path.join(SRC_ROOT, "extensions", "cavi", "registry", "team-registry.ts");
 const CAVI_ROOT = path.join(SRC_ROOT, "extensions", "cavi");
 const CAVI_DATA_ROOT = path.join(SRC_ROOT, "extensions", "cavi", "data");
 const CAVI_DATA_LIB_ROOT = path.join(SRC_ROOT, "extensions", "cavi", "data", "lib");
@@ -447,6 +449,7 @@ describe("package hardening", () => {
       'export * from "./envelope/index.js";',
       'export * from "./portal/index.js";',
       'export * from "./providers/index.js";',
+      'export * from "./jobs.js";',
     ].join("\n"));
   });
 
@@ -780,6 +783,13 @@ describe("package hardening", () => {
     expect(TEAM_REGISTRY_CONFIG.teams).toEqual([]);
     expect(createHermesTeamRegistry().listTeams()).toEqual([]);
     expect(createOpenClawTeamRegistry().listTeams()).toEqual([]);
+  });
+
+  it("keeps the team manifest contract agnostic and CAVI registry logic in the extension", () => {
+    const manifestSource = read(TEAM_MANIFEST_CONTRACT);
+    expect(manifestSource).not.toMatch(/extensions\/cavi|providers\/|Hermes|OpenClaw|Martina|Deb/u);
+    expect(read(CAVI_TEAM_REGISTRY)).toContain("../../../contracts/team-manifest.js");
+    expect(existsSync(path.join(SRC_ROOT, "core", "gateway", "team-registry.ts"))).toBe(false);
   });
 
   it("does not expose Mission Control aliases", () => {

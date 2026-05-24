@@ -259,6 +259,14 @@ function requiredText(value: string | null | undefined, label: string): string {
   return trimmed;
 }
 
+function decodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 function uniqueStrings(values: readonly string[] | null | undefined): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -471,15 +479,12 @@ function normalizeActionRouteContract(
     return null;
   }
   const path = nonEmpty(route.path);
-  if (path && !path.startsWith("/")) {
-    throw new Error(`team manifest: action route path must start with "/": ${path}`);
-  }
   return {
     ...(normalizeActionHttpMethod(route.method)
       ? { method: normalizeActionHttpMethod(route.method) }
       : {}),
     ...(nonEmpty(route.surfaceKey) ? { surfaceKey: nonEmpty(route.surfaceKey) } : {}),
-    ...(path ? { path } : {}),
+    ...(path ? { path: normalizeAbsoluteApiPath(path, "action route path") } : {}),
     ...(route.metadata ? { metadata: route.metadata } : {}),
   };
 }
@@ -521,7 +526,19 @@ function normalizeTeamActionContracts(
 }
 
 function pathSegment(value: string, label: string): string {
-  return encodeURIComponent(requiredText(value, label));
+  const segment = requiredText(value, label);
+  const decoded = decodePathSegment(segment);
+  if (
+    segment === "." ||
+    segment === ".." ||
+    decoded === "." ||
+    decoded === ".." ||
+    /[/?#\\]/u.test(segment) ||
+    /[/?#\\]/u.test(decoded)
+  ) {
+    throw new Error(`team manifest: invalid ${label}: ${segment}`);
+  }
+  return encodeURIComponent(segment);
 }
 
 function normalizeRelativePath(value: string): string {
@@ -529,21 +546,67 @@ function normalizeRelativePath(value: string): string {
   if (!trimmed) {
     throw new Error("team manifest: missing workspace path");
   }
-  if (/^[a-z][a-z0-9+.-]*:/iu.test(trimmed) || trimmed.startsWith("/")) {
+  if (
+    /^[a-z][a-z0-9+.-]*:/iu.test(trimmed) ||
+    trimmed.startsWith("/") ||
+    trimmed.includes("\\")
+  ) {
     throw new Error(`team manifest: workspace path must be relative: ${trimmed}`);
   }
   const segments = trimmed
-    .replace(/\\/gu, "/")
     .split("/")
     .map((segment) => segment.trim())
     .filter(Boolean);
   if (
     segments.length === 0 ||
-    segments.some((segment) => segment === "." || segment === "..")
+    segments.some((segment) => {
+      const decoded = decodePathSegment(segment);
+      return (
+        segment === "." ||
+        segment === ".." ||
+        decoded === "." ||
+        decoded === ".." ||
+        decoded.includes("/") ||
+        decoded.includes("\\")
+      );
+    })
   ) {
     throw new Error(`team manifest: invalid workspace path: ${trimmed}`);
   }
   return segments.join("/");
+}
+
+function normalizeAbsoluteApiPath(value: string, label: string): string {
+  const trimmed = requiredText(value, label);
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    /^[a-z][a-z0-9+.-]*:/iu.test(trimmed) ||
+    /[\\?#]/u.test(trimmed)
+  ) {
+    throw new Error(`team manifest: invalid ${label}: ${trimmed}`);
+  }
+  const segments = trimmed
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments.length === 0) {
+    throw new Error(`team manifest: invalid ${label}: ${trimmed}`);
+  }
+  for (const segment of segments) {
+    const decoded = decodePathSegment(segment);
+    if (
+      segment === "." ||
+      segment === ".." ||
+      decoded === "." ||
+      decoded === ".." ||
+      decoded.includes("/") ||
+      decoded.includes("\\")
+    ) {
+      throw new Error(`team manifest: invalid ${label}: ${trimmed}`);
+    }
+  }
+  return `/${segments.join("/")}`;
 }
 
 function normalizeRootPath(value: string): string {
@@ -551,7 +614,7 @@ function normalizeRootPath(value: string): string {
   if (!trimmed) {
     throw new Error("team manifest: missing workspace rootPath");
   }
-  return trimmed.replace(/\/+$/u, "");
+  return normalizeAbsoluteApiPath(trimmed, "workspace rootPath");
 }
 
 function joinUrlPath(segments: readonly string[]): string {
@@ -632,20 +695,71 @@ function normalizeMember(member: TeamManifestMember): TeamManifestMember {
   };
 }
 
+function normalizeMembers(
+  members: readonly TeamManifestMember[] | null | undefined,
+): TeamManifestMember[] {
+  const seen = new Set<string>();
+  const normalized: TeamManifestMember[] = [];
+  for (const member of members ?? []) {
+    const entry = normalizeMember(member);
+    if (seen.has(entry.id)) {
+      throw new Error(`team manifest: duplicate member "${entry.id}"`);
+    }
+    seen.add(entry.id);
+    normalized.push(entry);
+  }
+  return normalized;
+}
+
+function normalizeTeamRoutes(
+  routes: readonly TeamManifestRouteConfig[] | null | undefined,
+): TeamManifestRouteConfig[] {
+  const seen = new Set<string>();
+  const normalized: TeamManifestRouteConfig[] = [];
+  for (const route of routes ?? []) {
+    const key = requiredText(route.key, "route key");
+    const routePath = nonEmpty(route.path);
+    if (seen.has(key)) {
+      throw new Error(`team manifest: duplicate route "${key}"`);
+    }
+    seen.add(key);
+    normalized.push({
+      key,
+      ...(routePath
+        ? { path: normalizeAbsoluteApiPath(routePath, "route path") }
+        : {}),
+    });
+  }
+  return normalized;
+}
+
 function normalizeTeam(team: TeamManifestTeam): TeamManifestTeam {
   return {
     id: requiredText(team.id, "team id"),
     ...(team.identity ? { identity: normalizeIdentity(team.identity) } : {}),
-    members: (team.members ?? []).map(normalizeMember),
+    members: normalizeMembers(team.members),
     ...(team.workspace ? { workspace: normalizeWorkspaceConfig(team.workspace) } : {}),
     actions: normalizeTeamActionContracts(team.actions),
     capabilities: uniqueStrings(team.capabilities),
-    routes: (team.routes ?? []).map((route) => ({
-      key: requiredText(route.key, "route key"),
-      ...(nonEmpty(route.path) ? { path: nonEmpty(route.path) } : {}),
-    })),
+    routes: normalizeTeamRoutes(team.routes),
     ...(team.metadata ? { metadata: team.metadata } : {}),
   };
+}
+
+function normalizeTeams(
+  teams: readonly TeamManifestTeam[] | null | undefined,
+): TeamManifestTeam[] {
+  const seen = new Set<string>();
+  const normalized: TeamManifestTeam[] = [];
+  for (const team of teams ?? []) {
+    const entry = normalizeTeam(team);
+    if (seen.has(entry.id)) {
+      throw new Error(`team manifest: duplicate team "${entry.id}"`);
+    }
+    seen.add(entry.id);
+    normalized.push(entry);
+  }
+  return normalized;
 }
 
 function normalizeGatewayRouteBinding(
@@ -744,7 +858,7 @@ export function normalizeTeamManifest(
     version: TEAM_MANIFEST_VERSION,
     actions: normalizeTeamActionContracts(manifest.actions),
     bindings: normalizeGatewayRouteBindings(manifest.bindings),
-    teams: manifest.teams.map(normalizeTeam),
+    teams: normalizeTeams(manifest.teams),
   };
 }
 

@@ -164,6 +164,34 @@ export {
 } from "./core/gateway/client/client.js";
 
 export {
+  gatewaySupportsAction,
+  gatewaySupportsMediaKind,
+  gatewaySupportsRpcMethod,
+  gatewaySupportsTextToSpeech,
+  normalizeGatewayFeatureCapabilities,
+  type GatewayFeatureCapabilityInput,
+  type GatewayMediaCapabilityMap,
+  type GatewayMediaProviderCapabilityInput,
+  type NormalizeGatewayFeatureCapabilitiesOptions,
+  type NormalizedGatewayFeatureCapabilities,
+} from "./core/gateway/client/capabilities.js";
+
+export {
+  GatewayJobAbortError,
+  GatewayJobTimeoutError,
+  GATEWAY_JOB_SUCCESS_STATUSES,
+  GATEWAY_JOB_TERMINAL_STATUSES,
+  isGatewayJobSuccessfulStatus,
+  isGatewayJobTerminalStatus,
+  waitForGatewayJob,
+  type GatewayJobLike,
+  type GatewayJobSleep,
+  type GatewayJobStatus,
+  type GatewayJobWaitOptions,
+  type GatewayJobWaitUpdate,
+} from "./core/gateway/jobs.js";
+
+export {
   FALLBACK_CORE_SLASH_COMMANDS,
   buildAgentCommandSurface,
   buildAgentMentionChips,
@@ -182,14 +210,19 @@ export {
   GatewayMediaApiClient,
   GATEWAY_MEDIA_ACCEPT_HEADERS,
   GATEWAY_MEDIA_KINDS,
+  type GatewayMediaAssetDeleteResult,
+  type GatewayMediaAssetList,
+  type GatewayMediaAssetListOptions,
   type GatewayMediaApiClientOptions,
   type GatewayMediaAsset,
   type GatewayMediaAssetRequest,
+  type GatewayMediaAssetUploadRequest,
   type GatewayMediaClient,
   type GatewayMediaEndpointMap,
   type GatewayMediaGenerateInput,
   type GatewayMediaGenerateRequest,
   type GatewayMediaGenerationResult,
+  type GatewayMediaJobWaitOptions,
   type GatewayMediaJsonValue,
   type GatewayMediaKind,
   type GatewayMediaProvider,

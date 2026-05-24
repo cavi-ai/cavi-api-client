@@ -24,6 +24,11 @@ whitelists, capabilities, and action overrides only. Do not add transport
 behavior, product runtime globals, or local filesystem assumptions to a team
 entry.
 
+The generic manifest contract intentionally lives in `src/contracts` because
+`team.*` routes are gateway-agnostic. CAVI/operator registry behavior stays in
+`src/extensions/cavi/registry`; apps can use the manifest without inheriting a
+CAVI registry layout.
+
 ## Shape
 
 ```ts
@@ -118,6 +123,11 @@ resolveTeamWorkspacePath(team, "media.images", { memberId: "scout" });
 `resolveTeamWorkspacePath` returns a local workspace path for trusted consumer
 code. `resolveTeamWorkspaceApiPath` returns the HTTP path and never includes the
 workspace root.
+
+Team/member/action IDs are single URL path segments, so slashes, backslashes,
+query/hash characters, and dot segments are rejected instead of encoded.
+Workspace roots must be absolute path roots, and workspace entries must be
+relative allowlist entries with no traversal or encoded separators.
 
 ## Gateway Route Bindings
 

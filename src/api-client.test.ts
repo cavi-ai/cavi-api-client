@@ -40,6 +40,7 @@ import {
   buildPortalMemoryEnvelope,
   createContractGap,
   createDefaultTeamManifest,
+  createTeamRegistry,
   createGatewayMediaClient,
   createGatewaySseRunEventProvider,
   createGatewayWebSocketClient,
@@ -160,6 +161,15 @@ describe("agnostic HTTP API client package", () => {
     expect(GATEWAY_MEDIA_API_ENDPOINTS.job("video", "job/a b")).toBe(
       "/v1/media/video/jobs/job%2Fa%20b",
     );
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.assets()).toBe("/v1/media/assets");
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.assets({ kind: "image" })).toBe(
+      "/v1/media/assets?kind=image",
+    );
+    expect(GATEWAY_MEDIA_API_ENDPOINTS.assets({
+      kind: "image",
+      cursor: "next page",
+      limit: 25,
+    })).toBe("/v1/media/assets?kind=image&cursor=next+page&limit=25");
     expect(GATEWAY_MEDIA_API_ENDPOINTS.asset("asset/a b")).toBe(
       "/v1/media/assets/asset%2Fa%20b",
     );
@@ -225,26 +235,26 @@ describe("agnostic HTTP API client package", () => {
     );
     expect(resolvePath("team.agent.config", "canonical", {
       teamId: "research",
-      agentId: "scout/a",
-    })).toBe("/api/teams/research/agents/scout%2Fa/config");
+      agentId: "scout a",
+    })).toBe("/api/teams/research/agents/scout%20a/config");
     expect(resolvePath("team.action", "canonical", {
       teamId: "machine",
-      actionId: "joke/dark",
-    })).toBe("/api/teams/machine/actions/joke%2Fdark");
+      actionId: "joke dark",
+    })).toBe("/api/teams/machine/actions/joke%20dark");
     expect(resolvePath("team.agent.action", "canonical", {
       teamId: "machine",
-      agentId: "chris/a",
+      agentId: "chris a",
       actionId: "joke",
-    })).toBe("/api/teams/machine/agents/chris%2Fa/actions/joke");
+    })).toBe("/api/teams/machine/agents/chris%20a/actions/joke");
     expect(resolvePath("team.workspace", "canonical", {
       teamId: "research",
       workspacePath: "research/complete",
     })).toBe("/api/teams/research/workspace/research/complete");
     expect(resolvePath("team.agent.workspace", "canonical", {
       teamId: "research",
-      agentId: "scout/a",
+      agentId: "scout a",
       workspacePath: "media/images",
-    })).toBe("/api/teams/research/agents/scout%2Fa/workspace/media/images");
+    })).toBe("/api/teams/research/agents/scout%20a/workspace/media/images");
     expect(resolveCaviPath("cavi.operator.memory", "canonical")).toBe(
       "/api/plugins/cavi-control/operator/memory",
     );
@@ -270,6 +280,16 @@ describe("agnostic HTTP API client package", () => {
     expect(resolvePath("gateway.mediaMusicGenerate", "canonical")).toBe(
       "/v1/media/music/generate",
     );
+    expect(resolvePath("gateway.mediaJob", "canonical", {
+      kind: "video",
+      jobId: "job/a b",
+    })).toBe("/v1/media/video/jobs/job%2Fa%20b");
+    expect(resolvePath("gateway.mediaAssets", "canonical", { kind: "image" })).toBe(
+      "/v1/media/assets?kind=image",
+    );
+    expect(resolvePath("gateway.mediaAsset", "canonical", {
+      assetId: "asset/a b",
+    })).toBe("/v1/media/assets/asset%2Fa%20b");
     expect(resolvePath("gateway.wikiVaults", "canonical")).toBe("/v1/wiki/vaults");
     expect(resolvePath("gateway.wikiTree", "canonical", { vaultId: "research vault" })).toBe(
       "/v1/wiki/vaults/research%20vault/tree",
@@ -378,6 +398,15 @@ describe("agnostic HTTP API client package", () => {
     expect(getMobileGatewayEndpointPath("gatewayMediaMusic", "canonical")).toBe(
       "/v1/media/music/generate",
     );
+    expect(getMobileGatewayEndpointPath("gatewayMediaJob", "canonical")).toBe(
+      "/v1/media/video/jobs/job",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayMediaAssets", "canonical")).toBe(
+      "/v1/media/assets?kind=image",
+    );
+    expect(getMobileGatewayEndpointPath("gatewayMediaAsset", "canonical")).toBe(
+      "/v1/media/assets/asset",
+    );
     expect(getMobileGatewayEndpointPath("gatewayWikiVaults", "canonical")).toBe(
       "/v1/wiki/vaults",
     );
@@ -459,6 +488,106 @@ describe("agnostic HTTP API client package", () => {
     expect(() => resolveTeamWorkspacePath(team!, "secrets/tokens")).toThrow(
       /not whitelisted/u,
     );
+  });
+
+  it("hardens team manifest ids, workspace paths, and route overrides", () => {
+    expect(() =>
+      normalizeTeamManifest({
+        version: 1,
+        teams: [{ id: "research" }, { id: "research" }],
+      }),
+    ).toThrow(/duplicate team "research"/u);
+    expect(() =>
+      normalizeTeamManifest({
+        version: 1,
+        teams: [
+          {
+            id: "research",
+            members: [{ id: "scout" }, { id: "scout" }],
+          },
+        ],
+      }),
+    ).toThrow(/duplicate member "scout"/u);
+    expect(() =>
+      normalizeTeamManifest({
+        version: 1,
+        teams: [
+          {
+            id: "research",
+            workspace: {
+              rootPath: "teams/research",
+              paths: ["notes"],
+            },
+          },
+        ],
+      }),
+    ).toThrow(/invalid workspace rootPath/u);
+    expect(() =>
+      normalizeTeamManifest({
+        version: 1,
+        teams: [
+          {
+            id: "research",
+            workspace: {
+              rootPath: "/teams/research",
+              paths: ["%2e%2e/secrets"],
+            },
+          },
+        ],
+      }),
+    ).toThrow(/invalid workspace path/u);
+    expect(() =>
+      normalizeTeamManifest({
+        version: 1,
+        teams: [
+          {
+            id: "research",
+            actions: [
+              {
+                id: "summarize",
+                route: { path: "https://example.com/api/summarize" },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/invalid action route path/u);
+    expect(() =>
+      normalizeTeamManifest({
+        version: 1,
+        teams: [
+          {
+            id: "research",
+            actions: [{ id: "summarize", route: { path: "/api/%2e%2e/secret" } }],
+          },
+        ],
+      }),
+    ).toThrow(/invalid action route path/u);
+    expect(() =>
+      resolvePath("team.agent.config", "canonical", {
+        teamId: "research",
+        agentId: "scout/a",
+      }),
+    ).toThrow(/invalid path segment/u);
+  });
+
+  it("rejects ambiguous team registry lookup keys", () => {
+    expect(() =>
+      createTeamRegistry({
+        teams: [
+          { id: "research", teamSlug: "shared" },
+          { id: "support", teamSlug: "shared" },
+        ],
+      }),
+    ).toThrow(/ambiguous lookup key "shared"/u);
+    expect(() =>
+      createTeamRegistry({
+        teams: [
+          { id: "research", portalId: "portal" },
+          { id: "support", portalId: "portal" },
+        ],
+      }),
+    ).toThrow(/duplicate portal id "portal"/u);
   });
 
   it("resolves manifest route bindings for runtime channels without baked routes", () => {
@@ -869,9 +998,44 @@ describe("agnostic HTTP API client package", () => {
     });
   });
 
+  it("normalizes gateway feature capabilities from the API client", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            features: {
+              media: { video: true },
+              rpcMethods: ["runs.stop"],
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+    const client = new GatewayApiClient({
+      baseUrl: "https://gateway.example",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(client.getFeatureCapabilities()).resolves.toMatchObject({
+      media: true,
+      mediaKinds: {
+        audio: false,
+        image: false,
+        video: true,
+        music: false,
+      },
+      rpc: true,
+      rpcMethods: ["runs.stop"],
+    });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://gateway.example/v1/capabilities");
+  });
+
   it("uses one gateway media interface across generic, Hermes, and OpenClaw providers", async () => {
+    let waitJobRequests = 0;
     const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const requestUrl = String(url);
+      const method = init?.method ?? "GET";
+      const headers = init?.headers as Record<string, string> | undefined;
       if (requestUrl.endsWith("/v1/media/audio/providers")) {
         return new Response(
           JSON.stringify({
@@ -917,6 +1081,60 @@ describe("agnostic HTTP API client package", () => {
             id: "job/a b",
             kind: "video",
             status: "running",
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/video/jobs/wait%20job")) {
+        waitJobRequests += 1;
+        return new Response(
+          JSON.stringify({
+            id: "wait job",
+            kind: "video",
+            status: waitJobRequests === 1 ? "running" : "completed",
+            asset: waitJobRequests === 1 ? undefined : { id: "video_1", kind: "video" },
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/assets?kind=image") && method === "GET") {
+        return new Response(
+          JSON.stringify({
+            kind: "image",
+            assets: [{ id: "asset/a b", kind: "image", contentType: "image/png" }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestUrl.endsWith("/v1/media/assets?kind=image") && method === "POST") {
+        return new Response(
+          JSON.stringify({
+            id: "upload_1",
+            kind: "image",
+            filename: "cover.png",
+            contentType: "image/png",
+          }),
+          { status: 201 },
+        );
+      }
+      if (
+        requestUrl.endsWith("/v1/media/assets/asset%2Fa%20b") &&
+        method === "DELETE"
+      ) {
+        return new Response(
+          JSON.stringify({ id: "asset/a b", deleted: true, status: "deleted" }),
+          { status: 200 },
+        );
+      }
+      if (
+        requestUrl.endsWith("/v1/media/assets/asset%2Fa%20b") &&
+        headers?.Accept === "application/json"
+      ) {
+        return new Response(
+          JSON.stringify({
+            id: "asset/a b",
+            kind: "image",
+            contentType: "image/png",
           }),
           { status: 200 },
         );
@@ -981,7 +1199,38 @@ describe("agnostic HTTP API client package", () => {
       kind: "video",
       status: "running",
     });
+    await expect(generic.waitForMediaJob("video", "wait job", {
+      intervalMs: 1,
+      sleep: async () => undefined,
+    })).resolves.toMatchObject({
+      id: "wait job",
+      status: "completed",
+      asset: { id: "video_1", kind: "video" },
+    });
+    await expect(generic.listMediaAssets({ kind: "image" })).resolves.toEqual({
+      kind: "image",
+      assets: [{ id: "asset/a b", kind: "image", contentType: "image/png" }],
+    });
+    await expect(generic.uploadMediaAsset({
+      kind: "image",
+      filename: "cover.png",
+      contentType: "image/png",
+      dataBase64: "aW1hZ2U=",
+    }, "asset-1")).resolves.toMatchObject({
+      id: "upload_1",
+      kind: "image",
+    });
+    await expect(generic.getMediaAssetMetadata("asset/a b")).resolves.toMatchObject({
+      id: "asset/a b",
+      kind: "image",
+      contentType: "image/png",
+    });
     const asset = await generic.getImageAsset("asset/a b");
+    await expect(generic.deleteMediaAsset("asset/a b")).resolves.toMatchObject({
+      id: "asset/a b",
+      deleted: true,
+      status: "deleted",
+    });
 
     expect(await asset.text()).toBe("asset-bytes");
     expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
@@ -990,6 +1239,12 @@ describe("agnostic HTTP API client package", () => {
       "https://gateway.example/v1/media/image/generate",
       "https://gateway.example/v1/media/audio/generate",
       "https://gateway.example/v1/media/video/jobs/job%2Fa%20b",
+      "https://gateway.example/v1/media/video/jobs/wait%20job",
+      "https://gateway.example/v1/media/video/jobs/wait%20job",
+      "https://gateway.example/v1/media/assets?kind=image",
+      "https://gateway.example/v1/media/assets?kind=image",
+      "https://gateway.example/v1/media/assets/asset%2Fa%20b",
+      "https://gateway.example/v1/media/assets/asset%2Fa%20b",
       "https://gateway.example/v1/media/assets/asset%2Fa%20b",
     ]);
     expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({
@@ -1015,12 +1270,34 @@ describe("agnostic HTTP API client package", () => {
     expect(fetchImpl.mock.calls[3]?.[1]?.headers).toMatchObject({
       "Idempotency-Key": "tts-1",
     });
-    expect(fetchImpl.mock.calls[5]?.[1]?.headers).toMatchObject({
+    expect(fetchImpl.mock.calls[8]?.[1]).toMatchObject({
+      method: "POST",
+    });
+    expect(JSON.parse(String(fetchImpl.mock.calls[8]?.[1]?.body))).toEqual({
+      kind: "image",
+      filename: "cover.png",
+      contentType: "image/png",
+      dataBase64: "aW1hZ2U=",
+    });
+    expect(fetchImpl.mock.calls[8]?.[1]?.headers).toMatchObject({
+      "Idempotency-Key": "asset-1",
+    });
+    expect(fetchImpl.mock.calls[9]?.[1]?.headers).toMatchObject({
+      Accept: "application/json",
+    });
+    expect(fetchImpl.mock.calls[10]?.[1]?.headers).toMatchObject({
       Accept: "image/*",
     });
+    expect(fetchImpl.mock.calls[11]?.[1]).toMatchObject({ method: "DELETE" });
     expect(() =>
       generic.generateMedia({ kind: "document" as never, input: "cover art" }),
     ).toThrow(/unsupported media kind/u);
+    expect(() =>
+      generic.uploadMediaAsset({ kind: "image", filename: "cover.png" }),
+    ).toThrow(/missing media asset source/u);
+    expect(() => generic.listMediaAssets({ limit: 0 })).toThrow(
+      /positive integer/u,
+    );
   });
 
   it("uses one gateway wiki interface across generic, Hermes, and OpenClaw providers", async () => {
