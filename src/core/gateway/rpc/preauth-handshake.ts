@@ -1,53 +1,89 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
 /**
- * Keep token-only connect fallback **strictly before** the gateway pre-auth handshake
- * timeout. Parsing must stay aligned with `src/gateway/handshake-timeouts.ts`
- * (`getPreauthHandshakeTimeoutMsFromEnv`).
- *
- * **Deployment contract:** Node/electron clients can pick up `OPENCLAW_HANDSHAKE_TIMEOUT_MS`
- * from `process.env`. Browser bundles usually have no gateway env; if the gateway uses a
- * non-default handshake budget, pass the same value via `GatewayRpcClientOptions.preauthHandshakeTimeoutMs`
- * (or the matching React hook props). There is no automatic server→client discovery of that
- * budget today.
+ * Keep token-only connect fallback strictly before the gateway pre-auth
+ * handshake timeout. Core owns the timing math; providers and host apps own
+ * gateway-specific env keys or explicit timeout overrides.
  */
 export const DEFAULT_PREAUTH_HANDSHAKE_TIMEOUT_MS = 10_000;
 
 const HANDSHAKE_SAFETY_MARGIN_MS = 2_000;
 /** Leave at least this much room before the server closes the pre-auth window. */
 const MIN_MS_BEFORE_SERVER_CLOSE = 250;
-type GatewayHandshakeEnv = Readonly<{
-  OPENCLAW_HANDSHAKE_TIMEOUT_MS?: string;
-  OPENCLAW_TEST_HANDSHAKE_TIMEOUT_MS?: string;
+
+export type GatewayPreauthHandshakeEnv = Readonly<Record<string, string | undefined>>;
+
+export type GatewayPreauthHandshakeEnvKeys = Readonly<{
+  timeoutMs: string;
+  testTimeoutMs?: string;
+  testFlag?: string;
+}>;
+
+export const GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS: GatewayPreauthHandshakeEnvKeys = {
+  timeoutMs: "GATEWAY_PREAUTH_HANDSHAKE_TIMEOUT_MS",
+  testTimeoutMs: "GATEWAY_TEST_PREAUTH_HANDSHAKE_TIMEOUT_MS",
+  testFlag: "VITEST",
+};
+
+export type ResolvePreauthHandshakeTimeoutMsParams = {
+  env?: GatewayPreauthHandshakeEnv;
+  envKeys?: GatewayPreauthHandshakeEnvKeys;
+  preauthHandshakeTimeoutMs?: number;
+};
+
+type LegacyGatewayHandshakeEnv = Readonly<{
+  GATEWAY_PREAUTH_HANDSHAKE_TIMEOUT_MS?: string;
+  GATEWAY_TEST_PREAUTH_HANDSHAKE_TIMEOUT_MS?: string;
   VITEST?: string;
 }>;
 
-/**
- * Resolves the effective pre-auth handshake deadline (same env keys as the gateway).
- * When `env` is omitted (typical browser), returns the default deadline unless the caller
- * passes `preauthHandshakeTimeoutMs` into `resolveDeviceTokenOnlyFallbackMs` / the RPC client.
- */
-export function resolvePreauthHandshakeTimeoutMsFromEnv(env?: GatewayHandshakeEnv): number {
+function parsePositiveMs(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function resolvePreauthHandshakeTimeoutMs(
+  params: ResolvePreauthHandshakeTimeoutMsParams = {},
+): number {
+  if (
+    typeof params.preauthHandshakeTimeoutMs === "number" &&
+    Number.isFinite(params.preauthHandshakeTimeoutMs) &&
+    params.preauthHandshakeTimeoutMs > 0
+  ) {
+    return params.preauthHandshakeTimeoutMs;
+  }
+  const env = params.env;
   if (!env) {
     return DEFAULT_PREAUTH_HANDSHAKE_TIMEOUT_MS;
   }
-  const configuredTimeout =
-    env.OPENCLAW_HANDSHAKE_TIMEOUT_MS || (env.VITEST && env.OPENCLAW_TEST_HANDSHAKE_TIMEOUT_MS);
-  if (configuredTimeout) {
-    const parsed = Number(configuredTimeout);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
+  const keys = params.envKeys ?? GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS;
+  const configuredTimeout = parsePositiveMs(env[keys.timeoutMs]);
+  if (configuredTimeout) return configuredTimeout;
+  const testFlag = keys.testFlag ? env[keys.testFlag] : undefined;
+  const testTimeout = keys.testTimeoutMs && testFlag
+    ? parsePositiveMs(env[keys.testTimeoutMs])
+    : null;
+  if (testTimeout) return testTimeout;
   return DEFAULT_PREAUTH_HANDSHAKE_TIMEOUT_MS;
 }
 
+/**
+ * @deprecated Use resolvePreauthHandshakeTimeoutMs({ env }) with generic
+ * gateway env keys, or pass provider-specific env keys explicitly.
+ */
+export function resolvePreauthHandshakeTimeoutMsFromEnv(
+  env?: LegacyGatewayHandshakeEnv,
+): number {
+  return resolvePreauthHandshakeTimeoutMs({ env });
+}
+
 export type ResolveDeviceTokenOnlyFallbackMsParams = {
-  env?: GatewayHandshakeEnv;
-  /**
-   * Gateway handshake budget (ms). Required for correct token-only timing in browsers when
-   * the server sets `OPENCLAW_HANDSHAKE_TIMEOUT_MS` away from default; optional in Node if env matches.
-   */
+  env?: GatewayPreauthHandshakeEnv;
+  envKeys?: GatewayPreauthHandshakeEnvKeys;
+  /** Explicit gateway handshake budget in milliseconds. */
   preauthHandshakeTimeoutMs?: number;
 };
 
@@ -55,12 +91,7 @@ export type ResolveDeviceTokenOnlyFallbackMsParams = {
 export function resolveDeviceTokenOnlyFallbackMs(
   params?: ResolveDeviceTokenOnlyFallbackMsParams,
 ): number {
-  const rawTimeout =
-    typeof params?.preauthHandshakeTimeoutMs === "number" &&
-    Number.isFinite(params.preauthHandshakeTimeoutMs) &&
-    params.preauthHandshakeTimeoutMs > 0
-      ? params.preauthHandshakeTimeoutMs
-      : resolvePreauthHandshakeTimeoutMsFromEnv(params?.env);
+  const rawTimeout = resolvePreauthHandshakeTimeoutMs(params);
 
   const preferred = Math.max(750, rawTimeout - HANDSHAKE_SAFETY_MARGIN_MS);
   const maxAllowed = Math.max(1, rawTimeout - MIN_MS_BEFORE_SERVER_CLOSE);

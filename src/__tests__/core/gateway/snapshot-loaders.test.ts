@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createEmptyGatewaySnapshotFallbacks,
+  resolveGatewaySnapshotFallbacks,
   createGatewaySnapshotLoaders,
   type GatewaySnapshotFallbacks,
 } from "../../../core/gateway/snapshots/loaders";
@@ -219,5 +220,77 @@ describe("createGatewaySnapshotLoaders", () => {
 
     expect(runs.source).toBe("mock");
     expect(runs.data.history[0]?.key).toBe("custom:run");
+  });
+
+  it("resolves fallback providers with caller overrides", () => {
+    const resolved = resolveGatewaySnapshotFallbacks({
+      mode: "empty",
+      provider: {
+        snapshots: () => ({
+          ...createEmptyGatewaySnapshotFallbacks(),
+          agentRuns: {
+            live: [],
+            history: [
+              {
+                key: "provider:run",
+                title: "Provider fallback",
+                agentId: "provider-agent",
+                channel: "provider",
+                updatedAt: null,
+                status: "idle",
+                totalTokens: 0,
+                errors: 0,
+              },
+            ],
+            summary: { active: 0, idle: 1, stalled: 0, error: 0 },
+          },
+        }),
+        costHistory: (range) => ({
+          range,
+          resolution: "provider",
+          generatedAt: 1,
+          buckets: [],
+          totals: {
+            totalTokens: 0,
+            estimatedCostUsd: 0,
+            totalErrors: 0,
+          },
+        }),
+      },
+      overrides: {
+        incidents: {
+          incidents: [],
+          blockers: [
+            {
+              id: "override",
+              title: "Override blocker",
+              summary: "Caller override wins",
+              severity: "low",
+              status: "open",
+              firstSeenAt: 1,
+              lastSeenAt: 1,
+              count: 1,
+              owner: "test",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(resolved.snapshots?.agentRuns).toMatchObject({
+      history: [{ key: "provider:run" }],
+    });
+    expect(resolved.snapshots?.incidents).toMatchObject({
+      blockers: [{ id: "override" }],
+    });
+    expect(typeof resolved.costHistory).toBe("function");
+
+    const partialProvider = resolveGatewaySnapshotFallbacks({
+      mode: "empty",
+      provider: {
+        snapshots: createEmptyGatewaySnapshotFallbacks,
+      },
+    });
+    expect(typeof partialProvider.costHistory).toBe("function");
   });
 });

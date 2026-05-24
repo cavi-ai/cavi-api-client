@@ -1,9 +1,12 @@
 import type { SessionLoaders } from "../../../../core/gateway/snapshots/session-loaders.js";
 import {
-  createEmptyGatewaySnapshotFallbacks,
   createGatewaySnapshotLoaders,
+  resolveGatewaySnapshotFallbacks,
   type GatewaySnapshotBindingResolver,
+  type GatewaySnapshotFallbackMode,
   type GatewaySnapshotFallbacks,
+  type GatewaySnapshotFallbackProvider,
+  type GatewayCostHistoryFallback,
 } from "../../../../core/gateway/snapshots/loaders.js";
 import { type DataEnvelope, withFallback } from "../../../../core/gateway/envelope/index.js";
 import {
@@ -12,6 +15,7 @@ import {
 } from "../../../../core/http/json-client.js";
 import { describeHttpContract } from "../../../../core/http/contracts.js";
 import { CAVI_CONTROL_API_ENDPOINTS } from "../../contracts/paths.js";
+import { createCaviSnapshotFallbackProvider } from "../../fallbacks/provider.js";
 import type {
   GatewaySessionRunDetailSnapshot,
   AgentRunsFilters,
@@ -22,17 +26,9 @@ import type {
   OverviewSnapshot,
   RoutingMatrixSnapshot,
 } from "../../../../core/gateway/snapshots/contracts.js";
-import {
-  fallbackAgentRuns,
-  fallbackCostHistory,
-  fallbackIncidents,
-  fallbackOverview,
-  fallbackRoutingMatrix,
-  fallbackRunDetailForKey,
-} from "../../fallbacks/snapshots/index.js";
 import type { GatewaySystemLoaders } from "../../../../core/gateway/snapshots/system-loaders.js";
 
-export type CaviSnapshotFallbackMode = "compat" | "empty" | "none";
+export type CaviSnapshotFallbackMode = GatewaySnapshotFallbackMode | "compat";
 
 export type GatewayWsSnapshotLoaders = {
   loadOverview: () => Promise<DataEnvelope<OverviewSnapshot>>;
@@ -53,37 +49,28 @@ export type GatewayWsSnapshotLoaders = {
 
 export type CreateGatewayWsSnapshotLoadersOptions = {
   fallbackMode?: CaviSnapshotFallbackMode;
+  fallbackProvider?: GatewaySnapshotFallbackProvider | null;
   snapshotFallbacks?: Partial<GatewaySnapshotFallbacks>;
+  costHistoryFallback?: GatewayCostHistoryFallback | null;
   resolveBinding?: GatewaySnapshotBindingResolver | null;
 };
 
-function createCompatSnapshotFallbacks(): GatewaySnapshotFallbacks {
-  return {
-    overview: fallbackOverview,
-    agentRuns: fallbackAgentRuns,
-    runDetail: fallbackRunDetailForKey,
-    routingMatrix: fallbackRoutingMatrix,
-    incidents: fallbackIncidents,
-  };
-}
-
-function resolveSnapshotFallbacks(
+export function resolveCaviSnapshotFallbacks(
   options: CreateGatewayWsSnapshotLoadersOptions = {},
-): GatewaySnapshotFallbacks | null {
-  const mode = options.fallbackMode ?? "compat";
-  const base =
-    mode === "none"
-      ? null
-      : mode === "empty"
-        ? createEmptyGatewaySnapshotFallbacks()
-        : createCompatSnapshotFallbacks();
-  if (!options.snapshotFallbacks) {
-    return base;
-  }
-  return {
-    ...(base ?? createEmptyGatewaySnapshotFallbacks()),
-    ...options.snapshotFallbacks,
-  };
+): ReturnType<typeof resolveGatewaySnapshotFallbacks> {
+  const mode = options.fallbackMode ?? "empty";
+  const resolved = resolveGatewaySnapshotFallbacks({
+    mode: mode === "compat" ? "empty" : mode,
+    provider: options.fallbackProvider ??
+      (mode === "compat" ? createCaviSnapshotFallbackProvider() : null),
+    overrides: {
+      ...(options.snapshotFallbacks ?? {}),
+      ...(options.costHistoryFallback
+        ? { costHistory: options.costHistoryFallback }
+        : {}),
+    },
+  });
+  return resolved;
 }
 
 function gatewayEnvelope<TData>(data: TData): DataEnvelope<TData> {
@@ -95,20 +82,6 @@ function gatewayEnvelope<TData>(data: TData): DataEnvelope<TData> {
   };
 }
 
-function createEmptyCostHistory(range: CostHistoryRange): CostHistorySnapshot {
-  return {
-    range,
-    resolution: "none",
-    generatedAt: Date.now(),
-    buckets: [],
-    totals: {
-      totalTokens: 0,
-      estimatedCostUsd: 0,
-      totalErrors: 0,
-    },
-  };
-}
-
 export function createGatewayWsSnapshotLoaders(deps: {
   sessionLoaders: SessionLoaders;
   systemLoaders: GatewaySystemLoaders;
@@ -116,12 +89,12 @@ export function createGatewayWsSnapshotLoaders(deps: {
   options?: CreateGatewayWsSnapshotLoadersOptions;
 }): GatewayWsSnapshotLoaders {
   const { requestJson } = deps;
-  const fallbacks = resolveSnapshotFallbacks(deps.options);
+  const fallbacks = resolveCaviSnapshotFallbacks(deps.options);
   const coreLoaders = createGatewaySnapshotLoaders({
     sessionLoaders: deps.sessionLoaders,
     systemLoaders: deps.systemLoaders,
     options: {
-      fallbacks,
+      fallbacks: fallbacks.snapshots,
       resolveBinding: deps.options?.resolveBinding ?? null,
     },
   });
@@ -152,9 +125,23 @@ export function createGatewayWsSnapshotLoaders(deps: {
               CAVI_CONTROL_API_ENDPOINTS.costHistory,
             ),
             note: "Cost history endpoint unavailable",
-            fallback: deps.options?.fallbackMode === "empty"
-              ? createEmptyCostHistory(range)
-              : fallbackCostHistory(range),
+            fallback: fallbacks.costHistory
+              ? (
+                  typeof fallbacks.costHistory === "function"
+                    ? fallbacks.costHistory(range)
+                    : fallbacks.costHistory
+                )
+              : {
+                  range,
+                  resolution: "none",
+                  generatedAt: Date.now(),
+                  buckets: [],
+                  totals: {
+                    totalTokens: 0,
+                    estimatedCostUsd: 0,
+                    totalErrors: 0,
+                  },
+                },
             run: async () => await requestJson<CostHistorySnapshot>(
               withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
             ),

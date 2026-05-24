@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `@cavi/api-client` is the **single private API client package** for CAVI Control mobile and portal clients — gateway-agnostic HTTP + WebSocket access to fleet data. Pure TypeScript ESM library; React is an optional peer dep (only the `react/` entry needs it). Ships compiled `dist/`.
 
-**Read `AGENTS.md` for the package-boundary intent** (forbidden imports, gateway-agnostic rule). Note: AGENTS.md still cites pre-restructure paths (`src/paths.ts`, `src/endpoints.ts`, `src/repo-root.ts`); the live layout is below and the **hardening tests in [package-hardening.test.ts](src/package-hardening.test.ts) are the enforced contract** — trust them over prose.
+**Read `AGENTS.md` for the package-boundary intent** (forbidden imports, gateway-agnostic rule, path-owner ownership). When prose and behavior disagree, the **hardening tests in [package-hardening.test.ts](src/package-hardening.test.ts) are the enforced contract** — trust them over any doc.
 
 ## Commands
 
@@ -13,40 +13,38 @@ npm test                 # vitest run — guardrails + behavior (only test comma
 npm run build            # tsc → dist/ (run before publishing or linking)
 npm run clean            # rm -rf dist
 npx tsc --noEmit         # typecheck only (strict mode is the lint gate; no separate linter)
-npx vitest run src/cavi/data/cavi-control/envelope.test.ts   # single file
+npx vitest run src/__tests__/core/gateway/envelope.test.ts   # single file (tests live in src/__tests__/)
 npx vitest run -t "withFallback"                             # single test by name
 ```
 
 ## Layered architecture
 
-Strict dependency direction: **`core` → `contracts` → `cavi` → `providers`/`react`/`compat`**. Lower layers never import upward.
+Strict dependency direction: **`core` → `contracts` → `extensions/cavi` → `providers`/`react`**. Lower layers never import upward.
 
-- **`src/core/`** — gateway-agnostic foundation, no CAVI domain knowledge.
-  - `core/http/` — `BaseHttpApiClient` (fetch wrapper: timeout, bearer auth, trace hooks, `HttpApiError`), types.
-  - `core/gateway/` — `GatewayRpcClient` (WebSocket RPC: device-auth handshake, backpressure, reconnect, redacted trace), `GatewayApiClient`, `provider.ts` (provider selection), `run-event-stream.ts` + `run-stream-contracts.ts` (**canonical** universal run/run-stream types), `session-loaders.ts`, `transforms.ts`, device crypto/store, preauth handshake.
-  - `core/env/` — env→config resolution (`resolveHttpApiConfigFromEnv`), `repo-root.ts` (`resolveRepoRoot`/`requireRepoRoot`).
-- **`src/contracts/`** — path & surface contracts. `paths.ts` (endpoint tables), `surfaces.ts` (`SURFACE_CONTRACTS` + `GatewayMode` + the legacy/canonical map), `resolve.ts` (`resolvePath(key, mode)`), `mobile.ts`, `portals.ts`.
-- **`src/cavi/`** — CAVI domain-specific code. `domain/` (snapshot types), `data/cavi-control/` (the `withFallback` degradation engine, http-client, gateway-rpc, guards, normalizers), `adapters/` (`create-cavi-control-adapters.ts` + live adapters), `client.ts` (`CaviControlApiClient`), `library/`, `portal/`, `registry/` (the 352-line `team-registry` impl).
-- **`src/providers/{hermes,openclaw}/`** — provider-specific surfaces: `HermesApiClient`, `chat-run`, `sse-run-event-provider`, and thin `createHermesTeamRegistry`/`createOpenClawTeamRegistry` wrappers over `cavi/registry`.
-- **`src/react/`** — `gateway-provider.tsx` (React context/hooks). **`src/compat/martina/`** — isolated Martina compatibility. **`src/test-support/mock-data/`** — mock fixtures used by `withFallback`.
+- **`src/core/`** — gateway-agnostic foundation, no domain knowledge. Subfolders: `http/` (`BaseHttpApiClient` fetch wrapper: timeout, bearer auth, trace hooks, `HttpApiError`), `gateway/` (`GatewayRpcClient` WebSocket RPC + `GatewayApiClient`, with `client/`, `agent/`, `run/`, `rpc/`, `snapshots/`, `resources/`, `envelope/`, `portal/`, and `providers/` plugin plumbing), `data/`, `runtime/` (generic base-path helpers), `sse/` (generic SSE helpers), `ws/` (WebSocket helpers), `env/` (env→config resolution + `repo-root.ts`: `resolveRepoRoot`/`requireRepoRoot`).
+- **`src/contracts/`** — global path & surface contracts. `paths.ts` (gateway/team/kanban endpoint tables), `surfaces.ts` (`SURFACE_CONTRACTS` + `GatewayMode`), `resolve.ts` (`resolvePath(key, mode)`), `team-manifest.ts`.
+- **`src/extensions/cavi/`** — CAVI domain-specific code. `contracts/` (CAVI `paths.ts`, `surfaces.ts`, `resolve.ts`→`resolveCaviPath`, `mobile.ts`, `portals.ts`), `domain/` (snapshot DTOs), `adapters/` (`create-cavi-control-adapters.ts` + `cavi-control-adapters/`), `client.ts` (`CaviControlApiClient`), `project-board/`, `operator-control/`, `discourse/`, `portal/`, `library/`, `registry/` (team-registry impl), `runtime/` (CAVI runtime wrappers), `fallbacks/snapshots/` (production degraded-mode fallback data — **not** test mocks).
+- **`src/providers/{hermes,openclaw}/`** — provider-specific surfaces: `client.ts`, `agent-config.ts`, `chat-run`/`sse-run-event-provider`, `media.ts`, `wiki.ts`, `websocket.ts`, `provider-module.ts`, and thin `team-registry` wrappers over `extensions/cavi/registry`.
+- **`src/react/`** — React context/hooks (optional peer dep). **`src/__tests__/`** — all test files live here, mirroring the source tree (not colocated).
 
-`src/index.ts` is the root entry. The package also exposes **subpath exports** (`./core/http`, `./core/gateway`, `./core/env`, `./contracts`, `./cavi`, `./providers/hermes`, `./providers/openclaw`, `./react`, `./compat/martina`) — consumers import the slice they need.
+`src/index.ts` is the root entry. The package also exposes **subpath exports** (`./core/http`, `./core/data`, `./core/runtime`, `./core/sse`, `./core/ws`, `./core/gateway`, `./core/env`, `./contracts`, `./extensions/cavi`, `./providers/hermes`, `./providers/openclaw`, `./react`) — consumers import the slice they need.
 
 ### Gateway model: one interface, provider overrides
-HTTP REST (`BaseHttpApiClient`) and WebSocket RPC (`GatewayRpcClient`) coexist. Core stays gateway-agnostic; `createGatewayApiClient(opts, { provider | env })` ([core/gateway/provider.ts](src/core/gateway/provider.ts)) returns the right impl. Provider kinds `gateway` | `hermes` | `openclaw` map to surfaces `gateway-api` / `hermes-api-server` / `openclaw-api`; resolved from explicit `provider` then `CAVI_GATEWAY_PROVIDER` / `GATEWAY_PROVIDER` env. **Universal concepts (agent runs, run-stream events) live in `core`; `cavi` re-exports them and adds only its own aggregates** — never duplicate a core type into `cavi`.
+HTTP REST (`BaseHttpApiClient`) and WebSocket RPC (`GatewayRpcClient`) coexist. Core stays gateway-agnostic; provider selection lives in `core/gateway/providers/**` (plugin plumbing) while concrete Hermes/OpenClaw modules live in `src/providers/**`. Provider kinds `gateway` | `hermes` | `openclaw` map to surfaces `gateway-api` / `hermes-api-server` / `openclaw-api`; resolved from explicit `provider` then `CAVI_GATEWAY_PROVIDER` / `GATEWAY_PROVIDER` env. **Universal concepts (agent runs, run-stream events) live in `core`; `extensions/cavi` re-exports them and adds only its own aggregates** — never duplicate a core type downward.
 
 ### Graceful degradation is a contract
-[cavi/data/cavi-control/envelope.ts](src/cavi/data/cavi-control/envelope.ts) `withFallback()` wraps adapter loads: on transport/backend failure it returns a `DataEnvelope` with `source: "mock"` (from `test-support/mock-data`) + a structured `contractGap`, instead of throwing. **401/403 and `unknown`-classified errors still throw.** New loaders must route through `withFallback`/`withMutationResult` with a mock + expected-contract summary.
+[core/gateway/envelope/envelope.ts](src/core/gateway/envelope/envelope.ts) `withFallback()` wraps adapter loads: on transport/backend failure it returns a `DataEnvelope` with `source: "mock"` + a structured `contractGap`, instead of throwing. CAVI fallback snapshots come from `extensions/cavi/fallbacks/snapshots/**` (production data, not test fixtures). **401/403 and `unknown`-classified errors still throw.** New loaders must route through `withFallback`/`withMutationResult` with a fallback + expected-contract summary.
 
 ## Enforced guardrails (in `package-hardening.test.ts`)
 
 Changing the boundary means updating these tests deliberately. They fail the build on:
 - Imports of `@cavi/data`, `@cavi/domain`, `@cavi/gateway-client`, `@cavi/gateway-transforms`, `@mobile-cavi/*`; or quarantined monorepo / host-registry paths.
-- API route literals (bare or URL-embedded) outside `*paths.ts` and `contracts/surfaces.ts`.
+- API route literals (bare or URL-embedded) outside `*paths.ts` and `surfaces.ts` — global routes in `contracts/paths.ts`, CAVI routes/aliases in `extensions/cavi/contracts/paths.ts`.
 - Surface contracts whose canonical path isn't api-first.
-- Reappearance of the pre-restructure flat layout (`src/data/`, `src/gateway/`, top-level `src/paths.ts`, etc.); non-allowlisted files at `src/` root; any `src/compat/legacy/` tree.
-- `tsconfig.json` `include` drifting from the canonical folder allowlist (it is an explicit allowlist, **not** `src/**`).
-- Martina identifiers outside `src/compat/martina/`.
+- Reappearance of stale legacy source paths (`src/data/`, `src/gateway/`, top-level `src/paths.ts`, etc.); non-allowlisted files at `src/` root; a legacy compat-bridge tree; or `extensions/cavi/data/**` re-export shims.
+- `tsconfig.json` `include` drifting from the canonical folder allowlist (`src/index.ts`, `core/**`, `contracts/**`, `extensions/**`, `providers/**`, `react/**` — **not** `src/**`).
+- Core gateway/env/agent-config carrying provider-specific naming (`hermes`/`openclaw`/Martina identifiers leaking into core).
+- Martina compatibility implementation modules in active source; Mission Control aliases; endpoint compat shims; CAVI core re-export shims.
 - Team-registry slugs baked into the package (registry data must be runtime-supplied; `TEAM_REGISTRY_CONFIG.teams` ships empty).
 - `index.ts` exporting from legacy shim paths, or removed legacy package subpath exports reappearing.
 

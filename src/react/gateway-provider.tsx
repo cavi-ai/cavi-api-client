@@ -1,6 +1,5 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
-// @ts-nocheck — root tsconfig lacks jsx; this package has its own tsconfig with jsx: react-jsx
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -511,8 +510,8 @@ function computeReconnectDelay(attempt: number): number {
  * Manages gateway WebSocket connection with auto-reconnect and event forwarding.
  * Drop-in replacement for the Cavi Control UI useGatewayEventStream hook.
  *
- * When the gateway uses a custom `OPENCLAW_HANDSHAKE_TIMEOUT_MS`, pass the same value as
- * `preauthHandshakeTimeoutMs` so browser clients align token-only connect timing (see package `preauth-handshake` module comment).
+ * When the gateway uses a custom pre-auth handshake window, pass the same value
+ * as `preauthHandshakeTimeoutMs` so browser clients align token-only connect timing.
  */
 export function useGatewayEventStream(params: {
   gatewayBaseUrl: string;

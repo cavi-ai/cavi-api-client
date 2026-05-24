@@ -29,7 +29,6 @@ import {
   operatorControlExpectedContractSummary,
 } from "../../contracts/paths.js";
 import { loadOperatorControlSection } from "../../operator-control/load-section.js";
-import { fallbackOperatorControl } from "../../fallbacks/snapshots/index.js";
 
 const OPERATOR_FULL_FALLBACK_BACKOFF_MS = 15_000;
 const fullFallbackByRequestJson = new WeakMap<
@@ -89,6 +88,48 @@ function buildAvailableSectionStatus(params: {
   };
 }
 
+export type OperatorControlFallback =
+  | OperatorControlSnapshot
+  | (() => OperatorControlSnapshot);
+
+function createUnavailableSectionStatus(): OperatorControlSnapshot["sectionStatus"] {
+  const unavailable = {
+    available: false,
+    authoritative: false,
+    error: "Operator control unavailable",
+    sampleLimit: null,
+  };
+  return {
+    status: { ...unavailable, authoritative: true },
+    registryDetail: { ...unavailable, authoritative: true },
+    tasks: { ...unavailable, sampleLimit: OPERATOR_TASK_SAMPLE_LIMIT },
+    memory: { ...unavailable, sampleLimit: OPERATOR_MEMORY_SAMPLE_LIMIT },
+    workerReady: { ...unavailable, authoritative: true },
+    workerTasks: { ...unavailable, sampleLimit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT },
+  };
+}
+
+function createEmptyOperatorControlSnapshot(): OperatorControlSnapshot {
+  return {
+    status: createEmptyOperatorStatus(),
+    registryDetail: createEmptyOperatorRegistry(),
+    tasks: createEmptyOperatorTasks(),
+    memory: createEmptyOperatorMemory(),
+    workerReady: createEmptyWorkerReady(),
+    workerTasks: createEmptyWorkerTasks(),
+    sectionStatus: createUnavailableSectionStatus(),
+  };
+}
+
+function resolveOperatorControlFallback(
+  fallback?: OperatorControlFallback | null,
+): OperatorControlSnapshot {
+  if (!fallback) {
+    return createEmptyOperatorControlSnapshot();
+  }
+  return typeof fallback === "function" ? fallback() : fallback;
+}
+
 async function requestOperatorSnapshot(params: {
   client: GatewayWebSocketClient | null | undefined;
   requestJson: JsonHttpRequest;
@@ -134,6 +175,7 @@ async function requestOperatorSection<TData>(params: {
 export async function loadOperatorControlLive(
   requestJson: JsonHttpRequest,
   client: GatewayWebSocketClient | null | undefined,
+  fallback?: OperatorControlFallback | null,
 ): Promise<DataEnvelope<OperatorControlSnapshot>> {
   const cachedFullFallback = fullFallbackByRequestJson.get(requestJson);
   if (cachedFullFallback && cachedFullFallback.expiresAt > Date.now()) {
@@ -307,7 +349,7 @@ export async function loadOperatorControlLive(
   if (allSectionsUnavailable) {
     const primaryGap = contractGaps[0];
     const envelope = {
-      data: fallbackOperatorControl,
+      data: resolveOperatorControlFallback(fallback),
       source: "mock",
       fetchedAt: Date.now(),
       contractGaps: [

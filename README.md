@@ -368,7 +368,7 @@ Legacy `/api/obsidian/*` routes remain compatibility shims; new code should pref
 import {
   GatewayClientProvider,
   useGatewayClientContext,
-} from "@cavi/api-client";
+} from "@cavi/api-client/react";
 
 export function AppShell() {
   return (
@@ -418,7 +418,7 @@ const overview = await adapters.loadOverview();
 const operator = await adapters.loadOperatorControl();
 ```
 
-Pass `client: null` when only HTTP loaders are available. `fallbackMode` defaults to `"compat"`; use `"empty"` or custom `snapshotFallbacks` for product-neutral demos, or `"none"` to let snapshot failures propagate.
+Pass `client: null` when only HTTP loaders are available. `fallbackMode` defaults to `"empty"` so public consumers get neutral fallback data. Use `"demo"` for generic demo snapshots, `"compat"` or `createCaviControlAdapterFallbackProvider()` for CAVI-specific overrides, custom `snapshotFallbacks` / `caviFallbacks` for your app, or `"none"` to let snapshot failures propagate.
 
 ### Team registry and manifest
 
@@ -523,6 +523,7 @@ npm install      # install dev dependencies
 npm test         # vitest run — guardrails + behavior (the only test command)
 npm run coverage # vitest run --coverage — coverage report
 npm run build    # tsc → dist/ (run before publishing or linking)
+npm pack --dry-run # validates the published tarball; prepack runs the build
 npm run clean    # rm -rf dist
 npx tsc --noEmit # typecheck only (strict mode is the lint gate)
 ```

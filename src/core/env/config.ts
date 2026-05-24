@@ -1,7 +1,7 @@
 // Gateway-agnostic env resolution primitive. Core knows how to read a single
 // HTTP surface's config from an env bag with primary keys + ordered aliases +
-// caller-supplied fallbacks. It deliberately knows NOTHING about CAVI, Hermes,
-// OpenClaw, or any specific surface/env-var name or default — those live in the
+// caller-supplied fallbacks. It deliberately knows NOTHING about any specific
+// domain, provider, or surface/env-var name or default — those live in the
 // owning layer (extensions/cavi, providers/*) which composes this primitive.
 
 export type HttpApiEnvSource = Record<string, string | undefined>;

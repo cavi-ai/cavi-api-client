@@ -19,6 +19,8 @@ import {
 } from "../../../core/gateway/envelope/index.js";
 import { createJsonHttpRequest } from "../../../core/http/json-client.js";
 import { isSessionAuthMode } from "../runtime/standalone-mode.js";
+import type { CaviControlAdapterFallbackProvider } from "../fallbacks/provider.js";
+import { createCaviControlAdapterFallbackProvider } from "../fallbacks/provider.js";
 import type {
   ProjectBoardBacklogDraft,
   ProjectBoardBacklogItem,
@@ -31,7 +33,6 @@ import type {
   OperatorControlSnapshot,
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
-import { fallbackProjectBoardWorkspace, fallbackTaskDiscourse } from "../fallbacks/snapshots/index.js";
 import { projectBoardWorkspaceExpectedContractSummary } from "../contracts/paths.js";
 import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
 import { resolveGatewayHttpBase } from "../runtime/paths.js";
@@ -134,19 +135,120 @@ export type CaviControlAdapters = {
   ) => Promise<MutationResult<ProjectBoardCallResult>>;
 };
 
+function createEmptyProjectBoardWorkspace(): ProjectBoardWorkspaceSnapshot {
+  const now = Date.now();
+  const limitations = [
+    "Generic fallback only. Pass caviFallbacks.projectBoardWorkspace to provide product data.",
+  ] as const;
+  return {
+    profile: {
+      name: "Project Board",
+      role: "Project board operator",
+      photoPath: null,
+      photoUrl: null,
+      avatarCandidates: [],
+      emails: [],
+      lastUpdated: now,
+      storage: "json-file",
+      limitations,
+    },
+    emails: [],
+    sprint: {
+      sprint: {
+        id: "default",
+        name: "Default sprint",
+        goal: "",
+        startsOn: null,
+        endsOn: null,
+      },
+      statusMetrics: {
+        total: 0,
+        todo: 0,
+        inProgress: 0,
+        blocked: 0,
+        done: 0,
+        completionRate: 0,
+      },
+      lastUpdated: now,
+      storage: "json-file",
+      limitations,
+    },
+    backlog: {
+      sections: [],
+      priorities: { p0: 0, p1: 0, p2: 0, p3: 0 },
+      statusCounters: { todo: 0, in_progress: 0, blocked: 0, done: 0 },
+      totalItems: 0,
+      lastUpdated: now,
+      storage: "json-file",
+      limitations,
+    },
+  };
+}
+
+function createEmptyTaskDiscourse(taskId: string): TaskDiscourseSnapshot {
+  return {
+    rootTaskId: taskId.trim() || "task",
+    agents: [],
+    events: [],
+    delegationTree: [],
+    summary: {
+      totalAgents: 0,
+      totalEvents: 0,
+      totalTokens: 0,
+      totalCostUsd: 0,
+      durationMs: null,
+      blockerCount: 0,
+      decisionCount: 0,
+      outcome: "pending",
+    },
+  };
+}
+
+function resolveProjectBoardWorkspaceFallback(
+  fallbacks: CaviControlAdapterFallbackProvider["cavi"],
+): ProjectBoardWorkspaceSnapshot {
+  const fallback = fallbacks?.projectBoardWorkspace;
+  if (!fallback) {
+    return createEmptyProjectBoardWorkspace();
+  }
+  return typeof fallback === "function" ? fallback() : fallback;
+}
+
+function resolveTaskDiscourseFallback(
+  fallbacks: CaviControlAdapterFallbackProvider["cavi"],
+  taskId: string,
+): TaskDiscourseSnapshot {
+  const fallback = fallbacks?.taskDiscourse;
+  if (!fallback) {
+    return createEmptyTaskDiscourse(taskId);
+  }
+  return typeof fallback === "function" ? fallback(taskId) : fallback;
+}
+
 export function createCaviControlAdapters(opts: {
   gatewayBaseUrl: string;
   authToken: string | null;
   apiBaseUrl?: string | null;
   client?: GatewayWebSocketClient | null;
   fallbackMode?: CaviSnapshotFallbackMode;
+  fallbackProvider?: CaviControlAdapterFallbackProvider | null;
   snapshotFallbacks?: CreateGatewayWsSnapshotLoadersOptions["snapshotFallbacks"];
+  costHistoryFallback?: CreateGatewayWsSnapshotLoadersOptions["costHistoryFallback"];
+  caviFallbacks?: CaviControlAdapterFallbackProvider["cavi"];
   resolveSnapshotBinding?: CreateGatewayWsSnapshotLoadersOptions["resolveBinding"];
 }): CaviControlAdapters {
   const httpBase =
     opts.apiBaseUrl?.trim() || resolveGatewayHttpBase(opts.gatewayBaseUrl);
 
   const sessionMode = isSessionAuthMode();
+  const fallbackProvider = opts.fallbackProvider ??
+    (opts.fallbackMode === "compat"
+      ? createCaviControlAdapterFallbackProvider()
+      : null);
+  const caviFallbacks = {
+    ...(fallbackProvider?.cavi ?? {}),
+    ...(opts.caviFallbacks ?? {}),
+  };
   const requestJson = createJsonHttpRequest({
     surface: "cavi-control-api",
     httpBase,
@@ -161,7 +263,9 @@ export function createCaviControlAdapters(opts: {
     requestJson,
     snapshotOptions: {
       fallbackMode: opts.fallbackMode,
+      fallbackProvider,
       snapshotFallbacks: opts.snapshotFallbacks,
+      costHistoryFallback: opts.costHistoryFallback,
       resolveBinding: opts.resolveSnapshotBinding,
     },
   });
@@ -206,7 +310,11 @@ export function createCaviControlAdapters(opts: {
 
     loadOperatorControl: async () =>
       await shareInFlight("operator-control", async () =>
-        await loadOperatorControlLive(requestJson, opts.client),
+        await loadOperatorControlLive(
+          requestJson,
+          opts.client,
+          caviFallbacks.operatorControl,
+        ),
       ),
 
     loadTaskDiscourse: async (taskId) =>
@@ -215,7 +323,7 @@ export function createCaviControlAdapters(opts: {
           area: "task-discourse",
           expectedContract: taskDiscourseExpectedContractSummary(),
           note: "Task discourse snapshot unavailable",
-          fallback: fallbackTaskDiscourse(taskId),
+          fallback: resolveTaskDiscourseFallback(caviFallbacks, taskId),
           run: async () =>
             await loadTaskDiscourseLive(requestJson, opts.client, taskId),
         }),
@@ -227,7 +335,7 @@ export function createCaviControlAdapters(opts: {
           area: "project-board-workspace",
           expectedContract: projectBoardWorkspaceExpectedContractSummary(),
           note: "Project Board workspace APIs unavailable",
-          fallback: fallbackProjectBoardWorkspace,
+          fallback: resolveProjectBoardWorkspaceFallback(caviFallbacks),
           run: async () => await projectBoardLive.loadProjectBoardWorkspaceLive(),
         }),
       ),

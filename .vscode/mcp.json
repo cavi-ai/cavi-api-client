@@ -6,7 +6,7 @@
         "code-review-graph",
         "serve"
       ],
-      "cwd": "/Volumes/MIRZA/workspace/PACKAGES/cavi-api-client",
+      "cwd": ".",
       "type": "stdio"
     }
   }

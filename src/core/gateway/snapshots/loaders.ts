@@ -21,6 +21,8 @@ import {
   normalizeRun,
   utcDateYmd,
   type GatewayIncidentsSnapshot,
+  type GatewayCostHistoryRange,
+  type GatewayCostHistorySnapshot,
   type GatewayOverviewSnapshot,
   type GatewayRoutingMatrixSnapshot,
   type GatewaySessionRun,
@@ -60,8 +62,36 @@ export type GatewaySnapshotFallbacks = {
   incidents: GatewayIncidentsSnapshot | (() => GatewayIncidentsSnapshot);
 };
 
+export type GatewayCostHistoryFallback =
+  | GatewayCostHistorySnapshot
+  | ((range: GatewayCostHistoryRange) => GatewayCostHistorySnapshot);
+
+export type GatewaySnapshotFallbackProvider = {
+  snapshots?: GatewaySnapshotFallbacks | (() => GatewaySnapshotFallbacks);
+  costHistory?: GatewayCostHistoryFallback;
+};
+
+export type GatewaySnapshotFallbackMode = "none" | "empty" | "demo";
+
+export type GatewaySnapshotFallbackOverrides = Partial<GatewaySnapshotFallbacks> & {
+  costHistory?: GatewayCostHistoryFallback;
+};
+
+export type ResolvedGatewaySnapshotFallbacks = {
+  snapshots: GatewaySnapshotFallbacks | null;
+  costHistory: GatewayCostHistoryFallback | null;
+};
+
+export type ResolveGatewaySnapshotFallbacksOptions = {
+  mode?: GatewaySnapshotFallbackMode;
+  provider?: GatewaySnapshotFallbackProvider | null;
+  overrides?: GatewaySnapshotFallbackOverrides | null;
+  now?: number;
+};
+
 export type CreateGatewaySnapshotLoadersOptions = {
   fallbacks?: GatewaySnapshotFallbacks | null;
+  fallbackProvider?: GatewaySnapshotFallbackProvider | null;
   resolveBinding?: GatewaySnapshotBindingResolver | null;
 };
 
@@ -270,6 +300,22 @@ export function createEmptyGatewayIncidentsSnapshot(): GatewayIncidentsSnapshot 
   };
 }
 
+export function createEmptyGatewayCostHistorySnapshot(
+  range: GatewayCostHistoryRange,
+): GatewayCostHistorySnapshot {
+  return {
+    range,
+    resolution: "none",
+    generatedAt: Date.now(),
+    buckets: [],
+    totals: {
+      totalTokens: 0,
+      estimatedCostUsd: 0,
+      totalErrors: 0,
+    },
+  };
+}
+
 export function createEmptyGatewaySnapshotFallbacks(): GatewaySnapshotFallbacks {
   return {
     overview: createEmptyGatewayOverviewSnapshot,
@@ -277,6 +323,13 @@ export function createEmptyGatewaySnapshotFallbacks(): GatewaySnapshotFallbacks 
     runDetail: createEmptyGatewayRunDetailSnapshot,
     routingMatrix: createEmptyGatewayRoutingMatrixSnapshot,
     incidents: createEmptyGatewayIncidentsSnapshot,
+  };
+}
+
+export function createEmptyGatewaySnapshotFallbackProvider(): GatewaySnapshotFallbackProvider {
+  return {
+    snapshots: createEmptyGatewaySnapshotFallbacks,
+    costHistory: createEmptyGatewayCostHistorySnapshot,
   };
 }
 
@@ -387,6 +440,87 @@ export function createDemoGatewaySnapshotFallbacks(
   };
 }
 
+export function createDemoGatewayCostHistorySnapshot(
+  range: GatewayCostHistoryRange,
+  now = Date.now(),
+): GatewayCostHistorySnapshot {
+  const bucket = {
+    timestamp: now,
+    activeSessions: 1,
+    totalTokens: 1200,
+    estimatedCostUsd: 0,
+    totalErrors: 0,
+    providerBreakdown: [{ provider: "demo", tokens: 1200, cost: 0 }],
+  };
+  return {
+    range,
+    resolution: "demo",
+    generatedAt: now,
+    buckets: [bucket],
+    totals: {
+      totalTokens: bucket.totalTokens,
+      estimatedCostUsd: bucket.estimatedCostUsd,
+      totalErrors: bucket.totalErrors,
+    },
+  };
+}
+
+export function createDemoGatewaySnapshotFallbackProvider(
+  now = Date.now(),
+): GatewaySnapshotFallbackProvider {
+  return {
+    snapshots: () => createDemoGatewaySnapshotFallbacks(now),
+    costHistory: (range) => createDemoGatewayCostHistorySnapshot(range, now),
+  };
+}
+
+function resolveFallbackProviderSnapshots(
+  provider: GatewaySnapshotFallbackProvider | null,
+): GatewaySnapshotFallbacks | null {
+  if (!provider?.snapshots) {
+    return null;
+  }
+  return typeof provider.snapshots === "function"
+    ? provider.snapshots()
+    : provider.snapshots;
+}
+
+export function mergeGatewaySnapshotFallbacks(
+  base: GatewaySnapshotFallbacks,
+  overrides?: Partial<GatewaySnapshotFallbacks> | null,
+): GatewaySnapshotFallbacks {
+  return {
+    ...base,
+    ...(overrides ?? {}),
+  };
+}
+
+export function resolveGatewaySnapshotFallbacks(
+  options: ResolveGatewaySnapshotFallbacksOptions = {},
+): ResolvedGatewaySnapshotFallbacks {
+  const mode = options.mode ?? "empty";
+  if (mode === "none") {
+    return { snapshots: null, costHistory: null };
+  }
+  const defaultProvider =
+    mode === "demo"
+      ? createDemoGatewaySnapshotFallbackProvider(options.now)
+      : createEmptyGatewaySnapshotFallbackProvider();
+  const provider = options.provider ?? defaultProvider;
+  const baseSnapshots =
+    resolveFallbackProviderSnapshots(provider) ??
+    resolveFallbackProviderSnapshots(defaultProvider) ??
+    createEmptyGatewaySnapshotFallbacks();
+  return {
+    snapshots: mergeGatewaySnapshotFallbacks(baseSnapshots, options.overrides),
+    costHistory:
+      options.overrides?.costHistory ??
+      provider.costHistory ??
+      defaultProvider.costHistory ??
+      null,
+  };
+}
+
 export function createGatewaySnapshotLoaders(deps: {
   sessionLoaders: SessionLoaders;
   systemLoaders: GatewaySystemLoaders;
@@ -399,7 +533,9 @@ export function createGatewaySnapshotLoaders(deps: {
     peekSessionsListCache,
   } = deps.sessionLoaders;
   const { loadHealthSnapshotRaw, loadLogsTailRaw } = deps.systemLoaders;
-  const fallbacks = deps.options?.fallbacks ?? null;
+  const fallbacks =
+    deps.options?.fallbacks ??
+    resolveFallbackProviderSnapshots(deps.options?.fallbackProvider ?? null);
   const resolveBinding = deps.options?.resolveBinding ?? null;
 
   const loadSessionsUsageMaybeBestEffort = async (

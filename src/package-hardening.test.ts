@@ -81,6 +81,7 @@ const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
 const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
 const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "client", "fetch.ts");
 const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshots", "loaders.ts");
+const REACT_GATEWAY_PROVIDER = path.join(SRC_ROOT, "react", "gateway-provider.tsx");
 const HARDENING_TEST_PATH = "src/package-hardening.test.ts";
 
 const FORBIDDEN_PACKAGES = [
@@ -394,6 +395,20 @@ describe("package hardening", () => {
     expect(packageJson.files).not.toContain("!dist/extensions/cavi/fallbacks/snapshots");
   });
 
+  it("builds automatically before packing or publishing", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      scripts?: Record<string, string>;
+    };
+
+    expect(packageJson.scripts?.prepack).toBe("npm run build");
+    expect(packageJson.scripts?.prepublishOnly).toContain("npm test");
+    expect(packageJson.scripts?.prepublishOnly).toContain("npm run build");
+  });
+
+  it("keeps React bindings under strict TypeScript", () => {
+    expect(read(REACT_GATEWAY_PROVIDER)).not.toMatch(/@ts-nocheck/u);
+  });
+
   it("points the package root at canonical implementation folders", () => {
     const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
       exports: Record<string, unknown>;
@@ -444,6 +459,15 @@ describe("package hardening", () => {
   it("keeps provider-specific env naming out of core config", () => {
     expect(read(CORE_ENV_CONFIG)).not.toMatch(/\bhermes\b|HERMES_/iu);
     expect(read(CORE_HTTP_TYPES)).not.toContain("hermes-api-server");
+  });
+
+  it("keeps provider-specific handshake env keys out of core RPC", () => {
+    const rpcSources = [
+      path.join(SRC_ROOT, "core", "gateway", "rpc", "client.ts"),
+      path.join(SRC_ROOT, "core", "gateway", "rpc", "preauth-handshake.ts"),
+    ].map(read).join("\n");
+
+    expect(rpcSources).not.toMatch(/OPENCLAW_/u);
   });
 
   it("keeps provider-specific agent config compatibility out of core", () => {

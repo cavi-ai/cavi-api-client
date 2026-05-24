@@ -96,6 +96,12 @@ export {
   type CaviControlAdapters,
 } from "./extensions/cavi/adapters/create-cavi-control-adapters.js";
 export {
+  createCaviControlAdapterFallbackProvider,
+  createCaviSnapshotFallbackProvider,
+  type CaviControlAdapterFallbackProvider,
+  type CaviControlAdapterFallbacks,
+} from "./extensions/cavi/fallbacks/provider.js";
+export {
   type CaviSnapshotFallbackMode,
   type CreateGatewayWsSnapshotLoadersOptions,
 } from "./extensions/cavi/adapters/cavi-control-adapters/gateway-ws-snapshot-loaders.js";

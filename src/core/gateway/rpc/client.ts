@@ -7,7 +7,12 @@ import {
   type DeviceIdentity,
 } from "./device-store.js";
 import { GatewayRpcError } from "./error.js";
-import { resolveDeviceTokenOnlyFallbackMs } from "./preauth-handshake.js";
+import {
+  GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS,
+  resolveDeviceTokenOnlyFallbackMs,
+  type GatewayPreauthHandshakeEnv,
+  type GatewayPreauthHandshakeEnvKeys,
+} from "./preauth-handshake.js";
 import {
   describeWebSocketClose,
   type WebSocketCloseLike,
@@ -22,8 +27,13 @@ declare const process:
 export { GatewayRpcError } from "./error.js";
 export {
   DEFAULT_PREAUTH_HANDSHAKE_TIMEOUT_MS,
+  GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS,
+  resolvePreauthHandshakeTimeoutMs,
   resolveDeviceTokenOnlyFallbackMs,
   resolvePreauthHandshakeTimeoutMsFromEnv,
+  type GatewayPreauthHandshakeEnv,
+  type GatewayPreauthHandshakeEnvKeys,
+  type ResolvePreauthHandshakeTimeoutMsParams,
   type ResolveDeviceTokenOnlyFallbackMsParams,
 } from "./preauth-handshake.js";
 export { signPayload } from "./device-crypto.js";
@@ -136,7 +146,7 @@ export type GatewayRpcClientOptions = {
   clientPlatform?: string;
   /**
    * Gateway protocol compatibility range to advertise during connect.
-   * Defaults to the current OpenClaw gateway protocol. Override only when
+   * Defaults to the current generic gateway protocol. Override only when
    * talking to a gateway with a known alternate compatibility contract.
    */
   minProtocol?: number;
@@ -157,10 +167,23 @@ export type GatewayRpcClientOptions = {
   requestedScopes?: readonly string[];
   /**
    * Gateway pre-auth handshake budget (ms). Set this to the same value as server
-   * `OPENCLAW_HANDSHAKE_TIMEOUT_MS` when it is not the default—especially for browser clients,
-   * which do not read gateway env. Node clients may omit it if `process.env` matches the gateway.
+   * handshake config when it is not the default, especially for browser clients
+   * that cannot read gateway env.
    */
   preauthHandshakeTimeoutMs?: number;
+  /**
+   * Env bag and keys for provider-specific pre-auth handshake config. Core uses
+   * GATEWAY_* keys by default; providers can pass their own keys without baking
+   * product names into the core client.
+   */
+  preauthHandshakeEnv?: GatewayPreauthHandshakeEnv;
+  preauthHandshakeEnvKeys?: GatewayPreauthHandshakeEnvKeys;
+  /** Override the per-RPC response timeout. */
+  requestTimeoutMs?: number;
+  /** Override client-side RPC concurrency. */
+  maxConcurrentRequests?: number;
+  /** Override the default requested scopes used when requestedScopes is omitted. */
+  defaultRequestedScopes?: readonly string[];
   /**
    * Optional hook for completed RPCs (success, gateway error, timeout, or send failure).
    * Params are redacted; payloads are truncated. Must not throw.
@@ -173,7 +196,7 @@ export function resolveGatewayConnectScopes(
 ): string[] {
   const requested = options?.requestedScopes;
   if (!requested || requested.length === 0) {
-    return [...DEFAULT_GATEWAY_RPC_CLIENT_SCOPES];
+    return [...(options?.defaultRequestedScopes ?? DEFAULT_GATEWAY_RPC_CLIENT_SCOPES)];
   }
   const seen = new Set<string>();
   const result: string[] = [];
@@ -189,7 +212,7 @@ export function resolveGatewayConnectScopes(
     result.push(trimmed);
   }
   if (result.length === 0) {
-    return [...DEFAULT_GATEWAY_RPC_CLIENT_SCOPES];
+    return [...(options?.defaultRequestedScopes ?? DEFAULT_GATEWAY_RPC_CLIENT_SCOPES)];
   }
   return result;
 }
@@ -364,6 +387,34 @@ function createGatewaySocketClosedError(
       : closed.message,
     "socket_closed",
   );
+}
+
+function readGatewayPreauthHandshakeEnv(): GatewayPreauthHandshakeEnv | undefined {
+  if (typeof process === "undefined") {
+    return undefined;
+  }
+  const env: Record<string, string | undefined> = {
+    [GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.timeoutMs]:
+      process.env[GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.timeoutMs],
+  };
+  if (GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.testTimeoutMs) {
+    env[GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.testTimeoutMs] =
+      process.env[GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.testTimeoutMs];
+  }
+  if (GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.testFlag) {
+    env[GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.testFlag] =
+      process.env[GATEWAY_PREAUTH_HANDSHAKE_ENV_KEYS.testFlag];
+  }
+  return env;
+}
+
+function resolvePositiveIntegerOption(
+  value: number | undefined,
+  fallback: number,
+): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : fallback;
 }
 
 export class GatewayRpcClient {
@@ -567,18 +618,11 @@ export class GatewayRpcClient {
         this.options.enableDeviceIdentity !== false &&
         Boolean(this.options.deviceIdentityLoader ?? isDeviceIdentitySupported());
       const handshakeEnv =
-        typeof process !== "undefined"
-          ? {
-              OPENCLAW_HANDSHAKE_TIMEOUT_MS:
-                process.env.OPENCLAW_HANDSHAKE_TIMEOUT_MS,
-              OPENCLAW_TEST_HANDSHAKE_TIMEOUT_MS:
-                process.env.OPENCLAW_TEST_HANDSHAKE_TIMEOUT_MS,
-              VITEST: process.env.VITEST,
-            }
-          : undefined;
+        this.options.preauthHandshakeEnv ?? readGatewayPreauthHandshakeEnv();
       const tokenOnlyFallbackMs = preferDeviceChallengeFirst
         ? resolveDeviceTokenOnlyFallbackMs({
             env: handshakeEnv,
+            envKeys: this.options.preauthHandshakeEnvKeys,
             preauthHandshakeTimeoutMs: this.options.preauthHandshakeTimeoutMs,
           })
         : 0;
@@ -845,6 +889,10 @@ export class GatewayRpcClient {
         }
       };
 
+      const requestTimeoutMs = resolvePositiveIntegerOption(
+        this.options.requestTimeoutMs,
+        REQUEST_TIMEOUT_MS,
+      );
       const timeout = setTimeout(() => {
         const p = this.pending.get(id);
         this.pending.delete(id);
@@ -853,7 +901,7 @@ export class GatewayRpcClient {
             new GatewayRpcError(`request timed out: ${method}`, "timeout"),
           );
         }
-      }, REQUEST_TIMEOUT_MS);
+      }, requestTimeoutMs);
 
       this.pending.set(id, {
         resolve: (value) => {
@@ -893,7 +941,11 @@ export class GatewayRpcClient {
     run: () => Promise<TPayload>,
   ): Promise<TPayload> {
     let slotReserved = false;
-    if (this.activeRpcRequests >= MAX_CONCURRENT_RPC_REQUESTS) {
+    const maxConcurrentRequests = resolvePositiveIntegerOption(
+      this.options.maxConcurrentRequests,
+      MAX_CONCURRENT_RPC_REQUESTS,
+    );
+    if (this.activeRpcRequests >= maxConcurrentRequests) {
       await new Promise<void>((resolve, reject) => {
         this.queuedRpcRequests.push({
           resolve: () => {
@@ -917,8 +969,12 @@ export class GatewayRpcClient {
   }
 
   private drainQueuedRpcRequests(): void {
+    const maxConcurrentRequests = resolvePositiveIntegerOption(
+      this.options.maxConcurrentRequests,
+      MAX_CONCURRENT_RPC_REQUESTS,
+    );
     while (
-      this.activeRpcRequests < MAX_CONCURRENT_RPC_REQUESTS &&
+      this.activeRpcRequests < maxConcurrentRequests &&
       this.queuedRpcRequests.length > 0
     ) {
       const next = this.queuedRpcRequests.shift();
