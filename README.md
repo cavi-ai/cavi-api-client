@@ -521,7 +521,7 @@ resolveTeamWorkspaceApiPath(team!, "media.images", { memberId: "scout" });
 // /api/teams/research/agents/scout/workspace/media/images
 ```
 
-The workspace resolver accepts only paths declared in `workspace.paths`, so custom folders need no new endpoint constants. Team/member/action IDs are validated as single path segments, workspace entries reject traversal, and ambiguous registry lookup keys fail during registry creation. Gateway route bindings are declarative manifest entries resolved through `resolveGatewayRouteBinding`. See [`docs/team-manifest.md`](docs/team-manifest.md) and [`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts) for the add/remove-agent template.
+The workspace resolver accepts only paths declared in `workspace.paths`, so custom folders need no new endpoint constants. Team/member/action IDs are validated as single path segments, workspace entries reject traversal, and ambiguous registry lookup keys fail during registry creation. Gateway route bindings are declarative manifest entries resolved through `resolveGatewayRouteBinding`. See [`docs/team-manifest.md`](docs/team-manifest.md), [`docs/team-manifest.consumer.template.ts`](docs/team-manifest.consumer.template.ts), and [`docs/cavi-team-manifest.example.ts`](docs/cavi-team-manifest.example.ts) for the CAVI plugin-owned example.
 
 ### Path contracts
 

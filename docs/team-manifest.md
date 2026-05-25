@@ -231,6 +231,9 @@ configureTeamRegistryConfig({
 
 Use [team-manifest.consumer.template.ts](team-manifest.consumer.template.ts)
 as the reference shape for consumer-side add/remove helpers.
+Use [cavi-team-manifest.example.ts](cavi-team-manifest.example.ts) as the
+CAVI plugin-owned starter manifest for control-plane, research, project-ops,
+and machine portals.
 
 ## Compatibility
 
