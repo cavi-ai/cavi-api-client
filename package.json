@@ -1,0 +1,157 @@
+{
+  "name": "@cavi-ai/api-client",
+  "version": "0.1.0",
+  "description": "Gateway-agnostic TypeScript client for agent runtimes — one HTTP + WebSocket surface, provider adapters, and graceful degradation across workspaces, UIs, and gateways",
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "sasan1200 <sasan.sotoodehfar@gmail.com>",
+  "homepage": "https://github.com/cavi-ai/cavi-api-client#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cavi-ai/cavi-api-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cavi-ai/cavi-api-client/issues"
+  },
+  "keywords": [
+    "api-client",
+    "gateway",
+    "websocket",
+    "rpc",
+    "sse",
+    "typescript",
+    "esm",
+    "agent",
+    "llm",
+    "hermes",
+    "openclaw",
+    "fetch",
+    "react",
+    "cavi"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "ARCHITECTURE.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs",
+    "dist",
+    "!dist/test-support",
+    "!dist/__tests__",
+    "src",
+    "!src/__tests__",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./core/http": {
+      "types": "./dist/core/http/index.d.ts",
+      "import": "./dist/core/http/index.js",
+      "default": "./dist/core/http/index.js"
+    },
+    "./core/data": {
+      "types": "./dist/core/data/index.d.ts",
+      "import": "./dist/core/data/index.js",
+      "default": "./dist/core/data/index.js"
+    },
+    "./core/runtime": {
+      "types": "./dist/core/runtime/index.d.ts",
+      "import": "./dist/core/runtime/index.js",
+      "default": "./dist/core/runtime/index.js"
+    },
+    "./core/sse": {
+      "types": "./dist/core/sse/index.d.ts",
+      "import": "./dist/core/sse/index.js",
+      "default": "./dist/core/sse/index.js"
+    },
+    "./core/ws": {
+      "types": "./dist/core/ws/index.d.ts",
+      "import": "./dist/core/ws/index.js",
+      "default": "./dist/core/ws/index.js"
+    },
+    "./core/gateway": {
+      "types": "./dist/core/gateway/index.d.ts",
+      "import": "./dist/core/gateway/index.js",
+      "default": "./dist/core/gateway/index.js"
+    },
+    "./core/env": {
+      "types": "./dist/core/env/index.d.ts",
+      "import": "./dist/core/env/index.js",
+      "default": "./dist/core/env/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js",
+      "default": "./dist/contracts/index.js"
+    },
+    "./extensions/cavi": {
+      "types": "./dist/extensions/cavi/index.d.ts",
+      "import": "./dist/extensions/cavi/index.js",
+      "default": "./dist/extensions/cavi/index.js"
+    },
+    "./providers/hermes": {
+      "types": "./dist/providers/hermes/index.d.ts",
+      "import": "./dist/providers/hermes/index.js",
+      "default": "./dist/providers/hermes/index.js"
+    },
+    "./providers/openclaw": {
+      "types": "./dist/providers/openclaw/index.d.ts",
+      "import": "./dist/providers/openclaw/index.js",
+      "default": "./dist/providers/openclaw/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepack": "pnpm run build",
+    "prepublishOnly": "pnpm test && pnpm run build",
+    "prepare": "husky",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "lint:md": "markdownlint-cli2",
+    "typecheck": "tsc --noEmit",
+    "verify": "pnpm test && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
+    "release:dry": "pnpm run verify && HUSKY=0 pnpm publish --access public --no-git-checks --dry-run",
+    "release": "pnpm publish --access public"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.15",
+    "@vitest/coverage-v8": "^4.1.5",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "markdownlint-cli2": "^0.22.1",
+    "react": "^19.2.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.5"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+
+}
