@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-26
+
+### Changed
+
+- Point `repository`, `homepage`, and `bugs` metadata at the `cavi-ai` GitHub
+  organization (`cavi-ai/cavi-api-client`).
+
 ### Added
 
-- GitHub Actions CI for PRs and pushes to `main`, running install, tests, build,
-  and package dry-run across Node 20 and 22.
-- GitHub Actions publish workflow for GitHub releases and manual dry-runs,
-  publishing to npm with provenance via OIDC trusted publishing (no token).
-- Husky `pre-commit` and `pre-push` hooks for local test/build/package gates.
+- GitHub Actions CI for pull requests and pushes to `main` (install, tests,
+  build, and package dry-run across Node 20 and 22).
+- Tokenless release workflow: publishes on a GitHub Release via OIDC trusted
+  publishing, with provenance attestation and no stored npm token.
+- Husky `pre-commit` / `pre-push` gates, and `cavi-ai` brand assets under
+  `docs/brand/`.
 
 ## [0.1.0] - 2026-05-25
 
@@ -76,5 +84,6 @@ registries, and fleet snapshots, with structured graceful degradation built in.
   `prepack` / `prepublishOnly` gates, package docs in the npm tarball, and
   package-boundary hardening tests in `src/__tests__/package-hardening.test.ts`.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/cavi-ai/cavi-api-client/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cavi-ai/cavi-api-client/releases/tag/v0.1.0
