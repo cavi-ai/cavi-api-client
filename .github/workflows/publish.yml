@@ -1,0 +1,68 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run every publish step without publishing to npm.
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.32.1 --activate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify package
+        run: pnpm run verify
+
+      # Trusted publishing (OIDC): no NPM_TOKEN. pnpm exchanges the GitHub
+      # OIDC token (id-token: write above) for a short-lived npm credential and
+      # attaches provenance automatically. Requires a Trusted Publisher to be
+      # configured for @cavi-ai/api-client on npmjs.com pointing at this repo +
+      # workflow file (publish.yml). The package must already exist on npm
+      # (do the first 0.1.0 publish manually before relying on this).
+      - name: Publish package
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            pnpm publish --access public --provenance --no-git-checks --dry-run
+          else
+            pnpm publish --access public --provenance --no-git-checks
+          fi

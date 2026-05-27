@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+  <title id="title">@cavi-ai/api-client architecture</title>
+  <desc id="desc">A gateway-agnostic TypeScript client connecting core HTTP and WebSocket transports to providers, React clients, and CAVI extensions.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101828"/>
+      <stop offset="0.52" stop-color="#15384d"/>
+      <stop offset="1" stop-color="#1b4b45"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#dff7ef"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#020617" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="520" rx="34" fill="url(#bg)"/>
+  <path d="M94 101 C213 25 327 58 430 101 C560 155 640 80 756 72 C889 63 1007 135 1185 83" fill="none" stroke="#5eead4" stroke-width="2" opacity="0.28"/>
+  <path d="M81 413 C238 318 397 382 519 421 C642 461 772 410 886 360 C996 313 1102 322 1210 392" fill="none" stroke="#93c5fd" stroke-width="2" opacity="0.24"/>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="70" y="89" fill="#ecfeff" font-size="52" font-weight="800" letter-spacing="0">@cavi-ai/api-client</text>
+    <text x="72" y="126" fill="#bae6fd" font-size="20">one gateway-agnostic TypeScript surface for agent runtimes</text>
+
+    <g filter="url(#shadow)">
+      <rect x="440" y="156" width="400" height="210" rx="24" fill="url(#core)"/>
+      <text x="640" y="218" fill="#0f172a" font-size="34" font-weight="800" text-anchor="middle">core contract</text>
+      <text x="640" y="255" fill="#164e63" font-size="18" text-anchor="middle">HTTP + WebSocket + SSE + RPC</text>
+      <rect x="500" y="292" width="116" height="44" rx="22" fill="#0f766e"/>
+      <text x="558" y="320" fill="#f0fdfa" font-size="15" font-weight="700" text-anchor="middle">paths</text>
+      <rect x="632" y="292" width="116" height="44" rx="22" fill="#2563eb"/>
+      <text x="690" y="320" fill="#eff6ff" font-size="15" font-weight="700" text-anchor="middle">types</text>
+      <rect x="764" y="292" width="28" height="44" rx="14" fill="#f59e0b"/>
+    </g>
+
+    <g fill="none" stroke="#d9f99d" stroke-width="3" stroke-linecap="round" opacity="0.82">
+      <path d="M352 202 H438"/>
+      <path d="M352 318 H438"/>
+      <path d="M842 202 H927"/>
+      <path d="M842 318 H927"/>
+    </g>
+
+    <g filter="url(#shadow)">
+      <rect x="70" y="164" width="280" height="78" rx="18" fill="#0f172a" stroke="#67e8f9"/>
+      <text x="210" y="196" fill="#e0f2fe" font-size="18" font-weight="800" text-anchor="middle">providers</text>
+      <text x="210" y="222" fill="#bfdbfe" font-size="15" text-anchor="middle">Hermes, OpenClaw, yours</text>
+
+      <rect x="70" y="280" width="280" height="78" rx="18" fill="#0f172a" stroke="#bef264"/>
+      <text x="210" y="312" fill="#f7fee7" font-size="18" font-weight="800" text-anchor="middle">extensions</text>
+      <text x="210" y="338" fill="#d9f99d" font-size="15" text-anchor="middle">CAVI control, teams, portals</text>
+
+      <rect x="930" y="164" width="280" height="78" rx="18" fill="#0f172a" stroke="#93c5fd"/>
+      <text x="1070" y="196" fill="#eff6ff" font-size="18" font-weight="800" text-anchor="middle">clients</text>
+      <text x="1070" y="222" fill="#dbeafe" font-size="15" text-anchor="middle">web, mobile, React</text>
+
+      <rect x="930" y="280" width="280" height="78" rx="18" fill="#0f172a" stroke="#fbbf24"/>
+      <text x="1070" y="312" fill="#fffbeb" font-size="18" font-weight="800" text-anchor="middle">fallbacks</text>
+      <text x="1070" y="338" fill="#fde68a" font-size="15" text-anchor="middle">typed envelopes, panel-safe failure</text>
+    </g>
+
+    <g>
+      <rect x="72" y="432" width="168" height="44" rx="22" fill="#ecfeff" opacity="0.96"/>
+      <text x="156" y="460" fill="#0f172a" font-size="15" font-weight="800" text-anchor="middle">zero runtime deps</text>
+      <rect x="256" y="432" width="132" height="44" rx="22" fill="#ecfeff" opacity="0.96"/>
+      <text x="322" y="460" fill="#0f172a" font-size="15" font-weight="800" text-anchor="middle">pure ESM</text>
+      <rect x="404" y="432" width="146" height="44" rx="22" fill="#ecfeff" opacity="0.96"/>
+      <text x="477" y="460" fill="#0f172a" font-size="15" font-weight="800" text-anchor="middle">Node 20+</text>
+      <rect x="566" y="432" width="206" height="44" rx="22" fill="#ecfeff" opacity="0.96"/>
+      <text x="669" y="460" fill="#0f172a" font-size="15" font-weight="800" text-anchor="middle">provider modules</text>
+    </g>
+  </g>
+</svg>
