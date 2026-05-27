@@ -1,0 +1,29 @@
+{
+  "globs": [
+    "README.md",
+    "ARCHITECTURE.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "CONTRIBUTORS.md",
+    "docs/**/*.md",
+    "src/**/README.md",
+    ".github/**/*.md"
+  ],
+  "ignores": [
+    "node_modules/**",
+    ".pnpm-store/**",
+    "dist/**",
+    "quarantine/**",
+    ".claude/**",
+    ".gemini/**",
+    ".kiro/**",
+    ".cursor/**",
+    ".qoder/**",
+    ".code-review-graph/**",
+    ".remember/**"
+  ]
+}

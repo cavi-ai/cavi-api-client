@@ -1,0 +1,24 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cavi-ai">
+  <defs>
+    <linearGradient id="ind" x1="60" y1="60" x2="196" y2="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#0B1020"/>
+  <!-- hub legs (indigo) -->
+  <g stroke="url(#ind)" stroke-width="11" stroke-linecap="round">
+    <line x1="128" y1="86" x2="128" y2="60"/>
+    <line x1="96" y1="148" x2="74" y2="180"/>
+    <line x1="160" y1="148" x2="182" y2="180"/>
+  </g>
+  <!-- two indigo nodes -->
+  <g fill="url(#ind)">
+    <circle cx="70" cy="186" r="16"/>
+    <circle cx="186" cy="186" r="16"/>
+  </g>
+  <!-- center "C" half-ring (cyan, opening right) -->
+  <path d="M 160 111 A 36 36 0 1 0 160 145" stroke="#22D3EE" stroke-width="15" stroke-linecap="round" fill="none"/>
+  <!-- top "leaf" node, same cyan as the C -->
+  <circle cx="128" cy="50" r="16" fill="#22D3EE"/>
+</svg>

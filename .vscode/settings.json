@@ -1,0 +1,7 @@
+{
+  "markdownlint.configFile": ".markdownlint.json",
+  "markdownlint.run": "onSave",
+  "[markdown]": {
+    "editor.wordWrap": "on"
+  }
+}
