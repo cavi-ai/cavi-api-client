@@ -1,0 +1,40 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cavi-ai/api-client">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1020"/>
+      <stop offset="1" stop-color="#0E1530"/>
+    </linearGradient>
+    <linearGradient id="ind" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <!-- faint accent bar -->
+  <rect x="0" y="0" width="1280" height="6" fill="#22D3EE" opacity="0.9"/>
+
+  <!-- hub glyph (hybrid: cyan C + leaf, indigo legs), scaled ~0.95 of 256 -->
+  <g transform="translate(360,196) scale(0.96)">
+    <g stroke="url(#ind)" stroke-width="11" stroke-linecap="round">
+      <line x1="128" y1="86" x2="128" y2="60"/>
+      <line x1="96" y1="148" x2="74" y2="180"/>
+      <line x1="160" y1="148" x2="182" y2="180"/>
+    </g>
+    <g fill="url(#ind)">
+      <circle cx="70" cy="186" r="16"/>
+      <circle cx="186" cy="186" r="16"/>
+    </g>
+    <path d="M 160 111 A 36 36 0 1 0 160 145" stroke="#22D3EE" stroke-width="15" stroke-linecap="round" fill="none"/>
+    <circle cx="128" cy="50" r="16" fill="#22D3EE"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="640" y="332" text-anchor="start" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="-3">
+    <tspan fill="#E5E7EB">cavi</tspan><tspan fill="#22D3EE">-ai</tspan>
+  </text>
+  <text x="642" y="392" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="34" font-weight="500" fill="#94A3B8">/api-client</text>
+
+  <!-- tagline -->
+  <text x="640" y="486" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="500" fill="#CBD5E1">Gateway-agnostic TypeScript client for agent runtimes</text>
+  <text x="640" y="528" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" fill="#64748B">HTTP · WebSocket RPC · SSE · provider adapters · graceful degradation</text>
+</svg>

@@ -1,0 +1,71 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run every publish step without publishing to npm.
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.32.1 --activate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify package
+        run: pnpm run verify
+
+      # Trusted publishing (OIDC): no NPM_TOKEN. The npm CLI (>= 11.5.1) exchanges
+      # the GitHub OIDC token (id-token: write above) for a short-lived npm
+      # credential and attaches provenance automatically. Node 22 ships npm 10.x,
+      # which predates trusted publishing, so upgrade npm first. (pnpm signs
+      # provenance but does not perform the registry OIDC token exchange.)
+      # Requires a Trusted Publisher configured for @cavi-ai/api-client on
+      # npmjs.com pointing at this repo + workflow file (publish.yml).
+      - name: Publish package
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          npm install -g npm@latest
+          npm --version
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish --access public --provenance --dry-run
+          else
+            npm publish --access public --provenance
+          fi
