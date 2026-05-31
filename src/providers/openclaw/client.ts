@@ -1,31 +1,26 @@
 import {
   GatewayApiClient,
-  type GatewayCapabilities,
   type GatewayRunStartBody,
-  type GatewayRunStatus,
 } from "../../core/gateway/client/client.js";
-import {
-  GATEWAY_PROBE_ENDPOINTS,
-  OPENCLAW_CORE_RPC_METHODS,
-  OPENCLAW_RPC_METHODS,
-} from "../../contracts/paths.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 import { getErrorMessage } from "../../core/errors.js";
 import { resolveHttpWebSocketTargets } from "../../core/ws/index.js";
+import {
+  OPENCLAW_DEFAULT_CAPABILITIES,
+  OPENCLAW_RPC_METHODS,
+  type OpenClawCapabilities,
+  type OpenClawRunStatus,
+} from "./manifest.derive.js";
 import {
   OpenClawWebSocketClient,
   type OpenClawWebSocketClientOptions,
 } from "./websocket.js";
 
-export type OpenClawCapabilities = GatewayCapabilities & {
-  object?: "openclaw.api_server.capabilities" | string;
-  platform?: "openclaw" | string;
-  rpcMethods?: readonly string[];
-};
-
-export type OpenClawRunStatus = GatewayRunStatus & {
-  object?: "openclaw.run" | string;
-};
+export {
+  OPENCLAW_DEFAULT_CAPABILITIES,
+  type OpenClawCapabilities,
+  type OpenClawRunStatus,
+} from "./manifest.derive.js";
 
 export type OpenClawRpcTransport = {
   request<TPayload>(
@@ -38,32 +33,6 @@ export type OpenClawApiClientOptions = HttpApiClientOptions & {
   wsUrl?: string;
   rpcClient?: OpenClawRpcTransport | null;
   rpcClientOptions?: OpenClawWebSocketClientOptions;
-};
-
-// Base OpenClaw capabilities — what an OpenClaw server exposes natively, with NO
-// CAVI plugin assumed. The CAVI Control operator plane is plugin-gated and lives
-// in extensions/cavi (see withCaviControlOperatorCapabilities); a consumer that
-// runs the cavi-control plugin augments these capabilities at the extension layer.
-export const OPENCLAW_DEFAULT_CAPABILITIES: OpenClawCapabilities = {
-  object: "openclaw.api_server.capabilities",
-  platform: "openclaw",
-  features: {
-    websocket: true,
-    rpc: true,
-    sessions: true,
-    chat: true,
-    config: true,
-    models: true,
-  },
-  endpoints: {
-    health: { method: "GET", path: GATEWAY_PROBE_ENDPOINTS.health },
-    ready: { method: "GET", path: GATEWAY_PROBE_ENDPOINTS.readyz },
-  },
-  runtime: {
-    transport: "websocket-rpc",
-    httpCompatibility: "optional",
-  },
-  rpcMethods: [...OPENCLAW_CORE_RPC_METHODS],
 };
 
 let generatedRunCounter = 0;

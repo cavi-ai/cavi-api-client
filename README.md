@@ -31,7 +31,7 @@ npm install @cavi-ai/api-client
   - [One Client Shape](#one-client-shape)
   - [Typed Errors](#typed-errors)
   - [Graceful Degradation](#graceful-degradation)
-  - [Route Ownership](#route-ownership)
+  - [Route Mirrors](#route-mirrors)
   - [Team Manifest](#team-manifest)
 - [Common Surfaces](#common-surfaces)
   - [HTTP](#http)
@@ -41,8 +41,10 @@ npm install @cavi-ai/api-client
   - [React](#react)
   - [CAVI Extension Adapters](#cavi-extension-adapters)
 - [Secure Credential Handling](#secure-credential-handling)
+- [Architecture](#architecture)
 - [Development](#development)
 - [Contributing](#contributing)
+- [Code of Conduct](#code-of-conduct)
 - [Security](#security)
 - [License](#license)
 
@@ -204,9 +206,11 @@ type DataEnvelope<T> = {
 without crashing an entire dashboard. Auth failures and unknown errors still
 throw.
 
-### Route Ownership
+### Route Mirrors
 
-Route literals belong in owner files:
+OpenClaw, Caviclaw plugins, and gateway hosts own their runtime API routes.
+This package only mirrors those routes so client code has one import path and
+does not drift into hand-built strings. Mirrored route literals belong in:
 
 - Global contracts: `src/contracts/paths.ts` and `src/contracts/surfaces.ts`.
 - CAVI extension contracts:
@@ -215,14 +219,15 @@ Route literals belong in owner files:
 
 Consumers should use exported constants and resolvers such as `resolvePath`,
 `resolveCaviPath`, `appendHttpQuery`, and extension-specific helpers. Avoid
-assembling paths by hand in clients, components, or adapters.
+assembling paths by hand in clients, components, or adapters. New or changed
+paths must come from the upstream gateway/plugin contract first.
 
 ### Team Manifest
 
-Team, member, workspace, and action routing is runtime configuration. The
-package owns the manifest schema, normalization, lookup validation, generated
-route grammar, and workspace path whitelist. Applications own the actual team
-data.
+Team, member, workspace, and action routing is runtime configuration. This
+package provides TypeScript types, normalization, lookup validation, generated
+route helpers, and workspace path guardrails for the manifest shape the
+gateway/plugin layer supplies. Applications own the actual team data.
 
 ```ts
 import {
@@ -372,8 +377,8 @@ function Panel() {
 ### CAVI Extension Adapters
 
 `extensions/cavi` contains product-shaped composition over the generic core.
-The extension owns CAVI-specific DTOs, adapters, fallback providers, and route
-contracts while still using shared transports and error handling.
+The extension mirrors CAVI-specific DTOs, adapters, fallback providers, and
+plugin route contracts while still using shared transports and error handling.
 
 ```ts
 import { createCaviControlAdapters } from "@cavi-ai/api-client";
@@ -467,6 +472,11 @@ helpers redact sensitive values before emitting previews.
 > localStorage.setItem("token", token);
 > ```
 
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the layer map, provider boundary,
+route mirror rules, and extension/plugin split.
+
 ## Development
 
 ```sh
@@ -489,6 +499,11 @@ Update them only when the package boundary intentionally changes.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for workflow, provider-author guidance,
 and boundary rules.
+
+## Code of Conduct
+
+Participation in this project is covered by
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Security
 

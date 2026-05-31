@@ -170,11 +170,15 @@ export {
   HERMES_API_ENDPOINT_TEMPLATES,
   HERMES_MEDIA_API_ENDPOINTS,
   HERMES_WIKI_API_ENDPOINTS,
+} from "./contracts/paths.js";
+
+export {
   OPENCLAW_CORE_RPC_METHODS,
   OPENCLAW_RPC_METHODS,
-  OPENCLAW_MEDIA_API_ENDPOINTS,
-  OPENCLAW_WIKI_API_ENDPOINTS,
-} from "./contracts/paths.js";
+} from "./providers/openclaw/manifest.derive.js";
+export {
+  OPENCLAW_MANIFEST,
+} from "./providers/openclaw/manifest.js";
 
 export {
   GLOBAL_REPO_ROOT_KEY,
@@ -377,6 +381,11 @@ export {
   type OpenClawCapabilities,
   type OpenClawRunStatus,
 } from "./providers/openclaw/client.js";
+// OpenClawMediaApiClient is the provider-dispatched implementation of the
+// unified GatewayMediaClient contract — it routes UI calls to OpenClaw's
+// native surface (`tts.providers`, `tts.convert`) and throws
+// EndpointNotFound for capabilities only a plugin can serve. See
+// src/providers/openclaw/media.ts.
 export { OpenClawMediaApiClient } from "./providers/openclaw/media.js";
 export {
   HERMES_PROFILE_COOKIE_NAME,

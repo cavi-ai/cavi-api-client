@@ -35,10 +35,16 @@
     "access": "public"
   },
   "files": [
+    "ARCHITECTURE.md",
     "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "CONTRIBUTORS.md",
     "SECURITY.md",
     "docs",
+    "!docs/.DS_Store",
+    "!docs/.code-review-graph",
+    "!docs/.code-review-graph/**",
     "dist",
     "!dist/test-support",
     "!dist/__tests__",
