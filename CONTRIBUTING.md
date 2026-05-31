@@ -6,6 +6,9 @@ feature should be additive — a small module, not a fork.** This guide explains
 workflow, the boundary rules, and the checklists for the two most common
 contributions (a new gateway provider, a new feature).
 
+Please follow the project [Code of Conduct](CODE_OF_CONDUCT.md) in issues, pull
+requests, reviews, and discussions.
+
 ## Quick start
 
 ```sh

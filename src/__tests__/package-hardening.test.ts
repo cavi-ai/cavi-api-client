@@ -121,6 +121,10 @@ const CONTRACT_OWNER_FILES = new Set([
   "src/contracts/surfaces.ts",
   "src/extensions/cavi/contracts/surfaces.ts",
   "src/extensions/cavi/library/clip-contract.json",
+  // Provider manifests mirror the upstream gateway docs and own that provider's
+  // route literals. As more providers/plugins land, consider promoting this to
+  // a `**/manifest.ts` regex.
+  "src/providers/openclaw/manifest.ts",
 ]);
 const ALLOWED_SRC_ROOT_FILES = new Set(["src/index.ts"]);
 const LEGACY_TOP_LEVEL_SOURCE_FILES: ReadonlySet<string> = new Set([

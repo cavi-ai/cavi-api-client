@@ -1,5 +1,7 @@
 node_modules
 .DS_Store
+docs/.DS_Store
+docs/.code-review-graph/
 .env
 .env.local
 .env.development.local
@@ -29,3 +31,4 @@ quarantine/
 
 # Scratch / rejected drafts (Franco deletes)
 .quarantine/
+.claude/
