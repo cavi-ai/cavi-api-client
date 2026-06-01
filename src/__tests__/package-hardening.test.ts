@@ -1173,7 +1173,7 @@ describe("package hardening", () => {
     }).resolveProvider("generic")?.kind).toBe("gateway");
     expect(() => createGatewayProviderRegistry({
       modules: [{ kind: "gateway" }, { kind: "generic" }],
-    })).toThrow('Duplicate gateway provider key "gateway"');
+    })).toThrow('Duplicate provider key "gateway"');
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {

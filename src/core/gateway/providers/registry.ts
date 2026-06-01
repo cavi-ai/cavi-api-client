@@ -2,12 +2,15 @@ import { normalizeGatewayProviderToken } from "./normalize.js";
 import {
   GATEWAY_PROVIDER_ENV_KEYS,
   type CreateGatewayProviderRegistryOptions,
+  type CreateProviderRegistryOptions,
   type GatewayProviderModule,
   type GatewayProviderRegistry,
+  type ProviderRegistry,
   type ResolveGatewayProviderOptions,
+  type RuntimeProviderModule,
 } from "./types.js";
 
-function providerModuleKeys(module: GatewayProviderModule): readonly string[] {
+function providerModuleKeys(module: RuntimeProviderModule): readonly string[] {
   const keys = new Set<string>();
   for (const key of [module.kind, ...(module.aliases ?? [])]) {
     const normalized = normalizeGatewayProviderToken(key);
@@ -18,15 +21,15 @@ function providerModuleKeys(module: GatewayProviderModule): readonly string[] {
   return [...keys];
 }
 
-export function createGatewayProviderRegistry(
-  options: CreateGatewayProviderRegistryOptions = {},
-): GatewayProviderRegistry {
+export function createProviderRegistry<M extends RuntimeProviderModule>(
+  options: CreateProviderRegistryOptions<M> = {},
+): ProviderRegistry<M> {
   const modules = [...(options.modules ?? [])];
-  const byKey = new Map<string, GatewayProviderModule>();
+  const byKey = new Map<string, M>();
   for (const module of modules) {
     for (const key of providerModuleKeys(module)) {
       if (byKey.has(key) && options.allowOverrides !== true) {
-        throw new Error(`Duplicate gateway provider key "${key}"`);
+        throw new Error(`Duplicate provider key "${key}"`);
       }
       byKey.set(key, module);
     }
@@ -40,6 +43,18 @@ export function createGatewayProviderRegistry(
       return [...modules];
     },
   };
+}
+
+export function createGatewayProviderRegistry(
+  options: CreateGatewayProviderRegistryOptions = {},
+): GatewayProviderRegistry {
+  return createProviderRegistry<GatewayProviderModule>(options);
+}
+
+export function createRuntimeProviderRegistry(
+  options: CreateProviderRegistryOptions<RuntimeProviderModule> = {},
+): ProviderRegistry<RuntimeProviderModule> {
+  return createProviderRegistry<RuntimeProviderModule>(options);
 }
 
 function gatewayProviderRegistryFromOptions(

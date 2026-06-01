@@ -63,17 +63,24 @@ export interface GatewayProviderModule
   createApiClient?: (clientOptions: HttpApiClientOptions) => GatewayApiClient;
 }
 
-export interface GatewayProviderRegistry {
-  resolveProvider(
-    provider: string | null | undefined,
-  ): GatewayProviderModule | null;
-  listProviders(): readonly GatewayProviderModule[];
+export interface ProviderRegistry<
+  M extends RuntimeProviderModule = GatewayProviderModule,
+> {
+  resolveProvider(provider: string | null | undefined): M | null;
+  listProviders(): readonly M[];
 }
 
-export type CreateGatewayProviderRegistryOptions = {
-  modules?: readonly GatewayProviderModule[] | null;
+export type GatewayProviderRegistry = ProviderRegistry<GatewayProviderModule>;
+
+export type CreateProviderRegistryOptions<
+  M extends RuntimeProviderModule = GatewayProviderModule,
+> = {
+  modules?: readonly M[] | null;
   allowOverrides?: boolean;
 };
+
+export type CreateGatewayProviderRegistryOptions =
+  CreateProviderRegistryOptions<GatewayProviderModule>;
 
 export type ResolveGatewayProviderOptions = {
   provider?: GatewayProviderKind | string | null;

@@ -50,7 +50,7 @@ describe("gateway provider registry", () => {
       createGatewayProviderRegistry({
         modules: [HERMES_PROVIDER_MODULE, { kind: "hermes" }],
       }),
-    ).toThrow(/Duplicate gateway provider key "hermes"/u);
+    ).toThrow(/Duplicate provider key "hermes"/u);
   });
 
   it("allows intentional overrides", () => {

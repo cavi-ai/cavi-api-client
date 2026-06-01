@@ -306,6 +306,8 @@ export {
   createGatewayApiClient,
   createGatewayMediaClient,
   createGatewayProviderRegistry,
+  createProviderRegistry,
+  createRuntimeProviderRegistry,
   createGatewayRpcClient,
   createGatewaySseRunEventProvider,
   createGatewayWebSocketClient,
@@ -316,11 +318,13 @@ export {
   resolveGatewayProviderModule,
   type CreateGatewaySseRunEventProviderOptions,
   type CreateGatewayProviderRegistryOptions,
+  type CreateProviderRegistryOptions,
   type GatewayProviderEnv,
   type GatewayProviderFactories,
   type GatewayProviderKind,
   type GatewayProviderModule,
   type GatewayProviderRegistry,
+  type ProviderRegistry,
   type ResolveGatewayProviderOptions,
 } from "./core/gateway/providers/index.js";
 export { HERMES_PROVIDER_MODULE } from "./providers/hermes/provider-module.js";

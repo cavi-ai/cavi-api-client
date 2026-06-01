@@ -19,9 +19,14 @@ export type {
 export interface RuntimeClient {
   getRuntimeCapabilities(): Promise<RuntimeCapabilities>;
   startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus>;
-  getRun(runId: string): Promise<RuntimeRunStatus>;
-  /** Capability-gated; providers without cancel throw via `unsupportedRuntimeSurface`. */
-  cancelRun(runId: string): Promise<{ status: string }>;
+  /**
+   * Optional — synchronous/stateless providers (e.g. Claude SDK) omit these.
+   * Consumers should null-check (`client.cancelRun?.(id)`) or gate on
+   * `RuntimeCapabilities`. Providers that expose the method but can't serve it
+   * should throw `ApiClientError(EndpointNotFound)`.
+   */
+  getRun?(runId: string): Promise<RuntimeRunStatus>;
+  cancelRun?(runId: string): Promise<{ status: string }>;
 }
 
 /** Throw a typed EndpointNotFound for a surface this provider does not serve. */
