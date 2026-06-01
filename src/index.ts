@@ -546,6 +546,18 @@ export {
   type PortalTtsVoiceOption,
 } from "./extensions/cavi/portal/tts.js";
 
+export {
+  createStaticManifestSource,
+  createCachedManifestSource,
+  type TeamManifestSource,
+  type CachedTeamManifestSource,
+  type TeamManifestInput,
+  type TeamManifestLoader,
+} from "./contracts/manifest-source.js";
+export {
+  createTeamRouteResolver,
+  type TeamRouteResolver,
+} from "./contracts/route-resolver.js";
 export { SURFACE_CONTRACTS, type SurfaceContract } from "./contracts/surfaces.js";
 export {
   createSurfacePathResolver,
@@ -599,10 +611,10 @@ export {
   type TeamActionResponseBase,
   type TeamActionRouteContract,
   type TeamManifest,
-  type TeamManifestIdentity,
-  type TeamManifestMember,
-  type TeamManifestRouteConfig,
-  type TeamManifestTeam,
+  type ManifestIdentity,
+  type ManifestMember,
+  type ManifestRouteConfig,
+  type ManifestTeam,
   type TeamManifestVersion,
   type TeamRouteKey,
   type TeamWorkspaceConfig,
