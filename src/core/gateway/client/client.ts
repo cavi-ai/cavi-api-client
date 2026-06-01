@@ -7,6 +7,13 @@ import {
   type NormalizeGatewayFeatureCapabilitiesOptions,
   type NormalizedGatewayFeatureCapabilities,
 } from "./capabilities.js";
+import type { RuntimeClient } from "../../runtime/client.js";
+import type {
+  RuntimeRunStartBody,
+  RuntimeRunStatus,
+  RuntimeRunMessage,
+} from "../../runtime/run.js";
+import type { RuntimeCapabilities } from "../../runtime/capabilities.js";
 
 export type GatewayCapabilities = GatewayCommandCapabilities & {
   object?: string;
@@ -18,19 +25,9 @@ export type GatewayCapabilities = GatewayCommandCapabilities & {
   runtime?: Record<string, unknown>;
 };
 
-export type GatewayRunStatus = {
+export type GatewayRunStatus = RuntimeRunStatus & {
   object?: string;
-  run_id: string;
-  status:
-    | "started"
-    | "running"
-    | "completed"
-    | "failed"
-    | "cancelled"
-    | "stopping"
-    | string;
   session_id?: string;
-  model?: string;
   targetProfile?: string;
   task_id?: string;
   routing?: {
@@ -40,19 +37,11 @@ export type GatewayRunStatus = {
     workerEventStream?: boolean;
     decision?: Record<string, unknown>;
   };
-  output?: string;
-  response?: string;
-  error?: string;
-  usage?: Record<string, number>;
   events?: Record<string, unknown>[];
   tool_call_count?: number;
 };
 
-export type GatewayRunMessage = {
-  role: string;
-  content: string | Record<string, unknown>[];
-  [key: string]: unknown;
-};
+export type GatewayRunMessage = RuntimeRunMessage;
 
 export type GatewayRunAttachment = {
   name: string;
@@ -64,12 +53,10 @@ export type GatewayRunAttachment = {
   [key: string]: unknown;
 };
 
-export type GatewayRunStartBody = {
-  input: string | GatewayRunMessage[];
+export type GatewayRunStartBody = RuntimeRunStartBody & {
   session_id?: string;
   sessionKey?: string;
   session_key?: string;
-  instructions?: string;
   previous_response_id?: string;
   conversation_history?: GatewayRunMessage[];
   targetProfile?: string;
@@ -80,13 +67,11 @@ export type GatewayRunStartBody = {
   agent_id?: string;
   action?: string;
   source?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
   attachments?: GatewayRunAttachment[];
-  dryRun?: boolean;
   dry_run?: boolean;
 };
 
-export class GatewayApiClient extends BaseHttpApiClient {
+export class GatewayApiClient extends BaseHttpApiClient implements RuntimeClient {
   readonly endpoints = GATEWAY_API_ENDPOINTS;
   readonly request: HttpApiTransport;
 
@@ -106,6 +91,32 @@ export class GatewayApiClient extends BaseHttpApiClient {
       ...options,
       capabilities: await this.getCapabilities(),
     });
+  }
+
+  async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
+    const raw = await this.getCapabilities();
+    const supports: RuntimeCapabilities["supports"] = {
+      runs: true,
+      streaming: true,
+      teams: true,
+      kanban: true,
+      workspace: true,
+      operator: true,
+      discourse: true,
+      media: true,
+      wiki: true,
+      agentConfig: true,
+    };
+    return {
+      providerKind: raw.platform ?? "gateway",
+      protocolVersion: null,
+      ...(raw.auth ? { auth: raw.auth } : {}),
+      supports,
+    };
+  }
+
+  cancelRun(runId: string): Promise<{ status: string }> {
+    return this.stopRun(runId);
   }
 
   startRun(body: GatewayRunStartBody): Promise<GatewayRunStatus> {

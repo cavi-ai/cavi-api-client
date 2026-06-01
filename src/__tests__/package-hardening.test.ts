@@ -770,8 +770,13 @@ describe("package hardening", () => {
     expect(expectedProviderFiles.filter((file) =>
       !existsSync(path.join(CORE_GATEWAY_PROVIDERS_ROOT, file)),
     )).toEqual([]);
-    expect(read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, "types.ts"))).toContain(
-      "export interface GatewayProviderModule extends GatewayProviderFactories",
+    const providerTypes = read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, "types.ts"));
+    // Runtime/Gateway split: the universal RuntimeProviderModule is the base, and
+    // GatewayProviderModule extends it plus the gateway factory surface.
+    expect(providerTypes).toContain("export interface RuntimeProviderModule");
+    expect(providerTypes).toContain("export interface GatewayProviderModule");
+    expect(providerTypes).toMatch(
+      /GatewayProviderModule[\s\S]*?extends[\s\S]*?RuntimeProviderModule[\s\S]*?GatewayProviderFactories/u,
     );
     expect(providerSpecificFiles.filter((file) =>
       /\b(?:Hermes|OpenClaw)\b/u.test(read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, file))),
