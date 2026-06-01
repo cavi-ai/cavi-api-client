@@ -85,6 +85,7 @@ export class BaseHttpApiClient {
   readonly basePath: string;
   readonly authToken: string;
   readonly clientId: string;
+  readonly sendsPortalClientId: boolean;
   readonly defaultHeaders: Record<string, string>;
   readonly resolveAuthHeaders?: () => Record<string, string>;
   readonly defaultTimeoutMs: number;
@@ -100,6 +101,7 @@ export class BaseHttpApiClient {
     this.basePath = normalizeBasePath(options.basePath);
     this.authToken = options.auth?.bearerToken?.trim() ?? "";
     this.clientId = options.auth?.clientId?.trim() || DEFAULT_CLIENT_ID;
+    this.sendsPortalClientId = options.includePortalClientIdHeader ?? true;
     this.defaultHeaders = { ...(options.defaultHeaders ?? {}) };
     this.resolveAuthHeaders = options.auth?.resolveHeaders;
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -120,7 +122,7 @@ export class BaseHttpApiClient {
   protected buildHeaders(init?: HttpApiRequestInit): Record<string, string> {
     const headers: Record<string, string> = {
       Accept: "application/json",
-      [PORTAL_CLIENT_ID_HEADER]: this.clientId,
+      ...(this.sendsPortalClientId ? { [PORTAL_CLIENT_ID_HEADER]: this.clientId } : {}),
       ...this.defaultHeaders,
       ...(init?.headers ?? {}),
     };

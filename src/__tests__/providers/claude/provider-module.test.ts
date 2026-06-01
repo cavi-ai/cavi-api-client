@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { CLAUDE_PROVIDER_MODULE } from "../../../providers/claude/provider-module";
+import { createClaudeProviderModule } from "../../../providers/claude/provider-module";
 import { ClaudeApiClient } from "../../../providers/claude/client";
 import type { RuntimeProviderModule } from "../../../core/gateway/providers/types";
 
-describe("CLAUDE_PROVIDER_MODULE", () => {
-  it("is a runtime-only provider module declaring runs + streaming", () => {
-    const module: RuntimeProviderModule = CLAUDE_PROVIDER_MODULE;
+describe("createClaudeProviderModule", () => {
+  it("builds a runtime-only module declaring runs + streaming", () => {
+    const module: RuntimeProviderModule = createClaudeProviderModule({ apiKey: "sk-test" });
     expect(module.kind).toBe("claude-sdk");
     expect(module.capabilities?.runs).toBe(true);
     expect(module.capabilities?.streaming).toBe(true);
   });
 
-  it("creates a ClaudeApiClient (note: requires apiKey via options)", () => {
-    const client = CLAUDE_PROVIDER_MODULE.createApiClient?.({ apiKey: "sk-test" });
+  it("createApiClient yields a ClaudeApiClient (apiKey captured, no cast)", () => {
+    const module = createClaudeProviderModule({ apiKey: "sk-test" });
+    const client = module.createApiClient?.({ baseUrl: "https://api.anthropic.com" });
     expect(client).toBeInstanceOf(ClaudeApiClient);
   });
 });

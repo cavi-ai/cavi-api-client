@@ -47,6 +47,7 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     super("claude-sdk", {
       baseUrl: options.baseUrl?.trim() || CLAUDE_API_BASE_URL,
       defaultHeaders: { "anthropic-version": version },
+      includePortalClientIdHeader: false,
       auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-api-key" }) },
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
