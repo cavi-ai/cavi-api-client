@@ -40,15 +40,14 @@ export type TeamRouteKey =
   | "agent.workspace"
   | (string & {});
 
-export type TeamManifestIdentity = {
+export type ManifestIdentity = {
   name?: string | null;
   displayName?: string | null;
   slug?: string | null;
   code?: string | null;
-  sectorSlug?: string | null;
-  sectorCode?: string | null;
-  portalId?: string | null;
   aliases?: readonly string[] | null;
+  /** Host/domain-specific identity hints (e.g. CAVI portalId/sector). Agnostic core never reads these. */
+  metadata?: Record<string, unknown> | null;
 };
 
 export type TeamWorkspacePathEntry =
@@ -153,28 +152,28 @@ export type TeamActionResponse =
       text: string;
     });
 
-export type TeamManifestMember = {
+export type ManifestMember = {
   id: string;
-  identity?: TeamManifestIdentity | null;
+  identity?: ManifestIdentity | null;
   workspace?: TeamWorkspaceConfig | null;
   actions?: readonly TeamActionContract[] | null;
   capabilities?: readonly string[] | null;
   metadata?: Record<string, unknown> | null;
 };
 
-export type TeamManifestRouteConfig = {
+export type ManifestRouteConfig = {
   key: string;
   path?: string | null;
 };
 
-export type TeamManifestTeam = {
+export type ManifestTeam = {
   id: string;
-  identity?: TeamManifestIdentity | null;
-  members?: readonly TeamManifestMember[] | null;
+  identity?: ManifestIdentity | null;
+  members?: readonly ManifestMember[] | null;
   workspace?: TeamWorkspaceConfig | null;
   actions?: readonly TeamActionContract[] | null;
   capabilities?: readonly string[] | null;
-  routes?: readonly TeamManifestRouteConfig[] | null;
+  routes?: readonly ManifestRouteConfig[] | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -216,7 +215,7 @@ export type TeamManifest = {
   version: TeamManifestVersion;
   actions?: readonly TeamActionContract[] | null;
   bindings?: readonly GatewayRouteBinding[] | null;
-  teams: readonly TeamManifestTeam[];
+  teams: readonly ManifestTeam[];
 };
 
 export type CreateDefaultTeamManifestOptions = {
@@ -659,8 +658,8 @@ function normalizeWorkspaceConfig(
 }
 
 function normalizeIdentity(
-  identity: TeamManifestIdentity | null | undefined,
-): TeamManifestIdentity | null {
+  identity: ManifestIdentity | null | undefined,
+): ManifestIdentity | null {
   if (!identity) {
     return null;
   }
@@ -671,18 +670,12 @@ function normalizeIdentity(
       : {}),
     ...(nonEmpty(identity.slug) ? { slug: nonEmpty(identity.slug) } : {}),
     ...(nonEmpty(identity.code) ? { code: nonEmpty(identity.code) } : {}),
-    ...(nonEmpty(identity.sectorSlug)
-      ? { sectorSlug: nonEmpty(identity.sectorSlug) }
-      : {}),
-    ...(nonEmpty(identity.sectorCode)
-      ? { sectorCode: nonEmpty(identity.sectorCode) }
-      : {}),
-    ...(nonEmpty(identity.portalId) ? { portalId: nonEmpty(identity.portalId) } : {}),
     aliases: uniqueStrings(identity.aliases),
+    ...(identity.metadata ? { metadata: identity.metadata } : {}),
   };
 }
 
-function normalizeMember(member: TeamManifestMember): TeamManifestMember {
+function normalizeMember(member: ManifestMember): ManifestMember {
   return {
     id: requiredText(member.id, "member id"),
     ...(member.identity ? { identity: normalizeIdentity(member.identity) } : {}),
@@ -696,10 +689,10 @@ function normalizeMember(member: TeamManifestMember): TeamManifestMember {
 }
 
 function normalizeMembers(
-  members: readonly TeamManifestMember[] | null | undefined,
-): TeamManifestMember[] {
+  members: readonly ManifestMember[] | null | undefined,
+): ManifestMember[] {
   const seen = new Set<string>();
-  const normalized: TeamManifestMember[] = [];
+  const normalized: ManifestMember[] = [];
   for (const member of members ?? []) {
     const entry = normalizeMember(member);
     if (seen.has(entry.id)) {
@@ -712,10 +705,10 @@ function normalizeMembers(
 }
 
 function normalizeTeamRoutes(
-  routes: readonly TeamManifestRouteConfig[] | null | undefined,
-): TeamManifestRouteConfig[] {
+  routes: readonly ManifestRouteConfig[] | null | undefined,
+): ManifestRouteConfig[] {
   const seen = new Set<string>();
-  const normalized: TeamManifestRouteConfig[] = [];
+  const normalized: ManifestRouteConfig[] = [];
   for (const route of routes ?? []) {
     const key = requiredText(route.key, "route key");
     const routePath = nonEmpty(route.path);
@@ -733,7 +726,7 @@ function normalizeTeamRoutes(
   return normalized;
 }
 
-function normalizeTeam(team: TeamManifestTeam): TeamManifestTeam {
+function normalizeTeam(team: ManifestTeam): ManifestTeam {
   return {
     id: requiredText(team.id, "team id"),
     ...(team.identity ? { identity: normalizeIdentity(team.identity) } : {}),
@@ -747,10 +740,10 @@ function normalizeTeam(team: TeamManifestTeam): TeamManifestTeam {
 }
 
 function normalizeTeams(
-  teams: readonly TeamManifestTeam[] | null | undefined,
-): TeamManifestTeam[] {
+  teams: readonly ManifestTeam[] | null | undefined,
+): ManifestTeam[] {
   const seen = new Set<string>();
-  const normalized: TeamManifestTeam[] = [];
+  const normalized: ManifestTeam[] = [];
   for (const team of teams ?? []) {
     const entry = normalizeTeam(team);
     if (seen.has(entry.id)) {
@@ -865,7 +858,7 @@ export function normalizeTeamManifest(
 export function findTeamManifestTeam(
   manifest: TeamManifest,
   teamId: string | null | undefined,
-): TeamManifestTeam | null {
+): ManifestTeam | null {
   const normalized = nonEmpty(teamId);
   if (!normalized) {
     return null;
@@ -874,9 +867,9 @@ export function findTeamManifestTeam(
 }
 
 export function findTeamManifestMember(
-  team: TeamManifestTeam,
+  team: ManifestTeam,
   memberId: string | null | undefined,
-): TeamManifestMember | null {
+): ManifestMember | null {
   const normalized = nonEmpty(memberId);
   if (!normalized) {
     return null;
@@ -1350,7 +1343,7 @@ export function resolveGatewayRouteBinding(
 }
 
 function resolveTeamWorkspaceEntry(
-  team: TeamManifestTeam,
+  team: ManifestTeam,
   keyOrPath: string,
   options: ResolveTeamWorkspacePathOptions = {},
 ): NormalizedWorkspacePathEntry {
@@ -1369,7 +1362,7 @@ function resolveTeamWorkspaceEntry(
 }
 
 export function resolveTeamWorkspacePath(
-  team: TeamManifestTeam,
+  team: ManifestTeam,
   keyOrPath: string,
   options: ResolveTeamWorkspacePathOptions = {},
 ): string {
@@ -1383,7 +1376,7 @@ export function resolveTeamWorkspacePath(
 }
 
 export function resolveTeamWorkspaceApiPath(
-  team: TeamManifestTeam,
+  team: ManifestTeam,
   keyOrPath: string,
   options: ResolveTeamWorkspacePathOptions = {},
 ): string {
