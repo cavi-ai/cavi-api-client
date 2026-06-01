@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   TEAM_REGISTRY_CONFIG,
   configureTeamRegistryConfig,
-  createHermesTeamRegistry,
-  createOpenClawTeamRegistry,
   createTeamRegistry,
   getConfiguredTeamRegistry,
   resetTeamRegistryConfig,
   type TeamRegistryConfig,
-} from "../../../../index";
+} from "../../../../extensions/cavi/index";
+import { createHermesTeamRegistry } from "../../../../providers/hermes/index";
+import { createOpenClawTeamRegistry } from "../../../../providers/openclaw/index";
 
 const TEST_TEAM_REGISTRY_CONFIG: TeamRegistryConfig = {
   provider: "openclaw",

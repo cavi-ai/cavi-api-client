@@ -164,6 +164,7 @@ export type StartHermesChatRunParams = {
   httpBase: string;
   authToken: string;
   clientId: string;
+  headers?: Record<string, string>;
   input: string;
   sessionId: string;
   /** Defaults to {@link sessionId} when omitted. */
@@ -184,6 +185,7 @@ function createHermesChatRunHttpClient(params: {
   httpBase: string;
   authToken: string;
   clientId: string;
+  headers?: Record<string, string>;
   fetchImpl?: typeof fetch;
 }) {
   return createRawHttpApiClient({
@@ -191,6 +193,7 @@ function createHermesChatRunHttpClient(params: {
     baseUrl: params.httpBase,
     authToken: params.authToken,
     clientId: params.clientId,
+    defaultHeaders: params.headers,
     fetchImpl: params.fetchImpl,
   });
 }
@@ -275,6 +278,7 @@ export type ResolveHermesChatRunApprovalParams = {
   httpBase: string;
   authToken: string;
   clientId: string;
+  headers?: Record<string, string>;
   runId: string;
   choice: RunStreamApprovalChoice;
   sessionKey?: string;
@@ -291,6 +295,7 @@ export async function resolveHermesChatRunApproval(
   params: ResolveHermesChatRunApprovalParams,
 ): Promise<void> {
   const headers: Record<string, string> = {};
+  Object.assign(headers, params.headers ?? {});
   if (params.sessionKey?.trim()) {
     headers["X-Hermes-Session-Key"] = params.sessionKey.trim();
   }
@@ -365,6 +370,7 @@ export async function streamHermesChatRun(
     authToken: params.authToken,
     clientId: params.clientId,
     sessionKey,
+    headers: params.headers,
     fetchImpl: params.fetchImpl,
   });
 

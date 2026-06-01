@@ -6,7 +6,7 @@ import {
   gatewaySupportsTextToSpeech,
   normalizeGatewayFeatureCapabilities,
   type GatewayCapabilities,
-} from "../../../index";
+} from "../../../core/gateway/index";
 
 describe("gateway feature capability normalization", () => {
   it("merges capabilities, endpoints, and media providers into stable feature flags", () => {

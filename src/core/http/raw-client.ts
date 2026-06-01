@@ -25,6 +25,7 @@ export function createRawHttpApiClient(params: {
   baseUrl: string;
   authToken: string | null;
   clientId?: string | null;
+  defaultHeaders?: Record<string, string>;
   credentials?: RequestCredentials;
   cache?: RequestCache;
   fetchImpl?: typeof fetch;
@@ -36,6 +37,7 @@ export function createRawHttpApiClient(params: {
       bearerToken: params.authToken,
       clientId: params.clientId,
     },
+    defaultHeaders: params.defaultHeaders,
     credentials: params.credentials,
     cache: params.cache,
     fetchImpl: params.fetchImpl,
