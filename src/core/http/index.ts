@@ -1,6 +1,7 @@
 export * from "./client-id.js";
 export * from "./client.js";
 export * from "./contracts.js";
+export * from "./credentials.js";
 export * from "./errors.js";
 export * from "./gateway-error.js";
 export * from "./json-client.js";

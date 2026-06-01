@@ -5,3 +5,4 @@ export {
   unsupportedRuntimeSurface,
   type RuntimeClient,
 } from "./client.js";
+export * from "./protocol.js";

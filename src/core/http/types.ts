@@ -1,3 +1,5 @@
+import type { CredentialResolver } from "./credentials.js";
+
 export const PORTAL_CLIENT_ID_HEADER = "X-Portal-Client-Id" as const;
 export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key" as const;
 
@@ -42,6 +44,11 @@ export type HttpApiTransport = <TResponse>(
 export type HttpApiClientAuth = {
   bearerToken?: string | null;
   clientId?: string | null;
+  /**
+   * Provider-supplied auth scheme. When present, its headers replace the
+   * default bearer Authorization header. See core/http/credentials.ts.
+   */
+  resolveHeaders?: CredentialResolver;
 };
 
 export type HttpApiClientOptions = {
@@ -56,4 +63,5 @@ export type HttpApiClientOptions = {
   onTrace?: (trace: HttpApiTrace) => void;
 };
 
+export type { CredentialResolver, CredentialHeaders } from "./credentials.js";
 export { HttpApiError, isHttpApiError } from "./errors.js";
