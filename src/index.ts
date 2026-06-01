@@ -76,6 +76,27 @@ export { describeHttpContract } from "./core/http/contracts.js";
 export * from "./core/data/guards.js";
 export * from "./core/runtime/paths.js";
 
+// Universal runtime contract (RuntimeClient) — the provider-agnostic tier that
+// GatewayClient extends. See ARCHITECTURE.md §Runtime vs Gateway.
+export {
+  RUNTIME_SURFACES,
+  runtimeSupports,
+  type RuntimeCapabilities,
+  type RuntimeSurface,
+} from "./core/runtime/capabilities.js";
+export {
+  type RuntimeRunStartBody,
+  type RuntimeRunStatus,
+  type RuntimeRunMessage,
+  type RuntimeRunInput,
+  type RuntimeRunState,
+} from "./core/runtime/run.js";
+export {
+  unsupportedRuntimeSurface,
+  type RuntimeClient,
+} from "./core/runtime/client.js";
+export { type RuntimeProviderModule } from "./core/gateway/providers/index.js";
+
 export {
   DEFAULT_PREVIEW_MAX_CHARS,
   REDACTION_PLACEHOLDER,

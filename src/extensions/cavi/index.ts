@@ -1,5 +1,6 @@
 export * from "./client.js";
 export * from "./contracts/index.js";
+export * from "./memory/scope-resolver.js";
 export * from "./runtime/paths.js";
 export * from "./runtime/env-config.js";
 export * from "./library/client.js";

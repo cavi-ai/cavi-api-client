@@ -11,6 +11,8 @@ import type {
   GatewayWebSocketClient,
   GatewayWebSocketClientOptions,
 } from "../../ws/index.js";
+import type { RuntimeClient } from "../../runtime/client.js";
+import type { RuntimeSurface } from "../../runtime/capabilities.js";
 
 export type GatewayProviderKind =
   | "hermes"
@@ -46,9 +48,19 @@ export interface GatewayProviderFactories {
   ) => GatewayAgentConfigApiClient;
 }
 
-export interface GatewayProviderModule extends GatewayProviderFactories {
+/** The universal provider plugin. Every provider (incl. runtime-only ones) is one. */
+export interface RuntimeProviderModule {
   kind: GatewayProviderKind;
   aliases?: readonly string[];
+  capabilities?: Partial<Record<RuntimeSurface, boolean>>;
+  createApiClient?: (clientOptions: HttpApiClientOptions) => RuntimeClient;
+}
+
+export interface GatewayProviderModule
+  extends RuntimeProviderModule,
+    GatewayProviderFactories {
+  /** Gateway providers return the gateway-capable client. */
+  createApiClient?: (clientOptions: HttpApiClientOptions) => GatewayApiClient;
 }
 
 export interface GatewayProviderRegistry {
