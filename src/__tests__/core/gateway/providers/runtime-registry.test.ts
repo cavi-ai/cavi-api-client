@@ -4,8 +4,10 @@ import {
   createProviderRegistry,
   createRuntimeProviderRegistry,
 } from "../../../../core/gateway/providers/registry";
-import { CLAUDE_PROVIDER_MODULE } from "../../../../providers/claude/provider-module";
+import { createClaudeProviderModule } from "../../../../providers/claude/provider-module";
 import { HERMES_PROVIDER_MODULE } from "../../../../providers/hermes/provider-module";
+
+const CLAUDE_PROVIDER_MODULE = createClaudeProviderModule({ apiKey: "sk-test" });
 
 describe("runtime provider registry (F2)", () => {
   it("registers and resolves a runtime-only module by kind + alias", () => {

@@ -56,6 +56,8 @@ export type HttpApiClientOptions = {
   basePath?: string;
   allowRelativeBaseUrl?: boolean;
   defaultHeaders?: Record<string, string>;
+  /** Send the X-Portal-Client-Id header. Default true; set false for non-gateway backends. */
+  includePortalClientIdHeader?: boolean;
   auth?: HttpApiClientAuth;
   defaultTimeoutMs?: number;
   fetchImpl?: typeof fetch;
