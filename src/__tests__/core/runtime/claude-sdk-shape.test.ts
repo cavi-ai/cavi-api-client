@@ -53,6 +53,17 @@ const claudeModule: RuntimeProviderModule = {
   createApiClient: () => claudeClient,
 };
 
+// F1: a synchronous/stateless provider omits getRun/cancelRun entirely and still
+// satisfies RuntimeClient. This compiles ONLY if those methods are optional.
+const statelessClient: RuntimeClient = {
+  getRuntimeCapabilities: async () => ({
+    providerKind: "claude-sdk",
+    supports: { runs: true, streaming: true },
+  }),
+  startRun: async () => ({ run_id: "msg_1", status: "completed" }),
+};
+void statelessClient;
+
 describe("Claude SDK shape — spec §2a acceptance gate", () => {
   it("a runtime-only provider satisfies the universal contract", async () => {
     expect(claudeBody.input).toHaveLength(1);
