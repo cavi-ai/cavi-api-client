@@ -55,6 +55,7 @@ export type HttpApiClientOptions = {
   baseUrl: string;
   basePath?: string;
   allowRelativeBaseUrl?: boolean;
+  defaultHeaders?: Record<string, string>;
   auth?: HttpApiClientAuth;
   defaultTimeoutMs?: number;
   fetchImpl?: typeof fetch;
