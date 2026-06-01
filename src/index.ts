@@ -32,6 +32,13 @@ export {
   normalizePortalClientId,
   requirePortalClientId,
 } from "./core/http/client-id.js";
+export {
+  bearerCredentials,
+  apiKeyCredentials,
+  type CredentialResolver,
+  type CredentialHeaders,
+  type ApiKeyCredentialOptions,
+} from "./core/http/credentials.js";
 
 export {
   resolveHttpSurfaceConfigFromEnv,
@@ -95,6 +102,12 @@ export {
   unsupportedRuntimeSurface,
   type RuntimeClient,
 } from "./core/runtime/client.js";
+export {
+  checkProtocolVersion,
+  assertProtocolVersion,
+  type ProtocolVersionCheck,
+  type ProtocolVersionCarrier,
+} from "./core/runtime/protocol.js";
 export { type RuntimeProviderModule } from "./core/gateway/providers/index.js";
 
 export {

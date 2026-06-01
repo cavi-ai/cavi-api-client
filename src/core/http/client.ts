@@ -85,6 +85,7 @@ export class BaseHttpApiClient {
   readonly basePath: string;
   readonly authToken: string;
   readonly clientId: string;
+  readonly resolveAuthHeaders?: () => Record<string, string>;
   readonly defaultTimeoutMs: number;
   readonly cache: RequestCache;
   readonly credentials?: RequestCredentials;
@@ -98,6 +99,7 @@ export class BaseHttpApiClient {
     this.basePath = normalizeBasePath(options.basePath);
     this.authToken = options.auth?.bearerToken?.trim() ?? "";
     this.clientId = options.auth?.clientId?.trim() || DEFAULT_CLIENT_ID;
+    this.resolveAuthHeaders = options.auth?.resolveHeaders;
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.cache = options.cache ?? "no-store";
     this.credentials = options.credentials;
@@ -120,7 +122,9 @@ export class BaseHttpApiClient {
       ...(init?.headers ?? {}),
     };
 
-    if (this.authToken) {
+    if (this.resolveAuthHeaders) {
+      Object.assign(headers, this.resolveAuthHeaders());
+    } else if (this.authToken) {
       headers.Authorization = `Bearer ${this.authToken}`;
     }
     if (init?.idempotencyKey) {
