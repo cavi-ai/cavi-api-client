@@ -44,6 +44,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Acceptance gate (Runtime contract holds Claude-SDK shape)
+        run: pnpm run typecheck:gate
+
       - name: Run tests
         run: pnpm test
 

@@ -1,6 +1,6 @@
 {
   "name": "@cavi-ai/api-client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Gateway-agnostic TypeScript client for agent runtimes — one HTTP + WebSocket surface, provider adapters, and graceful degradation across workspaces, UIs, and gateways",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
@@ -41,7 +41,10 @@
     "CONTRIBUTING.md",
     "CONTRIBUTORS.md",
     "SECURITY.md",
+    "MIGRATION.md",
     "docs",
+    "!docs/superpowers",
+    "!docs/superpowers/**",
     "!docs/.DS_Store",
     "!docs/.code-review-graph",
     "!docs/.code-review-graph/**",
@@ -148,6 +151,7 @@
     "coverage": "vitest run --coverage",
     "lint:md": "markdownlint-cli2",
     "typecheck": "tsc --noEmit",
+    "typecheck:gate": "tsc --noEmit -p tsconfig.gate.json",
     "verify": "pnpm test && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
     "release:dry": "pnpm run verify && HUSKY=0 pnpm publish --access public --no-git-checks --dry-run",
     "release": "pnpm publish --access public"
