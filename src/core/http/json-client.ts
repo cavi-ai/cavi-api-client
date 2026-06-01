@@ -43,10 +43,24 @@ export class JsonHttpApiClient extends BaseHttpApiClient {
       }
       try {
         return JSON.parse(text) as TData;
-      } catch {
-        throw new Error(`Invalid JSON from ${path}.`);
+      } catch (error) {
+        const contentType = response.headers.get("content-type") ?? "unknown";
+        const preview = text.trim().length > 500 ? `${text.trim().slice(0, 500)}…` : text.trim();
+        const parseMessage = error instanceof Error ? error.message : String(error);
+        const method = init?.method ?? "GET";
+        throw new HttpApiError({
+          message: `${method} ${path} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
+          path,
+          url: path,
+          method,
+          status: response.status,
+          body: text,
+        });
       }
     } catch (error) {
+      if (error instanceof HttpApiError && error.message.includes("returned invalid JSON")) {
+        throw error;
+      }
       if (error instanceof HttpApiError && error.status > 0) {
         const details = parseGatewayErrorText(error.body, "application/json");
         throw buildGatewayHttpError({
@@ -67,12 +81,14 @@ export function createJsonHttpRequest(opts: {
   httpBase: string;
   authToken: string | null;
   clientId?: string | null;
+  defaultHeaders?: Record<string, string>;
   credentials?: RequestCredentials;
   cache?: RequestCache;
 }): JsonHttpRequest {
   const client = new JsonHttpApiClient(opts.surface, {
     baseUrl: opts.httpBase,
     allowRelativeBaseUrl: true,
+    defaultHeaders: opts.defaultHeaders,
     auth: {
       bearerToken: opts.authToken,
       clientId: opts.clientId,

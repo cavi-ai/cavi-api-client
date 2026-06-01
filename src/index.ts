@@ -325,6 +325,8 @@ export {
 } from "./core/gateway/providers/index.js";
 export { HERMES_PROVIDER_MODULE } from "./providers/hermes/provider-module.js";
 export { OPENCLAW_PROVIDER_MODULE } from "./providers/openclaw/provider-module.js";
+export { ClaudeApiClient, type ClaudeApiClientOptions } from "./providers/claude/client.js";
+export { CLAUDE_PROVIDER_MODULE } from "./providers/claude/provider-module.js";
 
 export {
   GatewayAgentConfigApiClient,

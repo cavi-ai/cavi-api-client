@@ -85,6 +85,7 @@ export class BaseHttpApiClient {
   readonly basePath: string;
   readonly authToken: string;
   readonly clientId: string;
+  readonly defaultHeaders: Record<string, string>;
   readonly resolveAuthHeaders?: () => Record<string, string>;
   readonly defaultTimeoutMs: number;
   readonly cache: RequestCache;
@@ -99,6 +100,7 @@ export class BaseHttpApiClient {
     this.basePath = normalizeBasePath(options.basePath);
     this.authToken = options.auth?.bearerToken?.trim() ?? "";
     this.clientId = options.auth?.clientId?.trim() || DEFAULT_CLIENT_ID;
+    this.defaultHeaders = { ...(options.defaultHeaders ?? {}) };
     this.resolveAuthHeaders = options.auth?.resolveHeaders;
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.cache = options.cache ?? "no-store";
@@ -119,6 +121,7 @@ export class BaseHttpApiClient {
     const headers: Record<string, string> = {
       Accept: "application/json",
       [PORTAL_CLIENT_ID_HEADER]: this.clientId,
+      ...this.defaultHeaders,
       ...(init?.headers ?? {}),
     };
 
@@ -252,9 +255,12 @@ export class BaseHttpApiClient {
     }
     try {
       return JSON.parse(text) as TResponse;
-    } catch {
+    } catch (error) {
+      const contentType = response.headers.get("content-type") ?? "unknown";
+      const preview = previewErrorBody(text.trim());
+      const parseMessage = getErrorMessage(error);
       throw new HttpApiError({
-        message: `${init?.method ?? "GET"} ${this.resolvePath(path)} returned invalid JSON`,
+        message: `${init?.method ?? "GET"} ${this.resolvePath(path)} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
         path: this.resolvePath(path),
         url: this.resolveUrl(path),
         method: init?.method ?? "GET",

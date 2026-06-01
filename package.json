@@ -127,6 +127,11 @@
       "import": "./dist/providers/openclaw/index.js",
       "default": "./dist/providers/openclaw/index.js"
     },
+    "./providers/claude": {
+      "types": "./dist/providers/claude/index.d.ts",
+      "import": "./dist/providers/claude/index.js",
+      "default": "./dist/providers/claude/index.js"
+    },
     "./frameworks/react": {
       "types": "./dist/frameworks/react/index.d.ts",
       "import": "./dist/frameworks/react/index.js",

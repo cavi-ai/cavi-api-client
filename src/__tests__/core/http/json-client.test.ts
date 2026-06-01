@@ -111,6 +111,37 @@ describe("json HTTP client", () => {
       );
     });
 
+    it("sends default runtime headers on every request", async () => {
+      const fetchMock = vi.fn(async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
+        httpBase: "http://gw",
+        authToken: "tok",
+        defaultHeaders: {
+          "X-Cavi-Gateway-Implementation": "openclaw",
+          "X-Cavi-Gateway-Provider": "openclaw",
+        },
+      });
+      await requestJson("/capabilities");
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://gw/capabilities",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "X-Cavi-Gateway-Implementation": "openclaw",
+            "X-Cavi-Gateway-Provider": "openclaw",
+          }),
+        }),
+      );
+    });
+
     it("returns empty object for 204", async () => {
       vi.stubGlobal(
         "fetch",
@@ -158,6 +189,27 @@ describe("json HTTP client", () => {
         name: "GatewayHttpError",
         status: 502,
       });
+    });
+
+    it("reports content type and body preview when a successful response is not JSON", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response("<html>wrong gateway</html>", {
+              status: 200,
+              headers: { "Content-Type": "text/html" },
+            }),
+        ),
+      );
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
+        httpBase: "",
+        authToken: null,
+      });
+      await expect(requestJson("/v1/capabilities")).rejects.toThrow(
+        /returned invalid JSON.*content-type=text\/html.*wrong gateway/u,
+      );
     });
 
     it("uses error.message from JSON body when present", async () => {
