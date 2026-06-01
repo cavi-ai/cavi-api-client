@@ -21,6 +21,10 @@ describe("Hermes chat run transport", () => {
         httpBase: "https://gateway.example",
         authToken: "test-token",
         clientId: "cavi-control-mobile",
+        headers: {
+          "X-Cavi-Gateway-Implementation": "hermes",
+          "X-Gateway-Provider": "hermes",
+        },
         input: "/tools portal sheet chat e2e",
         sessionId: sessionKey,
         sessionKey,
@@ -46,6 +50,8 @@ describe("Hermes chat run transport", () => {
       "Content-Type": "application/json",
       "X-Portal-Client-Id": "cavi-control-mobile",
       "X-Hermes-Session-Key": sessionKey,
+      "X-Cavi-Gateway-Implementation": "hermes",
+      "X-Gateway-Provider": "hermes",
     });
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     expect(body).toMatchObject({
@@ -88,6 +94,10 @@ describe("Hermes chat run transport", () => {
         httpBase: "https://gateway.example",
         authToken: "test-token",
         clientId: "cavi-control-mobile",
+        headers: {
+          "X-Cavi-Gateway-Implementation": "hermes",
+          "X-Gateway-Provider": "hermes",
+        },
         input: "/status",
         sessionId: sessionKey,
         sessionKey,
@@ -114,6 +124,11 @@ describe("Hermes chat run transport", () => {
     expect(fetchImpl.mock.calls[1]?.[0]).toBe(
       "https://gateway.example/v1/runs/run_2/events",
     );
+    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "X-Cavi-Gateway-Implementation": "hermes",
+      "X-Gateway-Provider": "hermes",
+      "X-Hermes-Session-Key": sessionKey,
+    });
   });
 
   it("uses the injected shared HTTP transport for approval resolution", async () => {
@@ -124,6 +139,10 @@ describe("Hermes chat run transport", () => {
         httpBase: "https://gateway.example",
         authToken: "test-token",
         clientId: "portal-client",
+        headers: {
+          "X-Cavi-Gateway-Implementation": "hermes",
+          "X-Gateway-Provider": "hermes",
+        },
         runId: "run_1",
         choice: "session",
         sessionKey: "session-1",
@@ -142,6 +161,8 @@ describe("Hermes chat run transport", () => {
       "Content-Type": "application/json",
       "X-Hermes-Session-Key": "session-1",
       "X-Portal-Client-Id": "portal-client",
+      "X-Cavi-Gateway-Implementation": "hermes",
+      "X-Gateway-Provider": "hermes",
     });
     expect(JSON.parse(String(init?.body))).toEqual({ choice: "session" });
   });
