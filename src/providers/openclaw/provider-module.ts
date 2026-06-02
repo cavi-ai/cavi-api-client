@@ -6,6 +6,18 @@ import { OpenClawSseRunEventProvider } from "./sse-run-event-provider.js";
 import { OpenClawWebSocketClient } from "./websocket.js";
 import { OpenClawWikiApiClient } from "./wiki.js";
 
+// The OpenClaw provider module supplies one concrete implementation per
+// unified capability interface (GatewayApiClient, GatewayMediaClient,
+// GatewayWikiClient, GatewayAgentConfigClient). Each dispatcher routes the
+// UI's unified call to OpenClaw's native surface — chat.send / agent.wait
+// / tts.convert (RPC) — rather than re-aliasing the generic v1 media or
+// v1 wiki REST paths (which OpenClaw does not serve; see
+// OPENCLAW_MANIFEST.rest).
+//
+// Capability slots that OpenClaw core doesn't natively cover (image / video
+// generation, wiki, etc.) throw a typed EndpointNotFound until a plugin
+// manifest (cavi-control or otherwise) layers routes on at the extension
+// layer. The api-client never silently hits a non-existent route.
 export const OPENCLAW_PROVIDER_MODULE: GatewayProviderModule = {
   kind: "openclaw",
   aliases: ["open-claw"],

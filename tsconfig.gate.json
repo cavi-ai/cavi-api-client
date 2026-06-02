@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "lib": ["ES2023", "DOM"], "types": [], "noEmit": true },
+  "include": ["src/__tests__/core/runtime/claude-sdk-shape.test.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -8,8 +8,8 @@ import {
   GATEWAY_WIKI_API_ENDPOINTS,
   HERMES_API_ENDPOINTS,
   HERMES_API_ENDPOINT_TEMPLATES,
-  OPENCLAW_RPC_METHODS,
 } from "../contracts/paths";
+import { OPENCLAW_RPC_METHODS } from "../providers/openclaw/manifest.derive";
 import {
   CAVI_CONTROL_OPERATOR_API,
   CAVI_CONTROL_API_ENDPOINTS,
@@ -20,42 +20,14 @@ import {
 } from "../extensions/cavi/contracts/paths";
 import {
   GatewayApiClient,
-  GatewayMediaApiClient,
-  GatewaySseRunEventProvider,
-  GatewayWikiApiClient,
-  GATEWAY_MEDIA_KINDS,
-  GATEWAY_WIKI_FORMATS,
-  HermesMediaApiClient,
-  HERMES_PROVIDER_MODULE,
-  HermesSseRunEventProvider,
-  HermesWebSocketClient,
-  HermesWikiApiClient,
-  MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
-  OpenClawApiClient,
-  OpenClawMediaApiClient,
-  OPENCLAW_PROVIDER_MODULE,
-  OpenClawSseRunEventProvider,
-  OpenClawWebSocketClient,
-  OpenClawWikiApiClient,
-  PortalApiClient,
-  PORTAL_DASHBOARD_IDS,
-  PORTAL_MEMORY_SNAPSHOT_CONTRACT,
   RUN_STREAM_EVENT_NAMES,
-  buildPortalMemoryEnvelope,
-  createContractGap,
   createDefaultTeamManifest,
-  createTeamRegistry,
   createGatewayMediaClient,
   createGatewaySseRunEventProvider,
   createGatewayWebSocketClient,
   createGatewayWikiClient,
-  getMobileGatewayEndpointPath,
   normalizeTeamManifest,
-  portalDashboardPath,
-  resolveOperatorTaskDispatchPath,
   SURFACE_CONTRACTS,
-  CAVI_SURFACE_CONTRACTS,
-  resolveCaviPath,
   resolvePath,
   resolveGatewayRouteBinding,
   resolveTeamActionApiPath,
@@ -64,8 +36,44 @@ import {
   resolveTeamWorkspaceApiPath,
   resolveTeamWorkspacePath,
   DEFAULT_TEAM_ROUTE_KEYS,
-  withCaviControlOperatorCapabilities,
 } from "../index";
+import {
+  GatewayMediaApiClient,
+  GatewaySseRunEventProvider,
+  GatewayWikiApiClient,
+  GATEWAY_MEDIA_KINDS,
+  GATEWAY_WIKI_FORMATS,
+} from "../core/gateway/index";
+import {
+  HermesMediaApiClient,
+  HERMES_PROVIDER_MODULE,
+  HermesSseRunEventProvider,
+  HermesWebSocketClient,
+  HermesWikiApiClient,
+} from "../providers/hermes/index";
+import {
+  OpenClawApiClient,
+  OpenClawMediaApiClient,
+  OPENCLAW_PROVIDER_MODULE,
+  OpenClawSseRunEventProvider,
+  OpenClawWebSocketClient,
+  OpenClawWikiApiClient,
+} from "../providers/openclaw/index";
+import {
+  MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
+  PortalApiClient,
+  PORTAL_DASHBOARD_IDS,
+  PORTAL_MEMORY_SNAPSHOT_CONTRACT,
+  buildPortalMemoryEnvelope,
+  createContractGap,
+  createTeamRegistry,
+  getMobileGatewayEndpointPath,
+  portalDashboardPath,
+  resolveOperatorTaskDispatchPath,
+  CAVI_SURFACE_CONTRACTS,
+  resolveCaviPath,
+  withCaviControlOperatorCapabilities,
+} from "../extensions/cavi/index";
 import { LibraryApiClient } from "../extensions/cavi/library/client";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "../core/http/types";
 
@@ -1050,11 +1058,12 @@ describe("agnostic HTTP API client package", () => {
     expect(features).toMatchObject({
       rpc: true,
       websocket: true,
+      // Capability advertisement = `hello-ok.features.methods` per the upstream
+      // doc — advertised subset only. `sessions.resolve` / `sessions.steer` are
+      // unadvertised in the manifest and must NOT appear here.
       rpcMethods: expect.arrayContaining([
         "sessions.list",
         "sessions.patch",
-        "sessions.resolve",
-        "sessions.steer",
         "agent.wait",
         "logs.tail",
         "chat.send",
@@ -1324,11 +1333,11 @@ describe("agnostic HTTP API client package", () => {
       kind: "audio",
       status: "queued",
     });
-    await expect(openclaw.getMediaJob("video", "job/a b")).resolves.toMatchObject({
-      id: "job/a b",
-      kind: "video",
-      status: "running",
-    });
+    // OpenClaw core does not expose a media job polling RPC — the dispatcher
+    // throws EndpointNotFound until a plugin manifest registers job routes.
+    await expect(openclaw.getMediaJob("video", "job/a b")).rejects.toThrow(
+      /openclaw: getMediaJob is not part of the core OpenClaw RPC surface/,
+    );
     await expect(generic.waitForMediaJob("video", "wait job", {
       intervalMs: 1,
       sleep: async () => undefined,
@@ -1368,7 +1377,8 @@ describe("agnostic HTTP API client package", () => {
       "https://gateway.example/v1/media/music/generate",
       "https://gateway.example/v1/media/image/generate",
       "https://gateway.example/v1/media/audio/generate",
-      "https://gateway.example/v1/media/video/jobs/job%2Fa%20b",
+      // OpenClaw getMediaJob is gated (EndpointNotFound) until the plugin
+      // manifest registers job routes — no fetch is issued for it.
       "https://gateway.example/v1/media/video/jobs/wait%20job",
       "https://gateway.example/v1/media/video/jobs/wait%20job",
       "https://gateway.example/v1/media/assets?kind=image",
@@ -1400,25 +1410,28 @@ describe("agnostic HTTP API client package", () => {
     expect(fetchImpl.mock.calls[3]?.[1]?.headers).toMatchObject({
       "Idempotency-Key": "tts-1",
     });
-    expect(fetchImpl.mock.calls[8]?.[1]).toMatchObject({
+    // Indices shifted down by one because OpenClaw getMediaJob is now gated
+    // and does not issue a fetch (was originally between audio/generate and the
+    // waitForMediaJob polls at index 4).
+    expect(fetchImpl.mock.calls[7]?.[1]).toMatchObject({
       method: "POST",
     });
-    expect(JSON.parse(String(fetchImpl.mock.calls[8]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchImpl.mock.calls[7]?.[1]?.body))).toEqual({
       kind: "image",
       filename: "cover.png",
       contentType: "image/png",
       dataBase64: "aW1hZ2U=",
     });
-    expect(fetchImpl.mock.calls[8]?.[1]?.headers).toMatchObject({
+    expect(fetchImpl.mock.calls[7]?.[1]?.headers).toMatchObject({
       "Idempotency-Key": "asset-1",
     });
-    expect(fetchImpl.mock.calls[9]?.[1]?.headers).toMatchObject({
+    expect(fetchImpl.mock.calls[8]?.[1]?.headers).toMatchObject({
       Accept: "application/json",
     });
-    expect(fetchImpl.mock.calls[10]?.[1]?.headers).toMatchObject({
+    expect(fetchImpl.mock.calls[9]?.[1]?.headers).toMatchObject({
       Accept: "image/*",
     });
-    expect(fetchImpl.mock.calls[11]?.[1]).toMatchObject({ method: "DELETE" });
+    expect(fetchImpl.mock.calls[10]?.[1]).toMatchObject({ method: "DELETE" });
     expect(() =>
       generic.generateMedia({ kind: "document" as never, input: "cover art" }),
     ).toThrow(/unsupported media kind/u);
@@ -1545,13 +1558,14 @@ describe("agnostic HTTP API client package", () => {
       jobId: "ingest_1",
       status: "queued",
     });
+    // OpenClaw core does not expose a wiki RPC namespace — the dispatcher
+    // throws EndpointNotFound until a wiki plugin manifest registers routes.
     await expect(openclaw.compileWiki("research", {
       path: "index.qmd",
       target: "html",
-    })).resolves.toMatchObject({
-      jobId: "compile_1",
-      status: "running",
-    });
+    })).rejects.toThrow(
+      /openclaw: compileWiki is not part of the core OpenClaw surface/,
+    );
     await expect(generic.promoteWiki("research", {
       sourcePath: "drafts/inbox.qmd",
       targetPath: "published/index.qmd",
@@ -1575,7 +1589,7 @@ describe("agnostic HTTP API client package", () => {
       "https://gateway.example/v1/wiki/vaults/research/tree",
       "https://gateway.example/v1/wiki/vaults/research/read?path=index.qmd",
       "https://gateway.example/v1/wiki/vaults/research/ingest",
-      "https://gateway.example/v1/wiki/vaults/research/compile",
+      // OpenClaw compileWiki is gated (EndpointNotFound) — no fetch issued.
       "https://gateway.example/v1/wiki/vaults/research/promote",
       "https://gateway.example/v1/wiki/vaults/research/jobs/compile%2F1",
       "https://gateway.example/v1/wiki/vaults/research/artifacts/artifact%2F1",
@@ -1591,7 +1605,9 @@ describe("agnostic HTTP API client package", () => {
     expect(fetchImpl.mock.calls[3]?.[1]?.headers).toMatchObject({
       "Idempotency-Key": "wiki-ingest-1",
     });
-    expect(fetchImpl.mock.calls[7]?.[1]?.headers).toMatchObject({
+    // Shifted from [7] down to [6] because OpenClaw compileWiki is gated
+    // (EndpointNotFound) and does not issue a fetch.
+    expect(fetchImpl.mock.calls[6]?.[1]?.headers).toMatchObject({
       Accept: "text/markdown",
     });
     expect(() => generic.readWikiPage("research", " ")).toThrow(/missing wiki page path/u);

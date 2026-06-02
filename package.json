@@ -1,6 +1,6 @@
 {
   "name": "@cavi-ai/api-client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Gateway-agnostic TypeScript client for agent runtimes — one HTTP + WebSocket surface, provider adapters, and graceful degradation across workspaces, UIs, and gateways",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
@@ -35,10 +35,19 @@
     "access": "public"
   },
   "files": [
+    "ARCHITECTURE.md",
     "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "CONTRIBUTORS.md",
     "SECURITY.md",
+    "MIGRATION.md",
     "docs",
+    "!docs/superpowers",
+    "!docs/superpowers/**",
+    "!docs/.DS_Store",
+    "!docs/.code-review-graph",
+    "!docs/.code-review-graph/**",
     "dist",
     "!dist/test-support",
     "!dist/__tests__",
@@ -121,6 +130,11 @@
       "import": "./dist/providers/openclaw/index.js",
       "default": "./dist/providers/openclaw/index.js"
     },
+    "./providers/claude": {
+      "types": "./dist/providers/claude/index.d.ts",
+      "import": "./dist/providers/claude/index.js",
+      "default": "./dist/providers/claude/index.js"
+    },
     "./frameworks/react": {
       "types": "./dist/frameworks/react/index.d.ts",
       "import": "./dist/frameworks/react/index.js",
@@ -137,6 +151,7 @@
     "coverage": "vitest run --coverage",
     "lint:md": "markdownlint-cli2",
     "typecheck": "tsc --noEmit",
+    "typecheck:gate": "tsc --noEmit -p tsconfig.gate.json",
     "verify": "pnpm test && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
     "release:dry": "pnpm run verify && HUSKY=0 pnpm publish --access public --no-git-checks --dry-run",
     "release": "pnpm publish --access public"

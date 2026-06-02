@@ -42,55 +42,12 @@ export const GATEWAY_SYSTEM_RPC_METHODS = {
   logsTail: "logs.tail",
 } as const;
 
-export const OPENCLAW_RPC_METHODS = {
-  health: GATEWAY_SYSTEM_RPC_METHODS.health,
-  status: "status",
-  logsTail: GATEWAY_SYSTEM_RPC_METHODS.logsTail,
-  agentWait: "agent.wait",
-  configGet: "config.get",
-  configSchema: "config.schema",
-  modelsList: "models.list",
-  commandsList: "commands.list",
-  toolsCatalog: "tools.catalog",
-  agentsList: "agents.list",
-  sessionsList: "sessions.list",
-  sessionsPreview: "sessions.preview",
-  sessionsDescribe: "sessions.describe",
-  sessionsUsage: "sessions.usage",
-  sessionsCreate: "sessions.create",
-  sessionsResolve: "sessions.resolve",
-  sessionsSend: "sessions.send",
-  sessionsSteer: "sessions.steer",
-  sessionsAbort: "sessions.abort",
-  sessionsPatch: "sessions.patch",
-  chatSend: "chat.send",
-  chatAbort: "chat.abort",
-} as const;
-
-export const OPENCLAW_CORE_RPC_METHODS = [
-  OPENCLAW_RPC_METHODS.health,
-  OPENCLAW_RPC_METHODS.status,
-  OPENCLAW_RPC_METHODS.logsTail,
-  OPENCLAW_RPC_METHODS.agentWait,
-  OPENCLAW_RPC_METHODS.configGet,
-  OPENCLAW_RPC_METHODS.configSchema,
-  OPENCLAW_RPC_METHODS.modelsList,
-  OPENCLAW_RPC_METHODS.commandsList,
-  OPENCLAW_RPC_METHODS.toolsCatalog,
-  OPENCLAW_RPC_METHODS.agentsList,
-  OPENCLAW_RPC_METHODS.sessionsList,
-  OPENCLAW_RPC_METHODS.sessionsPreview,
-  OPENCLAW_RPC_METHODS.sessionsDescribe,
-  OPENCLAW_RPC_METHODS.sessionsUsage,
-  OPENCLAW_RPC_METHODS.sessionsCreate,
-  OPENCLAW_RPC_METHODS.sessionsResolve,
-  OPENCLAW_RPC_METHODS.sessionsSend,
-  OPENCLAW_RPC_METHODS.sessionsSteer,
-  OPENCLAW_RPC_METHODS.sessionsAbort,
-  OPENCLAW_RPC_METHODS.sessionsPatch,
-  OPENCLAW_RPC_METHODS.chatSend,
-  OPENCLAW_RPC_METHODS.chatAbort,
-] as const;
+// OpenClaw RPC method tables and capability baseline live with the provider
+// (single source of truth = `OPENCLAW_MANIFEST` in
+// src/providers/openclaw/manifest.ts). The public names
+// `OPENCLAW_RPC_METHODS`, `OPENCLAW_CORE_RPC_METHODS`, and
+// `OPENCLAW_DEFAULT_CAPABILITIES` are re-exported from
+// `providers/openclaw/manifest.derive.ts` so consumers see the same identifiers.
 
 export const GATEWAY_MEDIA_API_BASE_PATH = "/v1/media" as const;
 
@@ -119,7 +76,9 @@ export const GATEWAY_MEDIA_API_ENDPOINTS = {
 } as const;
 
 export const HERMES_MEDIA_API_ENDPOINTS = GATEWAY_MEDIA_API_ENDPOINTS;
-export const OPENCLAW_MEDIA_API_ENDPOINTS = GATEWAY_MEDIA_API_ENDPOINTS;
+// NOTE: OpenClaw does not serve `/v1/media/*` — its `/v1/*` surface is OpenAI
+// compatibility only (`/v1/chat/completions`, `/v1/responses`, `/v1/models`,
+// `/v1/embeddings`). See OPENCLAW_MANIFEST.rest for the authoritative list.
 
 export const GATEWAY_WIKI_API_BASE_PATH = "/v1/wiki" as const;
 
@@ -148,7 +107,9 @@ export const GATEWAY_WIKI_API_ENDPOINTS = {
 } as const;
 
 export const HERMES_WIKI_API_ENDPOINTS = GATEWAY_WIKI_API_ENDPOINTS;
-export const OPENCLAW_WIKI_API_ENDPOINTS = GATEWAY_WIKI_API_ENDPOINTS;
+// NOTE: OpenClaw does not serve `/v1/wiki/*` — wiki on OpenClaw is a plugin
+// surface (RPC, not REST). See OPENCLAW_MANIFEST.rest for OpenClaw's actual
+// HTTP families.
 
 export const GATEWAY_SESSION_API_PATHS = {
   list: "/api/sessions/list",
@@ -169,7 +130,8 @@ export const GATEWAY_AGENT_CONFIG_API_ENDPOINTS = {
 } as const;
 
 export const HERMES_AGENT_CONFIG_API_ENDPOINTS = GATEWAY_AGENT_CONFIG_API_ENDPOINTS;
-export const OPENCLAW_AGENT_CONFIG_API_ENDPOINTS = GATEWAY_AGENT_CONFIG_API_ENDPOINTS;
+// NOTE: OpenClaw exposes agent configuration via RPC (`config.get`,
+// `config.schema`, `agents.files.*`), not HTTP. See OPENCLAW_MANIFEST.
 
 export const GATEWAY_PORTAL_API_ENDPOINTS = {
   config: (portalSlug: string) =>

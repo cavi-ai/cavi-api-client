@@ -22,7 +22,7 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Control Plane",
         slug: "control-plane",
         code: "CTRL",
-        portalId: "operator",
+        metadata: { portalId: "operator" },
         aliases: ["ops-control"],
       },
       workspace: {
@@ -53,7 +53,7 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Research",
         slug: "research",
         code: "RND",
-        portalId: "scout",
+        metadata: { portalId: "scout" },
         aliases: ["scout-school"],
       },
       workspace: {
@@ -95,7 +95,7 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Project Ops",
         slug: "project-ops",
         code: "PROJ",
-        portalId: "deb",
+        metadata: { portalId: "deb" },
         aliases: ["project-board"],
       },
       workspace: {
@@ -129,7 +129,7 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Machine",
         slug: "machine",
         code: "MCH",
-        portalId: "machine",
+        metadata: { portalId: "machine" },
         aliases: ["comedy-room"],
       },
       workspace: {

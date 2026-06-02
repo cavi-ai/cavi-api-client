@@ -28,6 +28,7 @@ export enum ApiClientErrorCode {
   ConnectFailed = "connect_failed",
   BackendUnavailable = "backend_unavailable",
   EndpointNotFound = "endpoint_not_found",
+  ProtocolMismatch = "protocol_mismatch",
   AuthRequired = "auth_required",
   AuthForbidden = "auth_forbidden",
 }
