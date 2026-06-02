@@ -3,8 +3,8 @@
 </h1>
 
 <p align="center">
-  <strong>A gateway-agnostic TypeScript client for agent runtimes.</strong><br>
-  HTTP, WebSocket RPC, SSE, media, wiki, team routing, React hooks, and typed data adapters behind one package boundary.
+  <strong>A provider-agnostic TypeScript client for agent runtimes.</strong><br>
+  One <code>RuntimeClient</code> contract, many providers (Hermes, OpenClaw, Claude/Anthropic). HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters behind one package boundary.
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -29,6 +29,8 @@ npm install @cavi-ai/api-client
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
   - [One Client Shape](#one-client-shape)
+  - [Providers](#providers)
+  - [Credential Schemes](#credential-schemes)
   - [Typed Errors](#typed-errors)
   - [Graceful Degradation](#graceful-degradation)
   - [Route Mirrors](#route-mirrors)
@@ -56,10 +58,14 @@ contracts, typed errors, and graceful fallback behavior. `@cavi-ai/api-client`
 keeps that plumbing in one reusable package so application code can focus on the
 workflow.
 
-The core is gateway-agnostic. Provider modules customize only the parts that are
-actually different, such as endpoint maps, headers, or method transport. The
+The core is provider-agnostic. Every provider implements one universal
+`RuntimeClient` contract (capabilities · runs · streaming); gateway-style
+providers (Hermes, OpenClaw) extend it with `GatewayClient` (teams, kanban,
+workspace, operator), while non-gateway providers (Claude / Anthropic) implement
+the runtime tier only. Provider modules customize only the parts that are
+actually different — endpoint maps, headers, auth scheme, method transport. The
 shared transports, error handling, stream parsing, and trace behavior stay in
-one place.
+one place, and an executable conformance kit keeps every provider honest.
 
 ## Runtime
 
@@ -73,22 +79,30 @@ one place.
 
 ## Exports
 
-The root export contains the common client APIs. Subpath exports let consumers
-import only the slice they need:
+The **root export** is a curated stable API: the unified client + provider
+registry, the universal `RuntimeClient`/`GatewayClient` types, errors and guards,
+the graceful-degradation envelope, the auth-seam credential helpers, the team
+manifest interface + resolver, and the run-stream contract. Everything else lives
+behind a **subpath** so consumers import only the slice they need:
 
-- `@cavi-ai/api-client/core/http`
+- `@cavi-ai/api-client/core/http` — `BaseHttpApiClient`, raw/JSON clients, redaction
 - `@cavi-ai/api-client/core/data`
 - `@cavi-ai/api-client/core/errors`
-- `@cavi-ai/api-client/core/runtime`
+- `@cavi-ai/api-client/core/runtime` — `RuntimeClient`, run-stream contract
 - `@cavi-ai/api-client/core/sse`
 - `@cavi-ai/api-client/core/ws`
-- `@cavi-ai/api-client/core/gateway`
+- `@cavi-ai/api-client/core/gateway` — gateway resource clients (media, wiki, agent-config, jobs)
 - `@cavi-ai/api-client/core/env`
 - `@cavi-ai/api-client/contracts`
-- `@cavi-ai/api-client/extensions/cavi`
+- `@cavi-ai/api-client/extensions/cavi` — `CaviControlApiClient`, registry, portal, library, adapters
 - `@cavi-ai/api-client/providers/hermes`
 - `@cavi-ai/api-client/providers/openclaw`
+- `@cavi-ai/api-client/providers/claude` — Claude (Anthropic) runtime provider
 - `@cavi-ai/api-client/frameworks/react`
+
+> **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
+> and low-level primitives moved off the root entry to their subpaths. See
+> [MIGRATION.md](MIGRATION.md) for the import map.
 
 ## Quick Start
 
@@ -107,7 +121,7 @@ const run = await gateway.startRun({
   input: "Summarize the current workspace state.",
   session_id: "dashboard",
 });
-// run.id / run.status are your handle for polling, streaming, or UI state.
+// run.run_id / run.status are your handle for polling, streaming, or UI state.
 // Failures are typed — see Typed Errors below for how to branch on them.
 ```
 
@@ -115,9 +129,13 @@ const run = await gateway.startRun({
 
 ### One Client Shape
 
-`GatewayApiClient` exposes the common run and capability methods. Built-in
-provider modules can be registered through `createGatewayApiClient`, and
-third-party modules use the same `GatewayProviderModule` interface.
+Every provider implements the universal **`RuntimeClient`** contract — capability
+profile, runs (`startRun`/optional `getRun`/`cancelRun`), and optional
+`streamRun`. **`GatewayClient`** *extends* `RuntimeClient` for gateway-style
+backends, adding teams, kanban, workspace, and operator surfaces. `GatewayApiClient`
+implements both tiers; a non-gateway provider (e.g. Claude) implements
+`RuntimeClient` only and declares its capability profile so unsupported surfaces
+fail with a typed `EndpointNotFound` rather than a hard crash.
 
 ```ts
 import {
@@ -142,6 +160,80 @@ const client = createGatewayApiClient(config.gateway, {
 
 Provider modules should reuse core transports. They should not fork JSON request
 handling, RPC flow, SSE parsing, trace redaction, or error normalization.
+
+### Providers
+
+Built-in providers register through the same registry; `createRuntimeProviderRegistry`
+accepts runtime-only modules (no gateway factories required):
+
+```ts
+import { createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes";
+import { OPENCLAW_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/openclaw";
+import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude";
+
+const registry = createRuntimeProviderRegistry({
+  modules: [
+    HERMES_PROVIDER_MODULE,
+    OPENCLAW_PROVIDER_MODULE,
+    createClaudeProviderModule({ apiKey: process.env.ANTHROPIC_API_KEY! }),
+  ],
+});
+
+registry.resolveProvider("claude-sdk"); // -> the Claude module
+```
+
+The **Claude (Anthropic) provider** is runtime-only — it maps `startRun` to
+`POST /v1/messages` and streams the Messages SSE into the canonical
+`RunStreamEvent`:
+
+```ts
+import { ClaudeApiClient } from "@cavi-ai/api-client/providers/claude";
+
+const claude = new ClaudeApiClient({ apiKey: process.env.ANTHROPIC_API_KEY! });
+
+const run = await claude.startRun({
+  input: "Summarize the workspace state.",
+  model: "claude-opus-4-8",
+  instructions: "Be concise.",
+});
+
+await claude.streamRun(
+  { input: "Stream a haiku.", model: "claude-opus-4-8" },
+  {
+    onEvent: (event) => appendRunEvent(event), // canonical RunStreamEvent
+    onComplete: () => markRunComplete(),
+  },
+);
+```
+
+Writing your own provider? Point the shared **conformance kit**
+(`src/__tests__/support/runtime-conformance.ts`) at your client and it must pass
+the same contract every built-in provider does.
+
+### Credential Schemes
+
+A provider declares its auth scheme through `auth.resolveHeaders` instead of the
+core hardcoding a bearer token. Ready-made resolvers cover the common cases:
+
+```ts
+import { bearerCredentials, apiKeyCredentials } from "@cavi-ai/api-client";
+
+// Gateway bearer token (the default if you pass auth.bearerToken)
+const gatewayAuth = { resolveHeaders: bearerCredentials(process.env.GATEWAY_API_AUTH_TOKEN) };
+
+// Anthropic api-key + version header
+const anthropicAuth = {
+  resolveHeaders: apiKeyCredentials(process.env.ANTHROPIC_API_KEY!, {
+    header: "x-api-key",
+    extra: { "anthropic-version": "2023-06-01" },
+  }),
+};
+```
+
+A provider can also report a protocol version; `assertProtocolVersion(caps, expected)`
+turns a backend version mismatch into a typed `ProtocolMismatch` error instead of
+a confusing downstream failure.
 
 ### Typed Errors
 
@@ -217,27 +309,30 @@ does not drift into hand-built strings. Mirrored route literals belong in:
   `src/extensions/cavi/contracts/paths.ts` and
   `src/extensions/cavi/contracts/surfaces.ts`.
 
-Consumers should use exported constants and resolvers such as `resolvePath`,
-`resolveCaviPath`, `appendHttpQuery`, and extension-specific helpers. Avoid
-assembling paths by hand in clients, components, or adapters. New or changed
-paths must come from the upstream gateway/plugin contract first.
+Consumers should use exported constants and resolvers such as `resolvePath` and
+`appendHttpQuery` (root), and `resolveCaviPath` plus the CAVI contract helpers
+(`@cavi-ai/api-client/extensions/cavi`). Avoid assembling paths by hand in
+clients, components, or adapters. New or changed paths must come from the
+upstream gateway/plugin contract first.
 
 ### Team Manifest
 
-Team, member, workspace, and action routing is runtime configuration. This
-package provides TypeScript types, normalization, lookup validation, generated
-route helpers, and workspace path guardrails for the manifest shape the
-gateway/plugin layer supplies. Applications own the actual team data.
+The team manifest is an **interface, not data the package owns**. The package
+ships the manifest *shape* (types + normalization + lookup validation), a
+`TeamRouteResolver`, and a `TeamManifestSource` "bring-your-own-manifest" seam —
+the host supplies the actual team/member/workspace/action data at runtime. CAVI
+identity specifics live in `identity.metadata`, keeping the contract agnostic.
 
 ```ts
 import {
-  configureTeamRegistryConfig,
+  createStaticManifestSource,
+  createTeamRouteResolver,
   normalizeTeamManifest,
   resolveTeamWorkspaceApiPath,
   type TeamManifest,
 } from "@cavi-ai/api-client";
 
-const manifest = normalizeTeamManifest({
+const source = createStaticManifestSource({
   version: 1,
   teams: [
     {
@@ -252,13 +347,16 @@ const manifest = normalizeTeamManifest({
   ],
 } satisfies TeamManifest);
 
-configureTeamRegistryConfig({ provider: "gateway", manifest });
-
-const team = manifest.teams[0]!;
-const path = resolveTeamWorkspaceApiPath(team, "media.images", {
+const manifest = await source.getManifest();
+const resolver = createTeamRouteResolver();
+const path = resolver.resolveWorkspaceApiPath(manifest, "research", "media.images", {
   memberId: "analyst",
 });
 ```
+
+> The CAVI team registry (which overlays operator-dispatch data on top of the
+> generic manifest) lives in `@cavi-ai/api-client/extensions/cavi` —
+> `createTeamRegistry`, `configureTeamRegistryConfig`, `TEAM_REGISTRY_CONFIG`.
 
 See [docs/team-manifest.md](docs/team-manifest.md) and
 [docs/team-manifest.consumer.template.ts](docs/team-manifest.consumer.template.ts)
@@ -269,7 +367,10 @@ for consumer-owned manifest examples.
 ### HTTP
 
 ```ts
-import { CaviControlApiClient, resolveHttpApiConfigFromEnv } from "@cavi-ai/api-client";
+import {
+  CaviControlApiClient,
+  resolveHttpApiConfigFromEnv,
+} from "@cavi-ai/api-client/extensions/cavi";
 
 const config = resolveHttpApiConfigFromEnv(process.env);
 const cavi = new CaviControlApiClient({
@@ -318,7 +419,7 @@ const stream = createGatewaySseRunEventProvider({
   sessionKey: "dashboard",
 });
 
-// Keep the subscription handle so you can `subscription.unsubscribe()` on unmount.
+// Keep the subscription handle so you can `subscription.dispose()` on unmount.
 const subscription = await stream.subscribe(
   { runId: "run-123" },
   {
@@ -381,7 +482,7 @@ The extension mirrors CAVI-specific DTOs, adapters, fallback providers, and
 plugin route contracts while still using shared transports and error handling.
 
 ```ts
-import { createCaviControlAdapters } from "@cavi-ai/api-client";
+import { createCaviControlAdapters } from "@cavi-ai/api-client/extensions/cavi";
 
 const adapters = createCaviControlAdapters({
   gatewayBaseUrl,
@@ -440,7 +541,8 @@ failure — `isAuthError` covers `HttpApiError` and `GatewayHttpError`, so you
 never re-check `.status` by hand:
 
 ```ts
-import { CaviControlApiClient, isAuthError } from "@cavi-ai/api-client";
+import { isAuthError } from "@cavi-ai/api-client";
+import { CaviControlApiClient } from "@cavi-ai/api-client/extensions/cavi";
 
 async function withFreshAuth<T>(
   tokens: TokenStore,

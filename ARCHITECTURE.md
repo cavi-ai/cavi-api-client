@@ -1,8 +1,9 @@
 # Architecture
 
-`@cavi-ai/api-client` is one gateway-agnostic TypeScript client package. The
-public API should stay unified even when a provider, product extension, or UI
-framework needs custom behavior behind the boundary.
+`@cavi-ai/api-client` is one provider-agnostic TypeScript client package. Every
+provider implements a universal `RuntimeClient` contract; gateway-style providers
+extend it with `GatewayClient`. The public API stays unified even when a provider,
+product extension, or UI framework needs custom behavior behind the boundary.
 
 ## Layers
 
@@ -10,19 +11,23 @@ framework needs custom behavior behind the boundary.
 src/index.ts
   -> core/
   -> contracts/
-  -> providers/hermes | providers/openclaw
+  -> providers/hermes | providers/openclaw | providers/claude
   -> extensions/cavi
   -> frameworks/react
 ```
 
-- `core/` owns shared HTTP, WebSocket, JSON-RPC, SSE, data-envelope, runtime,
-  error, and gateway-client primitives. It must not import provider,
+- `core/` owns shared HTTP, WebSocket, JSON-RPC, SSE, data-envelope, error, and
+  gateway-client primitives, plus the universal `RuntimeClient` contract and the
+  canonical run-stream contract in `core/runtime/`. It must not import provider,
   extension, or framework modules.
-- `contracts/` owns gateway-agnostic path tables, surface maps, path resolvers,
-  and the runtime-supplied team manifest schema.
-- `providers/*` adapt a concrete gateway to the shared client interfaces. They
-  may customize endpoint maps, headers, default surfaces, and transport method
-  mapping, but they should reuse the core transports and error handling.
+- `contracts/` owns provider-agnostic path tables, surface maps, path resolvers,
+  and the team manifest *interface* — its types, normalization, a
+  `TeamRouteResolver`, and a `TeamManifestSource` seam (host-supplied data).
+- `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
+  providers (Hermes, OpenClaw) implement `GatewayClient`; runtime-only providers
+  (Claude / Anthropic) implement `RuntimeClient`. They may customize endpoint
+  maps, headers, auth scheme, default surfaces, and transport method mapping, but
+  they reuse the core transports and error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
   fallback snapshots, and DTO shaping. It composes the generic core instead of
   changing the provider interface.
@@ -31,15 +36,28 @@ src/index.ts
 
 ## Provider Model
 
-Consumers create one `GatewayApiClient` shape and choose a provider through the
-registry. Built-in provider modules live under `src/providers/hermes` and
-`src/providers/openclaw`; host applications can provide their own
-`GatewayProviderModule` implementations.
+The contract is tiered. **`RuntimeClient`** is the universal surface every
+provider implements — `getRuntimeCapabilities`, `startRun`, optional
+`getRun`/`cancelRun`, and optional `streamRun`. **`GatewayClient`** extends it for
+gateway backends, adding teams, kanban, workspace, and operator surfaces. Each
+provider declares a capability profile; calling an unsupported surface returns a
+typed `EndpointNotFound` rather than crashing.
 
-OpenClaw-specific behavior belongs in the OpenClaw provider module. CAVI Control
-and plugin/operator behavior belongs in `extensions/cavi`. Keeping those two
-planes separate lets OpenClaw track the current WebSocket/JSON-RPC API without
-turning the core package into an OpenClaw-only client.
+Consumers build one client and choose a provider through a registry.
+`createGatewayProviderRegistry` holds gateway providers; the generic
+`createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in
+modules live under `src/providers/{hermes,openclaw,claude}`; host applications can
+supply their own `RuntimeProviderModule` / `GatewayProviderModule`. A provider
+authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie,
+or api-key) instead of the core hardcoding a token.
+
+OpenClaw/Hermes-specific behavior belongs in the matching provider module; Claude
+(Anthropic) is runtime-only and maps `startRun` to the Messages API. CAVI Control
+and plugin/operator behavior belongs in `extensions/cavi`. Keeping these planes
+separate lets each provider track its own API without turning the core package
+into a single-provider client. The shared conformance kit
+(`src/__tests__/support/runtime-conformance.ts`) is the executable contract every
+provider must pass.
 
 ## Route Ownership
 
