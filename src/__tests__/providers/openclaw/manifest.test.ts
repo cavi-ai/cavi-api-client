@@ -14,16 +14,9 @@ import {
   OPENCLAW_RPC_METHODS,
 } from "../../../providers/openclaw/manifest.derive";
 import { OPENCLAW_MANIFEST } from "../../../providers/openclaw/manifest";
+import { OPENCLAW_VENDORED_RPC_METHODS } from "./openclaw-rpc-methods.fixture";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
-const VENDORED_DOC = path.join(
-  REPO_ROOT,
-  "docs",
-  "api",
-  "providers",
-  "openclaw",
-  "api-endpoints.md",
-);
 const CLIENT_FILE = path.join(
   REPO_ROOT,
   "src",
@@ -86,16 +79,14 @@ describe("OpenClaw manifest conformance", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("mirrors every manifest RPC method in the vendored gateway doc", () => {
-    const doc = fs.readFileSync(VENDORED_DOC, "utf8");
+  it("mirrors every manifest RPC method in the vendored gateway method list", () => {
+    // The vendored list is a name-only golden snapshot of the gateway's RPC
+    // surface (see openclaw-rpc-methods.fixture.ts). A manifest method missing
+    // from it means the manifest drifted ahead of the gateway — re-vendor.
+    const vendored = new Set(OPENCLAW_VENDORED_RPC_METHODS);
     const missing = Object.values(OPENCLAW_MANIFEST.rpc)
       .map((entry) => entry.method)
-      .filter((wire) => {
-        // Wire method names appear as bare backticked tokens in table rows,
-        // e.g. `| `chat.send` |`. We accept any occurrence inside backticks.
-        const needle = "`" + wire + "`";
-        return !doc.includes(needle);
-      });
+      .filter((wire) => !vendored.has(wire));
     expect(missing).toEqual([]);
   });
 
