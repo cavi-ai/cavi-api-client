@@ -25,7 +25,7 @@ behavior, product runtime globals, or local filesystem assumptions to a team
 entry.
 
 The generic manifest contract intentionally lives in `src/contracts` because
-`team.*` routes are gateway-agnostic. CAVI/operator registry behavior stays in
+`team.*` routes are provider-agnostic. CAVI/operator registry behavior stays in
 `src/extensions/cavi/registry`; apps can use the manifest without inheriting a
 CAVI registry layout.
 
@@ -217,6 +217,38 @@ before sending the request. Responses should use the stable `TeamActionResponse`
 union (`json`, `text`, `markdown`, or `artifact`) instead of inventing a custom
 body shape for each agent.
 
+## Member-Action Surfaces
+
+Per-agent and per-plugin HTTP surfaces are declared as **member actions**, not as
+package-level route tables. An action's `route` pins it to an explicit endpoint:
+
+```ts
+{
+  id: "machine",
+  actions: [
+    { id: "dashboard", route: { method: "GET",  surfaceKey: "machine.dashboard", path: "/api/plugins/machine/dashboard" } },
+    { id: "comedyRun", route: { method: "POST", surfaceKey: "machine.comedyRun", path: "/v1/runs" } },
+  ],
+}
+// resolveTeamActionApiPath(manifest, teamId, "dashboard", { memberId: "machine" })
+//   -> "/api/plugins/machine/dashboard"
+```
+
+When `route.path` is set, `resolveTeamActionApiPath` returns it directly; otherwise
+it falls back to the generated `agent.action` / `action` route. This is why the
+package ships **no** concrete agent slugs — the host manifest owns its fleet's
+surfaces, and `route.surfaceKey` gives each a stable name for lookup.
+
+## Manifest Source And Route Resolver
+
+The package exposes a seam so hosts can supply (and cache) the manifest however
+they like, and override route resolution without forking:
+
+- `TeamManifestSource` (`createStaticManifestSource`, `createCachedManifestSource`)
+  — where the manifest comes from (a static object, or a cached async fetch).
+- `TeamRouteResolver` (`createTeamRouteResolver`) — resolves `team.*`, action, and
+  workspace routes; a host can wrap it to customize resolution.
+
 ## Add Or Remove Agents
 
 Keep add/remove logic in the consumer. A registry editor should mutate the
@@ -237,7 +269,7 @@ neutral CAVI extension manifest example.
 ## Extension Path Ownership
 
 The generic manifest contract stays in `src/contracts/**` because `team.*`
-routes are gateway-agnostic. CAVI plugin routes stay in
+routes are provider-agnostic. CAVI plugin routes stay in
 `src/extensions/cavi/contracts/**`; they should append to extension-owned base
 paths with helpers such as `appendCaviApiPath`, `resolvePortalApiPath`, or
 `resolveLibraryApiPath` instead of adding product-specific route grammar to

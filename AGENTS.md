@@ -1,17 +1,17 @@
 # @cavi-ai/api-client
 
-This package is a gateway-agnostic API client package for agent runtime clients.
+This package is a provider-agnostic API client package for agent runtime clients.
 
 ## Source Of Truth
 
 - Import this package as `@cavi-ai/api-client`.
 - Do not import app-local or retired host packages.
-- Provider-specific aliases may exist inside provider modules. New public APIs should use gateway-agnostic names first.
+- Provider-specific aliases may exist inside provider modules. New public APIs should use provider-agnostic names first.
 
-## Gateway Model
+## Provider Model
 
-- Keep one client interface with provider-specific override implementations behind it.
-- Core APIs must be gateway-agnostic. Do not hardcode a concrete provider into new core interfaces, config keys, or routing decisions.
+- `RuntimeClient` is the universal contract every provider implements; `GatewayClient` extends it for gateway backends (teams/kanban/workspace/operator). Runtime-only providers (Claude) implement `RuntimeClient` alone.
+- Core APIs must be provider-agnostic. Do not hardcode a concrete provider into new core interfaces, config keys, or routing decisions.
 - Provider-specific names are acceptable only in provider-specific modules.
 
 ## Paths
