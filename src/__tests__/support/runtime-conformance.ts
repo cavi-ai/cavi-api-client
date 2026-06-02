@@ -2,22 +2,13 @@ import { runtimeSupports } from "../../core/runtime/capabilities";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
-} from "../../core/gateway/run/contracts";
+} from "../../core/runtime/run-stream";
 import type { RuntimeClient } from "../../core/runtime/client";
 import type { RuntimeRunStartBody } from "../../core/runtime/run";
-import type { RunEventStreamHandlers } from "../../core/gateway/run/event-stream";
-
-type StreamingClient = RuntimeClient & {
-  streamRun?(
-    body: RuntimeRunStartBody,
-    handlers: RunEventStreamHandlers,
-    options?: { signal?: AbortSignal },
-  ): Promise<void>;
-};
 
 export type RuntimeConformanceContext = {
   /** Build a fresh, mock-backed client for each check. */
-  makeClient: () => StreamingClient;
+  makeClient: () => RuntimeClient;
   /** A minimal valid run body for this provider. */
   runBody: RuntimeRunStartBody;
   /** A run body to stream; required only if the provider declares streaming + streamRun. */

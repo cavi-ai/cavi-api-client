@@ -11,7 +11,7 @@ import {
   CLAUDE_DEFAULT_ANTHROPIC_VERSION,
 } from "./paths.js";
 import { consumeSseStream } from "../../core/sse/index.js";
-import type { RunEventStreamHandlers } from "../../core/gateway/run/event-stream.js";
+import type { RunEventStreamHandlers } from "../../core/runtime/run-stream.js";
 import { mapAnthropicStreamEvent, readAnthropicRunId } from "./stream.js";
 
 const DEFAULT_MAX_TOKENS = 4096;

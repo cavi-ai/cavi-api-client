@@ -6,3 +6,4 @@ export {
   type RuntimeClient,
 } from "./client.js";
 export * from "./protocol.js";
+export * from "./run-stream.js";
