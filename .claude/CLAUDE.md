@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-`@cavi-ai/api-client` is the **single private API client package** for CAVI Control mobile and portal clients — gateway-agnostic HTTP + WebSocket access to fleet data. It is a pure TypeScript ESM library (React is an optional peer dep; ships compiled `dist/`).
+`@cavi-ai/api-client` is the provider-agnostic API client package used by CAVI Control mobile and portal clients — provider-agnostic HTTP + WebSocket access to agent runtimes (the CAVI-specific surfaces live in `extensions/cavi`). It is a pure TypeScript ESM library (React is an optional peer dep; ships compiled `dist/`).
 
 **Read `AGENTS.md` first** — it is the authoritative package-boundary contract (forbidden imports, path-literal ownership, repo-root rules). The hardening tests enforce it. This file and the root `CLAUDE.md` cover architecture and workflow that AGENTS.md does not.
 
@@ -24,17 +24,17 @@ Tests live under `src/__tests__/**`, mirroring the source tree (not colocated). 
 
 Strict dependency direction: **`core` → `contracts` → `extensions/cavi` → `providers`/`react`**. Lower layers never import upward.
 
-1. **`src/core/`** — gateway-agnostic foundation, no domain knowledge. `http/` is the `BaseHttpApiClient` fetch wrapper (timeout, bearer auth, trace hooks, `HttpApiError`); `gateway/` is the `GatewayRpcClient` WebSocket RPC client + `GatewayApiClient`, organized into `client/`, `agent/`, `run/`, `rpc/`, `snapshots/`, `resources/`, `envelope/`, `portal/`, and `providers/` (provider plugin plumbing). `runtime/`, `sse/`, `ws/`, `data/`, and `env/` (env→config + `repo-root.ts`) round it out. Only `http` and `gateway` touch the network.
-2. **`src/contracts/`** — global path & surface contracts: `paths.ts` (gateway/team/kanban route tables), `surfaces.ts` (`SURFACE_CONTRACTS` + `GatewayMode`), `resolve.ts` (`resolvePath(key, mode)`), `team-manifest.ts`.
+1. **`src/core/`** — provider-agnostic foundation, no domain knowledge. `http/` is the `BaseHttpApiClient` fetch wrapper (timeout, bearer auth, trace hooks, `HttpApiError`); `gateway/` is the `GatewayRpcClient` WebSocket RPC client + `GatewayApiClient`, organized into `client/`, `agent/`, `run/`, `rpc/`, `snapshots/`, `resources/`, `envelope/`, `portal/`, and `providers/` (provider plugin plumbing). `runtime/` holds the universal `RuntimeClient` contract, runtime capabilities, the canonical run/run-stream types, and the protocol-version guard; `sse/`, `ws/`, `data/`, and `env/` (env→config + `repo-root.ts`) round it out. Only `http` and `gateway` touch the network.
+2. **`src/contracts/`** — global path & surface contracts: `paths.ts` (gateway/team/kanban route tables), `surfaces.ts` (`SURFACE_CONTRACTS`), `resolve.ts` (`resolvePath(key, params?)`), `team-manifest.ts` (+ `manifest-source.ts`, `route-resolver.ts`).
 3. **`src/extensions/cavi/`** — CAVI domain code. `contracts/` owns CAVI route literals + dynamic route helpers (`paths.ts`), surface keys (`surfaces.ts`), `resolveCaviPath`, and `mobile.ts`/`portals.ts`. Feature folders: `project-board/`, `operator-control/`, `discourse/`, `portal/`, `library/`, `registry/`, `runtime/`, `adapters/` (`create-cavi-control-adapters.ts`), `domain/` (snapshot DTOs), and `fallbacks/snapshots/` (production degraded-mode data, **not** test mocks). `client.ts` is `CaviControlApiClient`.
-4. **`src/providers/{hermes,openclaw}/`** — provider-specific surfaces over core: `client.ts`, `agent-config.ts`, run/SSE providers, `media.ts`, `wiki.ts`, `provider-module.ts`, and thin team-registry wrappers.
+4. **`src/providers/{hermes,openclaw,claude}/`** — provider-specific surfaces over core: gateway providers (Hermes, OpenClaw) ship `client.ts`, `agent-config.ts`, run/SSE providers, `media.ts`, `wiki.ts`, `provider-module.ts`, and thin team-registry wrappers; Claude (Anthropic) is **runtime-only** (`paths.ts` + `provider-module.ts` + a `RuntimeClient` over the Messages API).
 5. **`src/frameworks/react/`** — React context/hooks (optional peer dep). UI-framework bindings live under `frameworks/**` as siblings.
 
-`index.ts` is the root public entry; the package also ships subpath exports (`./core/*`, `./contracts`, `./extensions/cavi`, `./providers/hermes`, `./providers/openclaw`, `./frameworks/react`).
+`index.ts` is the curated root public entry; the package also ships subpath exports (`./core/*`, `./contracts`, `./extensions/cavi`, `./providers/hermes`, `./providers/openclaw`, `./providers/claude`, `./frameworks/react`).
 
-### Two gateway transports, one model
+### One universal contract, two transports
 
-HTTP REST (`BaseHttpApiClient`) and WebSocket RPC (`GatewayRpcClient`) coexist. Core interfaces stay **gateway-agnostic** — `Gateway*` is canonical; provider selection lives in `core/gateway/providers/**` while concrete Hermes/OpenClaw modules live in `src/providers/**`. Universal concepts (agent runs, run-stream events) live in `core`; `extensions/cavi` re-exports them and adds only its own aggregates. Do not hardcode a product gateway or provider name into core.
+Every provider implements the universal `RuntimeClient` contract; `GatewayClient` **extends** it for gateway backends. HTTP REST (`BaseHttpApiClient`) and WebSocket RPC (`GatewayRpcClient`) coexist. Core interfaces stay **provider-agnostic** — `RuntimeClient` is canonical and `Gateway*` extends it; provider selection lives in `core/gateway/providers/**` while concrete Hermes/OpenClaw/Claude modules live in `src/providers/**`. Universal concepts (the `RuntimeClient` contract, agent runs, run-stream events) live in `core`; `extensions/cavi` re-exports them and adds only its own aggregates. Do not hardcode a product gateway or provider name into core.
 
 ### Graceful degradation is a core contract, not an afterthought
 

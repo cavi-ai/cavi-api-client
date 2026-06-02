@@ -4,7 +4,7 @@ Thanks for contributing. This package is the shared bridge between many agent
 runtimes and the apps that consume them, so the bar is: **adding a provider or a
 feature should be additive — a small module, not a fork.** This guide explains the
 workflow, the boundary rules, and the checklists for the two most common
-contributions (a new gateway provider, a new feature).
+contributions (a new provider, a new feature).
 
 Please follow the project [Code of Conduct](CODE_OF_CONDUCT.md) in issues, pull
 requests, reviews, and discussions.
@@ -55,20 +55,21 @@ so explicitly in your PR.
 ```text
 core → contracts
 core/contracts → extensions/cavi
-core/contracts → providers/hermes | providers/openclaw | frameworks/react
+core/contracts → providers/hermes | providers/openclaw | providers/claude | frameworks/react
 ```
 
 Lower layers never import upward. Concretely:
 
-- **`core/`** is gateway-agnostic. No product knowledge, no `extensions/cavi/`,
-  concrete `providers/`, or `frameworks/` imports. Universal concepts (runs, run-stream events, transports) live
-  here.
+- **`core/`** is provider-agnostic. No product knowledge, no `extensions/cavi/`,
+  concrete `providers/`, or `frameworks/` imports. Universal concepts — the
+  `RuntimeClient` contract, runs, run-stream events, transports — live here.
 - **`contracts/`** owns global paths, surfaces, and the agnostic team manifest. No imports
   from `extensions/` or providers.
 - **`extensions/cavi/`** owns CAVI-specific clients, extension contracts, adapters,
   domain DTOs, registry wrappers.
-- **`core/gateway/providers/`** is the plugin boundary; `providers/hermes` and
-  `providers/openclaw` are the built-in adapters.
+- **`core/gateway/providers/`** is the plugin boundary; `providers/hermes`,
+  `providers/openclaw`, and `providers/claude` are the built-in adapters
+  (Claude is runtime-only — it implements `RuntimeClient`, not a gateway).
 - **`frameworks/react/`** imports `core/gateway` and React only. New UI-framework
   bindings live as siblings under `frameworks/`.
 
@@ -80,29 +81,36 @@ Gateway internals are grouped by owner folder under `src/core/gateway/`
 must re-export owner-folder indexes directly. New source should import from the
 owner folder or from the canonical aggregate.
 
-## Adding a gateway provider
+## Adding a provider
 
 The whole point of the provider model is that you do **not** edit core to add a
-gateway. A provider is a `GatewayProviderModule`. Built-in wiring (Hermes,
-OpenClaw) lives in `src/providers/hermes/provider-module.ts` and
-`src/providers/openclaw/provider-module.ts`; third-party providers are passed as
-modules/registries by the host app.
+provider. Every provider implements the universal `RuntimeProviderModule`;
+`GatewayProviderModule` **extends** it for gateway-backed providers that also need
+teams/kanban/workspace/operator surfaces. Runtime-only providers (like Claude /
+Anthropic, which maps `startRun` to the Messages API) implement
+`RuntimeProviderModule` alone. Built-in wiring lives in
+`src/providers/{hermes,openclaw,claude}/provider-module.ts`; third-party providers
+are passed as modules/registries by the host app.
 
 Checklist:
 
 1. **Implement the module.** At minimum `kind`, optional `aliases`, and the
-   relevant `create*` factory. Reuse `GatewayApiClient` with a surface name; only
-   override what genuinely differs (headers, endpoint map, default surface).
+   relevant `create*` factory. A gateway provider reuses `GatewayApiClient` with a
+   surface name; a runtime-only provider implements `RuntimeClient` directly. Only
+   override what genuinely differs (headers, auth scheme, endpoint map, default surface).
 
    ```ts
    import { GatewayApiClient } from "@cavi-ai/api-client";
    import { type GatewayProviderModule } from "@cavi-ai/api-client/core/gateway";
 
+   // Gateway-backed provider (teams/kanban/workspace + runs):
    export const acmeProvider: GatewayProviderModule = {
      kind: "acme",
      aliases: ["acme-gateway"],
      createApiClient: (options) => new GatewayApiClient(options, "acme-api"),
    };
+   // Runtime-only providers implement RuntimeProviderModule instead — no gateway
+   // surfaces, just getRuntimeCapabilities + startRun (+ optional getRun/cancelRun/streamRun).
    ```
 
 2. **Do not fork the engine.** The SSE parser, RPC protocol, retry semantics, and
@@ -134,7 +142,7 @@ Checklist:
    401/403 and `unknown`-classified errors must still throw.
 4. **Export from the right entry.** Add public API to `src/index.ts` and, if it
    belongs to a slice, the relevant subpath entry. Keep provider-specific names out
-   of the gateway-agnostic surface unless the provider module owns that name.
+   of the provider-agnostic surface unless the provider module owns that name.
 
 ## Tests
 
