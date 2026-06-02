@@ -1,58 +1,29 @@
 import {
   RUN_STREAM_EVENT_NAMES,
-  type AgentRunDetailSnapshot,
-  type AgentRunPreviewItem,
   type RunStreamEvent,
   type RunStreamEventName,
   type RunStreamToolCall,
   type RunStreamToolEvent,
   type RunStreamToolStatus,
+  type RunEventStreamHandlers,
+  type RunEventStreamProvider,
+  type RunEventStreamSubscribeParams,
+  type RunEventStreamSubscription,
+} from "../../runtime/run-stream.js";
+import {
+  type AgentRunDetailSnapshot,
+  type AgentRunPreviewItem,
 } from "./contracts.js";
 import { combineAbortSignals } from "../../sse/index.js";
 
-/**
- * Disposes an active subscription. Idempotent: calling more than once is a no-op.
- */
-export type RunEventStreamSubscription = {
-  dispose(): void | Promise<void>;
-};
-
-export type RunEventStreamSubscribeParams = {
-  runId: string;
-  /** Optional caller-supplied abort signal. Implementations MUST honor abort and dispose. */
-  signal?: AbortSignal;
-};
-
-export type RunEventStreamHandlers = {
-  onEvent: (event: RunStreamEvent) => void;
-  /** Transport / parse errors. Lifecycle "run.failed" is delivered via {@link onEvent}, not here. */
-  onError?: (error: unknown) => void;
-  /** Fired once after the stream has emitted its last event of the run. */
-  onComplete?: () => void;
-};
-
-/**
- * Harness-agnostic source of live run events.
- *
- * Implementations bind to a specific transport (Hermes SSE, gateway WebSocket,
- * run-detail poll, mock) and translate transport-native messages into the
- * canonical {@link RunStreamEvent} discriminated union from this package.
- *
- * Contract:
- * - Every emitted event MUST have its `event` field set to one of
- *   {@link RUN_STREAM_EVENT_NAMES}. No transport-native names leak through.
- * - Implementations MUST be safe to dispose at any time (during, before, or
- *   after the first event) without throwing.
- * - Implementations MAY synthesize events that the underlying transport does
- *   not natively emit (e.g. the poll provider synthesizes tool events from a
- *   post-hoc preview). Consumers cannot tell the difference and shouldn't try.
- */
-export interface RunEventStreamProvider {
-  subscribe(
-    params: RunEventStreamSubscribeParams,
-    handlers: RunEventStreamHandlers,
-  ): Promise<RunEventStreamSubscription>;
-}
+// The stream interfaces live in core/runtime; re-exported here so existing
+// importers of `./event-stream.js` keep resolving them.
+export {
+  type RunEventStreamSubscription,
+  type RunEventStreamSubscribeParams,
+  type RunEventStreamHandlers,
+  type RunEventStreamProvider,
+} from "../../runtime/run-stream.js";
 
 const NOOP_SUBSCRIPTION: RunEventStreamSubscription = { dispose: () => undefined };
 

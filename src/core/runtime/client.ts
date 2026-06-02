@@ -1,6 +1,7 @@
 import { ApiClientError, ApiClientErrorCode } from "../errors.js";
 import type { RuntimeCapabilities, RuntimeSurface } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "./run.js";
+import type { RunEventStreamHandlers } from "./run-stream.js";
 
 export type { RuntimeCapabilities, RuntimeSurface } from "./capabilities.js";
 export type {
@@ -27,6 +28,16 @@ export interface RuntimeClient {
    */
   getRun?(runId: string): Promise<RuntimeRunStatus>;
   cancelRun?(runId: string): Promise<{ status: string }>;
+  /**
+   * Start a run and stream it as canonical RunStreamEvents. Optional: providers
+   * that use a subscribe-by-runId model (gateways) omit this and expose a
+   * RunEventStreamProvider instead.
+   */
+  streamRun?(
+    body: RuntimeRunStartBody,
+    handlers: RunEventStreamHandlers,
+    options?: { signal?: AbortSignal },
+  ): Promise<void>;
 }
 
 /** Throw a typed EndpointNotFound for a surface this provider does not serve. */

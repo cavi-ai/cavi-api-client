@@ -2,7 +2,7 @@ import type { SseMessage } from "../../core/sse/index.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
-} from "../../core/gateway/run/contracts.js";
+} from "../../core/runtime/run-stream.js";
 
 function parse(data: string): Record<string, unknown> | null {
   try {
