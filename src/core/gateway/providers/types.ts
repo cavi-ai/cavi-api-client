@@ -11,6 +11,8 @@ import type {
   GatewayWebSocketClient,
   GatewayWebSocketClientOptions,
 } from "../../ws/index.js";
+import type { RuntimeClient } from "../../runtime/client.js";
+import type { RuntimeSurface } from "../../runtime/capabilities.js";
 
 export type GatewayProviderKind =
   | "hermes"
@@ -46,22 +48,39 @@ export interface GatewayProviderFactories {
   ) => GatewayAgentConfigApiClient;
 }
 
-export interface GatewayProviderModule extends GatewayProviderFactories {
+/** The universal provider plugin. Every provider (incl. runtime-only ones) is one. */
+export interface RuntimeProviderModule {
   kind: GatewayProviderKind;
   aliases?: readonly string[];
+  capabilities?: Partial<Record<RuntimeSurface, boolean>>;
+  createApiClient?: (clientOptions: HttpApiClientOptions) => RuntimeClient;
 }
 
-export interface GatewayProviderRegistry {
-  resolveProvider(
-    provider: string | null | undefined,
-  ): GatewayProviderModule | null;
-  listProviders(): readonly GatewayProviderModule[];
+export interface GatewayProviderModule
+  extends RuntimeProviderModule,
+    GatewayProviderFactories {
+  /** Gateway providers return the gateway-capable client. */
+  createApiClient?: (clientOptions: HttpApiClientOptions) => GatewayApiClient;
 }
 
-export type CreateGatewayProviderRegistryOptions = {
-  modules?: readonly GatewayProviderModule[] | null;
+export interface ProviderRegistry<
+  M extends RuntimeProviderModule = GatewayProviderModule,
+> {
+  resolveProvider(provider: string | null | undefined): M | null;
+  listProviders(): readonly M[];
+}
+
+export type GatewayProviderRegistry = ProviderRegistry<GatewayProviderModule>;
+
+export type CreateProviderRegistryOptions<
+  M extends RuntimeProviderModule = GatewayProviderModule,
+> = {
+  modules?: readonly M[] | null;
   allowOverrides?: boolean;
 };
+
+export type CreateGatewayProviderRegistryOptions =
+  CreateProviderRegistryOptions<GatewayProviderModule>;
 
 export type ResolveGatewayProviderOptions = {
   provider?: GatewayProviderKind | string | null;

@@ -3,6 +3,7 @@
     "README.md",
     "ARCHITECTURE.md",
     "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
     "AGENTS.md",
@@ -18,12 +19,16 @@
     ".pnpm-store/**",
     "dist/**",
     "quarantine/**",
+    ".quarantine/**",
     ".claude/**",
     ".gemini/**",
     ".kiro/**",
     ".cursor/**",
     ".qoder/**",
     ".code-review-graph/**",
-    ".remember/**"
+    ".remember/**",
+    "docs/api/**",
+    "docs/superpowers/**",
+    ".superpowers/**"
   ]
 }

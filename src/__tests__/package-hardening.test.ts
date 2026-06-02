@@ -5,34 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   GATEWAY_PROVIDER_ENV_KEYS,
   GatewayApiClient,
-  GatewayAgentConfigApiClient,
-  GatewayMediaApiClient,
-  GatewayRpcClient,
-  GatewaySseRunEventProvider,
-  GatewayWebSocketClient,
-  GatewayWikiApiClient,
-  HERMES_HTTP_API_ENV_ALIASES,
-  HERMES_HTTP_API_ENV_KEYS,
-  HTTP_API_CLIENT_ENV_ALIASES,
-  HTTP_API_CLIENT_ENV_KEYS,
-  HermesAgentConfigApiClient,
-  HermesApiClient,
-  HermesMediaApiClient,
-  HERMES_PROVIDER_MODULE,
-  HermesSseRunEventProvider,
-  HermesWebSocketClient,
-  HermesWikiApiClient,
-  OpenClawApiClient,
-  OpenClawAgentConfigApiClient,
-  OpenClawMediaApiClient,
-  OPENCLAW_PROVIDER_MODULE,
-  OpenClawSseRunEventProvider,
-  OpenClawWebSocketClient,
-  OpenClawWikiApiClient,
-  CAVI_SURFACE_CONTRACTS,
   SURFACE_CONTRACTS,
-  TEAM_REGISTRY_CONFIG,
-  appendCaviApiPath,
   createGatewayApiClient,
   createGatewayAgentConfigClient,
   createGatewayMediaClient,
@@ -40,19 +13,54 @@ import {
   createGatewaySseRunEventProvider,
   createGatewayWebSocketClient,
   createGatewayWikiClient,
-  createHermesTeamRegistry,
-  createOpenClawTeamRegistry,
   createSurfacePathResolver,
-  portalConfigPatchPath,
   requireRepoRoot,
-  resolveCaviPath,
   resolveGatewayProviderKind,
-  resolveLibraryApiPath,
   resolvePath,
-  resolvePortalApiPath,
   resolveRepoRoot,
   type GatewayProviderModule,
 } from "../index";
+import {
+  GatewayAgentConfigApiClient,
+  GatewayMediaApiClient,
+  GatewayRpcClient,
+  GatewaySseRunEventProvider,
+  GatewayWikiApiClient,
+  portalConfigPatchPath,
+} from "../core/gateway/index";
+import { GatewayWebSocketClient } from "../core/ws/index";
+import {
+  HERMES_HTTP_API_ENV_ALIASES,
+  HERMES_HTTP_API_ENV_KEYS,
+  HermesAgentConfigApiClient,
+  HermesApiClient,
+  HermesMediaApiClient,
+  HERMES_PROVIDER_MODULE,
+  HermesSseRunEventProvider,
+  HermesWebSocketClient,
+  HermesWikiApiClient,
+  createHermesTeamRegistry,
+} from "../providers/hermes/index";
+import {
+  OpenClawApiClient,
+  OpenClawAgentConfigApiClient,
+  OpenClawMediaApiClient,
+  OPENCLAW_PROVIDER_MODULE,
+  OpenClawSseRunEventProvider,
+  OpenClawWebSocketClient,
+  OpenClawWikiApiClient,
+  createOpenClawTeamRegistry,
+} from "../providers/openclaw/index";
+import {
+  HTTP_API_CLIENT_ENV_ALIASES,
+  HTTP_API_CLIENT_ENV_KEYS,
+  CAVI_SURFACE_CONTRACTS,
+  TEAM_REGISTRY_CONFIG,
+  appendCaviApiPath,
+  resolveCaviPath,
+  resolveLibraryApiPath,
+  resolvePortalApiPath,
+} from "../extensions/cavi/index";
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const BUILT_IN_PROVIDER_MODULES = [
@@ -121,6 +129,10 @@ const CONTRACT_OWNER_FILES = new Set([
   "src/contracts/surfaces.ts",
   "src/extensions/cavi/contracts/surfaces.ts",
   "src/extensions/cavi/library/clip-contract.json",
+  // Provider manifests mirror the upstream gateway docs and own that provider's
+  // route literals. As more providers/plugins land, consider promoting this to
+  // a `**/manifest.ts` regex.
+  "src/providers/openclaw/manifest.ts",
 ]);
 const ALLOWED_SRC_ROOT_FILES = new Set(["src/index.ts"]);
 const LEGACY_TOP_LEVEL_SOURCE_FILES: ReadonlySet<string> = new Set([
@@ -766,8 +778,13 @@ describe("package hardening", () => {
     expect(expectedProviderFiles.filter((file) =>
       !existsSync(path.join(CORE_GATEWAY_PROVIDERS_ROOT, file)),
     )).toEqual([]);
-    expect(read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, "types.ts"))).toContain(
-      "export interface GatewayProviderModule extends GatewayProviderFactories",
+    const providerTypes = read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, "types.ts"));
+    // Runtime/Gateway split: the universal RuntimeProviderModule is the base, and
+    // GatewayProviderModule extends it plus the gateway factory surface.
+    expect(providerTypes).toContain("export interface RuntimeProviderModule");
+    expect(providerTypes).toContain("export interface GatewayProviderModule");
+    expect(providerTypes).toMatch(
+      /GatewayProviderModule[\s\S]*?extends[\s\S]*?RuntimeProviderModule[\s\S]*?GatewayProviderFactories/u,
     );
     expect(providerSpecificFiles.filter((file) =>
       /\b(?:Hermes|OpenClaw)\b/u.test(read(path.join(CORE_GATEWAY_PROVIDERS_ROOT, file))),
@@ -1164,7 +1181,7 @@ describe("package hardening", () => {
     }).resolveProvider("generic")?.kind).toBe("gateway");
     expect(() => createGatewayProviderRegistry({
       modules: [{ kind: "gateway" }, { kind: "generic" }],
-    })).toThrow('Duplicate gateway provider key "gateway"');
+    })).toThrow('Duplicate provider key "gateway"');
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {

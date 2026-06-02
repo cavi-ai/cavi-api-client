@@ -7,12 +7,12 @@
 import type { MemoryScope } from "../../../core/memory/index.js";
 import type {
   TeamManifest,
-  TeamManifestIdentity,
-  TeamManifestMember,
-  TeamManifestTeam,
+  ManifestIdentity,
+  ManifestMember,
+  ManifestTeam,
 } from "../../../contracts/team-manifest.js";
 
-function identityAliases(identity: TeamManifestIdentity | null | undefined): string[] {
+function identityAliases(identity: ManifestIdentity | null | undefined): string[] {
   if (!identity) {
     return [];
   }
@@ -33,7 +33,7 @@ function identityAliases(identity: TeamManifestIdentity | null | undefined): str
 function matchesName(
   name: string,
   id: string,
-  identity: TeamManifestIdentity | null | undefined,
+  identity: ManifestIdentity | null | undefined,
 ): boolean {
   const needle = name.trim().toLowerCase();
   if (!needle) {
@@ -58,10 +58,10 @@ export function resolveMemoryScope(
   manifest: TeamManifest,
   name: string,
 ): MemoryScope | undefined {
-  const teams: readonly TeamManifestTeam[] = manifest.teams ?? [];
+  const teams: readonly ManifestTeam[] = manifest.teams ?? [];
 
   for (const team of teams) {
-    const members: readonly TeamManifestMember[] = team.members ?? [];
+    const members: readonly ManifestMember[] = team.members ?? [];
     for (const member of members) {
       if (matchesName(name, member.id, member.identity)) {
         return { domain: team.id, member: member.id };

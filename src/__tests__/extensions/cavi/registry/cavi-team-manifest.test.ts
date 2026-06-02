@@ -1,17 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  configureTeamRegistryConfig,
-  createOpenClawTeamRegistry,
   findTeamManifestTeam,
-  getConfiguredTeamRegistry,
   normalizeTeamManifest,
-  resetTeamRegistryConfig,
   resolveGatewayRouteBinding,
   resolveTeamActionApiPath,
   resolveTeamActionContract,
   resolveTeamWorkspaceApiPath,
   resolveTeamWorkspacePath,
 } from "../../../../index";
+import {
+  configureTeamRegistryConfig,
+  getConfiguredTeamRegistry,
+  resetTeamRegistryConfig,
+} from "../../../../extensions/cavi/index";
+import { createOpenClawTeamRegistry } from "../../../../providers/openclaw/index";
 import {
   CAVI_TEAM_MANIFEST,
   createCaviTeamRegistryConfig,

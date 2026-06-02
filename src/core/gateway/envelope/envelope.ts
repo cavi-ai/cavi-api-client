@@ -122,15 +122,24 @@ export function classifyFallbackError(error: unknown): {
   };
 }
 
+export type FallbackResolveInfo = {
+  source: "gateway" | "mock";
+  fellBack: boolean;
+  area: string;
+};
+
 export async function withFallback<TData>(params: {
   run: () => Promise<TData>;
   fallback: TData;
   area: string;
   expectedContract: string;
   note: string;
+  /** Optional observability hook: fired when the envelope resolves live or mock (C2). */
+  onResolve?: (info: FallbackResolveInfo) => void;
 }): Promise<DataEnvelope<TData>> {
   try {
     const data = await params.run();
+    params.onResolve?.({ source: "gateway", fellBack: false, area: params.area });
     return {
       data,
       source: "gateway",
@@ -149,6 +158,7 @@ export async function withFallback<TData>(params: {
     if (classified.reason === "unknown") {
       throw error;
     }
+    params.onResolve?.({ source: "mock", fellBack: true, area: params.area });
     return {
       data: params.fallback,
       source: "mock",

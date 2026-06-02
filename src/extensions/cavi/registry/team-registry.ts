@@ -6,7 +6,7 @@ import type { PortalLibraryRef } from "../contracts/portals.js";
 import {
   normalizeTeamManifest,
   type TeamManifest,
-  type TeamManifestTeam,
+  type ManifestTeam,
 } from "../../../contracts/team-manifest.js";
 
 export type TeamRegistryProviderKind =
@@ -97,13 +97,18 @@ function toPortalLibraryRef(record: TeamRegistryLibraryRefConfig): PortalLibrary
   };
 }
 
-function teamFromManifest(team: TeamManifestTeam): TeamRegistryTeamConfig {
+function teamFromManifest(team: ManifestTeam): TeamRegistryTeamConfig {
   const identity = team.identity ?? {};
+  const meta = (identity.metadata ?? {}) as Record<string, unknown>;
+  const metaStr = (key: string): string | null => {
+    const value = meta[key];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  };
   const name = identity.name ?? identity.displayName ?? team.id;
   const teamSlug = identity.slug ?? team.id;
   const teamCode = identity.code ?? teamSlug;
-  const sectorSlug = identity.sectorSlug ?? teamSlug;
-  const sectorCode = identity.sectorCode ?? teamCode;
+  const sectorSlug = metaStr("sectorSlug") ?? teamSlug;
+  const sectorCode = metaStr("sectorCode") ?? teamCode;
   const members = team.members?.map((member) => member.id) ?? [];
 
   return {
@@ -114,7 +119,7 @@ function teamFromManifest(team: TeamManifestTeam): TeamRegistryTeamConfig {
     teamCode,
     sectorSlug,
     sectorCode,
-    portalId: identity.portalId ?? null,
+    portalId: metaStr("portalId"),
     legacyAliases: [...(identity.aliases ?? [])],
     members,
     memberIdentityIds: members,
