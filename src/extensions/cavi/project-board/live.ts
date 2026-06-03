@@ -7,7 +7,7 @@ import type {
 } from "../domain/index.js";
 import { GatewayHttpError } from "../../../core/http/gateway-error.js";
 import type { JsonHttpRequest } from "../../../core/http/json-client.js";
-import { API_PROJECT_BOARD, PROJECT_BOARD_API } from "../contracts/paths.js";
+import { CAVI_CONTROL_API_ENDPOINTS } from "../contracts/paths.js";
 import {
   normalizeEmailList,
   toProjectBoardProfile,
@@ -15,6 +15,9 @@ import {
   toProjectBoardWorkspaceSnapshot,
 } from "./normalize.js";
 import { asString } from "../../../core/data/guards.js";
+
+const PROJECT_BOARD_API = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
+const API_PROJECT_BOARD = PROJECT_BOARD_API.root;
 
 export type ProjectBoardBacklogMutationPayload = {
   title: string;

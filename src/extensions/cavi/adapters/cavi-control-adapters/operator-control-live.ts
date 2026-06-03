@@ -25,9 +25,9 @@ import {
   createEmptyWorkerTasks,
 } from "../../operator-control/defaults.js";
 import {
+  CAVI_CONTROL_OPERATOR_API as OPERATOR_API,
+  CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS as OPERATOR_API_PLUGIN_ALIAS,
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
-  OPERATOR_API,
-  OPERATOR_API_PLUGIN_ALIAS,
   operatorControlExpectedContractSummary,
 } from "../../contracts/paths.js";
 import { loadOperatorControlSection } from "../../operator-control/load-section.js";

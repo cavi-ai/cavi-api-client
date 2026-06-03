@@ -22,6 +22,13 @@ export const CAVI_CONTROL_OPERATOR_API = {
   workerTasks: `${CAVI_CONTROL_OPERATOR_API_BASE}/worker/tasks`,
 } as const;
 
+/**
+ * The gateway mounts the operator API at two paths: the canonical
+ * `/cavi-control/api/operator` and a generic plugin route
+ * `/api/plugins/cavi-control/operator`. `operator-control-live` issues each
+ * request against the canonical path with this plugin-alias path as a fallback,
+ * so both tables are kept key-for-key identical.
+ */
 export const CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS = {
   root: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE,
   snapshot: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/snapshot`,
@@ -71,10 +78,9 @@ export const CAVI_CONTROL_API_ENDPOINTS = {
       `/api/plugins/cavi-control/kanban/backlog/${encodeURIComponent(itemId)}`,
   },
   operator: CAVI_CONTROL_OPERATOR_API,
-  // Per-agent portal/plugin surfaces (martina/scout/angela/machine/front-door/…)
-  // are NOT baked in here — they are declared as member actions in the host team
-  // manifest and resolved via resolveTeamActionApiPath. Use resolvePortalApiPath
-  // for the generic `/api/plugins/portal/{portal}/…` dispatcher.
+  // Per-agent portal/plugin surfaces are NOT baked in here — they are declared as
+  // member actions in the host team manifest and resolved via resolveTeamActionApiPath.
+  // Use resolvePortalApiPath for the generic `/api/plugins/portal/{portal}/…` dispatcher.
   portalMemorySnapshot: (teamSlug: string, memberId: string, memoryKey: string) =>
     `/api/plugins/portal-memory/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(memberId)}/${encodeURIComponent(memoryKey)}`,
 } as const;
@@ -195,53 +201,20 @@ export const OPERATOR_DISPATCH_ENDPOINTS = {
   taskReceiptsTemplate: "/cavi-control/api/tasks/{taskId}/receipts",
 } as const;
 
-export const API_PROJECT_BOARD = CAVI_CONTROL_API_ENDPOINTS.projectBoard.root;
-
-/** Project Board HTTP resources. */
-export const PROJECT_BOARD_API = {
-  root: CAVI_CONTROL_API_ENDPOINTS.projectBoard.root,
-  profile: CAVI_CONTROL_API_ENDPOINTS.projectBoard.profile,
-  sprint: CAVI_CONTROL_API_ENDPOINTS.projectBoard.sprint,
-  backlog: CAVI_CONTROL_API_ENDPOINTS.projectBoard.backlog,
-  call: CAVI_CONTROL_API_ENDPOINTS.projectBoard.call,
-} as const;
-
 export function projectBoardBacklogItemPath(itemId: string): string {
   return CAVI_CONTROL_API_ENDPOINTS.projectBoard.backlogItem(itemId);
 }
 
 export function projectBoardWorkspaceExpectedContractSummary(): string {
-  return `GET ${PROJECT_BOARD_API.profile} + ${PROJECT_BOARD_API.sprint} + ${PROJECT_BOARD_API.backlog} (aggregate: GET ${API_PROJECT_BOARD})`;
+  const pb = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
+  return `GET ${pb.profile} + ${pb.sprint} + ${pb.backlog} (aggregate: GET ${pb.root})`;
 }
 
 /** Operator-facing hint when Project Board workspace load fails (keep in sync with Project Board adapters). */
 export function projectBoardWorkspaceDiagnosticRouteHint(): string {
-  return `Project Board routes: ${PROJECT_BOARD_API.profile}, ${PROJECT_BOARD_API.sprint}, ${PROJECT_BOARD_API.backlog}.`;
+  const pb = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
+  return `Project Board routes: ${pb.profile}, ${pb.sprint}, ${pb.backlog}.`;
 }
-
-export const API_OPERATOR = CAVI_CONTROL_OPERATOR_API.root;
-export const API_OPERATOR_PLUGIN_ALIAS = CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.root;
-
-/** Operator control HTTP resources. */
-export const OPERATOR_API = {
-  snapshot: CAVI_CONTROL_OPERATOR_API.snapshot,
-  status: CAVI_CONTROL_OPERATOR_API.status,
-  registry: CAVI_CONTROL_OPERATOR_API.registry,
-  tasks: CAVI_CONTROL_OPERATOR_API.tasks,
-  memory: CAVI_CONTROL_OPERATOR_API.memory,
-  workerReady: CAVI_CONTROL_OPERATOR_API.workerReady,
-  workerTasks: CAVI_CONTROL_OPERATOR_API.workerTasks,
-} as const;
-
-export const OPERATOR_API_PLUGIN_ALIAS = {
-  snapshot: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.snapshot,
-  status: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.status,
-  registry: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.registry,
-  tasks: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.tasks,
-  memory: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.memory,
-  workerReady: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.workerReady,
-  workerTasks: CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.workerTasks,
-} as const;
 
 export function operatorTaskDiscoursePath(taskId: string): string {
   return CAVI_CONTROL_OPERATOR_API.taskDiscourse(taskId);
@@ -252,6 +225,8 @@ export function operatorTaskDiscoursePluginAliasPath(taskId: string): string {
 }
 
 export function operatorControlExpectedContractSummary(): string {
+  const op = CAVI_CONTROL_OPERATOR_API;
+  const opAlias = CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS;
   return [
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.snapshot}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.status}`,
@@ -260,6 +235,6 @@ export function operatorControlExpectedContractSummary(): string {
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.memoryList}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerReady}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerTasksList}`,
-    `(fallback: GET ${OPERATOR_API.snapshot} or ${OPERATOR_API_PLUGIN_ALIAS.snapshot}; sections: GET ${OPERATOR_API.status} + ${OPERATOR_API.registry} + ${OPERATOR_API.tasks} + ${OPERATOR_API.memory} + ${OPERATOR_API.workerReady} + ${OPERATOR_API.workerTasks} with plugin aliases)`,
+    `(fallback: GET ${op.snapshot} or ${opAlias.snapshot}; sections: GET ${op.status} + ${op.registry} + ${op.tasks} + ${op.memory} + ${op.workerReady} + ${op.workerTasks} with plugin aliases)`,
   ].join(" + ");
 }
