@@ -105,6 +105,8 @@ describe("Hermes chat run transport", () => {
         targetAgent: "tony",
         action: "chat.send",
         harness: "hermes",
+        // Routing policy is host-supplied now; the provider bakes in no agents.
+        routeChannel: { agentChannelOverrides: { tony: "front-door" } },
         onEvent: () => undefined,
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),

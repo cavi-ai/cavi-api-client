@@ -1,3 +1,5 @@
+import { appendHttpQuery } from "./paths.js";
+
 export const TEAM_MANIFEST_VERSION = 1 as const;
 
 export const DEFAULT_TEAM_ID = "default" as const;
@@ -238,6 +240,10 @@ export type ResolveTeamWorkspacePathOptions = {
 
 export type ResolveTeamActionContractOptions = {
   memberId?: string | null;
+  /** Values substituted into `{token}` placeholders in the action's route path. */
+  params?: Record<string, string | number | boolean> | null;
+  /** Query parameters appended to the resolved path (via `appendHttpQuery`). */
+  query?: Record<string, string | number | boolean | undefined> | null;
 };
 
 type NormalizedWorkspacePathEntry = {
@@ -1109,6 +1115,19 @@ export function resolveTeamActionContract(
   );
 }
 
+function substituteRouteParams(
+  path: string,
+  params: Record<string, string | number | boolean> | null | undefined,
+): string {
+  return path.replace(/\{([A-Za-z0-9_]+)\}/gu, (_match, token: string) => {
+    const value = params?.[token];
+    if (value === undefined || value === null || value === "") {
+      throw new Error(`team manifest: missing route param "${token}"`);
+    }
+    return encodeURIComponent(String(value));
+  });
+}
+
 export function resolveTeamActionApiPath(
   manifest: TeamManifest,
   teamId: string | null | undefined,
@@ -1120,7 +1139,8 @@ export function resolveTeamActionApiPath(
     throw new Error(`team manifest: action "${action.id}" is disabled`);
   }
   if (action.route?.path) {
-    return action.route.path;
+    const withParams = substituteRouteParams(action.route.path, options.params);
+    return options.query ? appendHttpQuery(withParams, options.query) : withParams;
   }
   const normalizedMemberId = nonEmpty(options.memberId);
   if (normalizedMemberId) {

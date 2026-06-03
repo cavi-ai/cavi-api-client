@@ -19,7 +19,11 @@ type ImportMetaWithOptionalEnv = ImportMeta & {
 type GatewayConfigGlobal = typeof globalThis & {
   __CAVI_CONTROL_BASE_PATH__?: string;
   __CAVI_GATEWAY_URL__?: string;
+  __CAVI_PROJECT_BOARD_ASSET_DIR__?: string;
 };
+
+/** Default project-board asset directory — neutral, not a fleet-agent slug. */
+export const DEFAULT_PROJECT_BOARD_ASSET_DIR = "project-board";
 
 export function getRuntimeBasePath(): string {
   const rawBasePath =
@@ -37,8 +41,18 @@ export function resolvePublicAsset(pathname: string): string {
   return withRuntimeBasePath(pathname);
 }
 
+/**
+ * Project-board asset directory. Defaults to a neutral folder; a host can point
+ * it at its own deployment's directory by setting `__CAVI_PROJECT_BOARD_ASSET_DIR__`.
+ */
+export function getProjectBoardAssetDir(): string {
+  const dir = (globalThis as GatewayConfigGlobal).__CAVI_PROJECT_BOARD_ASSET_DIR__;
+  const trimmed = typeof dir === "string" ? dir.trim().replace(/^\/+|\/+$/g, "") : "";
+  return trimmed || DEFAULT_PROJECT_BOARD_ASSET_DIR;
+}
+
 export function resolveProjectBoardAssetPath(fileName: string): string {
-  return withRuntimeBasePath(`/deb/${fileName}`);
+  return withRuntimeBasePath(`/${getProjectBoardAssetDir()}/${fileName}`);
 }
 
 export function resolveSessionApiPath(pathname: string): string {

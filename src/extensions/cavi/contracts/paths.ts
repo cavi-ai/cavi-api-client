@@ -71,45 +71,10 @@ export const CAVI_CONTROL_API_ENDPOINTS = {
       `/api/plugins/cavi-control/kanban/backlog/${encodeURIComponent(itemId)}`,
   },
   operator: CAVI_CONTROL_OPERATOR_API,
-  portals: {
-    martina: {
-      dashboard: "/api/plugins/portal/martina/dashboard",
-      config: "/api/plugins/portal/martina/config",
-      runs: "/api/plugins/portal/martina/runs",
-      run: (runId: string) =>
-        `/api/plugins/portal/martina/runs/${encodeURIComponent(runId)}`,
-      doctor: "/api/plugins/portal/martina/doctor",
-      queuesMove: "/api/plugins/portal/martina/queues/move",
-      artifactFile: (bucket: string, name: string) =>
-        `/api/plugins/portal/martina/artifacts/${encodeURIComponent(bucket)}/${encodeURIComponent(name)}`,
-      artifactPreview: (bucket: string, name: string) =>
-        `/api/plugins/portal/martina/artifacts/${encodeURIComponent(bucket)}/${encodeURIComponent(name)}/preview`,
-    },
-    scout: { dashboard: "/api/plugins/portal/scout/dashboard" },
-    angela: { dashboard: "/api/plugins/portal/angela/dashboard" },
-    machine: {
-      dashboard: "/api/plugins/machine/dashboard",
-      inbox: "/api/plugins/machine/inbox",
-      media: (filename: string) =>
-        `/api/plugins/machine/media?name=${encodeURIComponent(filename)}`,
-      tts: "/api/plugins/machine/tts",
-      memeJobs: "/api/plugins/machine/meme/jobs",
-      ttsProviders: "/api/plugins/machine/tts/providers",
-    },
-    frontDoor: {
-      dashboard: "/api/plugins/front-door/dashboard",
-      ideas: "/api/plugins/front-door/ideas",
-      idea: (id: string) => `/api/plugins/front-door/ideas/${encodeURIComponent(id)}`,
-      ideaPromote: (id: string) =>
-        `/api/plugins/front-door/ideas/${encodeURIComponent(id)}/promote`,
-      projects: "/api/plugins/front-door/projects",
-      project: (id: string) =>
-        `/api/plugins/front-door/projects/${encodeURIComponent(id)}`,
-      articles: "/api/plugins/front-door/articles",
-      memory: "/api/plugins/front-door/memory",
-      inbox: "/api/plugins/front-door/inbox",
-    },
-  },
+  // Per-agent portal/plugin surfaces (martina/scout/angela/machine/front-door/…)
+  // are NOT baked in here — they are declared as member actions in the host team
+  // manifest and resolved via resolveTeamActionApiPath. Use resolvePortalApiPath
+  // for the generic `/api/plugins/portal/{portal}/…` dispatcher.
   portalMemorySnapshot: (teamSlug: string, memberId: string, memoryKey: string) =>
     `/api/plugins/portal-memory/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(memberId)}/${encodeURIComponent(memoryKey)}`,
 } as const;

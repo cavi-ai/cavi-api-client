@@ -1,9 +1,8 @@
-import { CAVI_CONTROL_API_ENDPOINTS } from "../contracts/paths.js";
 import type { HttpApiRequestInit } from "../../../core/http/types.js";
 import type { GatewayMediaJsonValue } from "../../../core/gateway/resources/media.js";
 
-export const PORTAL_TTS_PROVIDERS_PATH = CAVI_CONTROL_API_ENDPOINTS.portals.machine.ttsProviders;
-export const PORTAL_TTS_PATH = CAVI_CONTROL_API_ENDPOINTS.portals.machine.tts;
+// TTS endpoints are agent-specific and supplied by the caller (resolved from the
+// team manifest) — the package binds no concrete agent's TTS routes.
 
 export type PortalTtsProviderVoiceLike = {
   id: string;
@@ -179,12 +178,14 @@ export function createPortalTtsAgentVoiceAssignment(params: {
 
 export function requestPortalTtsProviders(
   requestJson: PortalTtsJsonRequester,
+  providersPath: string,
 ): Promise<unknown> {
-  return requestJson<unknown>(PORTAL_TTS_PROVIDERS_PATH);
+  return requestJson<unknown>(providersPath);
 }
 
 export async function requestPortalTtsAudio(
   transport: PortalTtsAudioTransport,
+  ttsPath: string,
   body: PortalTtsAudioRequest,
 ): Promise<Blob> {
   const text = cleanString(body.text);
@@ -196,7 +197,7 @@ export async function requestPortalTtsAudio(
   const format = cleanString(body.format);
   const accept = cleanString(body.accept) || "audio/mpeg";
 
-  return transport.requestBlob(PORTAL_TTS_PATH, {
+  return transport.requestBlob(ttsPath, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

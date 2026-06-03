@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  PORTAL_TTS_PATH,
   buildPortalTtsVoiceOptions,
   requestPortalTtsAudio,
 } from "../../../../extensions/cavi/portal/tts";
+
+// TTS path is now supplied by the caller (resolved from the team manifest); the
+// package binds no concrete agent. A literal path here is just test input.
+const TTS_PATH = "/api/plugins/machine/tts";
 
 describe("portal TTS helpers", () => {
   it("prefers configured gateway voices and falls back to dashboard voices", () => {
@@ -61,6 +64,7 @@ describe("portal TTS helpers", () => {
     await expect(
       requestPortalTtsAudio(
         { requestBlob },
+        TTS_PATH,
         {
           text: "  hello voice lab  ",
           voiceId: " voice-1 ",
@@ -72,7 +76,7 @@ describe("portal TTS helpers", () => {
       ),
     ).resolves.toBeInstanceOf(Blob);
 
-    expect(requestBlob).toHaveBeenCalledWith(PORTAL_TTS_PATH, {
+    expect(requestBlob).toHaveBeenCalledWith(TTS_PATH, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -92,7 +96,7 @@ describe("portal TTS helpers", () => {
     const requestBlob = vi.fn(async () => new Blob(["audio"]));
 
     await expect(
-      requestPortalTtsAudio({ requestBlob }, { text: "   " }),
+      requestPortalTtsAudio({ requestBlob }, TTS_PATH, { text: "   " }),
     ).rejects.toThrow(/Enter text/u);
     expect(requestBlob).not.toHaveBeenCalled();
   });

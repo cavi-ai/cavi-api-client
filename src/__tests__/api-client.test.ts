@@ -62,7 +62,6 @@ import {
 import {
   MOBILE_GATEWAY_ENDPOINT_CONTRACTS,
   PortalApiClient,
-  PORTAL_DASHBOARD_IDS,
   PORTAL_MEMORY_SNAPSHOT_CONTRACT,
   buildPortalMemoryEnvelope,
   createContractGap,
@@ -154,9 +153,6 @@ describe("agnostic HTTP API client package", () => {
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.taskDiscourse("task/a b")).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
     );
-    expect(CAVI_CONTROL_API_ENDPOINTS.portals.martina.artifactPreview("docs", "a b.md")).toBe(
-      "/api/plugins/portal/martina/artifacts/docs/a%20b.md/preview",
-    );
     expect(HERMES_API_ENDPOINTS.runApproval("run/1")).toBe("/v1/runs/run%2F1/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.runApproval).toBe("/v1/runs/{run_id}/approval");
     expect(HERMES_API_ENDPOINT_TEMPLATES.ecgSharedFiles).toBe("/api/v1/files?agent={agent}&folder={folder}");
@@ -228,9 +224,6 @@ describe("agnostic HTTP API client package", () => {
     expect(CAVI_SURFACE_CONTRACTS["portal.dashboard"]?.method).toBe("GET");
     expect(resolveCaviPath("portal.dashboard", { portal: "martina" })).toBe(
       "/api/plugins/portal/martina/dashboard",
-    );
-    expect(resolveCaviPath("machine.media", { filename: "a/b c.png" })).toBe(
-      "/api/plugins/machine/media?name=a%2Fb%20c.png",
     );
     expect(resolveCaviPath("cavi.projectBoard.root")).toBe("/api/plugins/cavi-control/kanban");
     expect(resolveCaviPath("cavi.projectBoard.profile")).toBe("/api/plugins/cavi-control/kanban/profile");
@@ -324,47 +317,15 @@ describe("agnostic HTTP API client package", () => {
     expect(resolvePath("gateway.wikiPromote", { vaultId: "research" })).toBe(
       "/v1/wiki/vaults/research/promote",
     );
-
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaList"]?.method).toBe("GET");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaCreate"]?.method).toBe("POST");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaDetail"]?.method).toBe("GET");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaPatch"]?.method).toBe("PATCH");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.ideaPromote"]?.method).toBe("POST");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.projectList"]?.method).toBe("GET");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.projectDetail"]?.method).toBe("GET");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.articleList"]?.method).toBe("GET");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.articleCreate"]?.method).toBe("POST");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.memoryList"]?.method).toBe("GET");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.memoryCreate"]?.method).toBe("POST");
-    expect(CAVI_SURFACE_CONTRACTS["frontDoor.inboxUpload"]?.method).toBe("POST");
-
-    expect(resolveCaviPath("frontDoor.ideaList")).toBe("/api/plugins/front-door/ideas");
-    expect(resolveCaviPath("frontDoor.ideaDetail", { id: "idea/a b" })).toBe(
-      "/api/plugins/front-door/ideas/idea%2Fa%20b",
-    );
-    expect(resolveCaviPath("frontDoor.projectDetail", { id: "proj/a b" })).toBe(
-      "/api/plugins/front-door/projects/proj%2Fa%20b",
-    );
-    expect(resolveCaviPath("frontDoor.articleList")).toBe("/api/plugins/front-door/articles");
-    expect(resolveCaviPath("frontDoor.memoryList")).toBe("/api/plugins/front-door/memory");
-    expect(resolveCaviPath("frontDoor.inboxUpload")).toBe("/api/plugins/front-door/inbox");
-
-    expect(resolveCaviPath("trading.dashboard")).toBe("/api/plugins/trading/dashboard");
-    expect(resolveCaviPath("trading.researchPackets")).toBe("/api/plugins/trading/research-packets");
-    expect(resolveCaviPath("trading.sourceRegistry")).toBe("/api/plugins/trading/source-registry");
   });
 
   it("keeps mobile portal/workspace contracts in the shared package", () => {
-    expect(PORTAL_DASHBOARD_IDS).toEqual(["martina", "scout", "angela", "machine"]);
-    expect(portalDashboardPath("martina")).toBe(
-      "/api/plugins/portal/martina/dashboard",
-    );
-    for (const portal of PORTAL_DASHBOARD_IDS) {
+    // portalDashboardPath resolves ANY portal slug (manifest-supplied) — no baked allowlist.
+    for (const portal of ["martina", "scout", "angela", "machine", "front-door"]) {
       expect(portalDashboardPath(portal)).toBe(
         `/api/plugins/portal/${portal}/dashboard`,
       );
     }
-    expect(portalDashboardPath("front-door")).toBeNull();
     expect(
       buildPortalMemoryEnvelope({
         clientId: "portal-client",
@@ -400,7 +361,7 @@ describe("agnostic HTTP API client package", () => {
       "/api/teams/research/workspace/research/complete",
     );
     expect(getMobileGatewayEndpointPath("teamAgentWorkspace")).toBe(
-      "/api/teams/research/agents/scout/workspace/media/images",
+      "/api/teams/research/agents/analyst/workspace/media/images",
     );
     expect(getMobileGatewayEndpointPath("gatewayMediaAudio")).toBe(
       "/v1/media/audio/generate",
@@ -435,7 +396,6 @@ describe("agnostic HTTP API client package", () => {
     expect(getMobileGatewayEndpointPath("gatewayWikiPromote")).toBe(
       "/v1/wiki/vaults/default/promote",
     );
-    expect(MOBILE_GATEWAY_ENDPOINT_CONTRACTS.machineComedyRun.path).toBe("/v1/runs");
     expect(createContractGap("preflightCapabilities", "missing auth")).toEqual({
       area: "preflight-capabilities",
       expectedContract: "/v1/capabilities",
@@ -803,9 +763,6 @@ describe("agnostic HTTP API client package", () => {
 
   it("throws for unknown surface and missing required path params", () => {
     expect(() => resolvePath("nope.surface")).toThrow('resolvePath: unknown surface "nope.surface"');
-    expect(() => resolveCaviPath("frontDoor.ideaDetail")).toThrow(
-      'CAVI_SURFACE_CONTRACTS: missing path param "id"',
-    );
     expect(() => resolveCaviPath("portal.dashboard", { portal: "" })).toThrow(
       'CAVI_SURFACE_CONTRACTS: missing path param "portal"',
     );

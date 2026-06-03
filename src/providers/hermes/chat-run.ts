@@ -26,7 +26,16 @@ export type HermesRouteSource = Record<string, unknown>;
 export type GatewayRouteSource = HermesRouteSource;
 
 const DICT_REJECTING_ROUTE_METADATA_KEYS = new Set(["binding", "routeBinding"]);
-const CAVI_MOBILE_DEFAULT_ROUTE_CHANNEL = "front-door";
+
+/**
+ * Host-supplied route-channel policy. The provider knows no product agents; a
+ * consumer maps its own default channel and agent→channel overrides (e.g. CAVI
+ * passes `{ defaultChannel: "front-door", agentChannelOverrides: { tony: "front-door" } }`).
+ */
+export type RouteChannelConfig = {
+  defaultChannel?: string;
+  agentChannelOverrides?: Record<string, string>;
+};
 
 function isDict(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -45,14 +54,24 @@ function deriveThreadIdFromSessionKey(sessionKey: string): string | undefined {
 function deriveRouteSourceChannelId(params: {
   targetProfile?: string;
   targetAgent?: string;
+  routeChannel?: RouteChannelConfig;
 }): string | undefined {
   const targetProfile = cleanOptionalString(params.targetProfile);
   if (targetProfile && targetProfile !== "default") {
     return targetProfile;
   }
   const targetAgent = cleanOptionalString(params.targetAgent);
-  if (targetProfile === "default" && (!targetAgent || targetAgent === "tony")) {
-    return CAVI_MOBILE_DEFAULT_ROUTE_CHANNEL;
+  const config = params.routeChannel;
+  if (targetProfile === "default") {
+    const override = targetAgent
+      ? cleanOptionalString(config?.agentChannelOverrides?.[targetAgent])
+      : undefined;
+    if (override) {
+      return override;
+    }
+    if (!targetAgent && config?.defaultChannel) {
+      return cleanOptionalString(config.defaultChannel);
+    }
   }
   return targetProfile ?? targetAgent;
 }
@@ -104,6 +123,7 @@ export function resolveHermesRouteSource(input: {
   targetAgent?: string;
   harness?: string;
   source?: HermesRouteSource;
+  routeChannel?: RouteChannelConfig;
 }): HermesRouteSource | undefined {
   const explicit = sanitizeHermesRouteSource(input.source);
   const harness = cleanOptionalString(input.harness);
@@ -174,6 +194,8 @@ export type StartHermesChatRunParams = {
   action?: string;
   harness?: string;
   source?: HermesRouteSource;
+  /** Host-supplied default/agent channel mapping (the provider bakes in none). */
+  routeChannel?: RouteChannelConfig;
   metadata?: HermesRouteMetadata;
   attachments?: readonly HermesChatRunAttachment[];
   signal?: AbortSignal;
@@ -241,6 +263,7 @@ export async function startHermesChatRun(
     targetAgent: params.targetAgent,
     harness: params.harness,
     source: params.source,
+    routeChannel: params.routeChannel,
   });
   if (source) {
     body.source = source;
@@ -359,6 +382,7 @@ export async function streamHermesChatRun(
     action: params.action,
     harness: params.harness,
     source: params.source,
+    routeChannel: params.routeChannel,
     metadata: params.metadata,
     attachments: params.attachments,
     signal: params.signal,
