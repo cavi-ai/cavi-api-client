@@ -27,6 +27,7 @@ import {
   PROJECT_BOARD_FALLBACK_LIMITATIONS,
 } from "./constants.js";
 import {
+  getProjectBoardAssetDir,
   resolveProjectBoardAssetPath,
   withRuntimeBasePath,
 } from "../runtime/paths.js";
@@ -126,13 +127,14 @@ function toProjectBoardAssetPath(value: string): string {
     ? normalized.slice(CAVI_CONTROL_BASE_PATH.length)
     : normalized;
 
-  if (withoutCanonicalPrefix.startsWith("/deb/")) {
+  const assetDir = getProjectBoardAssetDir();
+  if (withoutCanonicalPrefix.startsWith(`/${assetDir}/`)) {
     return withRuntimeBasePath(withoutCanonicalPrefix);
   }
 
   const filename = normalized.split("/").pop() ?? "";
   if (
-    (filename.startsWith("deb-") || filename.startsWith("project-board-")) &&
+    (filename.startsWith(`${assetDir}-`) || filename.startsWith("project-board-")) &&
     filename.endsWith(".png")
   ) {
     return resolveProjectBoardAssetPath(filename);

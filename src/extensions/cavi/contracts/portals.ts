@@ -1,18 +1,12 @@
 import { requirePortalClientId } from "../../../core/http/client-id.js";
 import { resolvePath } from "./resolve.js";
 
-export const PORTAL_DASHBOARD_IDS = ["martina", "scout", "angela", "machine"] as const;
-
-export type PortalDashboardId = (typeof PORTAL_DASHBOARD_IDS)[number];
-
-export function isPortalDashboardId(portalId: string): portalId is PortalDashboardId {
-  return (PORTAL_DASHBOARD_IDS as readonly string[]).includes(portalId);
-}
-
-export function portalDashboardPath(portalId: string): string | null {
-  return isPortalDashboardId(portalId)
-    ? resolvePath("portal.dashboard", { portal: portalId })
-    : null;
+/**
+ * Generic portal dashboard route for any portal slug. The slug is supplied at
+ * runtime (from the team manifest) — the package bakes in no portal/agent roster.
+ */
+export function portalDashboardPath(portalId: string): string {
+  return resolvePath("portal.dashboard", { portal: portalId });
 }
 
 export const PORTAL_MEMORY_SNAPSHOT_CONTRACT = "PORTAL_MEMORY_SNAPSHOT_V1" as const;
