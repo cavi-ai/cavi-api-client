@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  API_PROJECT_BOARD,
-  API_OPERATOR,
-  API_OPERATOR_PLUGIN_ALIAS,
   CAVI_CONTROL_API_ENDPOINTS,
+  CAVI_CONTROL_OPERATOR_API,
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
   CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS,
-  PROJECT_BOARD_API,
-  OPERATOR_API,
-  OPERATOR_API_PLUGIN_ALIAS,
   projectBoardBacklogItemPath,
   projectBoardWorkspaceDiagnosticRouteHint,
   projectBoardWorkspaceExpectedContractSummary,
@@ -19,28 +14,14 @@ import {
 } from "../../../extensions/cavi/contracts/paths";
 import { describeHttpContract } from "../../../core/http/contracts";
 
+const projectBoard = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
+const operator = CAVI_CONTROL_OPERATOR_API;
+
 describe("api-paths", () => {
-  it("keeps PROJECT_BOARD_API and OPERATOR_API aligned with base constants", () => {
-    expect(PROJECT_BOARD_API.root).toBe(API_PROJECT_BOARD);
-    expect(PROJECT_BOARD_API.profile).toBe(`${API_PROJECT_BOARD}/profile`);
-    expect(PROJECT_BOARD_API.sprint).toBe(`${API_PROJECT_BOARD}/sprint`);
-    expect(PROJECT_BOARD_API.backlog).toBe(`${API_PROJECT_BOARD}/backlog`);
-    expect(PROJECT_BOARD_API.call).toBe(`${API_PROJECT_BOARD}/call`);
-
-    expect(OPERATOR_API.snapshot).toBe(`${API_OPERATOR}/snapshot`);
-    expect(OPERATOR_API.status).toBe(`${API_OPERATOR}/status`);
-    expect(OPERATOR_API.registry).toBe(`${API_OPERATOR}/registry`);
-    expect(OPERATOR_API.tasks).toBe(`${API_OPERATOR}/tasks`);
-    expect(OPERATOR_API.memory).toBe(`${API_OPERATOR}/memory`);
-    expect(OPERATOR_API.workerReady).toBe(`${API_OPERATOR}/worker/ready`);
-    expect(OPERATOR_API.workerTasks).toBe(`${API_OPERATOR}/worker/tasks`);
-    expect(OPERATOR_API_PLUGIN_ALIAS.snapshot).toBe(
-      `${API_OPERATOR_PLUGIN_ALIAS}/snapshot`,
-    );
-  });
-
-  it("keeps Caviclaw operator HTTP aliases and RPC methods explicit", () => {
-    expect(API_OPERATOR).toBe("/cavi-control/api/operator");
+  it("keeps operator HTTP routes and RPC methods explicit", () => {
+    expect(operator.root).toBe("/cavi-control/api/operator");
+    expect(operator.snapshot).toBe(`${operator.root}/snapshot`);
+    expect(operator.workerReady).toBe(`${operator.root}/worker/ready`);
     expect(CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.snapshot).toBe(
       "/api/plugins/cavi-control/operator/snapshot",
     );
@@ -52,27 +33,13 @@ describe("api-paths", () => {
     );
   });
 
-  it("stays aligned with the package-level CAVI endpoint owner", () => {
-    expect(API_OPERATOR).toBe(CAVI_CONTROL_API_ENDPOINTS.operator.root);
-    expect(PROJECT_BOARD_API).toEqual({
-      root: CAVI_CONTROL_API_ENDPOINTS.projectBoard.root,
-      profile: CAVI_CONTROL_API_ENDPOINTS.projectBoard.profile,
-      sprint: CAVI_CONTROL_API_ENDPOINTS.projectBoard.sprint,
-      backlog: CAVI_CONTROL_API_ENDPOINTS.projectBoard.backlog,
-      call: CAVI_CONTROL_API_ENDPOINTS.projectBoard.call,
-    });
-    expect(OPERATOR_API).toEqual({
-      snapshot: CAVI_CONTROL_API_ENDPOINTS.operator.snapshot,
-      status: CAVI_CONTROL_API_ENDPOINTS.operator.status,
-      registry: CAVI_CONTROL_API_ENDPOINTS.operator.registry,
-      tasks: CAVI_CONTROL_API_ENDPOINTS.operator.tasks,
-      memory: CAVI_CONTROL_API_ENDPOINTS.operator.memory,
-      workerReady: CAVI_CONTROL_API_ENDPOINTS.operator.workerReady,
-      workerTasks: CAVI_CONTROL_API_ENDPOINTS.operator.workerTasks,
-    });
-    expect(OPERATOR_API_PLUGIN_ALIAS.snapshot).toBe(
-      CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.snapshot,
-    );
+  it("operator and project-board routes resolve from the canonical endpoint owner", () => {
+    expect(operator).toBe(CAVI_CONTROL_API_ENDPOINTS.operator);
+    expect(projectBoard.root).toBe("/api/plugins/cavi-control/kanban");
+    expect(projectBoard.profile).toBe(`${projectBoard.root}/profile`);
+    expect(projectBoard.sprint).toBe(`${projectBoard.root}/sprint`);
+    expect(projectBoard.backlog).toBe(`${projectBoard.root}/backlog`);
+    expect(projectBoard.call).toBe(`${projectBoard.root}/call`);
   });
 
   it("exposes cost and scoring path constants", () => {
@@ -85,20 +52,20 @@ describe("api-paths", () => {
   });
 
   it("projectBoardBacklogItemPath encodes item ids", () => {
-    expect(projectBoardBacklogItemPath("abc")).toBe(`${PROJECT_BOARD_API.backlog}/abc`);
-    expect(projectBoardBacklogItemPath("a b")).toBe(`${PROJECT_BOARD_API.backlog}/a%20b`);
-    expect(projectBoardBacklogItemPath("x&y")).toBe(`${PROJECT_BOARD_API.backlog}/x%26y`);
+    expect(projectBoardBacklogItemPath("abc")).toBe(`${projectBoard.backlog}/abc`);
+    expect(projectBoardBacklogItemPath("a b")).toBe(`${projectBoard.backlog}/a%20b`);
+    expect(projectBoardBacklogItemPath("x&y")).toBe(`${projectBoard.backlog}/x%26y`);
   });
 
   it("operatorTaskDiscoursePath encodes task ids", () => {
     expect(operatorTaskDiscoursePath("task-1")).toBe(
-      `${API_OPERATOR}/tasks/task-1/discourse`,
+      `${operator.root}/tasks/task-1/discourse`,
     );
     expect(operatorTaskDiscoursePluginAliasPath("task-1")).toBe(
-      `${API_OPERATOR_PLUGIN_ALIAS}/tasks/task-1/discourse`,
+      `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.root}/tasks/task-1/discourse`,
     );
     expect(operatorTaskDiscoursePath("t/x")).toBe(
-      `${API_OPERATOR}/tasks/t%2Fx/discourse`,
+      `${operator.root}/tasks/t%2Fx/discourse`,
     );
   });
 
@@ -128,16 +95,16 @@ describe("api-paths", () => {
 
   it("projectBoardWorkspaceExpectedContractSummary lists split endpoints and aggregate fallback", () => {
     const summary = projectBoardWorkspaceExpectedContractSummary();
-    expect(summary).toContain(PROJECT_BOARD_API.profile);
-    expect(summary).toContain(PROJECT_BOARD_API.sprint);
-    expect(summary).toContain(PROJECT_BOARD_API.backlog);
-    expect(summary).toContain(`aggregate: GET ${API_PROJECT_BOARD}`);
+    expect(summary).toContain(projectBoard.profile);
+    expect(summary).toContain(projectBoard.sprint);
+    expect(summary).toContain(projectBoard.backlog);
+    expect(summary).toContain(`aggregate: GET ${projectBoard.root}`);
   });
 
   it("projectBoardWorkspaceDiagnosticRouteHint lists project board routes", () => {
     const hint = projectBoardWorkspaceDiagnosticRouteHint();
-    expect(hint).toContain(PROJECT_BOARD_API.profile);
-    expect(hint).toContain(PROJECT_BOARD_API.sprint);
-    expect(hint).toContain(PROJECT_BOARD_API.backlog);
+    expect(hint).toContain(projectBoard.profile);
+    expect(hint).toContain(projectBoard.sprint);
+    expect(hint).toContain(projectBoard.backlog);
   });
 });

@@ -3,9 +3,9 @@ import type { GatewayWebSocketClient } from "../../../../core/ws";
 import type { JsonHttpRequest } from "../../../../core/http/json-client";
 import { loadOperatorControlLive } from "../../../../../extensions/cavi/adapters/cavi-control-adapters/operator-control-live";
 import {
+  CAVI_CONTROL_OPERATOR_API as OPERATOR_API,
+  CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS as OPERATOR_API_PLUGIN_ALIAS,
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
-  OPERATOR_API,
-  OPERATOR_API_PLUGIN_ALIAS,
   operatorControlExpectedContractSummary,
 } from "../../../../../extensions/cavi/contracts/paths";
 

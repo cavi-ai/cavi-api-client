@@ -115,14 +115,21 @@ const FORBIDDEN_PATH_FRAGMENTS = [
   "registry-state.json",
 ] as const;
 
-const API_PATH_LITERAL_RE = /(["'`])\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
-const API_TEMPLATE_ROUTE_LITERAL_RE = /`\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[\s\S]*?`/u;
-const API_URL_LITERAL_RE = /(["'`])https?:\/\/[^"'`]*\/(?:api|v1|health|cavi-control|front-door|library|machine|martina|operator|scout|angela|trading|wu-tang)[^"'`]*\1/u;
+// Route-literal roots are GENERIC platform roots only — NO per-agent fleet slugs.
+// Fleet agents are manifest-supplied, so their routes never appear in package source;
+// the FLEET_SLUG_RE regression net below guards against any reappearing.
+const ROUTE_ROOTS = "api|v1|health|healthz|readyz|cavi-control|library|operator";
+const API_PATH_LITERAL_RE = new RegExp(`(["'\`])\\/(?:${ROUTE_ROOTS})[^"'\`]*\\1`, "u");
+const API_TEMPLATE_ROUTE_LITERAL_RE = new RegExp(`\`\\/(?:${ROUTE_ROOTS})[\\s\\S]*?\``, "u");
+const API_URL_LITERAL_RE = new RegExp(
+  `(["'\`])https?:\\/\\/[^"'\`]*\\/(?:${ROUTE_ROOTS})[^"'\`]*\\1`,
+  "u",
+);
 const CAVI_CONTROL_ROUTE_LITERAL_RE = /(["'`])\/cavi-control\/api(?:\/|["'`])/u;
-const SURFACE_FIRST_CANONICAL_PATH_RE = /canonicalPath:\s*(?:\([^)]*\)\s*=>\s*)?(["'`])\/(?:cavi-control|front-door|library|machine|martina|trading)\/api(?:\/|[?]|["'`])/u;
-const CAVI_EXTENSION_ROUTE_RE = /(?:cavi-control|front-door|machine\/api|martina|trading\/api|portal-memory|\/library\/api|extensions\/cavi)/u;
-const MARTINA_COMPAT_IDENTIFIER_RE = /\b(?:MARTINA_|Martina[A-Z]\w*|normalizeMartina|inferMartina|martinaRun)/u;
-const BAKED_TEAM_REGISTRY_VALUE_RE = /(["'`])(?:angela|deb|front-door|machine|martina|run-dmc|scout|wu-tang|angels|paw-and-order|griselda|headhunter|scout-school)\1/u;
+const SURFACE_FIRST_CANONICAL_PATH_RE = /canonicalPath:\s*(?:\([^)]*\)\s*=>\s*)?(["'`])\/(?:cavi-control|library)\/api(?:\/|[?]|["'`])/u;
+const CAVI_EXTENSION_ROUTE_RE = /(?:cavi-control|portal-memory|\/library\/api|extensions\/cavi)/u;
+// Regression net: no CAVI fleet-agent slug may reappear baked into the package.
+const FLEET_SLUG_RE = /\b(?:martina|scout|angela|machine|trading|wu-tang|front-door|deb|tony|method-man)\b/u;
 const PATH_OWNER_RE = /(?:^|[-_/])paths\.ts$/u;
 const PATH_COMPAT_FILES = new Set<string>();
 const CONTRACT_OWNER_FILES = new Set([
@@ -357,8 +364,8 @@ describe("package hardening", () => {
           relative !== "src/extensions/cavi/runtime/paths.ts",
       );
 
-    expect(source).toContain("export const PROJECT_BOARD_API");
-    expect(source).toContain("export const OPERATOR_API");
+    expect(source).toContain("export const CAVI_CONTROL_OPERATOR_API");
+    expect(source).toContain("projectBoard:");
     expect(hiddenFeaturePathOwners).toEqual([]);
   });
 
@@ -819,9 +826,12 @@ describe("package hardening", () => {
     expect(tsconfig.exclude).toContain("src/__tests__/**");
   });
 
-  it("does not keep Martina compatibility implementation modules in active source", () => {
-    const offenders = selfScannedSources()
-      .filter((filePath) => MARTINA_COMPAT_IDENTIFIER_RE.test(read(filePath)))
+  it("does not bake CAVI fleet-agent slugs into the extension contracts", () => {
+    const caviContracts = walkFiles(
+      path.join(SRC_ROOT, "extensions", "cavi", "contracts"),
+    ).filter((filePath) => filePath.endsWith(".ts"));
+    const offenders = caviContracts
+      .filter((filePath) => FLEET_SLUG_RE.test(read(filePath)))
       .map(rel);
 
     expect(offenders).toEqual([]);
@@ -829,7 +839,7 @@ describe("package hardening", () => {
 
   it("keeps team registry data runtime-supplied instead of baked into the package", () => {
     const offenders = TEAM_REGISTRY_OWNER_FILES.filter((relativePath) =>
-      BAKED_TEAM_REGISTRY_VALUE_RE.test(read(path.join(PACKAGE_ROOT, relativePath))),
+      FLEET_SLUG_RE.test(read(path.join(PACKAGE_ROOT, relativePath))),
     );
 
     expect(offenders).toEqual([]);

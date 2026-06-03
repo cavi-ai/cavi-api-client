@@ -13,12 +13,14 @@ import {
 } from "../../../core/gateway/envelope/index.js";
 import { describeHttpContract } from "../../../core/http/contracts.js";
 import {
-  PROJECT_BOARD_API,
+  CAVI_CONTROL_API_ENDPOINTS,
   projectBoardBacklogItemPath,
 } from "../contracts/paths.js";
 import {
   PROJECT_BOARD_FALLBACK_LIMITATIONS,
 } from "./constants.js";
+
+const PROJECT_BOARD_API = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
 import {
   normalizeProjectBoardBacklogItem,
   normalizeEmailAddress,
