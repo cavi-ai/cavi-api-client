@@ -1,7 +1,7 @@
 {
   "name": "@cavi-ai/api-client",
-  "version": "0.2.1",
-  "description": "Gateway-agnostic TypeScript client for agent runtimes — one HTTP + WebSocket surface, provider adapters, and graceful degradation across workspaces, UIs, and gateways",
+  "version": "0.3.0",
+  "description": "Provider-agnostic TypeScript client for AI agent runtimes — a single RuntimeClient contract spanning Hermes, OpenClaw, and Claude, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
   "sideEffects": false,
@@ -17,6 +17,8 @@
   },
   "keywords": [
     "api-client",
+    "provider-agnostic",
+    "runtime",
     "gateway",
     "websocket",
     "rpc",
@@ -25,6 +27,8 @@
     "esm",
     "agent",
     "llm",
+    "anthropic",
+    "claude",
     "hermes",
     "openclaw",
     "fetch",

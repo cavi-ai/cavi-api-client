@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-04
+
+### Added
+
+- OpenClaw Workboard mirror under `@cavi-ai/api-client/providers/openclaw`,
+  including native Workboard statuses, priorities, Gateway RPC method names, and
+  a small RPC helper over caller-supplied transport.
+- Manifest coverage for native `workboard.*` Gateway RPC methods, with the
+  vendored RPC fixture updated so manifest drift remains test-covered.
+- CAVI Project Board compatibility adapter that projects native Workboard cards
+  into legacy backlog/workspace snapshots and routes known backlog/call
+  mutations through typed Workboard RPC when an RPC client is available.
+
+### Changed
+
+- Documented OpenClaw Workboard as a Gateway RPC surface rather than an HTTP
+  route table.
+- Clarified legacy kanban and CAVI Project Board REST entries as compatibility
+  surfaces that follow upstream runtime/plugin behavior.
+
 ## [0.2.1] - 2026-06-01
 
 This release reorganizes the package around a provider-agnostic `RuntimeClient`
@@ -103,6 +123,7 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/cavi-ai/cavi-api-client/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/cavi-ai/cavi-api-client/releases/tag/v0.2.0

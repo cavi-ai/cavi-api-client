@@ -3,8 +3,8 @@
 </h1>
 
 <p align="center">
-  <strong>A provider-agnostic TypeScript client for agent runtimes.</strong><br>
-  One <code>RuntimeClient</code> contract, many providers (Hermes, OpenClaw, Claude/Anthropic). HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters behind one package boundary.
+  <strong>One TypeScript client for every agent runtime. 🛰️</strong><br>
+  Talk to Hermes, OpenClaw, and Claude through a single <code>RuntimeClient</code> contract — HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters, all behind one package boundary. <strong>Swap providers, not your code.</strong>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -14,7 +14,7 @@
 ![ESM](https://img.shields.io/badge/module-ESM-blueviolet)
 
 <p align="center">
-  <img src="docs/assets/api-client-hero.svg" alt="@cavi-ai/api-client gateway-agnostic architecture diagram" width="100%">
+  <img src="docs/assets/api-client-hero.svg" alt="@cavi-ai/api-client provider-agnostic architecture diagram" width="100%">
 </p>
 
 ```sh
@@ -52,20 +52,34 @@ npm install @cavi-ai/api-client
 
 ## Why This Package Exists
 
-Agent applications need the same client plumbing again and again: authenticated
-JSON requests, WebSocket RPC, run-event streams, capability snapshots, route
-contracts, typed errors, and graceful fallback behavior. `@cavi-ai/api-client`
-keeps that plumbing in one reusable package so application code can focus on the
-workflow.
+Building on top of agent runtimes means writing the same plumbing over and over:
+authenticated requests, WebSocket RPC, run-event streams, capability snapshots,
+route contracts, typed errors, and fallback behavior for when the backend
+inevitably hiccups. `@cavi-ai/api-client` keeps all of it in one reusable,
+provider-agnostic package — so your app code focuses on the *workflow*, not the
+transport.
+
+### 🤔 This package is for you if…
+
+1. 🛰️ **You run multiple gateways and runtimes** across different providers, and you'd rather have one client than a pile of one-off integrations.
+2. 🎛️ **You're building interactive, agentic UI** — live runs, streaming events, capability-aware panels — and don't want to rebuild the transport layer every single project.
+3. ⏰ **You don't love the *timing* of upstream bugs** (always mid-demo, never a quiet Tuesday) and want your UI to shrug them off instead of faceplanting.
+4. 🤷 **You've made peace with the one universal constant:** humans *and* agents ship mistakes. So here, degradation is a **contract** — a backend gap returns typed fallback data with a structured `contractGap`, not a white screen of death.
+5. 🔀 **You need to switch providers without a rewrite** — Hermes today, OpenClaw tomorrow, Claude on Friday — all behind the exact same calls.
+6. 📐 **You want stable, schema-correct endpoints** that hand back the *same shape* no matter which provider answered, so per-provider `if/else` spaghetti never leaks into your components.
+7. 🎉 **You want in on a genuinely fun open-source project** (MIT, strict-typed to the teeth, conformance-tested — and yes, PRs are actually welcome).
+8. 🐶🐱 **You like puppies and kittens.** …alright, we're reaching. But you're still reading, so maybe we're onto something. 😄
+
+### 🧩 How it holds together
 
 The core is provider-agnostic. Every provider implements one universal
 `RuntimeClient` contract (capabilities · runs · streaming); gateway-style
 providers (Hermes, OpenClaw) extend it with `GatewayClient` (teams, kanban,
 workspace, operator), while non-gateway providers (Claude / Anthropic) implement
-the runtime tier only. Provider modules customize only the parts that are
-actually different — endpoint maps, headers, auth scheme, method transport. The
-shared transports, error handling, stream parsing, and trace behavior stay in
-one place, and an executable conformance kit keeps every provider honest.
+the runtime tier only. Provider modules customize only what's *actually*
+different — endpoint maps, headers, auth scheme, method transport. The shared
+transports, error handling, stream parsing, and trace behavior stay in one
+place, and an executable conformance kit keeps every provider honest.
 
 ## Runtime
 
@@ -308,6 +322,9 @@ does not drift into hand-built strings. Mirrored route literals belong in:
 - CAVI extension contracts:
   `src/extensions/cavi/contracts/paths.ts` and
   `src/extensions/cavi/contracts/surfaces.ts`.
+- OpenClaw provider mirrors:
+  `src/providers/openclaw/manifest.ts` and
+  `src/providers/openclaw/workboard.ts`.
 
 Consumers should use exported constants and resolvers such as `resolvePath` and
 `appendHttpQuery` (root), and `resolveCaviPath` plus the CAVI contract helpers

@@ -14,6 +14,7 @@ export * from "./project-board/fallback.js";
 export * from "./project-board/live.js";
 export * from "./project-board/mutations.js";
 export * from "./project-board/normalize.js";
+export * from "./project-board/workboard-adapter.js";
 export * from "./operator-control/capabilities.js";
 export * from "./operator-control/constants.js";
 export * from "./operator-control/defaults.js";
