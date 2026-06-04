@@ -5,6 +5,7 @@ import type {
   ProjectBoardProfile,
   ProjectBoardWorkspaceSnapshot,
 } from "../domain/index.js";
+import type { OpenClawWorkboardRpc } from "../../../providers/openclaw/workboard.js";
 import { GatewayHttpError } from "../../../core/http/gateway-error.js";
 import type { JsonHttpRequest } from "../../../core/http/json-client.js";
 import { CAVI_CONTROL_API_ENDPOINTS } from "../contracts/paths.js";
@@ -15,6 +16,7 @@ import {
   toProjectBoardWorkspaceSnapshot,
 } from "./normalize.js";
 import { asString } from "../../../core/data/guards.js";
+import { workboardCardsToProjectBoardWorkspace } from "./workboard-adapter.js";
 
 const PROJECT_BOARD_API = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
 const API_PROJECT_BOARD = PROJECT_BOARD_API.root;
@@ -29,6 +31,7 @@ export type ProjectBoardBacklogMutationPayload = {
 };
 
 export type ProjectBoardLiveHelpers = {
+  workboardRpc?: OpenClawWorkboardRpc | null;
   loadProjectBoardWorkspaceLive: () => Promise<ProjectBoardWorkspaceSnapshot>;
   loadProjectBoardProfileForEmailMutation: () => Promise<ProjectBoardProfile>;
   persistProjectBoardEmails: (emails: string[]) => Promise<ProjectBoardProfile>;
@@ -39,8 +42,18 @@ export type ProjectBoardLiveHelpers = {
 
 export function createProjectBoardLiveHelpers(
   requestJson: JsonHttpRequest,
+  options: { workboardRpc?: OpenClawWorkboardRpc | null } = {},
 ): ProjectBoardLiveHelpers {
   const loadProjectBoardWorkspaceLive = async (): Promise<ProjectBoardWorkspaceSnapshot> => {
+    if (options.workboardRpc) {
+      try {
+        const payload = await options.workboardRpc.listCards();
+        return workboardCardsToProjectBoardWorkspace(payload.cards);
+      } catch {
+        // Preserve the existing REST compatibility path when Workboard is absent.
+      }
+    }
+
     try {
       const [profilePayload, sprintPayload, backlogPayload] = await Promise.all(
         [
@@ -129,6 +142,7 @@ export function createProjectBoardLiveHelpers(
   };
 
   return {
+    workboardRpc: options.workboardRpc ?? null,
     loadProjectBoardWorkspaceLive,
     loadProjectBoardProfileForEmailMutation,
     persistProjectBoardEmails,
