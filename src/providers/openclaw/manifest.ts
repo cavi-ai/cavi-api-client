@@ -37,6 +37,7 @@ const CRON = "Cron";
 const DEVICES = "Devices";
 const NODES_OP = "Nodes (operator-side)";
 const NODES_NODE = "Nodes (node-side, scope `node`)";
+const WORKBOARD = "OpenClaw Workboard";
 
 function m(
   method: string,
@@ -301,6 +302,52 @@ const RPC = {
   nodeInvokeResult:           m("node.invoke.result",           "nodes-node",                   "node",           true,  NODES_NODE),
   nodeEvent:                  m("node.event",                   "nodes-node",                   "node",           true,  NODES_NODE),
   nativeHookInvoke:           m("nativeHook.invoke",            "nodes-node",                   "operator.admin", false, NODES_NODE, "unadvertised"),
+
+  // OpenClaw Workboard
+  workboardCardsList:         m("workboard.cards.list",         "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardCardsExport:       m("workboard.cards.export",       "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardCardsDiagnostics:  m("workboard.cards.diagnostics",  "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardCardsStats:        m("workboard.cards.stats",        "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardCardsRuns:         m("workboard.cards.runs",         "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardBoardsList:        m("workboard.boards.list",        "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardAttachmentsList:   m("workboard.cards.attachments.list", "workboard",                "operator.read",  true,  WORKBOARD),
+  workboardAttachmentsGet:    m("workboard.cards.attachments.get", "workboard",                 "operator.read",  true,  WORKBOARD),
+  workboardNotificationsList: m("workboard.notifications.list", "workboard",                    "operator.read",  true,  WORKBOARD),
+  workboardNotificationsEvents: m("workboard.notifications.events", "workboard",                 "operator.read",  true,  WORKBOARD),
+  workboardCardsCreate:       m("workboard.cards.create",       "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsUpdate:       m("workboard.cards.update",       "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsMove:         m("workboard.cards.move",         "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsDelete:       m("workboard.cards.delete",       "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsComment:      m("workboard.cards.comment",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsLink:         m("workboard.cards.link",         "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsLinkDependency: m("workboard.cards.linkDependency", "workboard",                 "operator.write", true,  WORKBOARD),
+  workboardCardsProof:        m("workboard.cards.proof",        "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsArtifact:     m("workboard.cards.artifact",     "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsClaim:        m("workboard.cards.claim",        "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsHeartbeat:    m("workboard.cards.heartbeat",    "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsRelease:      m("workboard.cards.release",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsPromote:      m("workboard.cards.promote",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsReassign:     m("workboard.cards.reassign",     "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsReclaim:      m("workboard.cards.reclaim",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsComplete:     m("workboard.cards.complete",     "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsBlock:        m("workboard.cards.block",        "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsUnblock:      m("workboard.cards.unblock",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsBulk:         m("workboard.cards.bulk",         "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsDiagnosticsRefresh: m("workboard.cards.diagnostics.refresh", "workboard",        "operator.write", true,  WORKBOARD),
+  workboardCardsDispatch:     m("workboard.cards.dispatch",     "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsSpecify:      m("workboard.cards.specify",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsDecompose:    m("workboard.cards.decompose",    "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardCardsArchive:      m("workboard.cards.archive",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardBoardsUpsert:      m("workboard.boards.upsert",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardBoardsArchive:     m("workboard.boards.archive",     "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardBoardsDelete:      m("workboard.boards.delete",      "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardNotificationsSubscribe: m("workboard.notifications.subscribe", "workboard",           "operator.write", true,  WORKBOARD),
+  workboardNotificationsDelete: m("workboard.notifications.delete", "workboard",                 "operator.write", true,  WORKBOARD),
+  workboardNotificationsAdvance: m("workboard.notifications.advance", "workboard",               "operator.write", true,  WORKBOARD),
+  workboardAttachmentsAdd:    m("workboard.cards.attachments.add", "workboard",                  "operator.write", true,  WORKBOARD),
+  workboardAttachmentsDelete: m("workboard.cards.attachments.delete", "workboard",               "operator.write", true,  WORKBOARD),
+  workboardWorkerLog:         m("workboard.cards.workerLog",    "workboard",                    "operator.write", true,  WORKBOARD),
+  workboardProtocolViolation: m("workboard.cards.protocolViolation", "workboard",                "operator.write", true,  WORKBOARD),
 } as const satisfies Record<string, ProviderRpcMethod>;
 
 // --- REST --------------------------------------------------------------------

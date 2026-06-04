@@ -104,6 +104,11 @@ resolvePath("team.agent.config", {
 // /api/teams/research/agents/analyst/config
 ```
 
+`team.kanban` is a team-shaped compatibility route. Native OpenClaw Workboard
+uses board IDs through `workboard.*` Gateway RPC; CAVI compatibility adapters may
+map a `teamId` to a Workboard `boardId`, but this package does not make that
+mapping the upstream contract.
+
 Workspace API routes are also generated, but callers should use the manifest
 resolver so the path is checked against the whitelist:
 

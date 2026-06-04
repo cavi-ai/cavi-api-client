@@ -19,8 +19,6 @@ import {
 import {
   PROJECT_BOARD_FALLBACK_LIMITATIONS,
 } from "./constants.js";
-
-const PROJECT_BOARD_API = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
 import {
   normalizeProjectBoardBacklogItem,
   normalizeEmailAddress,
@@ -28,6 +26,28 @@ import {
 } from "./normalize.js";
 import { createTraceId } from "./trace-id.js";
 import type { ProjectBoardLiveHelpers } from "./live.js";
+import {
+  projectBoardDraftToWorkboardCreate,
+  projectBoardDraftToWorkboardPatch,
+  projectBoardStatusToWorkboard,
+  workboardCardToProjectBoardBacklogItem,
+} from "./workboard-adapter.js";
+import { OPENCLAW_WORKBOARD_RPC_METHODS } from "../../../providers/openclaw/workboard.js";
+
+const PROJECT_BOARD_API = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
+const WORKBOARD_CALL_ACTIONS = {
+  dispatch: OPENCLAW_WORKBOARD_RPC_METHODS.cardsDispatch,
+  promote: OPENCLAW_WORKBOARD_RPC_METHODS.cardsPromote,
+  reassign: OPENCLAW_WORKBOARD_RPC_METHODS.cardsReassign,
+  reclaim: OPENCLAW_WORKBOARD_RPC_METHODS.cardsReclaim,
+  unblock: OPENCLAW_WORKBOARD_RPC_METHODS.cardsUnblock,
+} as const;
+
+function isWorkboardCallAction(
+  action: string,
+): action is keyof typeof WORKBOARD_CALL_ACTIONS {
+  return action in WORKBOARD_CALL_ACTIONS;
+}
 
 export type ProjectBoardMutations = {
   createProjectBoardEmail: (
@@ -201,6 +221,12 @@ export function createProjectBoardMutations(
         }),
         run: async () => {
           const payload = toBacklogMutationPayload(draft);
+          if (projectBoardLive.workboardRpc) {
+            const response = await projectBoardLive.workboardRpc.createCard(
+              projectBoardDraftToWorkboardCreate(payload),
+            );
+            return workboardCardToProjectBoardBacklogItem(response.card);
+          }
           const response = await requestJson<unknown>(PROJECT_BOARD_API.backlog, {
             method: "POST",
             body: payload,
@@ -237,6 +263,17 @@ export function createProjectBoardMutations(
         }),
         run: async () => {
           const payload = toBacklogMutationPayload(draft);
+          if (projectBoardLive.workboardRpc) {
+            await projectBoardLive.workboardRpc.updateCard(
+              itemId,
+              projectBoardDraftToWorkboardPatch(payload),
+            );
+            const response = await projectBoardLive.workboardRpc.moveCard(
+              itemId,
+              projectBoardStatusToWorkboard(payload.status),
+            );
+            return workboardCardToProjectBoardBacklogItem(response.card);
+          }
           const response = await requestJson<unknown>(
             projectBoardBacklogItemPath(itemId),
             {
@@ -285,6 +322,23 @@ export function createProjectBoardMutations(
 
           if (!action) {
             throw new Error("Project Board action is required.");
+          }
+
+          if (projectBoardLive.workboardRpc && isWorkboardCallAction(action)) {
+            const response = await projectBoardLive.workboardRpc.request<unknown>(
+              WORKBOARD_CALL_ACTIONS[action],
+              {
+                ...request.metadata,
+                requestedBy,
+                source: "cavi-control-ui",
+                traceId,
+              },
+            );
+            return parseProjectBoardCallAck(response, {
+              action,
+              requestedBy,
+              traceId,
+            });
           }
 
           const payload = {
