@@ -36,6 +36,7 @@ import type {
 import { projectBoardWorkspaceExpectedContractSummary } from "../contracts/paths.js";
 import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
 import { resolveGatewayHttpBase } from "../runtime/paths.js";
+import { createOpenClawWorkboardRpc } from "../../../providers/openclaw/workboard.js";
 import { createProjectBoardLiveHelpers } from "../project-board/live.js";
 import { createProjectBoardMutations } from "../project-board/mutations.js";
 import { loadTaskDiscourseLive } from "../discourse/live.js";
@@ -256,7 +257,9 @@ export function createCaviControlAdapters(opts: {
     credentials: sessionMode ? "same-origin" : undefined,
   });
 
-  const projectBoardLive = createProjectBoardLiveHelpers(requestJson);
+  const projectBoardLive = createProjectBoardLiveHelpers(requestJson, {
+    workboardRpc: opts.client ? createOpenClawWorkboardRpc(opts.client) : null,
+  });
   const projectBoardMutations = createProjectBoardMutations(requestJson, projectBoardLive);
   const gatewayWs = createGatewayWsLoaders({
     client: opts.client,

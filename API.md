@@ -130,9 +130,9 @@ The session REST paths are HTTP fallbacks for the websocket RPC session methods.
 | --- | --- | --- | --- |
 | `vault.tree` | GET | `/api/obsidian/tree` | Obsidian vault tree; no native gateway route identified yet. |
 | `vault.read` | GET | `/api/obsidian/read?path=:path` | Obsidian file read; query string is appended by caller. |
-| `kanban.tasks` | POST | `/api/plugins/kanban/tasks` | Kanban task creation endpoint for workspace and operator surfaces. |
-| `kanban.board` | GET | `/api/plugins/kanban/board` | Unified Kanban board endpoint. |
-| `team.kanban` | GET | `/api/teams/:teamId/kanban` | Team Kanban route derived from the team manifest identity. |
+| `kanban.tasks` | POST | `/api/plugins/kanban/tasks` | Legacy/unknown kanban compatibility route; no native OpenClaw Workboard REST owner is mirrored here. |
+| `kanban.board` | GET | `/api/plugins/kanban/board` | Legacy/unknown board compatibility route; prefer native Workboard RPC when available. |
+| `team.kanban` | GET | `/api/teams/:teamId/kanban` | Team-shaped compatibility route; CAVI adapters map `teamId` to Workboard `boardId` only in compatibility code. |
 | `team.runs` | GET | `/api/teams/:teamId/runs` | Team runs route derived from the team manifest identity. |
 | `team.config` | GET | `/api/teams/:teamId/config` | Team config route derived from the team manifest identity. |
 | `team.workspace` | GET | `/api/teams/:teamId/workspace/:workspacePath` | Whitelisted team workspace route. |
@@ -175,14 +175,14 @@ The plugin alias paths mirror the operator paths under
 | --- | --- | --- | --- |
 | `cavi.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range` | CAVI cost history endpoint. |
 | `cavi.scoringModel` | GET | `/api/plugins/cavi-control/scoring/model` | CAVI scoring model endpoint. |
-| `cavi.projectBoard.root` | GET | `/api/plugins/cavi-control/kanban` | Project Board aggregate endpoint. |
-| `cavi.projectBoard.profile` | GET | `/api/plugins/cavi-control/kanban/profile` | Project Board profile endpoint. |
+| `cavi.projectBoard.root` | GET | `/api/plugins/cavi-control/kanban` | Project Board compatibility aggregate; native Workboard data may be projected from RPC. |
+| `cavi.projectBoard.profile` | GET | `/api/plugins/cavi-control/kanban/profile` | Project Board compatibility profile slice. |
 | `cavi.projectBoard.profile` | PUT | `/api/plugins/cavi-control/kanban/profile` | Persist Project Board profile email mutations. |
-| `cavi.projectBoard.sprint` | GET | `/api/plugins/cavi-control/kanban/sprint` | Project Board sprint endpoint. |
-| `cavi.projectBoard.backlog` | GET | `/api/plugins/cavi-control/kanban/backlog` | Project Board backlog endpoint. |
-| `cavi.projectBoard.backlog` | POST | `/api/plugins/cavi-control/kanban/backlog` | Create a Project Board backlog item. |
-| `cavi.projectBoard.backlogItem` | PATCH | `/api/plugins/cavi-control/kanban/backlog/:itemId` | Update a Project Board backlog item. |
-| `cavi.projectBoard.call` | POST | `/api/plugins/cavi-control/kanban/call` | Project Board command endpoint. |
+| `cavi.projectBoard.sprint` | GET | `/api/plugins/cavi-control/kanban/sprint` | Project Board compatibility sprint slice synthesized from board metadata, stats, or fallback data. |
+| `cavi.projectBoard.backlog` | GET | `/api/plugins/cavi-control/kanban/backlog` | Project Board compatibility backlog slice; native cards map through Workboard RPC when present. |
+| `cavi.projectBoard.backlog` | POST | `/api/plugins/cavi-control/kanban/backlog` | Compatibility create route; native Workboard-backed clients use `workboard.cards.create`. |
+| `cavi.projectBoard.backlogItem` | PATCH | `/api/plugins/cavi-control/kanban/backlog/:itemId` | Compatibility update route; native Workboard-backed clients use `workboard.cards.update` and `workboard.cards.move`. |
+| `cavi.projectBoard.call` | POST | `/api/plugins/cavi-control/kanban/call` | Compatibility command route; known actions map to typed Workboard card RPC methods. |
 
 ## CAVI Portal Surfaces
 
@@ -273,6 +273,60 @@ several library routes under `/api/plugins/library`.
 Postman can open the transport URL, but websocket JSON-RPC calls are runtime
 protocol messages rather than ordinary HTTP requests. Use `{{gatewayWsUrl}}/api/ws`
 for the transport.
+
+### Gateway RPC: OpenClaw Workboard
+
+Native Workboard methods are WebSocket RPC messages, not HTTP routes. This
+package mirrors the upstream OpenClaw method names and card field enums so
+clients can call them without hand-built strings; OpenClaw remains the runtime
+contract owner.
+
+| Group | Method | Description |
+| --- | --- | --- |
+| Cards | `workboard.cards.list` | List native Workboard cards, optionally scoped by board. |
+| Cards | `workboard.cards.export` | Export card data. |
+| Cards | `workboard.cards.diagnostics` | Read Workboard diagnostics. |
+| Cards | `workboard.cards.stats` | Read Workboard card status/priority stats. |
+| Cards | `workboard.cards.runs` | Read Workboard-linked run data. |
+| Cards | `workboard.cards.create` | Create a Workboard card. |
+| Cards | `workboard.cards.update` | Patch card fields. |
+| Cards | `workboard.cards.move` | Move a card to another Workboard status. |
+| Cards | `workboard.cards.delete` | Delete a card. |
+| Cards | `workboard.cards.comment` | Add a card comment. |
+| Cards | `workboard.cards.link` | Link a card to an external object. |
+| Cards | `workboard.cards.linkDependency` | Link card dependency relationships. |
+| Cards | `workboard.cards.proof` | Attach proof metadata to a card. |
+| Cards | `workboard.cards.artifact` | Attach artifact metadata to a card. |
+| Cards | `workboard.cards.claim` | Claim a card for an agent/operator. |
+| Cards | `workboard.cards.heartbeat` | Send card worker heartbeat. |
+| Cards | `workboard.cards.release` | Release a claimed card. |
+| Cards | `workboard.cards.promote` | Promote a card through Workboard flow. |
+| Cards | `workboard.cards.reassign` | Reassign a card. |
+| Cards | `workboard.cards.reclaim` | Reclaim a stale card. |
+| Cards | `workboard.cards.complete` | Complete a card. |
+| Cards | `workboard.cards.block` | Block a card. |
+| Cards | `workboard.cards.unblock` | Unblock a card. |
+| Cards | `workboard.cards.bulk` | Apply bulk card operations. |
+| Cards | `workboard.cards.diagnostics.refresh` | Refresh Workboard diagnostics. |
+| Cards | `workboard.cards.dispatch` | Dispatch queued Workboard card work. |
+| Cards | `workboard.cards.specify` | Specify card work. |
+| Cards | `workboard.cards.decompose` | Decompose card work. |
+| Cards | `workboard.cards.archive` | Archive a card. |
+| Boards | `workboard.boards.list` | List Workboard boards. |
+| Boards | `workboard.boards.upsert` | Create or update a board. |
+| Boards | `workboard.boards.archive` | Archive a board. |
+| Boards | `workboard.boards.delete` | Delete a board. |
+| Notifications | `workboard.notifications.subscribe` | Subscribe to Workboard notifications. |
+| Notifications | `workboard.notifications.list` | List Workboard notifications. |
+| Notifications | `workboard.notifications.delete` | Delete a Workboard notification. |
+| Notifications | `workboard.notifications.events` | Read Workboard notification events. |
+| Notifications | `workboard.notifications.advance` | Advance notification cursor/state. |
+| Attachments | `workboard.cards.attachments.list` | List card attachments. |
+| Attachments | `workboard.cards.attachments.get` | Fetch a card attachment. |
+| Attachments | `workboard.cards.attachments.add` | Add a card attachment. |
+| Attachments | `workboard.cards.attachments.delete` | Delete a card attachment. |
+| Workers | `workboard.cards.workerLog` | Append Workboard worker log data. |
+| Workers | `workboard.cards.protocolViolation` | Record a worker protocol violation. |
 
 | Group | Method | Description |
 | --- | --- | --- |

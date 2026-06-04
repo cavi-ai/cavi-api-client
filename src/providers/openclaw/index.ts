@@ -9,3 +9,4 @@ export * from "./team-registry.js";
 export * from "./team-registry-config.js";
 export * from "./websocket.js";
 export * from "./wiki.js";
+export * from "./workboard.js";
