@@ -534,7 +534,18 @@ describe("package hardening", () => {
     expect(read(CORE_HTTP_TYPES)).not.toContain("hermes-api-server");
   });
 
-  it("keeps provider-specific handshake env keys out of core RPC", () => {
+  it("keeps provider names and handshake env keys out of core RPC", () => {
+    // Core RPC must stay provider-agnostic everywhere — not just env keys, but
+    // identifiers, string literals, and comments. Provider-specific protocol
+    // quirks (e.g. the connect-frame-id strategy) belong in providers/*, which
+    // opt in through neutral GatewayRpcClientOptions.
+    const offenders = walkFiles(path.join(SRC_ROOT, "core", "gateway", "rpc"))
+      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) => /\b(?:openclaw|hermes)\b/iu.test(read(filePath)))
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+
     const rpcSources = [
       path.join(SRC_ROOT, "core", "gateway", "rpc", "client.ts"),
       path.join(SRC_ROOT, "core", "gateway", "rpc", "preauth-handshake.ts"),
