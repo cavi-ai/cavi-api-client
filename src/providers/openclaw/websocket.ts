@@ -38,6 +38,10 @@ function withOpenClawDefaults(
 ): OpenClawWebSocketClientOptions {
   return {
     ...options,
+    // OpenClaw's gateway validates the connect frame id against the advertised
+    // client id, so the handshake must correlate on clientId rather than a
+    // monotonic id. Core stays neutral; the provider opts in here.
+    connectFrameId: options.connectFrameId ?? "client-id",
     preauthHandshakeEnv:
       options.preauthHandshakeEnv ?? readOpenClawHandshakeEnv(),
     preauthHandshakeEnvKeys:
