@@ -150,6 +150,16 @@ export type GatewayRpcClientOptions = {
   clientMode?: string;
   clientPlatform?: string;
   /**
+   * Correlation-id strategy for the initial `connect` handshake frame.
+   * - `"monotonic"` (default): connect uses the same per-client monotonic id as
+   *   every other RPC.
+   * - `"client-id"`: connect reuses the advertised `clientId` as its frame id.
+   *   Opt into this for gateways that correlate the connect response on the
+   *   advertised client id rather than echoing an arbitrary request id.
+   * Subsequent (non-connect) RPCs always use monotonic ids regardless.
+   */
+  connectFrameId?: "monotonic" | "client-id";
+  /**
    * Gateway protocol compatibility range to advertise during connect.
    * Defaults to the current generic gateway protocol. Override only when
    * talking to a gateway with a known alternate compatibility contract.
@@ -846,8 +856,13 @@ export class GatewayRpcClient {
       );
     }
 
-    // Per-client monotonic sequence + time; duplicate ids across tabs/processes are negligible for this protocol.
-    const id = `mc-${Date.now()}-${this.sequence++}`;
+    // The connect handshake may correlate on the advertised client id when the
+    // caller opts in (see GatewayRpcClientOptions.connectFrameId); every other
+    // RPC keeps a per-client monotonic correlation id.
+    const id =
+      method === "connect" && this.options.connectFrameId === "client-id"
+        ? resolveGatewayRpcClientProfile(this.options).clientId
+        : `mc-${Date.now()}-${this.sequence++}`;
     const frame: GatewayRpcRequest = {
       type: "req",
       id,
