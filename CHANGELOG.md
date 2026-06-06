@@ -10,6 +10,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-06
+
+### Added
+
+- **Claude Managed Agents (beta) support** under
+  `@cavi-ai/api-client/providers/claude`. The Anthropic Managed Agents beta
+  (`managed-agents-2026-04-01`) is a stateful, server-run agent surface
+  (persisted/versioned agents → per-run sessions → containerized
+  environments) with an SSE event stream. This release wires it to the
+  package's universal `RuntimeClient` contract so the same code can target a
+  managed Claude agent or any gateway provider. Wire shapes were verified
+  against the live beta API on 2026-06-05/06.
+- `ClaudeManagedAgentClient` — implements `RuntimeClient` and adds the full
+  managed-agents control plane: sessions (`createSession`, `getSession`,
+  `sendMessage`, `sendEvents`, `interruptSession`, `archiveSession`,
+  `listEvents`, `openEventStream`), agents and environments
+  (`createAgent`, `updateAgent`, `getAgent`, `createEnvironment`). Supports
+  either an `apiKey` (`x-api-key`) or an OAuth `authToken` (Bearer), with
+  configurable request and stream timeouts.
+- Steering round-trips: `confirmTool` (`user.tool_confirmation`) and
+  `respondCustomTool` (`user.custom_tool_result`), including the optional
+  `session_thread_id` for multiagent fan-out.
+- `driveManagedAgentSession` — a stream-first session driver with history
+  dedupe and reconnect that is deadlock-safe across reconnects (tool answers
+  are marked responded only after a successful send, so a dropped stream
+  re-drives instead of stalling). Handlers cover messages, tool confirmations,
+  custom tools, outcome evaluation, and thread events.
+- Typed session events: `parseSessionEvent` / `parseSessionEventData` and a
+  discriminated `ManagedAgentSessionEvent` union (message, tool_use,
+  custom_tool_use, tool_result, status, error, outcome_start/progress/end,
+  thread_created/status/message, other) with predicates
+  (`sessionEventNeedsConfirmation`, `isCustomToolUseEvent`,
+  `isTerminalSessionEvent`, `isOutcomeEndEvent`, `isThreadEvent`).
+- Outcomes — `defineOutcome` for rubric-graded session loops, surfaced as
+  `outcome_*` events.
+- Multiagent threads — `listThreads`, `getThread`, `archiveThread`,
+  `listThreadEvents`, `openThreadEventStream`.
+- Memory stores — full CRUD over stores, memories, and memory versions
+  (`createMemoryStore`/`getMemoryStore`/`listMemoryStores`/`deleteMemoryStore`/
+  `archiveMemoryStore`, `createMemory`/`getMemory`/`listMemories`/
+  `updateMemory`/`deleteMemory`, `listMemoryVersions`/`getMemoryVersion`/
+  `redactMemoryVersion`). `updateMemory` is `POST` (verified against the live
+  API — the beta does not accept `PATCH` here).
+- Vaults & MCP credentials — `createVault`/`getVault`/`listVaults`/
+  `updateVault`/`deleteVault`/`archiveVault` and credential CRUD
+  (`createCredential`/`getCredential`/`listCredentials`/`updateCredential`/
+  `deleteCredential`/`archiveCredential`) plus
+  `validateMcpOauthCredential` for `static_bearer` and `mcp_oauth` MCP auth.
+- Self-hosted environment monitoring — `getWorkQueueStats` and `stopWork`
+  for `self_hosted` environments. This is queue observation and control only;
+  the package does not ship a tool-executing worker (that boundary stays with
+  the host).
+- Webhook verification — `verifyManagedAgentWebhook` / `parseWebhookEvent`
+  implementing the Standard Webhooks signing scheme the Anthropic SDK uses
+  (`webhook-id`/`webhook-timestamp`/`webhook-signature` with `x-webhook-*`
+  aliases, HMAC-SHA256 over `id.timestamp.body`, base64 `whsec_` key,
+  5-minute tolerance) via Web Crypto — no new runtime dependency. Verified
+  against the scheme with an independent `node:crypto` signer; live delivery
+  is not part of this release.
+- `buildManagedAgentTeamsPlan` / `provisionManagedAgentTeams` — map a
+  `TeamManifest` to a Managed Agents coordinator + roster, reading
+  per-member model/system/tools from `metadata.claude`.
+- `createClaudeManagedAgentProviderModule` — a `claude-managed-agents`
+  provider module.
+- Docs-integrity test gate (`src/__tests__/docs-integrity.test.ts`): fails
+  the build (and therefore `prepublishOnly`) if the published version has no
+  matching `CHANGELOG.md` entry, if a released heading is undated, or if the
+  README documents a subpath the package does not export.
+
+### Notes
+
+- No breaking changes. The stateless Claude Messages-API client
+  (`ClaudeApiClient`) is unchanged; Managed Agents is an additive subtree
+  re-exported from the same `@cavi-ai/api-client/providers/claude` entry.
+
 ## [0.3.0] - 2026-06-04
 
 ### Added
@@ -123,7 +198,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/cavi-ai/cavi-api-client/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/cavi-ai/cavi-api-client/releases/tag/v0.2.0

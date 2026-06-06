@@ -231,6 +231,7 @@ export function createCaviControlAdapters(opts: {
   authToken: string | null;
   apiBaseUrl?: string | null;
   client?: GatewayWebSocketClient | null;
+  defaultHeaders?: Record<string, string>;
   fallbackMode?: CaviSnapshotFallbackMode;
   fallbackProvider?: CaviControlAdapterFallbackProvider | null;
   snapshotFallbacks?: CreateGatewayWsSnapshotLoadersOptions["snapshotFallbacks"];
@@ -254,6 +255,7 @@ export function createCaviControlAdapters(opts: {
     surface: "cavi-control-api",
     httpBase,
     authToken: sessionMode ? null : opts.authToken,
+    defaultHeaders: opts.defaultHeaders,
     credentials: sessionMode ? "same-origin" : undefined,
   });
 

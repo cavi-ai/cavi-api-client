@@ -14,6 +14,7 @@ Primary sources:
 - `src/contracts/team-manifest.ts`
 - `src/extensions/cavi/contracts/paths.ts`
 - `src/extensions/cavi/contracts/surfaces.ts`
+- `src/providers/claude/managed-agents/paths.ts` (Claude Managed Agents, beta)
 
 The companion Postman collection is
 `docs/postman/cavi-api-client.postman_collection.json`.
@@ -363,3 +364,78 @@ contract owner.
 | CAVI Operator | `operator.worker.ready` | Fetch worker readiness. |
 | CAVI Operator | `operator.worker.tasks.list` | List worker tasks. |
 | CAVI Operator | `operator.worker.tasks.get` | Fetch worker task detail. |
+
+## Claude Managed Agents (Beta)
+
+These routes are **Anthropic's** Managed Agents beta, not a gateway/CAVI surface.
+They are served from the Anthropic API base (`https://api.anthropic.com`), and
+every request carries the beta opt-in header
+`anthropic-beta: managed-agents-2026-04-01`. The path literals are owned by
+`src/providers/claude/managed-agents/paths.ts`; the typed client is
+`ClaudeManagedAgentClient` (`@cavi-ai/api-client/providers/claude`). Paths and
+shapes were verified against the live beta API on 2026-06-05/06.
+
+`:param` segments are URL-encoded by the client. `GET/POST` on a row means the
+same path has multiple method variants (e.g. retrieve vs. update). An update is
+a `POST` (Managed Agents has no `PATCH`; each agent update mints a new version).
+
+### Agents And Environments
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/v1/agents` | Create a persisted, versioned agent config. |
+| GET/POST | `/v1/agents/:agentId` | Retrieve an agent / push an update (new version). |
+| POST | `/v1/environments` | Create an environment template (container config). |
+| GET | `/v1/environments/:environmentId` | Retrieve an environment. |
+
+### Sessions And Events
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/v1/sessions` | Create a stateful session for an agent + environment. |
+| GET | `/v1/sessions/:sessionId` | Retrieve a session (stateful read). |
+| POST | `/v1/sessions/:sessionId/archive` | Archive a session (makes it read-only). |
+| GET/POST | `/v1/sessions/:sessionId/events` | List event history / send events (messages, interrupts, tool answers). |
+| GET | `/v1/sessions/:sessionId/events/stream` | SSE event stream for the session. |
+
+### Multiagent Threads
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/sessions/:sessionId/threads` | List subagent threads. |
+| GET | `/v1/sessions/:sessionId/threads/:threadId` | Retrieve one thread. |
+| POST | `/v1/sessions/:sessionId/threads/:threadId/archive` | Archive a thread. |
+| GET | `/v1/sessions/:sessionId/threads/:threadId/events` | List one thread's events. |
+| GET | `/v1/sessions/:sessionId/threads/:threadId/stream` | SSE stream for one thread. |
+
+### Memory Stores
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET/POST | `/v1/memory_stores` | List / create memory stores. |
+| GET/DELETE | `/v1/memory_stores/:storeId` | Retrieve / delete a store. |
+| POST | `/v1/memory_stores/:storeId/archive` | Archive a store. |
+| GET/POST | `/v1/memory_stores/:storeId/memories` | List / create memories. |
+| GET/POST/DELETE | `/v1/memory_stores/:storeId/memories/:memoryId` | Retrieve / update / delete a memory (update is `POST`). |
+| GET | `/v1/memory_stores/:storeId/memory_versions` | List memory versions (optionally `?memory_id=`). |
+| GET | `/v1/memory_stores/:storeId/memory_versions/:versionId` | Retrieve a memory version. |
+| POST | `/v1/memory_stores/:storeId/memory_versions/:versionId/redact` | Redact a memory version. |
+
+### Vaults And MCP Credentials
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET/POST | `/v1/vaults` | List (`?include_archived=`) / create vaults. |
+| GET/POST/DELETE | `/v1/vaults/:vaultId` | Retrieve / update / delete a vault (update is `POST`). |
+| POST | `/v1/vaults/:vaultId/archive` | Archive a vault. |
+| GET/POST | `/v1/vaults/:vaultId/credentials` | List / create credentials. |
+| GET/POST/DELETE | `/v1/vaults/:vaultId/credentials/:credentialId` | Retrieve / update / delete a credential (update is `POST`). |
+| POST | `/v1/vaults/:vaultId/credentials/:credentialId/archive` | Archive a credential. |
+| POST | `/v1/vaults/:vaultId/credentials/:credentialId/mcp_oauth_validate` | Validate an `mcp_oauth` credential. |
+
+### Self-Hosted Environment Work Queue
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/environments/:environmentId/work/stats` | Read work-queue depth / worker stats. |
+| POST | `/v1/environments/:environmentId/work/:workId/stop` | Stop a queued/in-flight unit of work. |
