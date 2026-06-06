@@ -7,8 +7,13 @@
   Talk to Hermes, OpenClaw, and Claude through a single <code>RuntimeClient</code> contract — HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters, all behind one package boundary. <strong>Swap providers, not your code.</strong>
 </p>
 
+<p align="center">
+  🤖 <strong>Now with first-class <a href="#-claude-managed-agents-beta">Claude Managed Agents (beta)</a></strong> — Anthropic's stateful, server-run agents (sessions · environments · SSE steering), wired to the same contract. <strong>The easy way in.</strong>
+</p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml/badge.svg)](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml)
+[![Claude Managed Agents](https://img.shields.io/badge/Claude%20Managed%20Agents-beta-7C3AED)](#-claude-managed-agents-beta)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 ![Types](https://img.shields.io/badge/types-included-blue)
 ![ESM](https://img.shields.io/badge/module-ESM-blueviolet)
@@ -27,6 +32,7 @@ npm install @cavi-ai/api-client
 - [Runtime](#runtime)
 - [Exports](#exports)
 - [Quick Start](#quick-start)
+- [🤖 Claude Managed Agents (Beta)](#-claude-managed-agents-beta)
 - [Core Concepts](#core-concepts)
   - [One Client Shape](#one-client-shape)
   - [Providers](#providers)
@@ -111,7 +117,8 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/extensions/cavi` — `CaviControlApiClient`, registry, portal, library, adapters
 - `@cavi-ai/api-client/providers/hermes`
 - `@cavi-ai/api-client/providers/openclaw`
-- `@cavi-ai/api-client/providers/claude` — Claude (Anthropic) runtime provider
+- `@cavi-ai/api-client/providers/claude` — Claude (Anthropic): the stateless
+  Messages-API runtime provider **and** the [Managed Agents (beta)](#-claude-managed-agents-beta) surface
 - `@cavi-ai/api-client/frameworks/react`
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
@@ -138,6 +145,83 @@ const run = await gateway.startRun({
 // run.run_id / run.status are your handle for polling, streaming, or UI state.
 // Failures are typed — see Typed Errors below for how to branch on them.
 ```
+
+## 🤖 Claude Managed Agents (Beta)
+
+Anthropic ships a second, far less famous way to run Claude: **Managed Agents**
+(beta). Instead of you running the agent loop, Anthropic does — a *persisted,
+versioned agent config* spawns *stateful sessions*, each in its own
+*containerized environment* where Claude executes tools (bash, file ops, code),
+streaming every step over SSE. Skills, MCP servers, file mounts, multiagent
+threads, and rubric-graded outcomes are all part of it. Most people don't even
+know it exists.
+
+This package is meant to be **the easy on-ramp**. It's runtime-only and additive:
+the same `RuntimeClient` you already use, one extra import, no app rewrite, and
+**nothing about your existing setup has to change**. Already have a harness you
+like? Keep it — try Managed Agents alongside it and see which fits which job.
+
+```ts
+import {
+  ClaudeManagedAgentClient,
+  driveManagedAgentSession,
+} from "@cavi-ai/api-client/providers/claude";
+
+const claude = new ClaudeManagedAgentClient({
+  apiKey: process.env.ANTHROPIC_API_KEY!, // or `authToken` for an OAuth bearer
+});
+
+// Agents + environments are persisted — create them once, reference them by id.
+const agent = await claude.createAgent({
+  name: "researcher",
+  model: "claude-opus-4-8",
+  system: "You are a meticulous research assistant.",
+});
+const env = await claude.createEnvironment({ name: "research-env" });
+
+// A session is one stateful run against that agent in that environment.
+const session = await claude.createSession({
+  agentId: agent.id,
+  environmentId: env.id,
+});
+await claude.sendMessage(session.id, { input: "Summarize today's commits." });
+
+// Tail the SSE stream, answer tool confirmations + custom tools, survive drops.
+await driveManagedAgentSession(claude, session.id, {
+  onMessage: (text) => appendAgentText(text),
+  onToolConfirmation: () => ({ result: "allow" }), // omit → deny
+  onComplete: () => markRunComplete(),
+});
+```
+
+Everything is exported from `@cavi-ai/api-client/providers/claude` and verified
+against the live beta API (`managed-agents-2026-04-01`):
+
+- **Sessions & steering** — `createSession`, `sendMessage`/`sendEvents`,
+  `interruptSession`, `confirmTool`, `respondCustomTool`, `openEventStream`,
+  and `driveManagedAgentSession` (a deadlock-safe stream driver with lossless
+  reconnect and dedupe).
+- **Agents & environments** — persisted, versioned configs and per-session
+  containers (`createAgent`, `updateAgent`, `createEnvironment`).
+- **Typed events** — `parseSessionEvent` + a discriminated
+  `ManagedAgentSessionEvent` union (messages, tool calls, status, errors,
+  outcomes, threads).
+- **Outcomes** — `defineOutcome` for rubric-graded session loops.
+- **Multiagent threads** — `listThreads`, `openThreadEventStream`, and friends.
+- **Memory stores** — full CRUD over stores, memories, and memory versions.
+- **Vaults & MCP credentials** — vault/credential CRUD plus
+  `validateMcpOauthCredential` for `static_bearer` and `mcp_oauth` auth.
+- **Teams** — `buildManagedAgentTeamsPlan` maps a `TeamManifest` to a
+  coordinator + roster.
+- **Webhook verification** — `verifyManagedAgentWebhook` implements the
+  Standard Webhooks signing scheme via Web Crypto (verified against the scheme;
+  live delivery is out of scope for this release).
+- **Self-hosted environments** — `getWorkQueueStats` / `stopWork` observe and
+  control the work queue (queue monitoring only — the tool-executing worker
+  stays with the host).
+
+> The stateless Claude Messages-API client (`ClaudeApiClient`, below) is
+> unchanged — Managed Agents is an additive sibling under the same subpath.
 
 ## Core Concepts
 
@@ -220,6 +304,10 @@ await claude.streamRun(
   },
 );
 ```
+
+For Claude's **stateful, server-run** mode — persisted agents, containerized
+sessions, and SSE steering — see [🤖 Claude Managed Agents (Beta)](#-claude-managed-agents-beta)
+above; it ships from the same `@cavi-ai/api-client/providers/claude` subpath.
 
 Writing your own provider? Point the shared **conformance kit**
 (`src/__tests__/support/runtime-conformance.ts`) at your client and it must pass

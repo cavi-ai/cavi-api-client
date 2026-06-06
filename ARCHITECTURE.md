@@ -52,7 +52,13 @@ authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie
 or api-key) instead of the core hardcoding a token.
 
 OpenClaw/Hermes-specific behavior belongs in the matching provider module; Claude
-(Anthropic) is runtime-only and maps `startRun` to the Messages API. CAVI Control
+(Anthropic) is runtime-only and maps `startRun` to the Messages API. Claude also
+carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
+`ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
+server-run agents (sessions, agents, environments) with SSE steering, outcomes,
+threads, memory, vaults, webhook verification, and a `TeamManifest`→teams
+mapper. It is additive and re-exported from the same `providers/claude` entry, so
+the stateless Messages-API client is unchanged. CAVI Control
 and plugin/operator behavior belongs in `extensions/cavi`. Keeping these planes
 separate lets each provider track its own API without turning the core package
 into a single-provider client. The shared conformance kit
