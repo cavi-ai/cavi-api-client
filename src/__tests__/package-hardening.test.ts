@@ -52,6 +52,10 @@ import {
   createOpenClawTeamRegistry,
 } from "../providers/openclaw/index";
 import {
+  CodexApiClient,
+  createCodexProviderModule,
+} from "../providers/codex/index";
+import {
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   CAVI_SURFACE_CONTRACTS,
@@ -790,6 +794,11 @@ describe("package hardening", () => {
       import: "./dist/providers/openclaw/index.js",
       default: "./dist/providers/openclaw/index.js",
     });
+    expect(packageJson.exports["./providers/codex"]).toEqual({
+      types: "./dist/providers/codex/index.d.ts",
+      import: "./dist/providers/codex/index.js",
+      default: "./dist/providers/codex/index.js",
+    });
     expect(read(path.join(SRC_ROOT, "index.ts"))).toContain(
       'from "./core/gateway/providers/index.js"',
     );
@@ -812,6 +821,9 @@ describe("package hardening", () => {
     );
     expect(read(path.join(SRC_ROOT, "providers", "openclaw", "provider-module.ts"))).toContain(
       "OPENCLAW_PROVIDER_MODULE",
+    );
+    expect(read(path.join(SRC_ROOT, "providers", "codex", "provider-module.ts"))).toContain(
+      "createCodexProviderModule",
     );
   });
 
@@ -1203,6 +1215,16 @@ describe("package hardening", () => {
     expect(() => createGatewayProviderRegistry({
       modules: [{ kind: "gateway" }, { kind: "generic" }],
     })).toThrow('Duplicate provider key "gateway"');
+  });
+
+  it("keeps Codex as a runtime-only provider module", () => {
+    const module = createCodexProviderModule({ apiKey: "sk-test" });
+    const client = module.createApiClient?.({ baseUrl: "https://api.openai.com" });
+
+    expect(module.kind).toBe("codex-responses");
+    expect(module.capabilities?.runs).toBe(true);
+    expect(module.capabilities?.streaming).toBe(true);
+    expect(client).toBeInstanceOf(CodexApiClient);
   });
 
   it("keeps generic HTTP env maps gateway-agnostic", () => {
