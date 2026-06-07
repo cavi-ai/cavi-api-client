@@ -7,6 +7,18 @@
 
 # The package boundary is enforced here — review these changes carefully.
 /src/__tests__/package-hardening.test.ts   @sasan1200
+/src/__tests__/docs-integrity.test.ts      @sasan1200
+/src/__tests__/support/                     @sasan1200
 /src/contracts/                  @sasan1200
+/src/index.ts                    @sasan1200
 /AGENTS.md                       @sasan1200
 /ARCHITECTURE.md                 @sasan1200
+
+# Public surface, release, and CI — never change these unreviewed.
+/package.json                    @sasan1200
+/CHANGELOG.md                    @sasan1200
+/src/providers/                  @sasan1200
+/.github/                        @sasan1200
+/.husky/                         @sasan1200
+/tsconfig.json                   @sasan1200
+/tsconfig.gate.json              @sasan1200

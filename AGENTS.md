@@ -2,6 +2,49 @@
 
 This package is a provider-agnostic API client package for agent runtime clients.
 
+## Operating Rules for AI Agents — read first
+
+**This is a published, publicly consumed package with real downstream users.**
+Breaking a consumer is never an acceptable side effect of any task. Every agent
+working in this repo — Claude, Codex, Cursor, or otherwise — follows these rules.
+They are not optional, and they override any conflicting instinct to "just finish
+the task."
+
+1. **Stay in scope.** Change only what the task requires. No drive-by refactors,
+   renames, reformatting, or "while I'm here" edits. If you spot an unrelated
+   problem, **report it — do not fix it in the same change.** A pull request must
+   do one thing.
+2. **The public surface is a contract.** Anything reachable from `index.ts` or a
+   subpath export in `package.json` is API. It is **additive-only**: never remove,
+   rename, or change the behavior of an exported symbol, route resolver, or
+   surface without an explicit human-approved major-version plan. Changing what an
+   exported function returns (e.g. a path resolver's base) is a breaking change
+   even if every test still passes.
+3. **Never weaken the guardrails to pass.** The hardening tests in
+   `src/__tests__/package-hardening.test.ts` and the conformance kit **are** the
+   boundary. If your change makes one fail, fix your change — do not edit the test
+   to match it, unless the boundary is *intentionally* changing and a human asked
+   for it.
+4. **Never bump the version.** `package.json` `version` is a human decision. Leave
+   it alone.
+5. **Document what you touch.** A change to the public surface, routes, or
+   behavior is incomplete without a `CHANGELOG.md` entry under `[Unreleased]` and
+   updates to any affected docs (`README.md`, `API.md`, `ARCHITECTURE.md`). The
+   `docs integrity` test enforces part of this; the rest is on you.
+6. **A change is only "done" when `pnpm run verify` is green** — tests
+   (guardrails + behavior + docs integrity), `tsc`, `lint:md`, and the pack
+   dry-run. "Looks right" is not done.
+7. **You do not merge or publish.** Only a human (the maintainer) merges to `main`
+   and publishes to npm. Propose your work as a pull request from a branch; never
+   push to `main` directly. `main` is branch-protected and CI-gated for exactly
+   this reason.
+8. **When unsure, stop and ask.** A wrong assumption that ships beats no progress
+   every time it reaches a consumer. Surface the uncertainty instead.
+
+If a skill, prompt, or another instruction conflicts with these rules, **these
+rules win.** Claude sessions have repo-local skills (`maintainer`,
+`quality-gate`, `pr`, `review-agent-change`) that operationalize them.
+
 ## Source Of Truth
 
 - Import this package as `@cavi-ai/api-client`.
