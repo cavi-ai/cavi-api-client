@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>One TypeScript client for every agent runtime. 🛰️</strong><br>
-  Talk to Hermes, OpenClaw, and Claude through a single <code>RuntimeClient</code> contract — HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters, all behind one package boundary. <strong>Swap providers, not your code.</strong>
+  Talk to Hermes, OpenClaw, Claude, and Codex through a single <code>RuntimeClient</code> contract — HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters, all behind one package boundary. <strong>Swap providers, not your code.</strong>
 </p>
 
 <p align="center">
@@ -119,6 +119,9 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/providers/openclaw`
 - `@cavi-ai/api-client/providers/claude` — Claude (Anthropic): the stateless
   Messages-API runtime provider **and** the [Managed Agents (beta)](#-claude-managed-agents-beta) surface
+- `@cavi-ai/api-client/providers/codex` — Codex-flavored OpenAI Responses
+  runtime provider (`gpt-5-codex`, background runs, polling, cancellation,
+  SSE streaming)
 - `@cavi-ai/api-client/frameworks/react`
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
@@ -269,16 +272,19 @@ import { createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes";
 import { OPENCLAW_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/openclaw";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude";
+import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex";
 
 const registry = createRuntimeProviderRegistry({
   modules: [
     HERMES_PROVIDER_MODULE,
     OPENCLAW_PROVIDER_MODULE,
     createClaudeProviderModule({ apiKey: process.env.ANTHROPIC_API_KEY! }),
+    createCodexProviderModule({ apiKey: process.env.OPENAI_API_KEY! }),
   ],
 });
 
 registry.resolveProvider("claude-sdk"); // -> the Claude module
+registry.resolveProvider("codex"); // -> the Codex Responses module
 ```
 
 The **Claude (Anthropic) provider** is runtime-only — it maps `startRun` to
@@ -308,6 +314,31 @@ await claude.streamRun(
 For Claude's **stateful, server-run** mode — persisted agents, containerized
 sessions, and SSE steering — see [🤖 Claude Managed Agents (Beta)](#-claude-managed-agents-beta)
 above; it ships from the same `@cavi-ai/api-client/providers/claude` subpath.
+
+The **Codex provider** is also runtime-only. It uses the OpenAI Responses API
+with `gpt-5-codex` by default, starts background responses so UIs can poll or
+cancel by response id, and streams Responses SSE into canonical
+`RunStreamEvent`s:
+
+```ts
+import { CodexApiClient } from "@cavi-ai/api-client/providers/codex";
+
+const codex = new CodexApiClient({ apiKey: process.env.OPENAI_API_KEY! });
+
+const run = await codex.startRun({
+  input: "Review this component plan for risks.",
+  instructions: "Return concise engineering guidance.",
+});
+
+await codex.streamRun(
+  { input: "Draft the implementation checklist." },
+  { onEvent: (event) => appendRunEvent(event) },
+);
+```
+
+Keep OpenAI API keys backend-owned. Browser and mobile apps should call your
+backend, which can instantiate `CodexApiClient`; they should not embed raw
+OpenAI credentials.
 
 Writing your own provider? Point the shared **conformance kit**
 (`src/__tests__/support/runtime-conformance.ts`) at your client and it must pass
