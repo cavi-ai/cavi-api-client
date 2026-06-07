@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-06
+
+### Added
+
+- `@cavi-ai/api-client/providers/codex` — a runtime-only Codex provider backed
+  by the OpenAI Responses API. `CodexApiClient` defaults to `gpt-5-codex`,
+  starts background responses, supports polling via `getRun`, cancellation via
+  `cancelRun`, and maps Responses SSE into canonical `RunStreamEvent`s.
+- `createCodexProviderModule` for registering Codex with
+  `createRuntimeProviderRegistry` under `codex-responses` with `codex` and
+  `openai-codex` aliases.
+
+### Changed
+
+- Package metadata and README now describe Codex as an additive runtime-only
+  provider. The root export remains curated; Codex is available only through
+  its provider subpath.
+
 ## [0.4.1] - 2026-06-06
 
 ### Changed
@@ -208,7 +226,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.2.1...v0.3.0
