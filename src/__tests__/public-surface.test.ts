@@ -5,9 +5,11 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     const hermes = await import("../providers/hermes/index");
     const openclaw = await import("../providers/openclaw/index");
     const claude = await import("../providers/claude/index");
+    const codex = await import("../providers/codex/index");
     expect(hermes.HERMES_PROVIDER_MODULE).toBeDefined();
     expect(openclaw.OPENCLAW_PROVIDER_MODULE).toBeDefined();
     expect(claude.createClaudeProviderModule).toBeDefined();
+    expect(codex.createCodexProviderModule).toBeDefined();
   });
 
   it("CAVI domain resolves on ./extensions/cavi", async () => {
