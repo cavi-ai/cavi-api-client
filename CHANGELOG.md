@@ -10,6 +10,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `assertSafeRelativePath(value)` (root + `./contracts`) — an opt-in validator
+  for free-form relative paths (e.g. a raw `?path=` value bound for a
+  workspace/wiki file endpoint). Rejects absolute paths, URL schemes,
+  backslashes, and `.`/`..` segments including percent-encoded forms; returns the
+  cleaned `a/b/c` form. `appendHttpQuery` only URL-encodes and does not sanitize,
+  so untrusted path values should pass through this first. The manifest workspace
+  whitelist (`resolveTeamWorkspacePath`) remains the primary guard.
+- `typecheck:docs` gate (`tsconfig.docs.json`) — typechecks the shipped
+  documentation examples (`docs/*.ts`) against the package source, in `verify`
+  and CI. Doc examples are outside the build, so this prevents them drifting from
+  the real exports.
+
+### Fixed
+
+- Documentation examples no longer reference names the package does not export.
+  `docs/team-manifest.consumer.template.ts` used `TeamManifestMember` /
+  `TeamManifestTeam` (the real exports are `ManifestMember` / `ManifestTeam`) and
+  imported `TeamRegistryConfig` from the root (it ships on `./extensions/cavi`).
+  `docs/cavi-team-manifest.example.ts` placed `portalId` as a top-level identity
+  field (host hints belong in `identity.metadata`) and imported
+  `TeamRegistryConfig` from the root. No runtime/API change — examples only.
+
+### Documentation
+
+- `docs/team-manifest.md` adds a "Workspace Files And Path Safety" section
+  covering the whitelist boundary, the unsanitized raw `?path=` query, and the
+  `assertSafeRelativePath` helper, and corrects the `configureTeamRegistryConfig`
+  import to the `./extensions/cavi` subpath.
+
 ## [0.5.0] - 2026-06-06
 
 ### Added

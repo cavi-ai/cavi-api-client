@@ -1,14 +1,22 @@
 // Consumer-owned example for team/member/action registry edits.
+//
 // Shared HTTP, runtime, envelope, media, wiki, and transport behavior belongs
-// to @cavi-ai/api-client core/provider modules, not to manifest entries.
+// to @cavi-ai/api-client core/provider modules, not to manifest entries. A team
+// entry describes only: identity, the workspace whitelist, capabilities, and
+// action overrides.
+//
+// Import map: the generic manifest contract is provider-agnostic and lives at
+// the root entry. `TeamRegistryConfig` (and `configureTeamRegistryConfig`) are
+// CAVI-registry concepts and ship on the `/extensions/cavi` subpath, NOT the
+// root — import them from there.
 import {
   normalizeTeamManifest,
+  type ManifestMember,
+  type ManifestTeam,
   type TeamActionContract,
   type TeamManifest,
-  type TeamManifestMember,
-  type TeamManifestTeam,
-  type TeamRegistryConfig,
 } from "@cavi-ai/api-client";
+import type { TeamRegistryConfig } from "@cavi-ai/api-client/extensions/cavi";
 
 export const TEAM_MANIFEST = {
   version: 1,
@@ -69,7 +77,7 @@ export const TEAM_MANIFEST = {
 export function addAgentToManifest(
   manifest: TeamManifest,
   teamId: string,
-  agent: TeamManifestMember,
+  agent: ManifestMember,
 ): TeamManifest {
   const normalized = normalizeTeamManifest(manifest);
   const teams = normalized.teams.map((team) => {
@@ -204,9 +212,9 @@ export function createRegistryConfig(
 }
 
 function upsertMember(
-  team: TeamManifestTeam,
-  agent: TeamManifestMember,
-): TeamManifestTeam {
+  team: ManifestTeam,
+  agent: ManifestMember,
+): ManifestTeam {
   const members = team.members ?? [];
   const nextMembers = members.some((member) => member.id === agent.id)
     ? members.map((member) => (member.id === agent.id ? agent : member))
@@ -218,9 +226,9 @@ function upsertMember(
 }
 
 function upsertActionOnTeam(
-  team: TeamManifestTeam,
+  team: ManifestTeam,
   action: TeamActionContract,
-): TeamManifestTeam {
+): ManifestTeam {
   return {
     ...team,
     actions: upsertAction(team.actions, action),
@@ -228,9 +236,9 @@ function upsertActionOnTeam(
 }
 
 function upsertActionOnMember(
-  member: TeamManifestMember,
+  member: ManifestMember,
   action: TeamActionContract,
-): TeamManifestMember {
+): ManifestMember {
   return {
     ...member,
     actions: upsertAction(member.actions, action),

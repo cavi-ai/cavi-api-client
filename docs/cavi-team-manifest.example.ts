@@ -1,11 +1,12 @@
 // Consumer/plugin-owned CAVI team manifest example.
 // Keep this in the gateway/plugin config layer, then send it to mobile/web as
 // runtime configuration. Do not move these entries into package defaults.
-import {
-  normalizeTeamManifest,
-  type TeamManifest,
-  type TeamRegistryConfig,
-} from "@cavi-ai/api-client";
+// Host/domain identity hints (CAVI portalId/sector) live in `identity.metadata`,
+// never as top-level identity fields — provider-agnostic core never reads them.
+// `TeamRegistryConfig` is a CAVI-registry type and ships on the
+// `/extensions/cavi` subpath, not the root entry.
+import { normalizeTeamManifest, type TeamManifest } from "@cavi-ai/api-client";
+import type { TeamRegistryConfig } from "@cavi-ai/api-client/extensions/cavi";
 
 export const CAVI_TEAM_MANIFEST = {
   version: 1,
@@ -27,8 +28,8 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Control Plane",
         slug: "control-plane",
         code: "CTRL",
-        portalId: "operator",
         aliases: ["ops-control"],
+        metadata: { portalId: "operator" },
       },
       workspace: {
         rootPath: "/teams/control-plane/workspace-control-plane",
@@ -58,8 +59,8 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Research",
         slug: "research",
         code: "RND",
-        portalId: "research",
         aliases: ["research-docs"],
+        metadata: { portalId: "research" },
       },
       workspace: {
         rootPath: "/teams/research/workspace-research",
@@ -94,8 +95,8 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Project Ops",
         slug: "project-ops",
         code: "PROJ",
-        portalId: "project-ops",
         aliases: ["project-board"],
+        metadata: { portalId: "project-ops" },
       },
       workspace: {
         rootPath: "/teams/project-ops/workspace-project-ops",
@@ -128,8 +129,8 @@ export const CAVI_TEAM_MANIFEST = {
         displayName: "Creative",
         slug: "creative",
         code: "CRTV",
-        portalId: "creative",
         aliases: ["creative-studio"],
+        metadata: { portalId: "creative" },
       },
       workspace: {
         rootPath: "/teams/creative/workspace-creative",

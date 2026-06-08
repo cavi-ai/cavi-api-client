@@ -138,6 +138,7 @@ export {
 // ── Contracts (global path & manifest layer) ─────────────────────────────────
 export {
   appendHttpQuery,
+  assertSafeRelativePath,
   GATEWAY_API_ENDPOINTS,
   GATEWAY_API_ENDPOINT_TEMPLATES,
   GATEWAY_MEDIA_API_BASE_PATH,
