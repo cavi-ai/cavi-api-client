@@ -50,6 +50,9 @@ jobs:
       - name: Acceptance gate (Runtime contract holds Claude-SDK shape)
         run: pnpm run typecheck:gate
 
+      - name: Typecheck documentation examples
+        run: pnpm run typecheck:docs
+
       - name: Run tests
         run: pnpm test
 
