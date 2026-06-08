@@ -134,6 +134,45 @@ query/hash characters, and dot segments are rejected instead of encoded.
 Workspace roots must be absolute path roots, and workspace entries must be
 relative allowlist entries with no traversal or encoded separators.
 
+## Workspace Files And Path Safety
+
+The workspace whitelist is the security boundary for file access, and it is the
+**recommended** way to resolve any workspace file. A consumer declares the
+relative paths it allows in `workspace.paths`; `resolveTeamWorkspacePath` /
+`resolveTeamWorkspaceApiPath` resolve **only** those entries. A path that was
+never declared cannot be resolved — `..`, absolute paths, backslashes, and
+percent-encoded separators (`%2e%2e`) are rejected, not encoded.
+
+```ts
+resolveTeamWorkspaceApiPath(team, "media.images", { memberId: "analyst" });
+// ok — "media.images" is whitelisted
+
+resolveTeamWorkspaceApiPath(team, "../../etc/passwd");
+// throws — not whitelisted, and traversal is rejected outright
+```
+
+Some endpoints take a **raw** relative path as a `?path=` query instead of going
+through the whitelist — e.g. `GATEWAY_WIKI_API_ENDPOINTS.read(vaultId, path)` and
+manifest action routes that carry a `query`. `appendHttpQuery` (which builds
+those query strings) **does not sanitize values** — it only URL-encodes them, so
+`?path=../secret` is sent as `?path=..%2Fsecret` and the backend decodes it back.
+
+> **This package owns a single trusted frontend, but downstream consumers may
+> not.** If you accept a free-form path from anywhere less trusted than your own
+> code, validate it with `assertSafeRelativePath` before sending it:
+
+```ts
+import { appendHttpQuery, assertSafeRelativePath } from "@cavi-ai/api-client";
+
+const safe = assertSafeRelativePath(userSuppliedPath); // throws on traversal
+const url = appendHttpQuery("/v1/wiki/vaults/notes/read", { path: safe });
+```
+
+`assertSafeRelativePath` enforces the same relative-path rules as the workspace
+whitelist (no absolute paths, schemes, backslashes, or `.`/`..` segments incl.
+encoded forms) and returns the cleaned `a/b/c` form. Prefer the whitelist when
+you can; reach for the helper only when a path is genuinely free-form.
+
 ## Gateway Route Bindings
 
 Bindings connect runtime sources to manifest-owned teams, members, and actions
@@ -257,9 +296,15 @@ they like, and override route resolution without forking:
 ## Add Or Remove Agents
 
 Keep add/remove logic in the consumer. A registry editor should mutate the
-consumer manifest, then pass the normalized manifest into this package:
+consumer manifest, then pass the normalized manifest into this package.
+`normalizeTeamManifest` is provider-agnostic and lives at the root entry;
+`configureTeamRegistryConfig` and the `TeamRegistryConfig` type are CAVI-registry
+concepts and ship on the `@cavi-ai/api-client/extensions/cavi` subpath:
 
 ```ts
+import { normalizeTeamManifest } from "@cavi-ai/api-client";
+import { configureTeamRegistryConfig } from "@cavi-ai/api-client/extensions/cavi";
+
 configureTeamRegistryConfig({
   provider: "gateway",
   manifest: normalizeTeamManifest(TEAM_MANIFEST),
