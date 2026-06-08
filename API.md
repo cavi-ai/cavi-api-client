@@ -27,7 +27,11 @@ The companion Postman collection is
   `ws://localhost:8787`.
 - `:param` means a path segment that must be URL-encoded by the caller.
 - Query strings shown with `?name=:value` are optional unless the description
-  says otherwise.
+  says otherwise. A `?path=:path` value is appended via `appendHttpQuery`, which
+  URL-encodes but does **not** sanitize it — prefer the manifest workspace
+  whitelist (`resolveTeamWorkspacePath`), or run a free-form path through
+  `assertSafeRelativePath` first. See
+  [docs/team-manifest.md](docs/team-manifest.md#workspace-files-and-path-safety).
 - `GET/POST` or similar means the same path has multiple known method variants.
 - `hard` degradation means the surface is expected for core compatibility.
   `gap` degradation means callers should report a compatibility gap or use a

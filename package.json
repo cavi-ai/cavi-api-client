@@ -173,7 +173,8 @@
     "lint:md": "markdownlint-cli2",
     "typecheck": "tsc --noEmit",
     "typecheck:gate": "tsc --noEmit -p tsconfig.gate.json",
-    "verify": "pnpm test && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
+    "typecheck:docs": "tsc --noEmit -p tsconfig.docs.json",
+    "verify": "pnpm test && pnpm run typecheck:docs && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
     "release:dry": "pnpm run verify && HUSKY=0 pnpm publish --access public --no-git-checks --dry-run",
     "release": "pnpm publish --access public"
   },

@@ -11,6 +11,71 @@ export function appendHttpQuery(
   return suffix ? `${path}?${suffix}` : path;
 }
 
+/**
+ * Validate and normalize a caller-supplied **relative** path, returning the
+ * cleaned `a/b/c` form or throwing on anything unsafe.
+ *
+ * This is the **opt-in** companion to the manifest workspace whitelist
+ * (`resolveTeamWorkspacePath`). The whitelist is the primary, recommended guard:
+ * a path the consumer never declared can never be resolved. Reach for this only
+ * when a downstream surface must accept a *free-form* relative path — e.g. a raw
+ * `?path=` value a consumer wants to hand to a workspace/wiki file endpoint
+ * (`GATEWAY_WIKI_API_ENDPOINTS.read`, a manifest action `query`).
+ *
+ * `appendHttpQuery` does **not** sanitize values — it only URL-encodes them, so
+ * `?path=../secret` becomes `?path=..%2Fsecret` and the backend decodes it back.
+ * Run untrusted path values through this first, then pass the result as a query
+ * value via `appendHttpQuery` (which encodes it).
+ *
+ * Rejects: empty/whitespace, absolute (`/…`), protocol-relative (`//…`), URL
+ * schemes (`file:`, `http:`…), backslashes, and any `.`/`..` segment — including
+ * percent-encoded forms such as `%2e%2e`. Interior `./` and duplicate slashes
+ * are collapsed. The return value is **not** URL-encoded.
+ *
+ * This intentionally mirrors the relative-path rules the team manifest enforces
+ * internally for workspace whitelist entries (`src/contracts/team-manifest.ts`).
+ * Both are guarded by `safe-relative-path.test.ts`; keep them in lockstep.
+ */
+export function assertSafeRelativePath(value: string): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    throw new Error("assertSafeRelativePath: path must not be empty");
+  }
+  if (
+    /^[a-z][a-z0-9+.-]*:/iu.test(trimmed) ||
+    trimmed.startsWith("/") ||
+    trimmed.includes("\\")
+  ) {
+    throw new Error(`assertSafeRelativePath: path must be relative: ${trimmed}`);
+  }
+  const segments = trimmed
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments.length === 0) {
+    throw new Error(`assertSafeRelativePath: invalid path: ${trimmed}`);
+  }
+  for (const segment of segments) {
+    let decoded = segment;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      // Malformed encoding stays raw and is caught by the segment checks below.
+    }
+    if (
+      segment === "." ||
+      segment === ".." ||
+      decoded === "." ||
+      decoded === ".." ||
+      decoded.includes("/") ||
+      decoded.includes("\\")
+    ) {
+      throw new Error(`assertSafeRelativePath: path must not traverse: ${trimmed}`);
+    }
+  }
+  return segments.join("/");
+}
+
 export const HERMES_API_ENDPOINT_TEMPLATES = {
   ecgSharedFiles: "/api/v1/files?agent={agent}&folder={folder}",
   runApproval: "/v1/runs/{run_id}/approval",

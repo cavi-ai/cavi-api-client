@@ -1,0 +1,24 @@
+{
+  // Typechecks the shipped documentation examples (docs/*.ts) against the live
+  // package source. Doc examples are NOT part of the build (tsconfig.json), so
+  // without this gate they can silently drift from the real exports — which is
+  // exactly how the consumer template ended up importing names the package does
+  // not export. `@cavi-ai/api-client` and its subpaths are mapped to `src/` so
+  // this runs without a build step. Run via `pnpm run typecheck:docs`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@cavi-ai/api-client": ["./src/index.ts"],
+      "@cavi-ai/api-client/*": ["./src/*"]
+    }
+  },
+  "include": ["docs/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
