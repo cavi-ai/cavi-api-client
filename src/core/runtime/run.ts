@@ -1,3 +1,5 @@
+import type { RuntimeUsage } from "./usage.js";
+
 /** A single conversation message. Structurally shared by every provider. */
 export type RuntimeRunMessage = {
   role: string;
@@ -39,7 +41,13 @@ export type RuntimeRunStatus = {
   output?: string;
   response?: string;
   error?: string;
+  /**
+   * @deprecated Raw provider-native token counts. Use `tokens` for portable,
+   * normalized usage. Still populated for backward compatibility.
+   */
   usage?: Record<string, number>;
+  /** Provider-agnostic normalized token usage. */
+  tokens?: RuntimeUsage;
 };
 
 export function isRuntimeRunStartBody(value: unknown): value is RuntimeRunStartBody {
