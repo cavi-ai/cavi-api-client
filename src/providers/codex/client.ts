@@ -5,6 +5,7 @@ import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/typ
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
+import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
@@ -194,6 +195,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   private toRuntimeRunStatus(response: OpenAIResponse): RuntimeRunStatus {
     const status = mapResponseStatus(response.status);
     const usage = flattenOpenAIUsage(response.usage);
+    const tokens = normalizeRuntimeUsage(usage, "codex-responses");
     return {
       run_id: response.id,
       status,
@@ -203,6 +205,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
         ? { error: errorMessageOf(response.error ?? response.incomplete_details) ?? "codex response failed" }
         : {}),
       ...(usage ? { usage } : {}),
+      ...(tokens ? { tokens } : {}),
     };
   }
 }
