@@ -1,6 +1,8 @@
 // The universal run-stream contract. Every provider normalizes its transport
 // (Anthropic SSE, gateway WebSocket, run-detail poll, mock) into these types.
 
+import type { RuntimeUsage } from "./usage.js";
+
 export const RUN_STREAM_EVENT_NAMES = {
   MESSAGE_DELTA: "message.delta",
   RUN_COMPLETED: "run.completed",
@@ -42,6 +44,8 @@ export type RunStreamRunCompletedEvent = {
   event: typeof RUN_STREAM_EVENT_NAMES.RUN_COMPLETED;
   runId: string;
   output?: string;
+  /** Provider-agnostic normalized usage, when the terminal stream carries it. */
+  usage?: RuntimeUsage;
   at?: number;
 };
 
