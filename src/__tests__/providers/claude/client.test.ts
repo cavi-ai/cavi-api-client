@@ -65,6 +65,35 @@ describe("ClaudeApiClient", () => {
     });
   });
 
+  it("normalizes Anthropic usage into tokens on the run status", async () => {
+    const client = new ClaudeApiClient({
+      apiKey: "sk-test",
+      fetchImpl: mockFetch({
+        id: "msg_usage",
+        model: "claude-opus-4-8",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "ok" }],
+        usage: {
+          input_tokens: 200,
+          output_tokens: 60,
+          cache_read_input_tokens: 50,
+          cache_creation_input_tokens: 12,
+        },
+      }),
+    });
+
+    const status = await client.startRun({ input: "hi", model: "claude-opus-4-8" });
+
+    expect(status.usage).toMatchObject({ input_tokens: 200, output_tokens: 60 });
+    expect(status.tokens).toMatchObject({
+      inputTokens: 200,
+      outputTokens: 60,
+      totalTokens: 260,
+      cacheReadTokens: 50,
+      cacheWriteTokens: 12,
+    });
+  });
+
   it("F1: getRun and cancelRun throw EndpointNotFound (stateless provider)", async () => {
     const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: mockFetch(ANTHROPIC_MESSAGE) });
     await expect(client.getRun("msg_01")).rejects.toSatisfy(
