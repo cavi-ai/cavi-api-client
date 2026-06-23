@@ -55,3 +55,30 @@ export function readAnthropicRunId(sse: SseMessage): string | null {
   const message = data?.message as { id?: unknown } | undefined;
   return typeof message?.id === "string" ? message.id : null;
 }
+
+function numericUsage(value: unknown): Record<string, number> | null {
+  if (!value || typeof value !== "object") return null;
+  const out: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === "number") out[key] = raw;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * Extract a usage delta from an Anthropic streaming event. Usage arrives on
+ * `message_start` (input/cache) and `message_delta` (cumulative output); the
+ * caller merges deltas and attaches the result to the completed event.
+ */
+export function readAnthropicStreamUsage(sse: SseMessage): Record<string, number> | null {
+  const data = parse(sse.data);
+  if (!data) return null;
+  if (sse.event === "message_start") {
+    const message = data.message as { usage?: unknown } | undefined;
+    return numericUsage(message?.usage);
+  }
+  if (sse.event === "message_delta") {
+    return numericUsage(data.usage);
+  }
+  return null;
+}

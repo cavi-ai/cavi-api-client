@@ -12,8 +12,8 @@ import {
   CLAUDE_DEFAULT_ANTHROPIC_VERSION,
 } from "./paths.js";
 import { consumeSseStream } from "../../core/sse/index.js";
-import type { RunEventStreamHandlers } from "../../core/runtime/run-stream.js";
-import { mapAnthropicStreamEvent, readAnthropicRunId } from "./stream.js";
+import { RUN_STREAM_EVENT_NAMES, type RunEventStreamHandlers } from "../../core/runtime/run-stream.js";
+import { mapAnthropicStreamEvent, readAnthropicRunId, readAnthropicStreamUsage } from "./stream.js";
 
 const DEFAULT_MAX_TOKENS = 4096;
 
@@ -148,11 +148,20 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       }
 
       let runId = "";
+      let usageAcc: Record<string, number> = {};
       await consumeSseStream(response.body, controller.signal, (sse) => {
         const startId = readAnthropicRunId(sse);
         if (startId) runId = startId;
+        const usageDelta = readAnthropicStreamUsage(sse);
+        if (usageDelta) usageAcc = { ...usageAcc, ...usageDelta };
         const event = mapAnthropicStreamEvent(sse, runId);
-        if (event) handlers.onEvent(event);
+        if (!event) return;
+        if (event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED) {
+          const tokens = normalizeRuntimeUsage(usageAcc, "claude-sdk");
+          handlers.onEvent(tokens ? { ...event, usage: tokens } : event);
+          return;
+        }
+        handlers.onEvent(event);
       });
       handlers.onComplete?.();
     } catch (error) {
