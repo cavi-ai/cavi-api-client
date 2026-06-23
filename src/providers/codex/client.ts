@@ -21,6 +21,7 @@ import {
   mapOpenAIResponseStreamEvent,
   readOpenAIResponseRunId,
 } from "./stream.js";
+import { flattenOpenAIUsage } from "./usage.js";
 
 export { CODEX_API_BASE_URL, CODEX_API_ENDPOINTS, CODEX_DEFAULT_MODEL } from "./paths.js";
 
@@ -73,14 +74,6 @@ function errorMessageOf(value: unknown): string | undefined {
   return undefined;
 }
 
-function usageOf(value: unknown): Record<string, number> | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const out: Record<string, number> = {};
-  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof raw === "number") out[key] = raw;
-  }
-  return Object.keys(out).length ? out : undefined;
-}
 
 export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   readonly request: HttpApiTransport;
@@ -200,7 +193,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
 
   private toRuntimeRunStatus(response: OpenAIResponse): RuntimeRunStatus {
     const status = mapResponseStatus(response.status);
-    const usage = usageOf(response.usage);
+    const usage = flattenOpenAIUsage(response.usage);
     return {
       run_id: response.id,
       status,
