@@ -4,6 +4,7 @@ import { apiKeyCredentials } from "../../core/http/credentials.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
+import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import {
   CLAUDE_API_BASE_URL,
@@ -181,12 +182,14 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       .filter((block) => block.type === "text" && typeof block.text === "string")
       .map((block) => block.text as string)
       .join("");
+    const tokens = normalizeRuntimeUsage(message.usage, "claude-sdk");
     return {
       run_id: message.id,
       status: message.stop_reason ? "completed" : "running",
       ...(message.model ? { model: message.model } : {}),
       ...(output ? { output } : {}),
       ...(message.usage ? { usage: message.usage } : {}),
+      ...(tokens ? { tokens } : {}),
     };
   }
 }
