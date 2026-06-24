@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Normalized token usage. `RuntimeUsage` plus `RuntimeRunStatus.tokens` give a
+  provider-agnostic view of token counts (`inputTokens`, `outputTokens`,
+  `totalTokens`, `cacheReadTokens`, `cacheWriteTokens`, lossless `raw`), populated
+  by Claude, Codex, and gateway run statuses. The streamed `run.completed` event
+  carries the same usage via a new optional `usage: RuntimeUsage`.
+- `estimateUsageCost(usage, prices)` + `TokenPrices` — a pluggable cost estimate.
+  The package ships no price table; callers supply per-million-token prices.
+- `normalizeRuntimeUsage(raw, providerKind)` — normalizes a flat provider-native
+  usage record into `RuntimeUsage`.
+- Conformance kit now requires a provider to expose normalized `tokens` whenever
+  it reports raw `usage`.
+
+### Deprecated
+
+- `RuntimeRunStatus.usage` (raw provider-native counts). Use `tokens`. The field is
+  still populated; no removal is scheduled.
+
 ## [0.6.0] - 2026-06-15
 
 ### Added
