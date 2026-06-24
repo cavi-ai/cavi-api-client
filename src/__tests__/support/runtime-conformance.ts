@@ -72,6 +72,26 @@ export const RUNTIME_CONFORMANCE_CHECKS: ConformanceCheck[] = [
       }
     },
   },
+  {
+    name: "normalizes reported usage into tokens",
+    run: async ({ makeClient, runBody }) => {
+      const status = await makeClient().startRun(runBody);
+      if (status.usage == null) return; // provider reported no usage — nothing to normalize
+      assert(status.tokens != null, "tokens must be present when usage is reported");
+      if (typeof status.usage.input_tokens === "number") {
+        assert(
+          typeof status.tokens.inputTokens === "number",
+          "tokens.inputTokens must be numeric when usage.input_tokens is present",
+        );
+      }
+      if (typeof status.usage.output_tokens === "number") {
+        assert(
+          typeof status.tokens.outputTokens === "number",
+          "tokens.outputTokens must be numeric when usage.output_tokens is present",
+        );
+      }
+    },
+  },
 ];
 
 export const RUNTIME_STREAMING_CONFORMANCE_CHECKS: ConformanceCheck[] = [
