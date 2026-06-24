@@ -14,6 +14,7 @@ import type {
   RuntimeRunMessage,
 } from "../../runtime/run.js";
 import type { RuntimeCapabilities } from "../../runtime/capabilities.js";
+import { normalizeRuntimeUsage } from "../../runtime/usage.js";
 
 export type GatewayCapabilities = GatewayCommandCapabilities & {
   object?: string;
@@ -119,15 +120,23 @@ export class GatewayApiClient extends BaseHttpApiClient implements RuntimeClient
     return this.stopRun(runId);
   }
 
-  startRun(body: GatewayRunStartBody): Promise<GatewayRunStatus> {
-    return this.request<GatewayRunStatus>(this.endpoints.runs, {
+  async startRun(body: GatewayRunStartBody): Promise<GatewayRunStatus> {
+    const status = await this.request<GatewayRunStatus>(this.endpoints.runs, {
       method: "POST",
       body,
     });
+    return this.withNormalizedUsage(status);
   }
 
-  getRun(runId: string): Promise<GatewayRunStatus> {
-    return this.request<GatewayRunStatus>(this.endpoints.run(runId));
+  async getRun(runId: string): Promise<GatewayRunStatus> {
+    const status = await this.request<GatewayRunStatus>(this.endpoints.run(runId));
+    return this.withNormalizedUsage(status);
+  }
+
+  private withNormalizedUsage(status: GatewayRunStatus): GatewayRunStatus {
+    if (status.tokens || !status.usage) return status;
+    const tokens = normalizeRuntimeUsage(status.usage, "gateway");
+    return tokens ? { ...status, tokens } : status;
   }
 
   stopRun(runId: string): Promise<{ status: string }> {
