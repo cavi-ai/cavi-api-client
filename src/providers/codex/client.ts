@@ -44,7 +44,9 @@ type OpenAIResponse = {
   output_text?: string;
   error?: unknown;
   incomplete_details?: unknown;
-  usage?: Record<string, number>;
+  // OpenAI nests detail objects (e.g. input_tokens_details.cached_tokens), so
+  // values are not all numbers; flattenOpenAIUsage lifts the nested counts.
+  usage?: Record<string, unknown>;
 };
 
 function mapResponseStatus(status: string | undefined): RuntimeRunStatus["status"] {
