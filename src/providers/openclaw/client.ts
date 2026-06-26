@@ -3,6 +3,7 @@ import {
   type GatewayRunStartBody,
 } from "../../core/gateway/client/client.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
+import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { getErrorMessage } from "../../core/errors.js";
 import { resolveHttpWebSocketTargets } from "../../core/ws/index.js";
 import {
@@ -202,7 +203,11 @@ function normalizeOpenClawRunStatus(
   const error = readString(record, "error", "errorMessage");
   if (error) result.error = error;
   const usage = normalizeNumberRecord(record.usage);
-  if (usage) result.usage = usage;
+  if (usage) {
+    result.usage = usage;
+    const tokens = normalizeRuntimeUsage(usage, "openclaw");
+    if (tokens) result.tokens = tokens;
+  }
   const events = normalizeEventRecords(record.events);
   if (events) result.events = events;
   const toolCallCount = readNonNegativeInteger(record, "tool_call_count", "toolCallCount");
