@@ -45,4 +45,31 @@ describe("ClaudeApiClient.streamRun", () => {
     expect(events.at(-1)).toEqual({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "msg_42" });
     expect(completed).toBe(true);
   });
+
+  it("attaches accumulated usage to the completed stream event", async () => {
+    const sse = [
+      'event: message_start\ndata: {"type":"message_start","message":{"id":"msg_s","usage":{"input_tokens":100,"cache_read_input_tokens":10}}}\n\n',
+      'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}\n\n',
+      'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":40}}\n\n',
+      'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+    ];
+    const fetchImpl = vi.fn(async () =>
+      new Response(sseStream(sse), {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      }),
+    );
+    const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl });
+
+    const events: RunStreamEvent[] = [];
+    await client.streamRun(
+      { input: "hi", model: "claude-opus-4-8" },
+      { onEvent: (e) => events.push(e) },
+    );
+
+    const completed = events.find((e) => e.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED);
+    expect(completed).toMatchObject({
+      usage: { inputTokens: 100, outputTokens: 40, totalTokens: 140, cacheReadTokens: 10 },
+    });
+  });
 });

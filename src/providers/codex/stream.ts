@@ -3,6 +3,8 @@ import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
 } from "../../core/runtime/run-stream.js";
+import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
+import { flattenOpenAIUsage } from "./usage.js";
 
 function parse(data: string): Record<string, unknown> | null {
   try {
@@ -64,10 +66,15 @@ export function mapOpenAIResponseStreamEvent(
     }
     case "response.completed": {
       const output = response.output_text;
+      const tokens = normalizeRuntimeUsage(
+        flattenOpenAIUsage(response.usage),
+        "codex-responses",
+      );
       return {
         event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
         runId,
         ...(typeof output === "string" && output ? { output } : {}),
+        ...(tokens ? { usage: tokens } : {}),
       };
     }
     case "response.failed":

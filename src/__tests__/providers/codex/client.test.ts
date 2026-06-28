@@ -98,6 +98,12 @@ describe("CodexApiClient", () => {
       model: CODEX_DEFAULT_MODEL,
       output: "Implemented.",
       usage: { input_tokens: 12, output_tokens: 4, total_tokens: 16 },
+      tokens: {
+        inputTokens: 12,
+        outputTokens: 4,
+        totalTokens: 16,
+        raw: { input_tokens: 12, output_tokens: 4, total_tokens: 16 },
+      },
     });
   });
 
@@ -133,5 +139,31 @@ describe("CodexApiClient", () => {
 
   it("requires an API key", () => {
     expect(() => new CodexApiClient({ apiKey: " " })).toThrow(/api key is required/u);
+  });
+
+  it("normalizes usage into tokens on the run status", async () => {
+    const fetchImpl = mockFetch({
+      id: "resp_usage",
+      status: "completed",
+      model: CODEX_DEFAULT_MODEL,
+      output_text: "ok",
+      usage: {
+        input_tokens: 120,
+        output_tokens: 30,
+        total_tokens: 150,
+        input_tokens_details: { cached_tokens: 20 },
+      },
+    });
+    const client = new CodexApiClient({ apiKey: "sk-test", fetchImpl });
+
+    const status = await client.startRun({ input: "hi" });
+
+    expect(status.usage).toMatchObject({ input_tokens: 120, output_tokens: 30 });
+    expect(status.tokens).toMatchObject({
+      inputTokens: 120,
+      outputTokens: 30,
+      totalTokens: 150,
+      cacheReadTokens: 20,
+    });
   });
 });

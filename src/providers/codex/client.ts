@@ -5,6 +5,7 @@ import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/typ
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
+import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
@@ -21,6 +22,7 @@ import {
   mapOpenAIResponseStreamEvent,
   readOpenAIResponseRunId,
 } from "./stream.js";
+import { flattenOpenAIUsage } from "./usage.js";
 
 export { CODEX_API_BASE_URL, CODEX_API_ENDPOINTS, CODEX_DEFAULT_MODEL } from "./paths.js";
 
@@ -42,7 +44,9 @@ type OpenAIResponse = {
   output_text?: string;
   error?: unknown;
   incomplete_details?: unknown;
-  usage?: Record<string, number>;
+  // OpenAI nests detail objects (e.g. input_tokens_details.cached_tokens), so
+  // values are not all numbers; flattenOpenAIUsage lifts the nested counts.
+  usage?: Record<string, unknown>;
 };
 
 function mapResponseStatus(status: string | undefined): RuntimeRunStatus["status"] {
@@ -73,14 +77,6 @@ function errorMessageOf(value: unknown): string | undefined {
   return undefined;
 }
 
-function usageOf(value: unknown): Record<string, number> | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const out: Record<string, number> = {};
-  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof raw === "number") out[key] = raw;
-  }
-  return Object.keys(out).length ? out : undefined;
-}
 
 export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   readonly request: HttpApiTransport;
@@ -200,7 +196,8 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
 
   private toRuntimeRunStatus(response: OpenAIResponse): RuntimeRunStatus {
     const status = mapResponseStatus(response.status);
-    const usage = usageOf(response.usage);
+    const usage = flattenOpenAIUsage(response.usage);
+    const tokens = normalizeRuntimeUsage(usage, "codex-responses");
     return {
       run_id: response.id,
       status,
@@ -210,6 +207,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
         ? { error: errorMessageOf(response.error ?? response.incomplete_details) ?? "codex response failed" }
         : {}),
       ...(usage ? { usage } : {}),
+      ...(tokens ? { tokens } : {}),
     };
   }
 }

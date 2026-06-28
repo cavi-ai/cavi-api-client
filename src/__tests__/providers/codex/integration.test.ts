@@ -178,6 +178,12 @@ describe("CodexApiClient local HTTP integration", () => {
       model: CODEX_DEFAULT_MODEL,
       output: "Built UI",
       usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
+      tokens: {
+        inputTokens: 10,
+        outputTokens: 2,
+        totalTokens: 12,
+        raw: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
+      },
     });
     expect(events).toEqual([
       {

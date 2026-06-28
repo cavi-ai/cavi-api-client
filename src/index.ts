@@ -66,6 +66,12 @@ export {
   type RuntimeRunInput,
   type RuntimeRunState,
 } from "./core/runtime/run.js";
+export {
+  estimateUsageCost,
+  normalizeRuntimeUsage,
+  type RuntimeUsage,
+  type TokenPrices,
+} from "./core/runtime/usage.js";
 export { unsupportedRuntimeSurface, type RuntimeClient } from "./core/runtime/client.js";
 export {
   checkProtocolVersion,

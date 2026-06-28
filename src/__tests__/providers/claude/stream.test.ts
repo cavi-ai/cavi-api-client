@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapAnthropicStreamEvent } from "../../../providers/claude/stream";
+import { mapAnthropicStreamEvent, readAnthropicStreamUsage } from "../../../providers/claude/stream";
 import { RUN_STREAM_EVENT_NAMES } from "../../../core/gateway/run/contracts";
 
 const sse = (event: string, data: unknown) => ({ event, data: JSON.stringify(data) });
@@ -34,5 +34,21 @@ describe("mapAnthropicStreamEvent", () => {
 
   it("returns null on unparseable data", () => {
     expect(mapAnthropicStreamEvent({ event: "content_block_delta", data: "{not json" }, "msg_1")).toBeNull();
+  });
+});
+
+describe("readAnthropicStreamUsage", () => {
+  it("reads usage from message_start and message_delta events", () => {
+    expect(
+      readAnthropicStreamUsage(
+        sse("message_start", { message: { usage: { input_tokens: 100, cache_read_input_tokens: 10 } } }),
+      ),
+    ).toEqual({ input_tokens: 100, cache_read_input_tokens: 10 });
+
+    expect(readAnthropicStreamUsage(sse("message_delta", { usage: { output_tokens: 42 } }))).toEqual({
+      output_tokens: 42,
+    });
+
+    expect(readAnthropicStreamUsage(sse("message_stop", {}))).toBeNull();
   });
 });
