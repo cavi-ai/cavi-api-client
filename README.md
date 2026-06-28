@@ -38,6 +38,7 @@ npm install @cavi-ai/api-client
   - [Providers](#providers)
   - [Credential Schemes](#credential-schemes)
   - [Typed Errors](#typed-errors)
+  - [Usage & Cost](#usage--cost)
   - [Graceful Degradation](#graceful-degradation)
   - [Route Mirrors](#route-mirrors)
   - [Team Manifest](#team-manifest)
@@ -413,6 +414,36 @@ returns the numeric HTTP status or `undefined`. Lower-level helpers
 > // ❌ Re-wrapping erases status, path, body, and the cause chain.
 > throw new Error("snapshot failed");
 > ```
+
+### Usage & Cost
+
+Every provider populates a provider-agnostic `tokens` field on the run status, so
+you read token usage the same way regardless of backend:
+
+```ts
+const run = await client.startRun({ input: "Summarize.", model: "claude-opus-4-8" });
+run.tokens?.inputTokens;   // normalized across Claude / Codex / gateways
+run.tokens?.outputTokens;
+run.tokens?.cacheReadTokens;
+run.tokens?.raw;           // lossless provider-native counts
+```
+
+The streamed `run.completed` event carries the same `usage: RuntimeUsage` when the
+provider reports it. The legacy `run.usage` (raw provider keys) is **deprecated** but
+still populated.
+
+Cost is **pluggable** — the package ships no price table. Supply your own
+per-million-token prices:
+
+```ts
+import { estimateUsageCost } from "@cavi-ai/api-client";
+
+const usd = estimateUsageCost(run.tokens ?? {}, {
+  inputPerMTok: 3,
+  outputPerMTok: 15,
+  cacheReadPerMTok: 0.3,
+});
+```
 
 ### Graceful Degradation
 

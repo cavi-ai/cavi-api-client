@@ -83,6 +83,25 @@ describe("mapOpenAIResponseStreamEvent", () => {
     });
   });
 
+  it("attaches normalized usage to the completed event", () => {
+    const event = mapOpenAIResponseStreamEvent(
+      sse("response.completed", {
+        type: "response.completed",
+        response: {
+          output_text: "ok",
+          usage: { input_tokens: 10, output_tokens: 4, total_tokens: 14 },
+        },
+      }),
+      "resp_1",
+    );
+    expect(event).toMatchObject({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+      runId: "resp_1",
+      output: "ok",
+      usage: { inputTokens: 10, outputTokens: 4, totalTokens: 14 },
+    });
+  });
+
   it("returns null for unmapped or malformed events", () => {
     expect(mapOpenAIResponseStreamEvent(sse("response.in_progress", { type: "response.in_progress" }), "resp_1")).toBeNull();
     expect(mapOpenAIResponseStreamEvent({ event: "response.output_text.delta", data: "{no" }, "resp_1")).toBeNull();

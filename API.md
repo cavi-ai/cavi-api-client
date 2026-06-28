@@ -37,6 +37,18 @@ The companion Postman collection is
   `gap` degradation means callers should report a compatibility gap or use a
   fallback when the route is missing.
 
+## Runtime Usage
+
+Exported from the root and `@cavi-ai/api-client/core/runtime`.
+
+- `RuntimeUsage` — normalized per-run token usage: `inputTokens?`, `outputTokens?`,
+  `totalTokens?`, `cacheReadTokens?`, `cacheWriteTokens?`, `raw?` (lossless native counts).
+- `RuntimeRunStatus.tokens?: RuntimeUsage` — the normalized field every provider populates.
+- `RuntimeRunStatus.usage?: Record<string, number>` — **deprecated** raw provider counts; still populated.
+- `RunStreamRunCompletedEvent.usage?: RuntimeUsage` — normalized usage on the terminal stream event.
+- `normalizeRuntimeUsage(raw, providerKind)` — best-effort normalizer for a flat native record.
+- `TokenPrices` + `estimateUsageCost(usage, prices)` — pluggable cost; no price table ships.
+
 ## Core Gateway
 
 Gateway aliases:
