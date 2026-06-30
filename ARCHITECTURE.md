@@ -11,7 +11,7 @@ product extension, or UI framework needs custom behavior behind the boundary.
 src/index.ts
   -> core/
   -> contracts/
-  -> providers/hermes | providers/openclaw | providers/claude
+  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini
   -> extensions/cavi
   -> frameworks/react
 ```
@@ -25,9 +25,10 @@ src/index.ts
   `TeamRouteResolver`, and a `TeamManifestSource` seam (host-supplied data).
 - `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
   providers (Hermes, OpenClaw) implement `GatewayClient`; runtime-only providers
-  (Claude / Anthropic) implement `RuntimeClient`. They may customize endpoint
-  maps, headers, auth scheme, default surfaces, and transport method mapping, but
-  they reuse the core transports and error handling.
+  (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google) implement
+  `RuntimeClient`. They may customize endpoint maps, headers, auth scheme, default
+  surfaces, and transport method mapping, but they reuse the core transports and
+  error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
   fallback snapshots, and DTO shaping. It composes the generic core instead of
   changing the provider interface.
@@ -46,7 +47,7 @@ typed `EndpointNotFound` rather than crashing.
 Consumers build one client and choose a provider through a registry.
 `createGatewayProviderRegistry` holds gateway providers; the generic
 `createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in
-modules live under `src/providers/{hermes,openclaw,claude}`; host applications can
+modules live under `src/providers/{hermes,openclaw,claude,codex,gemini}`; host applications can
 supply their own `RuntimeProviderModule` / `GatewayProviderModule`. A provider
 authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie,
 or api-key) instead of the core hardcoding a token.
@@ -58,7 +59,11 @@ carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 server-run agents (sessions, agents, environments) with SSE steering, outcomes,
 threads, memory, vaults, webhook verification, and a `TeamManifest`→teams
 mapper. It is additive and re-exported from the same `providers/claude` entry, so
-the stateless Messages-API client is unchanged. CAVI Control
+the stateless Messages-API client is unchanged. Codex (`providers/codex`, OpenAI
+Responses, default `gpt-5-codex`) and Gemini (`providers/gemini`, the Gemini
+Developer API — model in the URL path, `x-goog-api-key`, explicit model
+required) are additional runtime-only providers; each ships a `RuntimeClient` +
+provider module and passes the shared conformance kit. CAVI Control
 and plugin/operator behavior belongs in `extensions/cavi`. Keeping these planes
 separate lets each provider track its own API without turning the core package
 into a single-provider client. The shared conformance kit
