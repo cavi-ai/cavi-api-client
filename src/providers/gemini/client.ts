@@ -100,3 +100,81 @@ export function buildGeminiRequestBody(
 function newGeminiRunId(): string {
   return `gemini-${globalThis.crypto.randomUUID()}`;
 }
+
+export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient {
+  readonly request: HttpApiTransport;
+  private readonly defaultModel?: string;
+
+  constructor(options: GeminiApiClientOptions) {
+    super("gemini", {
+      baseUrl: options.baseUrl?.trim() || GEMINI_API_BASE_URL,
+      includePortalClientIdHeader: false,
+      auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-goog-api-key" }) },
+      fetchImpl: options.fetchImpl,
+      onTrace: options.onTrace,
+    });
+    this.request = this.createTransport();
+    this.defaultModel = options.defaultModel;
+  }
+
+  async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
+    return {
+      providerKind: "gemini",
+      auth: { type: "api-key", required: true },
+      supports: { runs: true, streaming: true },
+    };
+  }
+
+  async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
+    const { model, payload } = buildGeminiRequestBody(body, this.defaultModel);
+    const response = await this.request<GeminiGenerateContentResponse>(geminiGenerateContentPath(model), {
+      method: "POST",
+      body: payload,
+    });
+    return this.toRuntimeRunStatus(model, response);
+  }
+
+  async getRun(_runId: string): Promise<RuntimeRunStatus> {
+    throw this.stateless("getRun");
+  }
+
+  async cancelRun(_runId: string): Promise<{ status: string }> {
+    throw this.stateless("cancelRun");
+  }
+
+  private stateless(method: string): ApiClientError {
+    return new ApiClientError(
+      `gemini: ${method} is unsupported — generateContent is synchronous request/response`,
+      { code: ApiClientErrorCode.EndpointNotFound },
+    );
+  }
+
+  private toRuntimeRunStatus(
+    model: string,
+    response: GeminiGenerateContentResponse,
+  ): RuntimeRunStatus {
+    const candidate = response.candidates?.[0];
+    const output = (candidate?.content?.parts ?? [])
+      .map((part) => (typeof part.text === "string" ? part.text : ""))
+      .join("");
+    const blockReason = response.promptFeedback?.blockReason;
+    const finishReason = candidate?.finishReason;
+    const failed =
+      Boolean(blockReason) ||
+      !candidate ||
+      (finishReason != null && finishReason !== "STOP" && finishReason !== "MAX_TOKENS");
+    const usage = flattenGeminiUsageMetadata(response.usageMetadata);
+    const tokens = normalizeRuntimeUsage(usage, "gemini");
+
+    const status: RuntimeRunStatus = {
+      run_id: newGeminiRunId(),
+      status: failed ? "failed" : "completed",
+      model: response.modelVersion ?? model,
+    };
+    if (output) status.output = output;
+    if (failed) status.error = blockReason ?? finishReason ?? "gemini generation failed";
+    if (usage) status.usage = usage;
+    if (tokens) status.tokens = tokens;
+    return status;
+  }
+}
