@@ -36,6 +36,8 @@
     "openai",
     "codex",
     "responses",
+    "gemini",
+    "google",
     "mcp",
     "hermes",
     "openclaw",
