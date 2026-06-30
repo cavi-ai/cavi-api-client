@@ -134,6 +134,62 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
     return this.toRuntimeRunStatus(model, response);
   }
 
+  async streamRun(
+    body: RuntimeRunStartBody,
+    handlers: RunEventStreamHandlers,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<void> {
+    const { model, payload } = buildGeminiRequestBody(body, this.defaultModel);
+    const runId = newGeminiRunId();
+
+    const controller = new AbortController();
+    if (options.signal) {
+      if (options.signal.aborted) controller.abort();
+      else options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+
+    const emitCompleted = (usage: Record<string, number> | undefined): void => {
+      const tokens = usage ? normalizeRuntimeUsage(usage, "gemini") : undefined;
+      handlers.onEvent(
+        tokens
+          ? { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId, usage: tokens }
+          : { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId },
+      );
+    };
+
+    try {
+      const response = await this.requestRaw(geminiStreamGenerateContentPath(model), {
+        method: "POST",
+        body: payload,
+        signal: controller.signal,
+      });
+      if (!response.body) {
+        throw new ApiClientError("gemini: streaming response had no body", {
+          code: ApiClientErrorCode.RequestFailed,
+        });
+      }
+
+      let latestUsage: Record<string, number> | undefined;
+      let completed = false;
+      await consumeSseStream(response.body, controller.signal, (sse) => {
+        if (completed) return;
+        const usage = readGeminiStreamUsage(sse);
+        if (usage) latestUsage = usage;
+        const delta = mapGeminiStreamChunk(sse, runId);
+        if (delta) handlers.onEvent(delta);
+        if (readGeminiFinishReason(sse)) {
+          completed = true;
+          emitCompleted(latestUsage);
+        }
+      });
+      if (!completed) emitCompleted(latestUsage);
+      handlers.onComplete?.();
+    } catch (error) {
+      if (handlers.onError) handlers.onError(error);
+      else throw error;
+    }
+  }
+
   async getRun(_runId: string): Promise<RuntimeRunStatus> {
     throw this.stateless("getRun");
   }
