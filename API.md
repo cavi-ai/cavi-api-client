@@ -15,6 +15,8 @@ Primary sources:
 - `src/extensions/cavi/contracts/paths.ts`
 - `src/extensions/cavi/contracts/surfaces.ts`
 - `src/providers/claude/managed-agents/paths.ts` (Claude Managed Agents, beta)
+- `src/providers/codex/paths.ts` (Codex / OpenAI Responses, runtime-only)
+- `src/providers/gemini/paths.ts` (Gemini / Google Developer API, runtime-only)
 
 The companion Postman collection is
 `docs/postman/cavi-api-client.postman_collection.json`.
@@ -48,6 +50,26 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
 - `RunStreamRunCompletedEvent.usage?: RuntimeUsage` — normalized usage on the terminal stream event.
 - `normalizeRuntimeUsage(raw, providerKind)` — best-effort normalizer for a flat native record.
 - `TokenPrices` + `estimateUsageCost(usage, prices)` — pluggable cost; no price table ships.
+
+## Runtime Providers
+
+These are runtime-only providers reached via their subpaths (`./providers/claude`,
+`./providers/codex`, `./providers/gemini`). They implement `RuntimeClient` and do
+not expose gateway surfaces (teams, kanban, media, wiki, websocket).
+
+- **Claude** (`providers/claude`): `POST /v1/messages` — Anthropic Messages API;
+  `x-api-key` auth. Also ships `ClaudeManagedAgentClient` (`managed-agents/`
+  beta) for stateful sessions over the Anthropic Managed Agents beta.
+- **Codex** (`providers/codex`): `POST /v1/responses` — OpenAI Responses API;
+  bearer auth; default model `gpt-5-codex`; `getRun`/`cancelRun` supported
+  (background responses via `GET /v1/responses/:id` and
+  `POST /v1/responses/:id/cancel`).
+- **Gemini** (`providers/gemini`):
+  `POST /v1beta/models/:model:generateContent` and
+  `POST /v1beta/models/:model:streamGenerateContent?alt=sse` — Gemini Developer
+  API at `generativelanguage.googleapis.com`; `x-goog-api-key` auth; model is
+  in the URL path (explicit model required, no default ships);
+  `getRun`/`cancelRun` throw `EndpointNotFound` (synchronous API).
 
 ## Core Gateway
 
