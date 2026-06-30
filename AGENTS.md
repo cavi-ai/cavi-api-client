@@ -53,7 +53,7 @@ rules win.** Claude sessions have repo-local skills (`maintainer`,
 
 ## Provider Model
 
-- `RuntimeClient` is the universal contract every provider implements; `GatewayClient` extends it for gateway backends (teams/kanban/workspace/operator). Runtime-only providers (Claude) implement `RuntimeClient` alone.
+- `RuntimeClient` is the universal contract every provider implements; `GatewayClient` extends it for gateway backends (teams/kanban/workspace/operator). Runtime-only providers (Claude, Codex, Gemini) implement `RuntimeClient` alone.
 - Core APIs must be provider-agnostic. Do not hardcode a concrete provider into new core interfaces, config keys, or routing decisions.
 - Provider-specific names are acceptable only in provider-specific modules.
 

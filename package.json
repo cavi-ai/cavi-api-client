@@ -1,7 +1,7 @@
 {
   "name": "@cavi-ai/api-client",
   "version": "0.7.0",
-  "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Hermes, and OpenClaw, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
+  "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Gemini, Hermes, and OpenClaw, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
   "sideEffects": false,
@@ -36,6 +36,8 @@
     "openai",
     "codex",
     "responses",
+    "gemini",
+    "google",
     "mcp",
     "hermes",
     "openclaw",
@@ -155,6 +157,11 @@
       "types": "./dist/providers/codex/index.d.ts",
       "import": "./dist/providers/codex/index.js",
       "default": "./dist/providers/codex/index.js"
+    },
+    "./providers/gemini": {
+      "types": "./dist/providers/gemini/index.d.ts",
+      "import": "./dist/providers/gemini/index.js",
+      "default": "./dist/providers/gemini/index.js"
     },
     "./frameworks/react": {
       "types": "./dist/frameworks/react/index.d.ts",
