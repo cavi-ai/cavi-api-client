@@ -123,6 +123,9 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/providers/codex` — Codex-flavored OpenAI Responses
   runtime provider (`gpt-5-codex`, background runs, polling, cancellation,
   SSE streaming)
+- `@cavi-ai/api-client/providers/gemini` — Google Gemini runtime provider
+  (`GeminiApiClient`, `createGeminiProviderModule`, `x-goog-api-key` auth,
+  model in URL path, canonical run-stream events)
 - `@cavi-ai/api-client/frameworks/react`
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
@@ -274,6 +277,7 @@ import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes";
 import { OPENCLAW_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/openclaw";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude";
 import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex";
+import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini";
 
 const registry = createRuntimeProviderRegistry({
   modules: [
@@ -281,6 +285,7 @@ const registry = createRuntimeProviderRegistry({
     OPENCLAW_PROVIDER_MODULE,
     createClaudeProviderModule({ apiKey: process.env.ANTHROPIC_API_KEY! }),
     createCodexProviderModule({ apiKey: process.env.OPENAI_API_KEY! }),
+    createGeminiProviderModule({ apiKey: process.env.GEMINI_API_KEY! }),
   ],
 });
 
@@ -340,6 +345,25 @@ await codex.streamRun(
 Keep OpenAI API keys backend-owned. Browser and mobile apps should call your
 backend, which can instantiate `CodexApiClient`; they should not embed raw
 OpenAI credentials.
+
+The **Gemini provider** is runtime-only. It maps `startRun` to the Gemini
+Developer API `:generateContent` (the model goes in the URL path) and streams
+`:streamGenerateContent` into canonical `RunStreamEvent`s. It requires an
+explicit model (no default ships) and authenticates with `x-goog-api-key`.
+
+```ts
+import { GeminiApiClient } from "@cavi-ai/api-client/providers/gemini";
+
+const gemini = new GeminiApiClient({ apiKey: process.env.GEMINI_API_KEY! });
+
+const run = await gemini.startRun({
+  input: "Summarize the workspace state.",
+  model: "gemini-2.5-flash",
+});
+```
+
+Keep Gemini API keys backend-owned; browser and mobile apps should call your
+backend rather than embedding the key.
 
 Writing your own provider? Point the shared **conformance kit**
 (`src/__tests__/support/runtime-conformance.ts`) at your client and it must pass

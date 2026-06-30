@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Google **Gemini** provider (runtime-only) at the `./providers/gemini` subpath:
+  `GeminiApiClient` + `createGeminiProviderModule` over the Gemini Developer API
+  (`:generateContent` / `:streamGenerateContent`), with normalized `tokens`
+  usage and canonical run-stream events. Requires an explicit model (no default
+  ships) and authenticates with `x-goog-api-key`.
+
 ## [0.7.0] - 2026-06-26
 
 ### Added
