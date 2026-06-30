@@ -156,6 +156,11 @@
       "import": "./dist/providers/codex/index.js",
       "default": "./dist/providers/codex/index.js"
     },
+    "./providers/gemini": {
+      "types": "./dist/providers/gemini/index.d.ts",
+      "import": "./dist/providers/gemini/index.js",
+      "default": "./dist/providers/gemini/index.js"
+    },
     "./frameworks/react": {
       "types": "./dist/frameworks/react/index.d.ts",
       "import": "./dist/frameworks/react/index.js",

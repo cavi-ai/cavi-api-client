@@ -799,6 +799,11 @@ describe("package hardening", () => {
       import: "./dist/providers/codex/index.js",
       default: "./dist/providers/codex/index.js",
     });
+    expect(packageJson.exports["./providers/gemini"]).toEqual({
+      types: "./dist/providers/gemini/index.d.ts",
+      import: "./dist/providers/gemini/index.js",
+      default: "./dist/providers/gemini/index.js",
+    });
     expect(read(path.join(SRC_ROOT, "index.ts"))).toContain(
       'from "./core/gateway/providers/index.js"',
     );
