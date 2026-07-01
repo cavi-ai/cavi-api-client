@@ -144,7 +144,14 @@ export const RUNTIME_BATCH_CONFORMANCE_CHECKS: ConformanceCheck[] = [
         assert(Array.isArray(results), "getBatchResults returns an array");
         for (const result of results) {
           assert(typeof result.customId === "string", "each result carries a customId");
-          if (result.outcome === "succeeded") assert(result.run != null, "a succeeded result carries a run");
+          if (result.outcome === "succeeded") {
+            assert(result.run != null, "a succeeded result carries a run");
+            // Batch results normalize usage like any run: if the run reports raw
+            // usage, it must also expose normalized tokens (parity with startRun).
+            if (result.run!.usage != null) {
+              assert(result.run!.tokens != null, "a succeeded batch result with usage must expose normalized tokens");
+            }
+          }
         }
       }
     },
