@@ -14,6 +14,7 @@ Primary sources:
 - `src/contracts/team-manifest.ts`
 - `src/extensions/cavi/contracts/paths.ts`
 - `src/extensions/cavi/contracts/surfaces.ts`
+- `src/providers/claude/paths.ts` (Claude / Anthropic Messages + Message Batches, runtime-only)
 - `src/providers/claude/managed-agents/paths.ts` (Claude Managed Agents, beta)
 - `src/providers/codex/paths.ts` (Codex / OpenAI Responses, runtime-only)
 - `src/providers/gemini/paths.ts` (Gemini / Google Developer API, runtime-only)
