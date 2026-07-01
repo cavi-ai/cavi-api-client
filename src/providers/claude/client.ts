@@ -1,16 +1,26 @@
 import { BaseHttpApiClient } from "../../core/http/client.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 import { apiKeyCredentials } from "../../core/http/credentials.js";
+import { HttpApiError } from "../../core/http/errors.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
+import type {
+  RuntimeBatchRequest,
+  RuntimeBatchStatus,
+  RuntimeBatchResult,
+} from "../../core/runtime/batch.js";
 import {
   CLAUDE_API_BASE_URL,
   CLAUDE_API_ENDPOINTS,
   CLAUDE_DEFAULT_ANTHROPIC_VERSION,
+  claudeMessageBatchPath,
+  claudeMessageBatchCancelPath,
+  claudeMessageBatchResultsPath,
 } from "./paths.js";
+import { mapMessageBatch, parseMessageBatchResults } from "./batch.js";
 import { consumeSseStream } from "../../core/sse/index.js";
 import { RUN_STREAM_EVENT_NAMES, type RunEventStreamHandlers } from "../../core/runtime/run-stream.js";
 import { mapAnthropicStreamEvent, readAnthropicRunId, readAnthropicStreamUsage } from "./stream.js";
@@ -59,7 +69,7 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       providerKind: "claude-sdk",
       protocolVersion: this.defaultHeaders["anthropic-version"] ?? null,
       auth: { type: "api-key", required: true },
-      supports: { runs: true, streaming: true },
+      supports: { runs: true, streaming: true, batch: true },
     };
   }
 
@@ -142,6 +152,52 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
 
   async cancelRun(_runId: string): Promise<{ status: string }> {
     throw this.stateless("cancelRun");
+  }
+
+  async submitBatch(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus> {
+    const body = {
+      requests: requests.map((request) => ({
+        custom_id: request.customId,
+        params: buildAnthropicMessageParams(request.body, {
+          defaultModel: this.defaultModel,
+          defaultMaxTokens: this.defaultMaxTokens,
+        }),
+      })),
+    };
+    const raw = await this.request<Record<string, unknown>>(CLAUDE_API_ENDPOINTS.messageBatches, {
+      method: "POST",
+      body,
+    });
+    return mapMessageBatch(raw);
+  }
+
+  async getBatch(batchId: string): Promise<RuntimeBatchStatus> {
+    const raw = await this.request<Record<string, unknown>>(claudeMessageBatchPath(batchId));
+    return mapMessageBatch(raw);
+  }
+
+  async cancelBatch(batchId: string): Promise<RuntimeBatchStatus> {
+    const raw = await this.request<Record<string, unknown>>(claudeMessageBatchCancelPath(batchId), {
+      method: "POST",
+    });
+    return mapMessageBatch(raw);
+  }
+
+  async getBatchResults(batchId: string): Promise<RuntimeBatchResult[]> {
+    let response: Response;
+    try {
+      response = await this.requestRaw(claudeMessageBatchResultsPath(batchId), { method: "GET" });
+    } catch (error) {
+      if (error instanceof HttpApiError && error.status === 404) {
+        throw new ApiClientError(
+          `claude-sdk: batch ${batchId} results are not available yet — poll getBatch until resultsAvailable is true`,
+          { code: ApiClientErrorCode.EndpointNotFound },
+        );
+      }
+      throw error;
+    }
+    const text = await response.text();
+    return parseMessageBatchResults(text, mapAnthropicMessageToRunStatus);
   }
 
   private stateless(method: string): ApiClientError {
