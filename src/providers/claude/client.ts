@@ -14,6 +14,11 @@ import {
 import { consumeSseStream } from "../../core/sse/index.js";
 import { RUN_STREAM_EVENT_NAMES, type RunEventStreamHandlers } from "../../core/runtime/run-stream.js";
 import { mapAnthropicStreamEvent, readAnthropicRunId, readAnthropicStreamUsage } from "./stream.js";
+import {
+  buildAnthropicMessageParams,
+  mapAnthropicMessageToRunStatus,
+  type AnthropicMessage,
+} from "./message.js";
 
 const DEFAULT_MAX_TOKENS = 4096;
 
@@ -27,15 +32,6 @@ export type ClaudeApiClientOptions = {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
-};
-
-type AnthropicContentBlock = { type: string; text?: string };
-type AnthropicMessage = {
-  id: string;
-  model?: string;
-  content?: AnthropicContentBlock[];
-  stop_reason?: string | null;
-  usage?: Record<string, number>;
 };
 
 export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient {
@@ -68,30 +64,15 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
   }
 
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
-    const model = body.model ?? this.defaultModel;
-    if (!model) {
-      throw new ApiClientError(
-        "claude-sdk: a model is required (pass body.model or defaultModel)",
-        { code: ApiClientErrorCode.ValidationFailed },
-      );
-    }
-    const messages = Array.isArray(body.input)
-      ? body.input
-      : [{ role: "user", content: body.input }];
-    const maxTokens =
-      typeof body.metadata?.max_tokens === "number"
-        ? (body.metadata.max_tokens as number)
-        : this.defaultMaxTokens;
-
-    const payload: Record<string, unknown> = { model, max_tokens: maxTokens, messages };
-    if (body.instructions) payload.system = body.instructions;
-    if (body.tools?.length) payload.tools = body.tools;
-
+    const params = buildAnthropicMessageParams(body, {
+      defaultModel: this.defaultModel,
+      defaultMaxTokens: this.defaultMaxTokens,
+    });
     const message = await this.request<AnthropicMessage>(CLAUDE_API_ENDPOINTS.messages, {
       method: "POST",
-      body: payload,
+      body: params,
     });
-    return this.toRuntimeRunStatus(message);
+    return mapAnthropicMessageToRunStatus(message);
   }
 
   /**
@@ -105,29 +86,13 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     handlers: RunEventStreamHandlers,
     options: { signal?: AbortSignal } = {},
   ): Promise<void> {
-    const model = body.model ?? this.defaultModel;
-    if (!model) {
-      throw new ApiClientError(
-        "claude-sdk: a model is required (pass body.model or defaultModel)",
-        { code: ApiClientErrorCode.ValidationFailed },
-      );
-    }
-    const messages = Array.isArray(body.input)
-      ? body.input
-      : [{ role: "user", content: body.input }];
-    const maxTokens =
-      typeof body.metadata?.max_tokens === "number"
-        ? (body.metadata.max_tokens as number)
-        : this.defaultMaxTokens;
-
     const payload: Record<string, unknown> = {
-      model,
-      max_tokens: maxTokens,
-      messages,
+      ...buildAnthropicMessageParams(body, {
+        defaultModel: this.defaultModel,
+        defaultMaxTokens: this.defaultMaxTokens,
+      }),
       stream: true,
     };
-    if (body.instructions) payload.system = body.instructions;
-    if (body.tools?.length) payload.tools = body.tools;
 
     const controller = new AbortController();
     if (options.signal) {
@@ -186,19 +151,5 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     );
   }
 
-  private toRuntimeRunStatus(message: AnthropicMessage): RuntimeRunStatus {
-    const output = (message.content ?? [])
-      .filter((block) => block.type === "text" && typeof block.text === "string")
-      .map((block) => block.text as string)
-      .join("");
-    const tokens = normalizeRuntimeUsage(message.usage, "claude-sdk");
-    return {
-      run_id: message.id,
-      status: message.stop_reason ? "completed" : "running",
-      ...(message.model ? { model: message.model } : {}),
-      ...(output ? { output } : {}),
-      ...(message.usage ? { usage: message.usage } : {}),
-      ...(tokens ? { tokens } : {}),
-    };
-  }
 }
+
