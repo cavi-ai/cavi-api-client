@@ -10,6 +10,7 @@ export const RUNTIME_SURFACES = [
   "workspace",
   "operator",
   "discourse",
+  "batch",
 ] as const;
 
 export type RuntimeSurface = (typeof RUNTIME_SURFACES)[number];
