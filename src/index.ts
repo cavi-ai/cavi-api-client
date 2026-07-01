@@ -72,6 +72,14 @@ export {
   type RuntimeUsage,
   type TokenPrices,
 } from "./core/runtime/usage.js";
+export {
+  type RuntimeBatchRequest,
+  type RuntimeBatchStatus,
+  type RuntimeBatchResult,
+  type RuntimeBatchCounts,
+  type RuntimeBatchState,
+  type RuntimeBatchOutcome,
+} from "./core/runtime/batch.js";
 export { unsupportedRuntimeSurface, type RuntimeClient } from "./core/runtime/client.js";
 export {
   checkProtocolVersion,
