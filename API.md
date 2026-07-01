@@ -60,6 +60,9 @@ not expose gateway surfaces (teams, kanban, media, wiki, websocket).
 - **Claude** (`providers/claude`): `POST /v1/messages` — Anthropic Messages API;
   `x-api-key` auth. Also ships `ClaudeManagedAgentClient` (`managed-agents/`
   beta) for stateful sessions over the Anthropic Managed Agents beta.
+- Claude batch (`providers/claude`, `supports.batch`): `POST /v1/messages/batches`,
+  `GET /v1/messages/batches/:id`, `POST /v1/messages/batches/:id/cancel`,
+  `GET /v1/messages/batches/:id/results` (JSONL).
 - **Codex** (`providers/codex`): `POST /v1/responses` — OpenAI Responses API;
   bearer auth; default model `gpt-5-codex`; `getRun`/`cancelRun` supported
   (background responses via `GET /v1/responses/:id` and
