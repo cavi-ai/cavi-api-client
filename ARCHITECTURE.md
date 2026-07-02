@@ -39,7 +39,8 @@ src/index.ts
 
 The contract is tiered. **`RuntimeClient`** is the universal surface every
 provider implements — `getRuntimeCapabilities`, `startRun`, optional
-`getRun`/`cancelRun`, and optional `streamRun`. **`GatewayClient`** extends it for
+`getRun`/`cancelRun`, optional `streamRun`, and an optional batch surface
+(`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`). **`GatewayClient`** extends it for
 gateway backends, adding teams, kanban, workspace, and operator surfaces. Each
 provider declares a capability profile; calling an unsupported surface returns a
 typed `EndpointNotFound` rather than crashing.
@@ -54,7 +55,9 @@ or api-key) instead of the core hardcoding a token.
 
 OpenClaw/Hermes-specific behavior belongs in the matching provider module; Claude
 (Anthropic) is runtime-only and maps `startRun` to the Messages API. Claude also
-carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
+implements the batch surface (`supports.batch`) over Anthropic Message Batches
+(`/v1/messages/batches`), with results mapped to `RuntimeRunStatus` by `customId`.
+Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (sessions, agents, environments) with SSE steering, outcomes,
 threads, memory, vaults, webhook verification, and a `TeamManifest`→teams

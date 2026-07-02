@@ -236,8 +236,9 @@ against the live beta API (`managed-agents-2026-04-01`):
 ### One Client Shape
 
 Every provider implements the universal **`RuntimeClient`** contract — capability
-profile, runs (`startRun`/optional `getRun`/`cancelRun`), and optional
-`streamRun`. **`GatewayClient`** *extends* `RuntimeClient` for gateway-style
+profile, runs (`startRun`/optional `getRun`/`cancelRun`), optional `streamRun`,
+and an optional batch surface (`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`,
+gated by `supports.batch`). **`GatewayClient`** *extends* `RuntimeClient` for gateway-style
 backends, adding teams, kanban, workspace, and operator surfaces. `GatewayApiClient`
 implements both tiers; a non-gateway provider (e.g. Claude) implements
 `RuntimeClient` only and declares its capability profile so unsupported surfaces

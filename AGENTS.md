@@ -54,6 +54,7 @@ rules win.** Claude sessions have repo-local skills (`maintainer`,
 ## Provider Model
 
 - `RuntimeClient` is the universal contract every provider implements; `GatewayClient` extends it for gateway backends (teams/kanban/workspace/operator). Runtime-only providers (Claude, Codex, Gemini) implement `RuntimeClient` alone.
+- `RuntimeClient` includes an optional batch surface (`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`), gated by `supports.batch`. Providers that support async batch processing declare this capability; currently implemented by Claude over Anthropic Message Batches.
 - Core APIs must be provider-agnostic. Do not hardcode a concrete provider into new core interfaces, config keys, or routing decisions.
 - Provider-specific names are acceptable only in provider-specific modules.
 
