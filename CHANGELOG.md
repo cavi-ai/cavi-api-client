@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Batch surface** — an optional `RuntimeClient` batch API gated by a new
+  `"batch"` capability: `submitBatch`, `getBatch`, `cancelBatch`, `getBatchResults`
+  with `RuntimeBatchRequest`/`RuntimeBatchStatus`/`RuntimeBatchResult` types.
+  Implemented for Claude over Anthropic Message Batches (`/v1/messages/batches`);
+  results map to `RuntimeRunStatus` (incl. normalized `tokens`) by `customId`.
+  OpenAI and Gemini batch backends are planned follow-ups.
+
 ## [0.8.0] - 2026-06-30
 
 ### Added

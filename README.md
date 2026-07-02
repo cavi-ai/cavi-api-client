@@ -48,6 +48,7 @@ npm install @cavi-ai/api-client
   - [Run Event Streams](#run-event-streams)
   - [Media And Wiki](#media-and-wiki)
   - [React](#react)
+  - [Batch](#batch)
   - [CAVI Extension Adapters](#cavi-extension-adapters)
 - [Secure Credential Handling](#secure-credential-handling)
 - [Architecture](#architecture)
@@ -235,8 +236,9 @@ against the live beta API (`managed-agents-2026-04-01`):
 ### One Client Shape
 
 Every provider implements the universal **`RuntimeClient`** contract — capability
-profile, runs (`startRun`/optional `getRun`/`cancelRun`), and optional
-`streamRun`. **`GatewayClient`** *extends* `RuntimeClient` for gateway-style
+profile, runs (`startRun`/optional `getRun`/`cancelRun`), optional `streamRun`,
+and an optional batch surface (`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`,
+gated by `supports.batch`). **`GatewayClient`** *extends* `RuntimeClient` for gateway-style
 backends, adding teams, kanban, workspace, and operator surfaces. `GatewayApiClient`
 implements both tiers; a non-gateway provider (e.g. Claude) implements
 `RuntimeClient` only and declares its capability profile so unsupported surfaces
@@ -665,6 +667,33 @@ function Panel() {
   return <button onClick={() => void connect()}>{state}</button>;
 }
 ```
+
+### Batch
+
+Providers that declare `supports.batch` accept a set of runs, process them
+asynchronously, and return results correlated by `customId`. Currently backed by
+Claude (Anthropic Message Batches).
+
+```ts
+import { ClaudeApiClient } from "@cavi-ai/api-client/providers/claude";
+
+const claude = new ClaudeApiClient({ apiKey: process.env.ANTHROPIC_API_KEY! });
+
+const batch = await claude.submitBatch([
+  { customId: "a", body: { input: "Summarize doc A.", model: "claude-opus-4-8" } },
+  { customId: "b", body: { input: "Summarize doc B.", model: "claude-opus-4-8" } },
+]);
+
+const status = await claude.getBatch(batch.batch_id);
+if (status.resultsAvailable) {
+  const results = await claude.getBatchResults(batch.batch_id);
+  // results: { customId, outcome, run?: RuntimeRunStatus (incl. tokens), error? }[]
+}
+// await claude.cancelBatch(batch.batch_id) to cancel in-flight.
+```
+
+`getBatchResults` throws until the batch has ended — poll `getBatch` and check
+`resultsAvailable`. OpenAI and Gemini batch backends are planned follow-ups.
 
 ### CAVI Extension Adapters
 
