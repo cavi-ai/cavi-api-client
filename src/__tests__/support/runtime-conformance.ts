@@ -5,6 +5,7 @@ import {
 } from "../../core/runtime/run-stream";
 import type { RuntimeClient } from "../../core/runtime/client";
 import type { RuntimeRunStartBody } from "../../core/runtime/run";
+import type { RuntimeBatchRequest } from "../../core/runtime/batch";
 
 export type RuntimeConformanceContext = {
   /** Build a fresh, mock-backed client for each check. */
@@ -13,6 +14,8 @@ export type RuntimeConformanceContext = {
   runBody: RuntimeRunStartBody;
   /** A run body to stream; required only if the provider declares streaming + streamRun. */
   streamRunBody?: RuntimeRunStartBody;
+  /** A batch submission fixture; required only for providers that declare supports.batch. */
+  batchRequests?: RuntimeBatchRequest[];
 };
 
 export type ConformanceCheck = {
@@ -119,9 +122,46 @@ export const RUNTIME_STREAMING_CONFORMANCE_CHECKS: ConformanceCheck[] = [
   },
 ];
 
+export const RUNTIME_BATCH_CONFORMANCE_CHECKS: ConformanceCheck[] = [
+  {
+    name: "batch: methods present and round-trip when supports.batch",
+    run: async ({ makeClient, batchRequests }) => {
+      const client = makeClient();
+      const caps = await client.getRuntimeCapabilities();
+      if (!runtimeSupports(caps, "batch")) return; // provider doesn't declare batch — skip
+      assert(typeof client.submitBatch === "function", "submitBatch must be a function when supports.batch");
+      assert(typeof client.getBatch === "function", "getBatch must be a function");
+      assert(typeof client.cancelBatch === "function", "cancelBatch must be a function");
+      assert(typeof client.getBatchResults === "function", "getBatchResults must be a function");
+      assert(batchRequests != null && batchRequests.length > 0, "batchRequests fixture required for a batch provider");
+
+      const submitted = await client.submitBatch!(batchRequests);
+      assert(typeof submitted.batch_id === "string" && submitted.batch_id.length > 0, "submitBatch returns a non-empty batch_id");
+      const got = await client.getBatch!(submitted.batch_id);
+      assert(typeof got.status === "string" && got.status.length > 0, "getBatch returns a status");
+      if (got.resultsAvailable) {
+        const results = await client.getBatchResults!(submitted.batch_id);
+        assert(Array.isArray(results), "getBatchResults returns an array");
+        for (const result of results) {
+          assert(typeof result.customId === "string", "each result carries a customId");
+          if (result.outcome === "succeeded") {
+            assert(result.run != null, "a succeeded result carries a run");
+            // Batch results normalize usage like any run: if the run reports raw
+            // usage, it must also expose normalized tokens (parity with startRun).
+            if (result.run!.usage != null) {
+              assert(result.run!.tokens != null, "a succeeded batch result with usage must expose normalized tokens");
+            }
+          }
+        }
+      }
+    },
+  },
+];
+
 export const ALL_RUNTIME_CONFORMANCE_CHECKS: ConformanceCheck[] = [
   ...RUNTIME_CONFORMANCE_CHECKS,
   ...RUNTIME_STREAMING_CONFORMANCE_CHECKS,
+  ...RUNTIME_BATCH_CONFORMANCE_CHECKS,
 ];
 
 /** Run a set of checks, collecting per-check pass/fail (never throws). */

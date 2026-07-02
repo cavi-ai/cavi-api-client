@@ -2,6 +2,11 @@ import { ApiClientError, ApiClientErrorCode } from "../errors.js";
 import type { RuntimeCapabilities, RuntimeSurface } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "./run.js";
 import type { RunEventStreamHandlers } from "./run-stream.js";
+import type {
+  RuntimeBatchRequest,
+  RuntimeBatchStatus,
+  RuntimeBatchResult,
+} from "./batch.js";
 
 export type { RuntimeCapabilities, RuntimeSurface } from "./capabilities.js";
 export type {
@@ -11,6 +16,14 @@ export type {
   RuntimeRunInput,
   RuntimeRunState,
 } from "./run.js";
+export type {
+  RuntimeBatchRequest,
+  RuntimeBatchStatus,
+  RuntimeBatchResult,
+  RuntimeBatchCounts,
+  RuntimeBatchState,
+  RuntimeBatchOutcome,
+} from "./batch.js";
 
 /**
  * The UNIVERSAL agent-runtime contract every provider implements.
@@ -38,6 +51,19 @@ export interface RuntimeClient {
     handlers: RunEventStreamHandlers,
     options?: { signal?: AbortSignal },
   ): Promise<void>;
+  /**
+   * Batch surface (optional). Providers that support async batch processing
+   * declare `supports.batch` and implement these; others omit them. Consumers
+   * null-check (`client.submitBatch?.(…)`) or gate on `RuntimeCapabilities`.
+   */
+  submitBatch?(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus>;
+  getBatch?(batchId: string): Promise<RuntimeBatchStatus>;
+  cancelBatch?(batchId: string): Promise<RuntimeBatchStatus>;
+  /**
+   * Retrieve batch results. Throws an `EndpointNotFound`-class error if the
+   * batch has not ended yet — poll `getBatch` until `resultsAvailable` is true.
+   */
+  getBatchResults?(batchId: string): Promise<RuntimeBatchResult[]>;
 }
 
 /** Throw a typed EndpointNotFound for a surface this provider does not serve. */

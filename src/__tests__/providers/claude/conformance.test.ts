@@ -31,9 +31,17 @@ function sseStream(blocks: string[]): ReadableStream<Uint8Array> {
   });
 }
 
-// One fetch that serves both the synchronous JSON run and the streaming SSE run.
+// One fetch that serves the synchronous JSON run, the streaming SSE run, and batch endpoints.
 function claudeFetch(): typeof fetch {
-  return vi.fn(async (_url: unknown, init?: RequestInit) => {
+  return vi.fn(async (input: unknown, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/v1/messages/batches") && url.endsWith("/results")) {
+      const line = JSON.stringify({ custom_id: "a", result: { type: "succeeded", message: { id: "m", model: "claude-opus-4-8", stop_reason: "end_turn", content: [{ type: "text", text: "ok" }], usage: { input_tokens: 1, output_tokens: 1 } } } });
+      return new Response(line, { status: 200, headers: { "content-type": "application/x-jsonl" } });
+    }
+    if (url.includes("/v1/messages/batches")) {
+      return new Response(JSON.stringify({ id: "msgbatch_1", processing_status: "ended", request_counts: { succeeded: 1 } }), { status: 200, headers: { "content-type": "application/json" } });
+    }
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (body.stream === true) {
       return new Response(sseStream(SSE), {
@@ -52,6 +60,7 @@ const ctx: RuntimeConformanceContext = {
   makeClient: () => new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: claudeFetch() }),
   runBody: { input: "hi", model: "claude-opus-4-8" },
   streamRunBody: { input: "hi", model: "claude-opus-4-8" },
+  batchRequests: [{ customId: "a", body: { input: "hi", model: "claude-opus-4-8" } }],
 };
 
 describe("Claude provider — runtime conformance", () => {
