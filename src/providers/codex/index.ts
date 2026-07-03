@@ -13,4 +13,25 @@ export {
 export {
   codexResponsePath,
   codexResponseCancelPath,
+  codexFilePath,
+  codexFileContentPath,
+  codexBatchPath,
+  codexBatchCancelPath,
 } from "./paths.js";
+export {
+  CodexFilesClient,
+  type CodexFilesClientOptions,
+  type CodexFileObject,
+} from "./files.js";
+export {
+  buildCodexResponseBody,
+  mapOpenAIResponseToRunStatus,
+  mapResponseStatus,
+  errorMessageOf,
+  type OpenAIResponse,
+} from "./response.js";
+export {
+  buildBatchInputJsonl,
+  mapOpenAIBatch,
+  parseOpenAIBatchOutput,
+} from "./batch.js";
