@@ -5,7 +5,6 @@ import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/typ
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
-import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
@@ -19,10 +18,15 @@ import {
   codexResponsePath,
 } from "./paths.js";
 import {
+  buildCodexResponseBody,
+  mapOpenAIResponseToRunStatus,
+  mapResponseStatus,
+  type OpenAIResponse,
+} from "./response.js";
+import {
   mapOpenAIResponseStreamEvent,
   readOpenAIResponseRunId,
 } from "./stream.js";
-import { flattenOpenAIUsage } from "./usage.js";
 
 export { CODEX_API_BASE_URL, CODEX_API_ENDPOINTS, CODEX_DEFAULT_MODEL } from "./paths.js";
 
@@ -36,46 +40,6 @@ export type CodexApiClientOptions = {
   onTrace?: HttpApiClientOptions["onTrace"];
   defaultTimeoutMs?: number;
 };
-
-type OpenAIResponse = {
-  id: string;
-  status?: string;
-  model?: string;
-  output_text?: string;
-  error?: unknown;
-  incomplete_details?: unknown;
-  // OpenAI nests detail objects (e.g. input_tokens_details.cached_tokens), so
-  // values are not all numbers; flattenOpenAIUsage lifts the nested counts.
-  usage?: Record<string, unknown>;
-};
-
-function mapResponseStatus(status: string | undefined): RuntimeRunStatus["status"] {
-  switch (status) {
-    case "queued":
-      return "started";
-    case "in_progress":
-      return "running";
-    case "completed":
-      return "completed";
-    case "failed":
-    case "incomplete":
-      return "failed";
-    case "cancelled":
-      return "cancelled";
-    default:
-      return status || "running";
-  }
-}
-
-function errorMessageOf(value: unknown): string | undefined {
-  if (typeof value === "string" && value) return value;
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    if (typeof record.message === "string" && record.message) return record.message;
-    if (typeof record.reason === "string" && record.reason) return record.reason;
-  }
-  return undefined;
-}
 
 
 export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
@@ -113,22 +77,18 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
     const response = await this.request<OpenAIResponse>(CODEX_API_ENDPOINTS.responses, {
       method: "POST",
-      body: this.buildResponseBody(body, { stream: false }),
+      body: buildCodexResponseBody(body, this.defaultModel, { background: true, store: true }),
     });
-    return this.toRuntimeRunStatus(response);
+    return mapOpenAIResponseToRunStatus(response);
   }
 
   async getRun(runId: string): Promise<RuntimeRunStatus> {
-    const response = await this.request<OpenAIResponse>(codexResponsePath(runId), {
-      method: "GET",
-    });
-    return this.toRuntimeRunStatus(response);
+    const response = await this.request<OpenAIResponse>(codexResponsePath(runId), { method: "GET" });
+    return mapOpenAIResponseToRunStatus(response);
   }
 
   async cancelRun(runId: string): Promise<{ status: string }> {
-    const response = await this.request<OpenAIResponse>(codexResponseCancelPath(runId), {
-      method: "POST",
-    });
+    const response = await this.request<OpenAIResponse>(codexResponseCancelPath(runId), { method: "POST" });
     return { status: mapResponseStatus(response.status) };
   }
 
@@ -146,7 +106,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     try {
       const response = await this.requestRaw(CODEX_API_ENDPOINTS.responses, {
         method: "POST",
-        body: this.buildResponseBody(body, { stream: true }),
+        body: buildCodexResponseBody(body, this.defaultModel, { background: true, store: true, stream: true }),
         signal: controller.signal,
       });
       if (!response.body) {
@@ -177,37 +137,4 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     }
   }
 
-  private buildResponseBody(
-    body: RuntimeRunStartBody,
-    options: { stream: boolean },
-  ): Record<string, unknown> {
-    const payload: Record<string, unknown> = {
-      model: body.model ?? this.defaultModel,
-      input: body.input,
-      background: true,
-      store: true,
-    };
-    if (options.stream) payload.stream = true;
-    if (body.instructions) payload.instructions = body.instructions;
-    if (body.tools?.length) payload.tools = body.tools;
-    if (body.metadata) payload.metadata = body.metadata;
-    return payload;
-  }
-
-  private toRuntimeRunStatus(response: OpenAIResponse): RuntimeRunStatus {
-    const status = mapResponseStatus(response.status);
-    const usage = flattenOpenAIUsage(response.usage);
-    const tokens = normalizeRuntimeUsage(usage, "codex-responses");
-    return {
-      run_id: response.id,
-      status,
-      ...(response.model ? { model: response.model } : {}),
-      ...(response.output_text ? { output: response.output_text } : {}),
-      ...(status === "failed"
-        ? { error: errorMessageOf(response.error ?? response.incomplete_details) ?? "codex response failed" }
-        : {}),
-      ...(usage ? { usage } : {}),
-      ...(tokens ? { tokens } : {}),
-    };
-  }
 }
