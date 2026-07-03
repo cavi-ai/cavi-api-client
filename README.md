@@ -344,6 +344,10 @@ await codex.streamRun(
 );
 ```
 
+A public `CodexFilesClient` (from `@cavi-ai/api-client/providers/codex`) is also
+available for the OpenAI Files API (upload / download content / retrieve /
+delete); it is used internally by Codex batch.
+
 Keep OpenAI API keys backend-owned. Browser and mobile apps should call your
 backend, which can instantiate `CodexApiClient`; they should not embed raw
 OpenAI credentials.
@@ -671,8 +675,9 @@ function Panel() {
 ### Batch
 
 Providers that declare `supports.batch` accept a set of runs, process them
-asynchronously, and return results correlated by `customId`. Currently backed by
-Claude (Anthropic Message Batches).
+asynchronously, and return results correlated by `customId`. Backed by Claude
+(Anthropic Message Batches) and Codex/OpenAI (the OpenAI Batch API's file-based
+upload → poll → download flow is hidden behind the same methods).
 
 ```ts
 import { ClaudeApiClient } from "@cavi-ai/api-client/providers/claude";

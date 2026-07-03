@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **OpenAI/Codex batch backend** — `CodexApiClient` now implements the batch
+  surface over the OpenAI Batch API (upload JSONL → create batch targeting
+  `/v1/responses`, `completion_window "24h"` → download output/error files);
+  results map to `RuntimeRunStatus` (incl. normalized `tokens`) by `customId`.
+- **`CodexFilesClient`** (`@cavi-ai/api-client/providers/codex`) — a minimal OpenAI
+  Files client (multipart upload, content download, retrieve, delete).
+
 ## [0.9.0] - 2026-07-02
 
 ### Added

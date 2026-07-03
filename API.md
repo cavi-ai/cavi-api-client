@@ -68,6 +68,9 @@ not expose gateway surfaces (teams, kanban, media, wiki, websocket).
   bearer auth; default model `gpt-5-codex`; `getRun`/`cancelRun` supported
   (background responses via `GET /v1/responses/:id` and
   `POST /v1/responses/:id/cancel`).
+- Codex batch (`providers/codex`, `supports.batch`): `POST /v1/batches`,
+  `GET /v1/batches/:id`, `POST /v1/batches/:id/cancel`; files via
+  `POST /v1/files` (multipart), `GET /v1/files/:id/content`, `GET`/`DELETE /v1/files/:id`.
 - **Gemini** (`providers/gemini`):
   `POST /v1beta/models/:model:generateContent` and
   `POST /v1beta/models/:model:streamGenerateContent?alt=sse` — Gemini Developer
