@@ -14,6 +14,8 @@ import {
   CODEX_API_BASE_URL,
   CODEX_API_ENDPOINTS,
   CODEX_DEFAULT_MODEL,
+  codexBatchCancelPath,
+  codexBatchPath,
   codexResponseCancelPath,
   codexResponsePath,
 } from "./paths.js";
@@ -23,6 +25,13 @@ import {
   mapResponseStatus,
   type OpenAIResponse,
 } from "./response.js";
+import type {
+  RuntimeBatchRequest,
+  RuntimeBatchStatus,
+  RuntimeBatchResult,
+} from "../../core/runtime/batch.js";
+import { CodexFilesClient } from "./files.js";
+import { buildBatchInputJsonl, mapOpenAIBatch, parseOpenAIBatchOutput } from "./batch.js";
 import {
   mapOpenAIResponseStreamEvent,
   readOpenAIResponseRunId,
@@ -45,6 +54,7 @@ export type CodexApiClientOptions = {
 export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   readonly request: HttpApiTransport;
   private readonly defaultModel: string;
+  private readonly files: CodexFilesClient;
 
   constructor(options: CodexApiClientOptions) {
     const apiKey = options.apiKey?.trim();
@@ -63,6 +73,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     });
     this.request = this.createTransport();
     this.defaultModel = options.defaultModel?.trim() || CODEX_DEFAULT_MODEL;
+    this.files = new CodexFilesClient(options);
   }
 
   async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
@@ -70,7 +81,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
       providerKind: "codex-responses",
       protocolVersion: "responses-v1",
       auth: { type: "bearer", required: true },
-      supports: { runs: true, streaming: true },
+      supports: { runs: true, streaming: true, batch: true },
     };
   }
 
@@ -90,6 +101,52 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   async cancelRun(runId: string): Promise<{ status: string }> {
     const response = await this.request<OpenAIResponse>(codexResponseCancelPath(runId), { method: "POST" });
     return { status: mapResponseStatus(response.status) };
+  }
+
+  async submitBatch(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus> {
+    const jsonl = buildBatchInputJsonl(requests, (body) =>
+      buildCodexResponseBody(body, this.defaultModel, {}),
+    );
+    const inputFile = await this.files.uploadFile(jsonl, "batch");
+    const raw = await this.request<Record<string, unknown>>(CODEX_API_ENDPOINTS.batches, {
+      method: "POST",
+      body: {
+        input_file_id: inputFile.id,
+        endpoint: CODEX_API_ENDPOINTS.responses,
+        completion_window: "24h",
+      },
+    });
+    return mapOpenAIBatch(raw);
+  }
+
+  async getBatch(batchId: string): Promise<RuntimeBatchStatus> {
+    const raw = await this.request<Record<string, unknown>>(codexBatchPath(batchId));
+    return mapOpenAIBatch(raw);
+  }
+
+  async cancelBatch(batchId: string): Promise<RuntimeBatchStatus> {
+    const raw = await this.request<Record<string, unknown>>(codexBatchCancelPath(batchId), { method: "POST" });
+    return mapOpenAIBatch(raw);
+  }
+
+  async getBatchResults(batchId: string): Promise<RuntimeBatchResult[]> {
+    const raw = await this.request<Record<string, unknown>>(codexBatchPath(batchId));
+    const outputFileId = typeof raw.output_file_id === "string" ? raw.output_file_id : undefined;
+    const errorFileId = typeof raw.error_file_id === "string" ? raw.error_file_id : undefined;
+    if (!outputFileId && !errorFileId) {
+      throw new ApiClientError(
+        `codex-responses: batch ${batchId} results are not available yet — poll getBatch until resultsAvailable is true`,
+        { code: ApiClientErrorCode.EndpointNotFound },
+      );
+    }
+    const results: RuntimeBatchResult[] = [];
+    if (outputFileId) {
+      results.push(...parseOpenAIBatchOutput(await this.files.downloadFileContent(outputFileId), mapOpenAIResponseToRunStatus));
+    }
+    if (errorFileId) {
+      results.push(...parseOpenAIBatchOutput(await this.files.downloadFileContent(errorFileId), mapOpenAIResponseToRunStatus));
+    }
+    return results;
   }
 
   async streamRun(
