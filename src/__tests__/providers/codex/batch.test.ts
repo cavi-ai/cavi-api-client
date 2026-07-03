@@ -21,6 +21,10 @@ describe("mapOpenAIBatch", () => {
     const s = mapOpenAIBatch({ id: "b", status: "completed", output_file_id: "file-out", request_counts: { total: 1, completed: 1, failed: 0 }, completed_at: 1 });
     expect(s).toMatchObject({ status: "completed", resultsAvailable: true, counts: { succeeded: 1 }, endedAt: 1 });
   });
+  it("marks a failed batch with only an error file as resultsAvailable", () => {
+    const s = mapOpenAIBatch({ id: "b", status: "failed", error_file_id: "file-err", request_counts: { total: 1, completed: 0, failed: 1 } });
+    expect(s).toMatchObject({ status: "failed", resultsAvailable: true, counts: { errored: 1 } });
+  });
   it("maps cancelling/cancelled/expired", () => {
     expect(mapOpenAIBatch({ id: "b", status: "cancelling" }).status).toBe("canceling");
     expect(mapOpenAIBatch({ id: "b", status: "cancelled" }).status).toBe("cancelled");

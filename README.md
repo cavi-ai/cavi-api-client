@@ -698,7 +698,7 @@ if (status.resultsAvailable) {
 ```
 
 `getBatchResults` throws until the batch has ended — poll `getBatch` and check
-`resultsAvailable`. OpenAI and Gemini batch backends are planned follow-ups.
+`resultsAvailable`. A Gemini batch backend is a planned follow-up.
 
 ### CAVI Extension Adapters
 
