@@ -55,7 +55,10 @@ export function mapOpenAIBatch(raw: unknown): RuntimeBatchStatus {
   const out: RuntimeBatchStatus = {
     batch_id: typeof record.id === "string" ? record.id : "",
     status,
-    resultsAvailable: typeof record.output_file_id === "string",
+    // A batch can end with only an error file (all requests failed), so results
+    // are retrievable when EITHER the output or error file is present.
+    resultsAvailable:
+      typeof record.output_file_id === "string" || typeof record.error_file_id === "string",
   };
   if (Object.keys(counts).length) out.counts = counts;
   const created = record.created_at;
