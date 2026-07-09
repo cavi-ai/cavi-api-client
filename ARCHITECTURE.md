@@ -57,6 +57,10 @@ OpenClaw/Hermes-specific behavior belongs in the matching provider module; Claud
 (Anthropic) is runtime-only and maps `startRun` to the Messages API. Claude also
 implements the batch surface (`supports.batch`) over Anthropic Message Batches
 (`/v1/messages/batches`), with results mapped to `RuntimeRunStatus` by `customId`.
+Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch API
+(JSONL upload → batch creation → poll → download), with results mapped to
+`RuntimeRunStatus` by `customId`; downloaded result JSONL is parsed strictly so
+malformed provider files fail with `invalid_json` instead of silently dropping rows.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (sessions, agents, environments) with SSE steering, outcomes,

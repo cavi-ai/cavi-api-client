@@ -20,6 +20,8 @@ export const CLAUDE_MANAGED_AGENTS_ENDPOINTS = {
   environments: "/v1/environments",
   memoryStores: "/v1/memory_stores",
   vaults: "/v1/vaults",
+  deployments: "/v1/deployments",
+  deploymentRuns: "/v1/deployment_runs",
 } as const;
 
 function segment(value: string, label: string): string {
@@ -38,9 +40,24 @@ export function claudeAgentPath(agentId: string): string {
   return `/v1/agents/${segment(agentId, "agent id")}`;
 }
 
-/** `/v1/environments/{environmentId}` — retrieve / update an environment template. */
+/** `/v1/agents/{agentId}/archive` — make an agent read-only (terminal; no unarchive). */
+export function claudeAgentArchivePath(agentId: string): string {
+  return `${claudeAgentPath(agentId)}/archive`;
+}
+
+/** `/v1/agents/{agentId}/versions` — list an agent's immutable versions. */
+export function claudeAgentVersionsPath(agentId: string): string {
+  return `${claudeAgentPath(agentId)}/versions`;
+}
+
+/** `/v1/environments/{environmentId}` — retrieve / update / delete an environment template. */
 export function claudeEnvironmentPath(environmentId: string): string {
   return `/v1/environments/${segment(environmentId, "environment id")}`;
+}
+
+/** `/v1/environments/{environmentId}/archive` — make an environment read-only (terminal). */
+export function claudeEnvironmentArchivePath(environmentId: string): string {
+  return `${claudeEnvironmentPath(environmentId)}/archive`;
 }
 
 /** `/v1/sessions/{sessionId}` — retrieve / update a session. */
@@ -61,6 +78,18 @@ export function claudeSessionEventsPath(sessionId: string): string {
 /** `/v1/sessions/{sessionId}/events/stream` — SSE event stream. */
 export function claudeSessionEventStreamPath(sessionId: string): string {
   return `/v1/sessions/${segment(sessionId, "session id")}/events/stream`;
+}
+
+// ── Session resources (files / repos attached to a live session) ─────────────
+
+/** `/v1/sessions/{sessionId}/resources` — add / list resources. */
+export function claudeSessionResourcesPath(sessionId: string): string {
+  return `${claudeSessionPath(sessionId)}/resources`;
+}
+
+/** `/v1/sessions/{sessionId}/resources/{resourceId}` — retrieve / update / delete. */
+export function claudeSessionResourcePath(sessionId: string, resourceId: string): string {
+  return `${claudeSessionResourcesPath(sessionId)}/${segment(resourceId, "resource id")}`;
 }
 
 // ── Multiagent threads ──────────────────────────────────────────────────────
@@ -169,4 +198,40 @@ export function claudeEnvironmentWorkStatsPath(environmentId: string): string {
 /** `/v1/environments/{environmentId}/work/{workId}/stop`. */
 export function claudeEnvironmentWorkStopPath(environmentId: string, workId: string): string {
   return `${claudeEnvironmentPath(environmentId)}/work/${segment(workId, "work id")}/stop`;
+}
+
+// ── Scheduled deployments & deployment runs ─────────────────────────────────
+//
+// A deployment (`depl_…`) fires a session on a recurring cron schedule; each
+// firing writes a deployment-run record (`drun_…`). Deployments have no
+// retrieve-by-id or list endpoint — only the lifecycle actions below and the
+// run records under `/v1/deployment_runs`.
+
+function deploymentActionPath(deploymentId: string, action: string): string {
+  return `/v1/deployments/${segment(deploymentId, "deployment id")}/${action}`;
+}
+
+/** `/v1/deployments/{deploymentId}/pause` — suppress scheduled triggers (reversible). */
+export function claudeDeploymentPausePath(deploymentId: string): string {
+  return deploymentActionPath(deploymentId, "pause");
+}
+
+/** `/v1/deployments/{deploymentId}/unpause` — resume from the next occurrence. */
+export function claudeDeploymentUnpausePath(deploymentId: string): string {
+  return deploymentActionPath(deploymentId, "unpause");
+}
+
+/** `/v1/deployments/{deploymentId}/archive` — terminal: schedule stops, becomes immutable. */
+export function claudeDeploymentArchivePath(deploymentId: string): string {
+  return deploymentActionPath(deploymentId, "archive");
+}
+
+/** `/v1/deployments/{deploymentId}/run` — trigger a manual run immediately. */
+export function claudeDeploymentRunPath(deploymentId: string): string {
+  return deploymentActionPath(deploymentId, "run");
+}
+
+/** `/v1/deployment_runs/{deploymentRunId}` — retrieve one run record. */
+export function claudeDeploymentRunGetPath(deploymentRunId: string): string {
+  return `/v1/deployment_runs/${segment(deploymentRunId, "deployment run id")}`;
 }

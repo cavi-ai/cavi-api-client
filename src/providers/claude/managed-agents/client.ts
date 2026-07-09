@@ -17,7 +17,15 @@ import {
   CLAUDE_ANTHROPIC_BETA_HEADER,
   CLAUDE_MANAGED_AGENTS_BETA,
   CLAUDE_MANAGED_AGENTS_ENDPOINTS,
+  claudeAgentArchivePath,
   claudeAgentPath,
+  claudeAgentVersionsPath,
+  claudeDeploymentArchivePath,
+  claudeDeploymentPausePath,
+  claudeDeploymentRunGetPath,
+  claudeDeploymentRunPath,
+  claudeDeploymentUnpausePath,
+  claudeEnvironmentArchivePath,
   claudeEnvironmentPath,
   claudeMemoriesPath,
   claudeMemoryPath,
@@ -30,6 +38,8 @@ import {
   claudeSessionEventStreamPath,
   claudeSessionEventsPath,
   claudeSessionPath,
+  claudeSessionResourcePath,
+  claudeSessionResourcesPath,
   claudeSessionThreadArchivePath,
   claudeSessionThreadEventsPath,
   claudeSessionThreadPath,
@@ -123,14 +133,55 @@ export type CreateManagedAgentEnvironmentParams = {
   metadata?: Record<string, unknown>;
 };
 
+/** Update an environment in place. All fields optional; changes apply to new containers only. */
+export type UpdateManagedAgentEnvironmentParams = {
+  name?: string;
+  config?: Record<string, unknown>;
+  description?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type CreateManagedAgentSessionParams = {
   agentId: string;
+  /**
+   * Pin a specific agent version (`{type:"agent",id,version}`); omit for the
+   * latest version at session-create time.
+   */
+  agentVersion?: number;
+  /**
+   * Session-local overrides — emits `agent_with_overrides`. Pass wire-shaped
+   * keys (`model`/`system`/`tools`/`mcp_servers`/`skills`); `null` clears a
+   * field, omitting inherits it from the agent version. Overrides never merge.
+   */
+  agentOverrides?: Record<string, unknown>;
   environmentId: string;
   title?: string;
   resources?: readonly Record<string, unknown>[];
   vaultIds?: readonly string[];
   metadata?: Record<string, unknown>;
 };
+
+/**
+ * Session-local mutation (session must be `idle`). `agent.tools`,
+ * `agent.mcp_servers`, and `vault_ids` are full replacements — GET the session,
+ * modify, and pass the whole array back to append. Does not touch the agent object.
+ */
+export type UpdateManagedAgentSessionParams = {
+  title?: string;
+  metadata?: Record<string, unknown>;
+  agent?: { tools?: readonly Record<string, unknown>[]; mcp_servers?: readonly Record<string, unknown>[] };
+  vaultIds?: readonly string[];
+};
+
+/** A file / GitHub repo attached to a live session (`resources.add`). */
+export type ManagedAgentResource = {
+  id: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
+/** Rotate a resource's `authorization_token` (GitHub repo) on a running session. */
+export type UpdateSessionResourceParams = Record<string, unknown>;
 
 export type ConfirmToolParams = {
   /** The `agent.tool_use` event `id` (`sevt_…`). */
@@ -282,6 +333,50 @@ export type ManagedAgentWorkQueueStats = {
   [key: string]: unknown;
 };
 
+// ── Scheduled deployments ─────────────────────────────────────────────────────
+
+export type ManagedAgentDeployment = {
+  id: string;
+  status?: string;
+  paused_reason?: unknown;
+  schedule?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type ManagedAgentDeploymentRun = {
+  id: string;
+  deployment_id?: string;
+  session_id?: string | null;
+  error?: { type?: string; message?: string } | null;
+  [key: string]: unknown;
+};
+
+/** Recurring cron schedule (IANA `timezone`; minute-level granularity max). */
+export type ManagedAgentSchedule = {
+  type: "cron";
+  expression: string;
+  timezone: string;
+};
+
+export type CreateManagedAgentDeploymentParams = {
+  name: string;
+  agentId: string;
+  /** Pin a specific agent version; omit for latest at each firing. */
+  agentVersion?: number;
+  environmentId: string;
+  /** The kickoff events each firing sends — must include the starting `user.message`. */
+  initialEvents: readonly ManagedAgentEvent[];
+  schedule: ManagedAgentSchedule;
+  resources?: readonly Record<string, unknown>[];
+  vaultIds?: readonly string[];
+  metadata?: Record<string, unknown>;
+};
+
+export type ListDeploymentRunsParams = {
+  /** Filter to failed runs only (`has_error=true`). */
+  hasError?: boolean;
+};
+
 type TextBlock = { type: "text"; text: string };
 
 /** Map a Managed Agents session status to a canonical RuntimeRunState. */
@@ -321,6 +416,30 @@ const DEFAULT_ENVIRONMENT_CONFIG = {
   networking: { type: "unrestricted" },
 } as const;
 
+/**
+ * Build a session's `agent` field: a bare id string (latest version), a pinned
+ * `{type:"agent",id,version}` reference, or `{type:"agent_with_overrides",…}`
+ * when session-local overrides are supplied.
+ */
+function buildAgentRef(params: {
+  agentId: string;
+  agentVersion?: number;
+  agentOverrides?: Record<string, unknown>;
+}): unknown {
+  if (params.agentOverrides) {
+    return {
+      type: "agent_with_overrides",
+      id: params.agentId,
+      ...(params.agentVersion != null ? { version: params.agentVersion } : {}),
+      ...params.agentOverrides,
+    };
+  }
+  if (params.agentVersion != null) {
+    return { type: "agent", id: params.agentId, version: params.agentVersion };
+  }
+  return params.agentId;
+}
+
 /** Build the wire body for agents.create / agents.update from typed params. */
 function buildAgentBody(params: CreateManagedAgentParams): Record<string, unknown> {
   const body: Record<string, unknown> = { name: params.name, model: params.model };
@@ -344,14 +463,18 @@ function buildAgentBody(params: CreateManagedAgentParams): Record<string, unknow
  * Mandatory Managed Agents flow: an Agent (persisted, created once) and an
  * Environment must already exist; every run is a Session that references them by
  * id. Pass `agentId`/`environmentId` as defaults or per-run via
- * `body.metadata.agent_id` / `body.metadata.environment_id`. `body.model` and
- * `body.instructions` are NOT applied here — model and system prompt live on the
- * agent object (provision them via option B / the `ant` CLI).
+ * `body.metadata.agent_id` / `body.metadata.environment_id` (plus optional
+ * `agent_version`, `resources`, `vault_ids`). `body.model` and `body.instructions`
+ * are NOT applied here — model and system prompt live on the agent object
+ * (provision it via the `ant` CLI or `createAgent`).
  *
- * Scope (option A slice): session create + kickoff + stateful poll/cancel + the
- * happy-path event stream (messages, tool calls, completion, error). NOT yet
- * handled: lossless stream reconnect/dedupe, `tool_confirmation` round-trips, and
- * `custom_tool_result` replies (see shared Managed Agents client patterns).
+ * Coverage: the full `managed-agents-2026-04-01` control + data plane —
+ * agent/environment/session lifecycle (incl. list/archive/versions and
+ * session-local updates), session resources, scheduled deployments, multiagent
+ * threads, outcomes, memory stores, vaults/credentials, and the self-hosted
+ * work queue. Session steering (`confirmTool`, `respondCustomTool`,
+ * `defineOutcome`, `listEvents` for lossless reconnect/dedupe) rounds out the
+ * RuntimeClient contract with a stateful, resumable, streamable session.
  */
 export class ClaudeManagedAgentClient extends BaseHttpApiClient implements RuntimeClient {
   readonly request: HttpApiTransport;
@@ -428,6 +551,29 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     return this.request<ManagedAgentAgent>(claudeAgentPath(agentId), { method: "GET" });
   }
 
+  /** List agent configs. */
+  async listAgents(): Promise<ManagedAgentAgent[]> {
+    const res = await this.request<{ data?: ManagedAgentAgent[] }>(
+      CLAUDE_MANAGED_AGENTS_ENDPOINTS.agents,
+      { method: "GET" },
+    );
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** List an agent's immutable versions (newest state on each `POST /v1/agents/{id}`). */
+  async listAgentVersions(agentId: string): Promise<ManagedAgentAgent[]> {
+    const res = await this.request<{ data?: ManagedAgentAgent[] }>(
+      claudeAgentVersionsPath(agentId),
+      { method: "GET" },
+    );
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** Archive an agent — terminal: existing sessions continue, new sessions can't reference it. */
+  async archiveAgent(agentId: string): Promise<ManagedAgentAgent> {
+    return this.request<ManagedAgentAgent>(claudeAgentArchivePath(agentId), { method: "POST" });
+  }
+
   /** Create a reusable environment (container template). Defaults to cloud/unrestricted. */
   async createEnvironment(
     params: CreateManagedAgentEnvironmentParams,
@@ -451,6 +597,43 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     });
   }
 
+  /** List environments. */
+  async listEnvironments(): Promise<ManagedAgentEnvironment[]> {
+    const res = await this.request<{ data?: ManagedAgentEnvironment[] }>(
+      CLAUDE_MANAGED_AGENTS_ENDPOINTS.environments,
+      { method: "GET" },
+    );
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** Update an environment — changes apply to new containers; existing sessions keep their config. */
+  async updateEnvironment(
+    environmentId: string,
+    params: UpdateManagedAgentEnvironmentParams,
+  ): Promise<ManagedAgentEnvironment> {
+    return this.request<ManagedAgentEnvironment>(claudeEnvironmentPath(environmentId), {
+      method: "POST",
+      body: {
+        ...(params.name ? { name: params.name } : {}),
+        ...(params.config ? { config: params.config } : {}),
+        ...(params.description ? { description: params.description } : {}),
+        ...(params.metadata ? { metadata: params.metadata } : {}),
+      },
+    });
+  }
+
+  /** Delete an environment (returns 204). */
+  async deleteEnvironment(environmentId: string): Promise<void> {
+    await this.requestRaw(claudeEnvironmentPath(environmentId), { method: "DELETE" });
+  }
+
+  /** Archive an environment — terminal: read-only, new sessions can't reference it. */
+  async archiveEnvironment(environmentId: string): Promise<ManagedAgentEnvironment> {
+    return this.request<ManagedAgentEnvironment>(claudeEnvironmentArchivePath(environmentId), {
+      method: "POST",
+    });
+  }
+
   // ── Low-level session operations ──────────────────────────────────────────
 
   /** Create a stateful session referencing a pre-created agent + environment. */
@@ -458,7 +641,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     params: CreateManagedAgentSessionParams,
   ): Promise<ManagedAgentSession> {
     const body: Record<string, unknown> = {
-      agent: params.agentId,
+      agent: buildAgentRef(params),
       environment_id: params.environmentId,
     };
     if (params.title) body.title = params.title;
@@ -474,6 +657,87 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   /** Retrieve a session — the stateful read the Messages API cannot provide. */
   async getSession(sessionId: string): Promise<ManagedAgentSession> {
     return this.request<ManagedAgentSession>(claudeSessionPath(sessionId), { method: "GET" });
+  }
+
+  /** List sessions. */
+  async listSessions(): Promise<ManagedAgentSession[]> {
+    const res = await this.request<{ data?: ManagedAgentSession[] }>(
+      CLAUDE_MANAGED_AGENTS_ENDPOINTS.sessions,
+      { method: "GET" },
+    );
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /**
+   * Update a session (session-local override; session must be `idle`). Changes
+   * `title`/`metadata` or replaces `agent.tools`/`agent.mcp_servers`/`vault_ids`
+   * for this session only — never touches the agent object.
+   */
+  async updateSession(
+    sessionId: string,
+    params: UpdateManagedAgentSessionParams,
+  ): Promise<ManagedAgentSession> {
+    return this.request<ManagedAgentSession>(claudeSessionPath(sessionId), {
+      method: "POST",
+      body: {
+        ...(params.title ? { title: params.title } : {}),
+        ...(params.metadata ? { metadata: params.metadata } : {}),
+        ...(params.agent ? { agent: params.agent } : {}),
+        ...(params.vaultIds ? { vault_ids: params.vaultIds } : {}),
+      },
+    });
+  }
+
+  /** Delete a session (permanent — removes event history, container, checkpoints). */
+  async deleteSession(sessionId: string): Promise<void> {
+    await this.requestRaw(claudeSessionPath(sessionId), { method: "DELETE" });
+  }
+
+  // ── Session resources (attach files / repos to a live session) ────────────
+
+  /** Attach a `file` or `github_repository` resource to a running session. */
+  async addResource(
+    sessionId: string,
+    resource: Record<string, unknown>,
+  ): Promise<ManagedAgentResource> {
+    return this.request<ManagedAgentResource>(claudeSessionResourcesPath(sessionId), {
+      method: "POST",
+      body: resource,
+    });
+  }
+
+  /** List resources attached to a session. */
+  async listResources(sessionId: string): Promise<ManagedAgentResource[]> {
+    const res = await this.request<{ data?: ManagedAgentResource[] }>(
+      claudeSessionResourcesPath(sessionId),
+      { method: "GET" },
+    );
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** Retrieve one attached resource. */
+  async getResource(sessionId: string, resourceId: string): Promise<ManagedAgentResource> {
+    return this.request<ManagedAgentResource>(
+      claudeSessionResourcePath(sessionId, resourceId),
+      { method: "GET" },
+    );
+  }
+
+  /** Update a resource (e.g. rotate a GitHub repo's `authorization_token`). */
+  async updateResource(
+    sessionId: string,
+    resourceId: string,
+    params: UpdateSessionResourceParams,
+  ): Promise<ManagedAgentResource> {
+    return this.request<ManagedAgentResource>(
+      claudeSessionResourcePath(sessionId, resourceId),
+      { method: "POST", body: params },
+    );
+  }
+
+  /** Remove a resource from a session. */
+  async deleteResource(sessionId: string, resourceId: string): Promise<void> {
+    await this.requestRaw(claudeSessionResourcePath(sessionId, resourceId), { method: "DELETE" });
   }
 
   /** Send one or more events (user.message, user.interrupt, tool results) to a session. */
@@ -899,6 +1163,80 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     );
   }
 
+  // ── Scheduled deployments (run an agent on a recurring cron schedule) ──────
+
+  /**
+   * Create a scheduled deployment — each firing creates a session autonomously.
+   * `initialEvents` must contain the kickoff `user.message`. Check the response
+   * `schedule.upcoming_runs_at` to confirm the cron parsed as intended.
+   */
+  async createDeployment(
+    params: CreateManagedAgentDeploymentParams,
+  ): Promise<ManagedAgentDeployment> {
+    const body: Record<string, unknown> = {
+      name: params.name,
+      agent: buildAgentRef({ agentId: params.agentId, agentVersion: params.agentVersion }),
+      environment_id: params.environmentId,
+      initial_events: params.initialEvents,
+      schedule: params.schedule,
+    };
+    if (params.resources?.length) body.resources = params.resources;
+    if (params.vaultIds?.length) body.vault_ids = params.vaultIds;
+    if (params.metadata) body.metadata = params.metadata;
+    return this.request<ManagedAgentDeployment>(CLAUDE_MANAGED_AGENTS_ENDPOINTS.deployments, {
+      method: "POST",
+      body,
+    });
+  }
+
+  /** Pause a deployment — suppresses scheduled triggers (manual runs still allowed). */
+  async pauseDeployment(deploymentId: string): Promise<ManagedAgentDeployment> {
+    return this.request<ManagedAgentDeployment>(claudeDeploymentPausePath(deploymentId), {
+      method: "POST",
+    });
+  }
+
+  /** Unpause a deployment — resumes from the next occurrence (no backfill). */
+  async unpauseDeployment(deploymentId: string): Promise<ManagedAgentDeployment> {
+    return this.request<ManagedAgentDeployment>(claudeDeploymentUnpausePath(deploymentId), {
+      method: "POST",
+    });
+  }
+
+  /** Archive a deployment — terminal: the schedule stops and it becomes immutable. */
+  async archiveDeployment(deploymentId: string): Promise<ManagedAgentDeployment> {
+    return this.request<ManagedAgentDeployment>(claudeDeploymentArchivePath(deploymentId), {
+      method: "POST",
+    });
+  }
+
+  /** Trigger a manual run immediately (works while paused). */
+  async runDeployment(deploymentId: string): Promise<ManagedAgentDeploymentRun> {
+    return this.request<ManagedAgentDeploymentRun>(claudeDeploymentRunPath(deploymentId), {
+      method: "POST",
+    });
+  }
+
+  /** List a deployment's run records (each trigger attempt); filter failures with `hasError`. */
+  async listDeploymentRuns(
+    deploymentId: string,
+    params: ListDeploymentRunsParams = {},
+  ): Promise<ManagedAgentDeploymentRun[]> {
+    const path = appendHttpQuery(CLAUDE_MANAGED_AGENTS_ENDPOINTS.deploymentRuns, {
+      deployment_id: deploymentId,
+      ...(params.hasError ? { has_error: true } : {}),
+    });
+    const res = await this.request<{ data?: ManagedAgentDeploymentRun[] }>(path, { method: "GET" });
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** Retrieve one deployment-run record by id (a `deployment_run.*` webhook carries this as `data.id`). */
+  async getDeploymentRun(deploymentRunId: string): Promise<ManagedAgentDeploymentRun> {
+    return this.request<ManagedAgentDeploymentRun>(claudeDeploymentRunGetPath(deploymentRunId), {
+      method: "GET",
+    });
+  }
+
   // ── RuntimeClient contract ────────────────────────────────────────────────
 
   /**
@@ -907,11 +1245,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
    * session id with status `started`; follow progress via `streamRun`/`getRun`.
    */
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
-    const session = await this.createSession({
-      agentId: this.resolveAgentId(body),
-      environmentId: this.resolveEnvironmentId(body),
-      ...this.titleFrom(body),
-    });
+    const session = await this.createSession(this.sessionParamsFrom(body));
     await this.sendMessage(session.id, body.input);
     return {
       run_id: session.id,
@@ -947,11 +1281,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     handlers: RunEventStreamHandlers,
     options: { signal?: AbortSignal } = {},
   ): Promise<void> {
-    const session = await this.createSession({
-      agentId: this.resolveAgentId(body),
-      environmentId: this.resolveEnvironmentId(body),
-      ...this.titleFrom(body),
-    });
+    const session = await this.createSession(this.sessionParamsFrom(body));
     await this.runSessionStream(session.id, handlers, options, body.input);
   }
 
@@ -996,6 +1326,26 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   }
 
   // ── Resolution helpers ────────────────────────────────────────────────────
+
+  /** Build session-create params from a run body, threading optional metadata knobs. */
+  private sessionParamsFrom(body: RuntimeRunStartBody): CreateManagedAgentSessionParams {
+    const meta = body.metadata ?? {};
+    const params: CreateManagedAgentSessionParams = {
+      agentId: this.resolveAgentId(body),
+      environmentId: this.resolveEnvironmentId(body),
+      ...this.titleFrom(body),
+    };
+    if (typeof meta.agent_version === "number") params.agentVersion = meta.agent_version;
+    if (Array.isArray(meta.resources)) {
+      params.resources = meta.resources as readonly Record<string, unknown>[];
+    }
+    if (Array.isArray(meta.vault_ids)) {
+      params.vaultIds = (meta.vault_ids as unknown[]).filter(
+        (v): v is string => typeof v === "string",
+      );
+    }
+    return params;
+  }
 
   private resolveAgentId(body: RuntimeRunStartBody): string {
     const fromBody = body.metadata?.agent_id;

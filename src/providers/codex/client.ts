@@ -5,7 +5,6 @@ import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/typ
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
-import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
@@ -15,14 +14,28 @@ import {
   CODEX_API_BASE_URL,
   CODEX_API_ENDPOINTS,
   CODEX_DEFAULT_MODEL,
+  codexBatchCancelPath,
+  codexBatchPath,
   codexResponseCancelPath,
   codexResponsePath,
 } from "./paths.js";
 import {
+  buildCodexResponseBody,
+  mapOpenAIResponseToRunStatus,
+  mapResponseStatus,
+  type OpenAIResponse,
+} from "./response.js";
+import type {
+  RuntimeBatchRequest,
+  RuntimeBatchStatus,
+  RuntimeBatchResult,
+} from "../../core/runtime/batch.js";
+import { CodexFilesClient } from "./files.js";
+import { buildBatchInputJsonl, mapOpenAIBatch, parseOpenAIBatchOutput } from "./batch.js";
+import {
   mapOpenAIResponseStreamEvent,
   readOpenAIResponseRunId,
 } from "./stream.js";
-import { flattenOpenAIUsage } from "./usage.js";
 
 export { CODEX_API_BASE_URL, CODEX_API_ENDPOINTS, CODEX_DEFAULT_MODEL } from "./paths.js";
 
@@ -37,50 +50,11 @@ export type CodexApiClientOptions = {
   defaultTimeoutMs?: number;
 };
 
-type OpenAIResponse = {
-  id: string;
-  status?: string;
-  model?: string;
-  output_text?: string;
-  error?: unknown;
-  incomplete_details?: unknown;
-  // OpenAI nests detail objects (e.g. input_tokens_details.cached_tokens), so
-  // values are not all numbers; flattenOpenAIUsage lifts the nested counts.
-  usage?: Record<string, unknown>;
-};
-
-function mapResponseStatus(status: string | undefined): RuntimeRunStatus["status"] {
-  switch (status) {
-    case "queued":
-      return "started";
-    case "in_progress":
-      return "running";
-    case "completed":
-      return "completed";
-    case "failed":
-    case "incomplete":
-      return "failed";
-    case "cancelled":
-      return "cancelled";
-    default:
-      return status || "running";
-  }
-}
-
-function errorMessageOf(value: unknown): string | undefined {
-  if (typeof value === "string" && value) return value;
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    if (typeof record.message === "string" && record.message) return record.message;
-    if (typeof record.reason === "string" && record.reason) return record.reason;
-  }
-  return undefined;
-}
-
 
 export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   readonly request: HttpApiTransport;
   private readonly defaultModel: string;
+  private readonly files: CodexFilesClient;
 
   constructor(options: CodexApiClientOptions) {
     const apiKey = options.apiKey?.trim();
@@ -99,6 +73,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     });
     this.request = this.createTransport();
     this.defaultModel = options.defaultModel?.trim() || CODEX_DEFAULT_MODEL;
+    this.files = new CodexFilesClient(options);
   }
 
   async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
@@ -106,30 +81,84 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
       providerKind: "codex-responses",
       protocolVersion: "responses-v1",
       auth: { type: "bearer", required: true },
-      supports: { runs: true, streaming: true },
+      supports: { runs: true, streaming: true, batch: true },
     };
   }
 
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
     const response = await this.request<OpenAIResponse>(CODEX_API_ENDPOINTS.responses, {
       method: "POST",
-      body: this.buildResponseBody(body, { stream: false }),
+      body: buildCodexResponseBody(body, this.defaultModel, { background: true, store: true }),
     });
-    return this.toRuntimeRunStatus(response);
+    return mapOpenAIResponseToRunStatus(response);
   }
 
   async getRun(runId: string): Promise<RuntimeRunStatus> {
-    const response = await this.request<OpenAIResponse>(codexResponsePath(runId), {
-      method: "GET",
-    });
-    return this.toRuntimeRunStatus(response);
+    const response = await this.request<OpenAIResponse>(codexResponsePath(runId), { method: "GET" });
+    return mapOpenAIResponseToRunStatus(response);
   }
 
   async cancelRun(runId: string): Promise<{ status: string }> {
-    const response = await this.request<OpenAIResponse>(codexResponseCancelPath(runId), {
-      method: "POST",
-    });
+    const response = await this.request<OpenAIResponse>(codexResponseCancelPath(runId), { method: "POST" });
     return { status: mapResponseStatus(response.status) };
+  }
+
+  async submitBatch(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus> {
+    const jsonl = buildBatchInputJsonl(requests, (body) =>
+      buildCodexResponseBody(body, this.defaultModel, {}),
+    );
+    const inputFile = await this.files.uploadFile(jsonl, "batch");
+    const raw = await this.request<Record<string, unknown>>(CODEX_API_ENDPOINTS.batches, {
+      method: "POST",
+      body: {
+        input_file_id: inputFile.id,
+        endpoint: CODEX_API_ENDPOINTS.responses,
+        completion_window: "24h",
+      },
+    });
+    return mapOpenAIBatch(raw);
+  }
+
+  async getBatch(batchId: string): Promise<RuntimeBatchStatus> {
+    const raw = await this.request<Record<string, unknown>>(codexBatchPath(batchId));
+    return mapOpenAIBatch(raw);
+  }
+
+  async cancelBatch(batchId: string): Promise<RuntimeBatchStatus> {
+    const raw = await this.request<Record<string, unknown>>(codexBatchCancelPath(batchId), { method: "POST" });
+    return mapOpenAIBatch(raw);
+  }
+
+  async getBatchResults(batchId: string): Promise<RuntimeBatchResult[]> {
+    const raw = await this.request<Record<string, unknown>>(codexBatchPath(batchId));
+    const outputFileId = typeof raw.output_file_id === "string" ? raw.output_file_id : undefined;
+    const errorFileId = typeof raw.error_file_id === "string" ? raw.error_file_id : undefined;
+    if (!outputFileId && !errorFileId) {
+      throw new ApiClientError(
+        `codex-responses: batch ${batchId} results are not available yet — poll getBatch until resultsAvailable is true`,
+        { code: ApiClientErrorCode.EndpointNotFound },
+      );
+    }
+    const results: RuntimeBatchResult[] = [];
+    if (outputFileId) {
+      results.push(
+        ...parseOpenAIBatchOutput(
+          await this.files.downloadFileContent(outputFileId),
+          mapOpenAIResponseToRunStatus,
+          { malformedLine: "throw" },
+        ),
+      );
+    }
+    if (errorFileId) {
+      results.push(
+        ...parseOpenAIBatchOutput(
+          await this.files.downloadFileContent(errorFileId),
+          mapOpenAIResponseToRunStatus,
+          { malformedLine: "throw" },
+        ),
+      );
+    }
+    return results;
   }
 
   async streamRun(
@@ -146,7 +175,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     try {
       const response = await this.requestRaw(CODEX_API_ENDPOINTS.responses, {
         method: "POST",
-        body: this.buildResponseBody(body, { stream: true }),
+        body: buildCodexResponseBody(body, this.defaultModel, { background: true, store: true, stream: true }),
         signal: controller.signal,
       });
       if (!response.body) {
@@ -177,37 +206,4 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     }
   }
 
-  private buildResponseBody(
-    body: RuntimeRunStartBody,
-    options: { stream: boolean },
-  ): Record<string, unknown> {
-    const payload: Record<string, unknown> = {
-      model: body.model ?? this.defaultModel,
-      input: body.input,
-      background: true,
-      store: true,
-    };
-    if (options.stream) payload.stream = true;
-    if (body.instructions) payload.instructions = body.instructions;
-    if (body.tools?.length) payload.tools = body.tools;
-    if (body.metadata) payload.metadata = body.metadata;
-    return payload;
-  }
-
-  private toRuntimeRunStatus(response: OpenAIResponse): RuntimeRunStatus {
-    const status = mapResponseStatus(response.status);
-    const usage = flattenOpenAIUsage(response.usage);
-    const tokens = normalizeRuntimeUsage(usage, "codex-responses");
-    return {
-      run_id: response.id,
-      status,
-      ...(response.model ? { model: response.model } : {}),
-      ...(response.output_text ? { output: response.output_text } : {}),
-      ...(status === "failed"
-        ? { error: errorMessageOf(response.error ?? response.incomplete_details) ?? "codex response failed" }
-        : {}),
-      ...(usage ? { usage } : {}),
-      ...(tokens ? { tokens } : {}),
-    };
-  }
 }

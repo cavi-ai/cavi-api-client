@@ -29,8 +29,36 @@ function sseStream(blocks: string[]): ReadableStream<Uint8Array> {
   });
 }
 
+const BATCH_OBJECT = {
+  id: "batch_conf",
+  status: "in_progress",
+  request_counts: { total: 1, completed: 0, failed: 0 },
+};
+
 function codexFetch(): typeof fetch {
-  return vi.fn(async (_url: unknown, init?: RequestInit) => {
+  return vi.fn(async (url: unknown, init?: RequestInit) => {
+    const urlStr = String(url);
+    // Batch file upload
+    if (urlStr.endsWith("/v1/files")) {
+      return new Response(JSON.stringify({ id: "file-conf", object: "file" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    // Batch create
+    if (urlStr.endsWith("/v1/batches") && init?.method === "POST") {
+      return new Response(JSON.stringify(BATCH_OBJECT), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    // Batch retrieve (GET /v1/batches/:id)
+    if (urlStr.includes("/v1/batches/")) {
+      return new Response(JSON.stringify(BATCH_OBJECT), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (body.stream === true) {
       return new Response(sseStream(SSE), {
@@ -49,6 +77,7 @@ const ctx: RuntimeConformanceContext = {
   makeClient: () => new CodexApiClient({ apiKey: "sk-test", fetchImpl: codexFetch() }),
   runBody: { input: "hi" },
   streamRunBody: { input: "hi" },
+  batchRequests: [{ customId: "conf-1", body: { input: "hi", model: "gpt-5-codex" } }],
 };
 
 describe("Codex provider — runtime conformance", () => {

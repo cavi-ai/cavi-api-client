@@ -4,6 +4,7 @@ import {
   createRawHttpApiClient,
   toHttpRequestInit,
 } from "../../../core/http/raw-client";
+import { REDACTION_PLACEHOLDER } from "../../../core/http/redaction";
 
 describe("raw HTTP API client", () => {
   it("exposes raw responses while preserving BaseHttpApiClient headers", async () => {
@@ -48,6 +49,42 @@ describe("raw HTTP API client", () => {
 
     expect(client.baseUrl).toBe("");
     expect(client.surface).toBe("library-api");
+  });
+
+  it("redacts secrets from trace payloads and error messages", async () => {
+    const onTrace = vi.fn();
+    const fetchImpl = vi.fn(async () =>
+      new Response('{"api_key":"sk-live","message":"bad token=response-secret"}', {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as typeof fetch;
+    const client = new RawHttpApiClient("gateway-api", {
+      baseUrl: "https://gateway.example",
+      fetchImpl,
+      onTrace,
+    });
+
+    await expect(
+      client.raw("/v1/raw?token=query-secret"),
+    ).rejects.toMatchObject({
+      message: `GET /v1/raw?token=${REDACTION_PLACEHOLDER} failed with HTTP 401`,
+      path: "/v1/raw?token=query-secret",
+      url: "https://gateway.example/v1/raw?token=query-secret",
+    });
+
+    expect(onTrace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: `/v1/raw?token=${REDACTION_PLACEHOLDER}`,
+        url: `https://gateway.example/v1/raw?token=${REDACTION_PLACEHOLDER}`,
+        error: expect.stringContaining(`"api_key":"${REDACTION_PLACEHOLDER}"`),
+      }),
+    );
+    const trace = onTrace.mock.calls[0]?.[0];
+    expect(trace?.error).not.toContain("sk-live");
+    expect(trace?.error).not.toContain("response-secret");
+    expect(trace?.path).not.toContain("query-secret");
+    expect(trace?.url).not.toContain("query-secret");
   });
 
   it("converts platform RequestInit into package HttpApiRequestInit", () => {

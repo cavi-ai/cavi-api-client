@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GatewayHttpError } from "../../../core/http/gateway-error";
 import { createJsonHttpRequest, withQuery } from "../../../core/http/json-client";
+import { REDACTION_PLACEHOLDER } from "../../../core/http/redaction";
 
 describe("json HTTP client", () => {
   describe("withQuery", () => {
@@ -210,6 +211,34 @@ describe("json HTTP client", () => {
       await expect(requestJson("/v1/capabilities")).rejects.toThrow(
         /returned invalid JSON.*content-type=text\/html.*wrong gateway/u,
       );
+    });
+
+    it("redacts secrets from invalid JSON errors", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response('{"api_key":"sk-json","message":"bad token=response-secret"', {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+        ),
+      );
+      const requestJson = createJsonHttpRequest({
+        surface: "cavi-control-api",
+        httpBase: "",
+        authToken: null,
+      });
+
+      try {
+        await requestJson("/v1/capabilities?token=query-secret");
+        expect.fail("expected invalid JSON error");
+      } catch (error) {
+        const message = String((error as Error).message);
+        expect(message).toContain(`token=${REDACTION_PLACEHOLDER}`);
+        expect(message).toContain(`"api_key":"${REDACTION_PLACEHOLDER}"`);
+        expect(message).not.toMatch(/sk-json|response-secret|query-secret/u);
+      }
     });
 
     it("uses error.message from JSON body when present", async () => {
