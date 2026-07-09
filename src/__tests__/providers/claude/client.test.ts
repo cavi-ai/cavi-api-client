@@ -103,4 +103,24 @@ describe("ClaudeApiClient", () => {
       (e: unknown) => getErrorCode(e) === ApiClientErrorCode.EndpointNotFound,
     );
   });
+
+  it("dryRun:true short-circuits startRun with zero network calls (A3)", async () => {
+    const fetchImpl = mockFetch(ANTHROPIC_MESSAGE);
+    const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl });
+
+    const status = await client.startRun({ input: "hi", model: "claude-opus-4-8", dryRun: true });
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(status.status).toBe("dry_run");
+    expect(status.model).toBe("claude-opus-4-8");
+    expect(status.tokens).toBeUndefined();
+    expect(status.output).toBeUndefined();
+  });
+
+  it("dryRun:true still validates — missing model throws ValidationFailed", async () => {
+    const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: mockFetch(ANTHROPIC_MESSAGE) });
+    await expect(client.startRun({ input: "hi", dryRun: true })).rejects.toMatchObject({
+      code: ApiClientErrorCode.ValidationFailed,
+    });
+  });
 });
