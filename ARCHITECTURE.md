@@ -63,9 +63,9 @@ Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch
 malformed provider files fail with `invalid_json` instead of silently dropping rows.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
-server-run agents (sessions, agents, environments) with SSE steering, outcomes,
-threads, memory, vaults, webhook verification, and a `TeamManifest`→teams
-mapper. It is additive and re-exported from the same `providers/claude` entry, so
+server-run agents (full agent/environment/session lifecycle) with SSE steering,
+outcomes, threads, memory, vaults, session resources, scheduled deployments,
+webhook verification, and a `TeamManifest`→teams mapper. It is additive and re-exported from the same `providers/claude` entry, so
 the stateless Messages-API client is unchanged. Codex (`providers/codex`, OpenAI
 Responses, default `gpt-5-codex`) and Gemini (`providers/gemini`, the Gemini
 Developer API — model in the URL path, `x-goog-api-key`, explicit model
