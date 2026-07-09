@@ -5,6 +5,7 @@ import {
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { getErrorMessage } from "../../core/errors.js";
+import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import { resolveHttpWebSocketTargets } from "../../core/ws/index.js";
 import {
   OPENCLAW_DEFAULT_CAPABILITIES,
@@ -236,6 +237,14 @@ export class OpenClawApiClient extends GatewayApiClient {
       runtime: { ...OPENCLAW_DEFAULT_CAPABILITIES.runtime },
       rpcMethods: [...(OPENCLAW_DEFAULT_CAPABILITIES.rpcMethods ?? [])],
     });
+  }
+
+  override async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
+    const base = await super.getRuntimeCapabilities();
+    return {
+      ...base,
+      supports: { ...base.supports, wiki: false, media: false },
+    };
   }
 
   override async startRun(body: GatewayRunStartBody): Promise<OpenClawRunStatus> {
