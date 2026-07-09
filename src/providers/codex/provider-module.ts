@@ -7,7 +7,7 @@ export function createCodexProviderModule(
   return {
     kind: "codex-responses",
     aliases: ["codex", "openai-codex"],
-    capabilities: { runs: true, streaming: true },
+    capabilities: { runs: true, streaming: true, batch: true },
     createApiClient: (clientOptions) =>
       new CodexApiClient({
         ...config,
