@@ -202,15 +202,27 @@ await driveManagedAgentSession(claude, session.id, {
 });
 ```
 
-Everything is exported from `@cavi-ai/api-client/providers/claude` and verified
-against the live beta API (`managed-agents-2026-04-01`):
+Everything is exported from `@cavi-ai/api-client/providers/claude`, targeting the
+`managed-agents-2026-04-01` beta surface:
 
 - **Sessions & steering** — `createSession`, `sendMessage`/`sendEvents`,
   `interruptSession`, `confirmTool`, `respondCustomTool`, `openEventStream`,
   and `driveManagedAgentSession` (a deadlock-safe stream driver with lossless
-  reconnect and dedupe).
+  reconnect and dedupe). Session lifecycle: `getSession`, `listSessions`,
+  `updateSession` (session-local tools/MCP/vault override), `archiveSession`,
+  `deleteSession`.
 - **Agents & environments** — persisted, versioned configs and per-session
-  containers (`createAgent`, `updateAgent`, `createEnvironment`).
+  containers, with full lifecycle: `createAgent` / `updateAgent` / `getAgent` /
+  `listAgents` / `listAgentVersions` / `archiveAgent`, and `createEnvironment` /
+  `getEnvironment` / `listEnvironments` / `updateEnvironment` /
+  `deleteEnvironment` / `archiveEnvironment`. `createSession` can pin an agent
+  version or apply `agent_with_overrides` for a single session.
+- **Session resources** — attach `file` / `github_repository` resources to a
+  live session (and rotate a GitHub token mid-run): `addResource`, `getResource`,
+  `listResources`, `updateResource`, `deleteResource`.
+- **Scheduled deployments** — run an agent on a recurring cron schedule:
+  `createDeployment`, `pauseDeployment`, `unpauseDeployment`, `archiveDeployment`,
+  `runDeployment`, plus `listDeploymentRuns` / `getDeploymentRun`.
 - **Typed events** — `parseSessionEvent` + a discriminated
   `ManagedAgentSessionEvent` union (messages, tool calls, status, errors,
   outcomes, threads).
@@ -223,7 +235,8 @@ against the live beta API (`managed-agents-2026-04-01`):
   coordinator + roster.
 - **Webhook verification** — `verifyManagedAgentWebhook` implements the
   Standard Webhooks signing scheme via Web Crypto (verified against the scheme;
-  live delivery is out of scope for this release).
+  live delivery is out of scope for this release); `MANAGED_AGENT_WEBHOOK_EVENT_TYPES`
+  covers the session, agent, deployment, and vault event types.
 - **Self-hosted environments** — `getWorkQueueStats` / `stopWork` observe and
   control the work queue (queue monitoring only — the tool-executing worker
   stays with the host).
