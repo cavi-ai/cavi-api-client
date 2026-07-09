@@ -65,4 +65,22 @@ describe("GeminiApiClient", () => {
     await expect(client.getRun("x")).rejects.toThrow(/unsupported/);
     await expect(client.cancelRun("x")).rejects.toThrow(/unsupported/);
   });
+
+  it("dryRun:true short-circuits startRun with zero network calls (A3)", async () => {
+    const fetchImpl = mockFetch({});
+    const client = new GeminiApiClient({ apiKey: "k", fetchImpl });
+
+    const status = await client.startRun({ input: "hi", model: "gemini-2.5-flash", dryRun: true });
+
+    expect(fetchImpl.calls).toHaveLength(0);
+    expect(status.status).toBe("dry_run");
+    expect(status.model).toBe("gemini-2.5-flash");
+    expect(status.tokens).toBeUndefined();
+    expect(status.output).toBeUndefined();
+  });
+
+  it("dryRun:true still validates — missing model throws ValidationFailed", async () => {
+    const client = new GeminiApiClient({ apiKey: "k", fetchImpl: mockFetch({}) });
+    await expect(client.startRun({ input: "hi", dryRun: true })).rejects.toThrow(/model is required/);
+  });
 });
