@@ -17,6 +17,7 @@ export {
   getErrorType,
   isAbortError,
   isAuthError,
+  isEndpointNotFoundError,
   serializeError,
   stringifyUnknownError,
   toError,
