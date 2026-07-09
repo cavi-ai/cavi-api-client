@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import crypto from "node:crypto";
 import {
+  MANAGED_AGENT_WEBHOOK_EVENT_TYPES,
   parseWebhookEvent,
   verifyManagedAgentWebhook,
   WebhookVerificationError,
@@ -24,6 +25,21 @@ const BODY = JSON.stringify({
 const ID = "msg_1";
 const NOW = 1_780_000_000_000; // fixed clock (ms)
 const TS = Math.floor(NOW / 1000).toString();
+
+describe("MANAGED_AGENT_WEBHOOK_EVENT_TYPES", () => {
+  it("covers agent, deployment, and deployment_run event types", () => {
+    for (const t of [
+      "agent.updated",
+      "deployment.created",
+      "deployment.paused",
+      "deployment_run.started",
+      "deployment_run.succeeded",
+      "deployment_run.failed",
+    ]) {
+      expect(MANAGED_AGENT_WEBHOOK_EVENT_TYPES).toContain(t);
+    }
+  });
+});
 
 describe("verifyManagedAgentWebhook", () => {
   it("accepts a correctly-signed delivery and returns the parsed event", async () => {

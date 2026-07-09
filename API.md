@@ -68,6 +68,12 @@ not expose gateway surfaces (teams, kanban, media, wiki, websocket).
   bearer auth; default model `gpt-5-codex`; `getRun`/`cancelRun` supported
   (background responses via `GET /v1/responses/:id` and
   `POST /v1/responses/:id/cancel`).
+- Codex batch (`providers/codex`, `supports.batch`): `POST /v1/batches`,
+  `GET /v1/batches/:id`, `POST /v1/batches/:id/cancel`; files via
+  `POST /v1/files` (multipart), `GET /v1/files/:id/content`, `GET`/`DELETE /v1/files/:id`.
+  Downloaded result JSONL is parsed strictly by `CodexApiClient.getBatchResults`
+  and raises `invalid_json` when malformed; `parseOpenAIBatchOutput` has an
+  opt-in `{ malformedLine: "throw" }` mode for standalone strict parsing.
 - **Gemini** (`providers/gemini`):
   `POST /v1beta/models/:model:generateContent` and
   `POST /v1beta/models/:model:streamGenerateContent?alt=sse` — Gemini Developer
@@ -414,8 +420,11 @@ They are served from the Anthropic API base (`https://api.anthropic.com`), and
 every request carries the beta opt-in header
 `anthropic-beta: managed-agents-2026-04-01`. The path literals are owned by
 `src/providers/claude/managed-agents/paths.ts`; the typed client is
-`ClaudeManagedAgentClient` (`@cavi-ai/api-client/providers/claude`). Paths and
-shapes were verified against the live beta API on 2026-06-05/06.
+`ClaudeManagedAgentClient` (`@cavi-ai/api-client/providers/claude`). The core
+session/agent/environment/memory/vault paths and shapes were verified against
+the live beta API on 2026-06-05/06; the deployment, session-resource, and
+list/archive/update lifecycle rows follow the documented
+`managed-agents-2026-04-01` surface.
 
 `:param` segments are URL-encoded by the client. `GET/POST` on a row means the
 same path has multiple method variants (e.g. retrieve vs. update). An update is
@@ -425,20 +434,25 @@ a `POST` (Managed Agents has no `PATCH`; each agent update mints a new version).
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/v1/agents` | Create a persisted, versioned agent config. |
+| GET/POST | `/v1/agents` | List / create a persisted, versioned agent config. |
 | GET/POST | `/v1/agents/:agentId` | Retrieve an agent / push an update (new version). |
-| POST | `/v1/environments` | Create an environment template (container config). |
-| GET | `/v1/environments/:environmentId` | Retrieve an environment. |
+| GET | `/v1/agents/:agentId/versions` | List an agent's immutable versions. |
+| POST | `/v1/agents/:agentId/archive` | Archive an agent (terminal; new sessions can't reference it). |
+| GET/POST | `/v1/environments` | List / create an environment template (container config). |
+| GET/POST/DELETE | `/v1/environments/:environmentId` | Retrieve / update / delete an environment. |
+| POST | `/v1/environments/:environmentId/archive` | Archive an environment (terminal). |
 
 ### Sessions And Events
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/v1/sessions` | Create a stateful session for an agent + environment. |
-| GET | `/v1/sessions/:sessionId` | Retrieve a session (stateful read). |
+| GET/POST | `/v1/sessions` | List / create a stateful session for an agent + environment. |
+| GET/POST/DELETE | `/v1/sessions/:sessionId` | Retrieve / update (session-local override) / delete a session. |
 | POST | `/v1/sessions/:sessionId/archive` | Archive a session (makes it read-only). |
 | GET/POST | `/v1/sessions/:sessionId/events` | List event history / send events (messages, interrupts, tool answers). |
 | GET | `/v1/sessions/:sessionId/events/stream` | SSE event stream for the session. |
+| GET/POST | `/v1/sessions/:sessionId/resources` | List / attach `file` or `github_repository` resources. |
+| GET/POST/DELETE | `/v1/sessions/:sessionId/resources/:resourceId` | Retrieve / update (e.g. rotate token) / remove a resource. |
 
 ### Multiagent Threads
 
@@ -481,3 +495,19 @@ a `POST` (Managed Agents has no `PATCH`; each agent update mints a new version).
 | --- | --- | --- |
 | GET | `/v1/environments/:environmentId/work/stats` | Read work-queue depth / worker stats. |
 | POST | `/v1/environments/:environmentId/work/:workId/stop` | Stop a queued/in-flight unit of work. |
+
+### Scheduled Deployments
+
+A deployment fires a session on a recurring cron schedule; each firing writes a
+run record. Deployments have no retrieve-by-id or list endpoint — only the
+lifecycle actions and the run records below.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/v1/deployments` | Create a scheduled deployment (agent + environment + cron schedule + initial events). |
+| POST | `/v1/deployments/:deploymentId/pause` | Suppress scheduled triggers (manual runs still allowed). |
+| POST | `/v1/deployments/:deploymentId/unpause` | Resume from the next occurrence (no backfill). |
+| POST | `/v1/deployments/:deploymentId/archive` | Terminal — the schedule stops and it becomes immutable. |
+| POST | `/v1/deployments/:deploymentId/run` | Trigger a manual run immediately (works while paused). |
+| GET | `/v1/deployment_runs` | List a deployment's runs (`?deployment_id=`, `?has_error=`). |
+| GET | `/v1/deployment_runs/:deploymentRunId` | Retrieve one run record. |

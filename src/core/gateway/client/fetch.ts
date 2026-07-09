@@ -8,6 +8,7 @@ import {
   createRawHttpApiClient,
   toHttpRequestInit,
 } from "../../http/raw-client.js";
+import { redactPreviewText } from "../../http/redaction.js";
 import type { HttpApiTrace } from "../../http/types.js";
 
 export type GatewayHttpFetchOptions = Omit<RequestInit, "headers"> & {
@@ -53,6 +54,7 @@ async function parseGatewayJsonResponse<T>(
 ): Promise<T> {
   const contentType = res.headers.get("content-type") ?? "";
   const text = await res.text();
+  const safeEndpoint = redactPreviewText(endpoint, 2_000);
 
   if (!res.ok) {
     const details = parseGatewayErrorText(text, contentType);
@@ -69,18 +71,18 @@ async function parseGatewayJsonResponse<T>(
     const trimmed = text.trimStart().toLowerCase();
     const htmlHint =
       trimmed.startsWith("<!doctype") || trimmed.startsWith("<html")
-        ? ` (received HTML - check ${endpoint} gateway wiring)`
+        ? ` (received HTML - check ${safeEndpoint} gateway wiring)`
         : "";
 
     throw new Error(
-      `Expected JSON from ${endpoint}, got ${contentType || "unknown"}${htmlHint}`,
+      `Expected JSON from ${safeEndpoint}, got ${contentType || "unknown"}${htmlHint}`,
     );
   }
 
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error(`Invalid JSON from ${endpoint}.`);
+    throw new Error(`Invalid JSON from ${safeEndpoint}.`);
   }
 }
 

@@ -10,6 +10,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-09
+
+### Added
+
+- **Managed Agents — full `managed-agents-2026-04-01` coverage.**
+  `ClaudeManagedAgentClient` gains:
+  - **Scheduled deployments** — `createDeployment`, `pauseDeployment`,
+    `unpauseDeployment`, `archiveDeployment`, `runDeployment`,
+    `listDeploymentRuns`, `getDeploymentRun` over `/v1/deployments` and
+    `/v1/deployment_runs`.
+  - **Session resources** — `addResource`, `getResource`, `listResources`,
+    `updateResource` (rotate a GitHub token on a live session), `deleteResource`.
+  - **Lifecycle completeness** — `listAgents`, `listAgentVersions`,
+    `archiveAgent`; `listEnvironments`, `updateEnvironment`, `deleteEnvironment`,
+    `archiveEnvironment`; `listSessions`, `updateSession` (session-local
+    tools/mcp/vault override), `deleteSession`.
+  - **Agent version-pinning + overrides** on `createSession` (and
+    `startRun`/`streamRun` via `metadata.agent_version` / `resources` /
+    `vault_ids`): `agentVersion` emits `{type:"agent",id,version}`,
+    `agentOverrides` emits `agent_with_overrides`.
+  - Webhook `MANAGED_AGENT_WEBHOOK_EVENT_TYPES` now includes the `agent.*`,
+    `deployment.*`, and `deployment_run.*` event types.
+- **OpenAI/Codex batch backend** — `CodexApiClient` now implements the batch
+  surface over the OpenAI Batch API (upload JSONL → create batch targeting
+  `/v1/responses`, `completion_window "24h"` → download output/error files);
+  results map to `RuntimeRunStatus` (incl. normalized `tokens`) by `customId`.
+- **`CodexFilesClient`** (`@cavi-ai/api-client/providers/codex`) — a minimal OpenAI
+  Files client (multipart upload, content download, retrieve, delete).
+
+### Fixed
+
+- Codex batch result downloads now fail with a typed `invalid_json` error when
+  OpenAI output/error JSONL is malformed instead of silently skipping bad lines.
+  The low-level `parseOpenAIBatchOutput` helper preserves its default skip
+  behavior and exposes opt-in strict parsing.
+
+### Security
+
+- HTTP error previews, trace `path`/`url` output, invalid-JSON errors, and
+  gateway error messages now redact secret-looking query params and body fields
+  (`token=`, `api_key=`, `Bearer …`, etc.) via `REDACTION_PLACEHOLDER`, so
+  credentials no longer leak into error strings, logs, or `onTrace` hooks.
+
 ## [0.9.0] - 2026-07-02
 
 ### Added
