@@ -34,4 +34,5 @@ export {
   buildBatchInputJsonl,
   mapOpenAIBatch,
   parseOpenAIBatchOutput,
+  type ParseOpenAIBatchOutputOptions,
 } from "./batch.js";

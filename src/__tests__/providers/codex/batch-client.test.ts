@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiClientErrorCode } from "../../../core/errors";
 import { CodexApiClient } from "../../../providers/codex/client";
 
 type Call = { url: string; init?: RequestInit };
@@ -75,5 +76,25 @@ describe("CodexApiClient batch", () => {
       fetchImpl: router(() => json({ id: "b", status: "in_progress" })),
     });
     await expect(client.getBatchResults("b")).rejects.toThrow(/not available/);
+  });
+
+  it("getBatchResults throws a typed error when downloaded JSONL is malformed", async () => {
+    const client = new CodexApiClient({
+      apiKey: "sk",
+      fetchImpl: router((url) => {
+        if (url.endsWith("/v1/batches/b")) {
+          return json({ id: "b", status: "completed", output_file_id: "file-out" });
+        }
+        if (url.endsWith("/v1/files/file-out/content")) {
+          return new Response("{bad json", { status: 200 });
+        }
+        return json({});
+      }),
+    });
+
+    await expect(client.getBatchResults("b")).rejects.toMatchObject({
+      code: ApiClientErrorCode.InvalidJson,
+      message: "codex-responses: invalid batch JSONL at line 1",
+    });
   });
 });

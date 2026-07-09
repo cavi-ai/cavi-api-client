@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ApiClientErrorCode } from "../../../core/errors";
 import { buildBatchInputJsonl, mapOpenAIBatch, parseOpenAIBatchOutput } from "../../../providers/codex/batch";
 import { mapOpenAIResponseToRunStatus } from "../../../providers/codex/response";
 
@@ -45,5 +46,37 @@ describe("parseOpenAIBatchOutput", () => {
     expect(results[0]).toMatchObject({ customId: "a", outcome: "succeeded", run: { output: "ok", tokens: { inputTokens: 3, outputTokens: 2 } } });
     expect(results[1]).toMatchObject({ customId: "b", outcome: "errored", error: "bad request" });
     expect(results[2]).toMatchObject({ customId: "c", outcome: "errored", error: "request failed" });
+  });
+
+  it("keeps default malformed-line handling backward compatible", () => {
+    const ok = JSON.stringify({ custom_id: "a", response: null, error: { message: "boom" } });
+    const results = parseOpenAIBatchOutput(
+      ["not json", "42", ok].join("\n"),
+      mapOpenAIResponseToRunStatus,
+    );
+
+    expect(results).toEqual([{ customId: "a", outcome: "errored", error: "boom" }]);
+  });
+
+  it("throws typed invalid_json errors for malformed lines in strict mode", () => {
+    expect(() =>
+      parseOpenAIBatchOutput(
+        ["", "{bad json"].join("\n"),
+        mapOpenAIResponseToRunStatus,
+        { malformedLine: "throw" },
+      ),
+    ).toThrow(/invalid batch JSONL at line 2/u);
+
+    try {
+      parseOpenAIBatchOutput("42", mapOpenAIResponseToRunStatus, {
+        malformedLine: "throw",
+      });
+      expect.fail("expected invalid JSONL error");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: ApiClientErrorCode.InvalidJson,
+        message: "codex-responses: invalid batch JSONL at line 1",
+      });
+    }
   });
 });

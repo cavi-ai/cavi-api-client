@@ -71,6 +71,9 @@ not expose gateway surfaces (teams, kanban, media, wiki, websocket).
 - Codex batch (`providers/codex`, `supports.batch`): `POST /v1/batches`,
   `GET /v1/batches/:id`, `POST /v1/batches/:id/cancel`; files via
   `POST /v1/files` (multipart), `GET /v1/files/:id/content`, `GET`/`DELETE /v1/files/:id`.
+  Downloaded result JSONL is parsed strictly by `CodexApiClient.getBatchResults`
+  and raises `invalid_json` when malformed; `parseOpenAIBatchOutput` has an
+  opt-in `{ malformedLine: "throw" }` mode for standalone strict parsing.
 - **Gemini** (`providers/gemini`):
   `POST /v1beta/models/:model:generateContent` and
   `POST /v1beta/models/:model:streamGenerateContent?alt=sse` — Gemini Developer

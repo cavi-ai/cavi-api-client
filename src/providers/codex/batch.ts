@@ -5,6 +5,7 @@ import type {
   RuntimeBatchStatus,
 } from "../../core/runtime/batch.js";
 import type { RuntimeRunStatus } from "../../core/runtime/run.js";
+import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { CODEX_API_ENDPOINTS } from "./paths.js";
 import type { OpenAIResponse } from "./response.js";
 
@@ -77,22 +78,69 @@ function errorMessage(value: unknown): string {
   return "batch request errored";
 }
 
+export type ParseOpenAIBatchOutputOptions = {
+  /**
+   * `skip` preserves the historical low-level parser behavior. `throw` is used
+   * by CodexApiClient for downloaded batch files so malformed JSONL cannot
+   * silently hide missing request results.
+   */
+  malformedLine?: "skip" | "throw";
+};
+
+function handleMalformedLine(
+  lineNumber: number,
+  options: ParseOpenAIBatchOutputOptions,
+  cause?: unknown,
+): null {
+  if (options.malformedLine === "throw") {
+    throw new ApiClientError(
+      `codex-responses: invalid batch JSONL at line ${lineNumber}`,
+      {
+        code: ApiClientErrorCode.InvalidJson,
+        cause,
+      },
+    );
+  }
+  return null;
+}
+
+function parseJsonlRecord(
+  line: string,
+  lineNumber: number,
+  options: ParseOpenAIBatchOutputOptions,
+): Record<string, unknown> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch (error) {
+    return handleMalformedLine(lineNumber, options, error);
+  }
+  if (!isRecord(parsed)) {
+    return handleMalformedLine(lineNumber, options);
+  }
+  return parsed;
+}
+
 /** Parse an OpenAI batch output/error file (JSONL) into canonical results. */
 export function parseOpenAIBatchOutput(
   jsonlText: string,
   mapResponse: (response: OpenAIResponse) => RuntimeRunStatus,
+  options: ParseOpenAIBatchOutputOptions = {},
 ): RuntimeBatchResult[] {
   const out: RuntimeBatchResult[] = [];
-  for (const line of jsonlText.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch {
+  let lineStart = 0;
+  let lineNumber = 1;
+  for (let index = 0; index <= jsonlText.length; index += 1) {
+    if (index < jsonlText.length && jsonlText.charCodeAt(index) !== 10) {
       continue;
     }
-    if (!isRecord(parsed)) continue;
+    const trimmed = jsonlText.slice(lineStart, index).trim();
+    lineStart = index + 1;
+    const currentLineNumber = lineNumber;
+    lineNumber += 1;
+    if (!trimmed) continue;
+    const parsed = parseJsonlRecord(trimmed, currentLineNumber, options);
+    if (!parsed) continue;
     const customId = typeof parsed.custom_id === "string" ? parsed.custom_id : "";
     const response = isRecord(parsed.response) ? parsed.response : null;
     const statusCode = response && typeof response.status_code === "number" ? response.status_code : undefined;
