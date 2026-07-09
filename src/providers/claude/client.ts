@@ -6,7 +6,7 @@ import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
-import { buildDryRunStatus } from "../../core/runtime/dry-run.js";
+import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type {
   RuntimeBatchRequest,
@@ -107,6 +107,11 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       }),
       stream: true,
     };
+    if (body.dryRun) {
+      handlers.onEvent(buildDryRunStreamEvent(payload.model as string));
+      handlers.onComplete?.();
+      return;
+    }
 
     const controller = new AbortController();
     if (options.signal) {
