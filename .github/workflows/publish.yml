@@ -56,6 +56,9 @@ jobs:
       # credential and attaches provenance automatically. Node 22 ships npm 10.x,
       # which predates trusted publishing, so upgrade npm first. (pnpm signs
       # provenance but does not perform the registry OIDC token exchange.)
+      # Pin to npm 11.x: `npm@latest` is 12.0.0, whose `--provenance` path crashes
+      # with `Cannot find module 'sigstore'`. 11.x supports trusted publishing and
+      # has working provenance.
       # Requires a Trusted Publisher configured for @cavi-ai/api-client on
       # npmjs.com pointing at this repo + workflow file (publish.yml).
       - name: Publish package
@@ -71,7 +74,7 @@ jobs:
             echo "::notice::@cavi-ai/api-client@${PKG_VERSION} is already published — skipping publish (idempotent)."
             exit 0
           fi
-          npm install -g npm@latest
+          npm install -g npm@11
           npm --version
           if [ "$DRY_RUN" = "true" ]; then
             npm publish --access public --provenance --dry-run
