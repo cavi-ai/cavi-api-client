@@ -698,7 +698,11 @@ if (status.resultsAvailable) {
 ```
 
 `getBatchResults` throws until the batch has ended — poll `getBatch` and check
-`resultsAvailable`. A Gemini batch backend is a planned follow-up.
+`resultsAvailable`. Codex/OpenAI result downloads are parsed strictly and throw
+`invalid_json` if the returned JSONL is malformed; the exported
+`parseOpenAIBatchOutput` helper keeps its compatible default of skipping
+malformed lines unless `{ malformedLine: "throw" }` is passed. A Gemini batch
+backend is a planned follow-up.
 
 ### CAVI Extension Adapters
 

@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`CodexFilesClient`** (`@cavi-ai/api-client/providers/codex`) — a minimal OpenAI
   Files client (multipart upload, content download, retrieve, delete).
 
+### Fixed
+
+- Codex batch result downloads now fail with a typed `invalid_json` error when
+  OpenAI output/error JSONL is malformed instead of silently skipping bad lines.
+  The low-level `parseOpenAIBatchOutput` helper preserves its default skip
+  behavior and exposes opt-in strict parsing.
+
 ## [0.9.0] - 2026-07-02
 
 ### Added

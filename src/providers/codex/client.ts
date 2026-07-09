@@ -141,10 +141,22 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     }
     const results: RuntimeBatchResult[] = [];
     if (outputFileId) {
-      results.push(...parseOpenAIBatchOutput(await this.files.downloadFileContent(outputFileId), mapOpenAIResponseToRunStatus));
+      results.push(
+        ...parseOpenAIBatchOutput(
+          await this.files.downloadFileContent(outputFileId),
+          mapOpenAIResponseToRunStatus,
+          { malformedLine: "throw" },
+        ),
+      );
     }
     if (errorFileId) {
-      results.push(...parseOpenAIBatchOutput(await this.files.downloadFileContent(errorFileId), mapOpenAIResponseToRunStatus));
+      results.push(
+        ...parseOpenAIBatchOutput(
+          await this.files.downloadFileContent(errorFileId),
+          mapOpenAIResponseToRunStatus,
+          { malformedLine: "throw" },
+        ),
+      );
     }
     return results;
   }
