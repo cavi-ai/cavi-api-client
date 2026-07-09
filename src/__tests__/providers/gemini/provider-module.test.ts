@@ -7,7 +7,7 @@ describe("createGeminiProviderModule", () => {
     const module = createGeminiProviderModule({ apiKey: "k" });
     expect(module.kind).toBe("gemini");
     expect(module.aliases).toEqual(["google", "google-gemini"]);
-    expect(module.capabilities).toEqual({ runs: true, streaming: true });
+    expect(module.capabilities).toEqual({ runs: true, streaming: true, batch: true });
   });
 
   it("createApiClient builds a GeminiApiClient honoring per-call overrides", () => {
