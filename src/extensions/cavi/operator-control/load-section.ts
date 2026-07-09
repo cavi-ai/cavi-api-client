@@ -7,8 +7,7 @@ import {
   fallbackGap,
   type ContractGap,
 } from "../../../core/gateway/envelope/index.js";
-import { getErrorMessage } from "../../../core/errors.js";
-import { GatewayHttpError } from "../../../core/http/gateway-error.js";
+import { getErrorMessage, isAuthError } from "../../../core/errors.js";
 
 export type OperatorSectionLoadResult<
   TKey extends OperatorControlSectionKey,
@@ -62,10 +61,7 @@ export async function loadOperatorControlSection<
       contractGap: null,
     };
   } catch (error) {
-    if (
-      error instanceof GatewayHttpError &&
-      (error.status === 401 || error.status === 403)
-    ) {
+    if (isAuthError(error)) {
       throw error;
     }
 
