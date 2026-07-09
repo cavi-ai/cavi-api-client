@@ -445,6 +445,7 @@ import {
   getErrorStatus,
   isAbortError,
   isAuthError,
+  isEndpointNotFoundError,
   isHttpApiError,
 } from "@cavi-ai/api-client";
 
@@ -453,6 +454,7 @@ try {
 } catch (error) {
   if (isAbortError(error)) return;          // request was cancelled
   if (isAuthError(error)) return signOut(); // 401/403 across HTTP error classes
+  if (isEndpointNotFoundError(error)) return markUnsupported();
   if (getErrorStatus(error) === 404) return markUnavailable();
   if (isHttpApiError(error)) {
     reportError({ status: error.status, path: error.path, body: error.body });
@@ -462,9 +464,12 @@ try {
 ```
 
 `isAuthError` covers both `HttpApiError` and `GatewayHttpError`; `getErrorStatus`
-returns the numeric HTTP status or `undefined`. Lower-level helpers
-(`getErrorMessage`, `serializeError`, `toError`, and the `ApiClientErrorType` /
-`ApiClientErrorCode` enums) remain available from `core/errors`.
+returns the numeric HTTP status or `undefined`. `isEndpointNotFoundError` flags a
+synthesized `EndpointNotFound` failure — the everyday cross-provider branch for a
+surface a provider declares unsupported (Gemini `getRun`/`cancelRun`, OpenClaw
+wiki/media). Lower-level helpers (`getErrorMessage`, `serializeError`, `toError`,
+and the `ApiClientErrorType` / `ApiClientErrorCode` enums) remain available from
+`core/errors`.
 
 > **Antipattern:**
 >
