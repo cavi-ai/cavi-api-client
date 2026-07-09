@@ -6,6 +6,7 @@ import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
+import { buildDryRunStatus } from "../../core/runtime/dry-run.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type {
   RuntimeBatchRequest,
@@ -78,6 +79,9 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       defaultModel: this.defaultModel,
       defaultMaxTokens: this.defaultMaxTokens,
     });
+    if (body.dryRun) {
+      return buildDryRunStatus(params.model as string);
+    }
     const message = await this.request<AnthropicMessage>(CLAUDE_API_ENDPOINTS.messages, {
       method: "POST",
       body: params,
