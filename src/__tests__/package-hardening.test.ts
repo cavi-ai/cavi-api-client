@@ -602,6 +602,21 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("keeps contracts independent from providers and extensions", () => {
+    // contracts/ sits below extensions/cavi and providers/ in the dependency
+    // direction (core -> contracts -> extensions/cavi -> providers/frameworks).
+    // A contracts/** file must never import upward. Mirrors the core-gateway
+    // and providers import-direction tests above.
+    const offenders = walkFiles(path.join(SRC_ROOT, "contracts"))
+      .filter((filePath) => {
+        const source = read(filePath);
+        return /from\s+["'][^"']*(?:(?:\.\.\/)+providers\/|(?:\.\.\/)+extensions\/)/u.test(source);
+      })
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
   it("keeps provider resolution out of core gateway", () => {
     expect(existsSync(CORE_GATEWAY_PROVIDER)).toBe(false);
     for (const file of ["provider.js", "provider.d.ts", "provider.d.ts.map"]) {
