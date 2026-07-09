@@ -4,11 +4,10 @@ import { ClaudeApiClient } from "../../../providers/claude/client";
 import type { RuntimeProviderModule } from "../../../core/gateway/providers/types";
 
 describe("createClaudeProviderModule", () => {
-  it("builds a runtime-only module declaring runs + streaming", () => {
+  it("builds a runtime-only module declaring runs + streaming + batch", () => {
     const module: RuntimeProviderModule = createClaudeProviderModule({ apiKey: "sk-test" });
     expect(module.kind).toBe("claude-sdk");
-    expect(module.capabilities?.runs).toBe(true);
-    expect(module.capabilities?.streaming).toBe(true);
+    expect(module.capabilities).toEqual({ runs: true, streaming: true, batch: true });
   });
 
   it("createApiClient yields a ClaudeApiClient (apiKey captured, no cast)", () => {
