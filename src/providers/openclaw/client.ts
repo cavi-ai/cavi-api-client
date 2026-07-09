@@ -5,6 +5,7 @@ import {
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { getErrorMessage } from "../../core/errors.js";
+import { buildDryRunStatus } from "../../core/runtime/dry-run.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import { resolveHttpWebSocketTargets } from "../../core/ws/index.js";
 import {
@@ -249,6 +250,9 @@ export class OpenClawApiClient extends GatewayApiClient {
 
   override async startRun(body: GatewayRunStartBody): Promise<OpenClawRunStatus> {
     const params = buildChatSendParams(body);
+    if (body.dryRun) {
+      return { ...buildDryRunStatus(body.model), object: "openclaw.run" };
+    }
     const payload = await this.getRpcClient().request<unknown>(
       OPENCLAW_RPC_METHODS.chatSend,
       params,
