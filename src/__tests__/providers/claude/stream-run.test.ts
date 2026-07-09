@@ -72,4 +72,21 @@ describe("ClaudeApiClient.streamRun", () => {
       usage: { inputTokens: 100, outputTokens: 40, totalTokens: 140, cacheReadTokens: 10 },
     });
   });
+
+  it("dryRun:true short-circuits streamRun with zero network calls and one terminal dry_run event (A3)", async () => {
+    const fetchImpl = vi.fn();
+    const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: fetchImpl as unknown as typeof fetch });
+    const events: RunStreamEvent[] = [];
+    let completed = false;
+
+    await client.streamRun(
+      { input: "hi", model: "claude-opus-4-8", dryRun: true },
+      { onEvent: (e) => events.push(e), onComplete: () => { completed = true; } },
+    );
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, status: "dry_run" });
+    expect(completed).toBe(true);
+  });
 });
