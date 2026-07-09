@@ -3,12 +3,12 @@
 ## Supported versions
 
 `@cavi-ai/api-client` follows semantic versioning. While the package is pre-1.0,
-security fixes are released against the latest published `0.x` line.
+security fixes are released against the latest published `0.x` minor line.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.2.x   | :white_check_mark: |
-| < 0.2   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| Latest `0.x` minor | :white_check_mark: |
+| Older `0.x` minors | :x: |
 
 ## Reporting a vulnerability
 
