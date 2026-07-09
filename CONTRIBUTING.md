@@ -55,7 +55,7 @@ so explicitly in your PR.
 ```text
 core → contracts
 core/contracts → extensions/cavi
-core/contracts → providers/hermes | providers/openclaw | providers/claude | frameworks/react
+core/contracts → providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini | frameworks/react
 ```
 
 Lower layers never import upward. Concretely:
@@ -68,8 +68,9 @@ Lower layers never import upward. Concretely:
 - **`extensions/cavi/`** owns CAVI-specific clients, extension contracts, adapters,
   domain DTOs, registry wrappers.
 - **`core/gateway/providers/`** is the plugin boundary; `providers/hermes`,
-  `providers/openclaw`, and `providers/claude` are the built-in adapters
-  (Claude is runtime-only — it implements `RuntimeClient`, not a gateway).
+  `providers/openclaw`, `providers/claude`, `providers/codex`, and
+  `providers/gemini` are the built-in adapters (Claude, Codex, and Gemini are
+  runtime-only — they implement `RuntimeClient`, not a gateway).
 - **`frameworks/react/`** imports `core/gateway` and React only. New UI-framework
   bindings live as siblings under `frameworks/`.
 
@@ -87,10 +88,10 @@ The whole point of the provider model is that you do **not** edit core to add a
 provider. Every provider implements the universal `RuntimeProviderModule`;
 `GatewayProviderModule` **extends** it for gateway-backed providers that also need
 teams/kanban/workspace/operator surfaces. Runtime-only providers (like Claude /
-Anthropic, which maps `startRun` to the Messages API) implement
+Anthropic, Codex / OpenAI Responses, or Gemini / Google) implement
 `RuntimeProviderModule` alone. Built-in wiring lives in
-`src/providers/{hermes,openclaw,claude}/provider-module.ts`; third-party providers
-are passed as modules/registries by the host app.
+`src/providers/{hermes,openclaw,claude,codex,gemini}/provider-module.ts`;
+third-party providers are passed as modules/registries by the host app.
 
 Checklist:
 

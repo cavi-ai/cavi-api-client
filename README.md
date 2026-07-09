@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>One TypeScript client for every agent runtime. 🛰️</strong><br>
-  Talk to Hermes, OpenClaw, Claude, and Codex through a single <code>RuntimeClient</code> contract — HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters, all behind one package boundary. <strong>Swap providers, not your code.</strong>
+  Talk to Hermes, OpenClaw, Claude, Codex, and Gemini through a single <code>RuntimeClient</code> contract — HTTP, WebSocket RPC, SSE streaming, media, wiki, team routing, React hooks, and typed data adapters, all behind one package boundary. <strong>Swap providers, not your code.</strong>
 </p>
 
 <p align="center">
@@ -83,8 +83,8 @@ transport.
 The core is provider-agnostic. Every provider implements one universal
 `RuntimeClient` contract (capabilities · runs · streaming); gateway-style
 providers (Hermes, OpenClaw) extend it with `GatewayClient` (teams, kanban,
-workspace, operator), while non-gateway providers (Claude / Anthropic) implement
-the runtime tier only. Provider modules customize only what's *actually*
+workspace, operator), while non-gateway providers (Claude / Anthropic, Codex /
+OpenAI Responses, Gemini / Google) implement the runtime tier only. Provider modules customize only what's *actually*
 different — endpoint maps, headers, auth scheme, method transport. The shared
 transports, error handling, stream parsing, and trace behavior stay in one
 place, and an executable conformance kit keeps every provider honest.
@@ -125,8 +125,8 @@ behind a **subpath** so consumers import only the slice they need:
   runtime provider (`gpt-5-codex`, background runs, polling, cancellation,
   SSE streaming)
 - `@cavi-ai/api-client/providers/gemini` — Google Gemini runtime provider
-  (`GeminiApiClient`, `createGeminiProviderModule`, `x-goog-api-key` auth,
-  model in URL path, canonical run-stream events)
+  (`GeminiApiClient`, `createGeminiProviderModule`, `GeminiFilesClient`,
+  `x-goog-api-key` auth, model in URL path, batch + canonical run-stream events)
 - `@cavi-ai/api-client/frameworks/react`
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
@@ -253,7 +253,7 @@ profile, runs (`startRun`/optional `getRun`/`cancelRun`), optional `streamRun`,
 and an optional batch surface (`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`,
 gated by `supports.batch`). **`GatewayClient`** *extends* `RuntimeClient` for gateway-style
 backends, adding teams, kanban, workspace, and operator surfaces. `GatewayApiClient`
-implements both tiers; a non-gateway provider (e.g. Claude) implements
+implements both tiers; a non-gateway provider (e.g. Claude, Codex, Gemini) implements
 `RuntimeClient` only and declares its capability profile so unsupported surfaces
 fail with a typed `EndpointNotFound` rather than a hard crash.
 
@@ -306,6 +306,7 @@ const registry = createRuntimeProviderRegistry({
 
 registry.resolveProvider("claude-sdk"); // -> the Claude module
 registry.resolveProvider("codex"); // -> the Codex Responses module
+registry.resolveProvider("google-gemini"); // -> the Gemini module (aliases: google, gemini)
 ```
 
 The **Claude (Anthropic) provider** is runtime-only — it maps `startRun` to
@@ -367,8 +368,13 @@ OpenAI credentials.
 
 The **Gemini provider** is runtime-only. It maps `startRun` to the Gemini
 Developer API `:generateContent` (the model goes in the URL path) and streams
-`:streamGenerateContent` into canonical `RunStreamEvent`s. It requires an
-explicit model (no default ships) and authenticates with `x-goog-api-key`.
+`:streamGenerateContent` into canonical `RunStreamEvent`s. It also implements
+`supports.batch` over `:batchGenerateContent` (inline under ~18MB, otherwise
+JSONL via `GeminiFilesClient`). Pass a model on each run or set `defaultModel`
+in the client constructor (no default model ships in the package). All requests
+in a batch must share the same model. Authenticates with `x-goog-api-key`.
+`getRun`/`cancelRun` throw `EndpointNotFound` because generateContent is
+synchronous request/response.
 
 ```ts
 import { GeminiApiClient } from "@cavi-ai/api-client/providers/gemini";
@@ -379,7 +385,21 @@ const run = await gemini.startRun({
   input: "Summarize the workspace state.",
   model: "gemini-2.5-flash",
 });
+
+await gemini.streamRun(
+  { input: "Stream a haiku.", model: "gemini-2.5-flash" },
+  { onEvent: (event) => console.log(event) },
+);
+
+const batch = await gemini.submitBatch([
+  { customId: "a", body: { input: "Summarize doc A.", model: "gemini-2.5-flash" } },
+  { customId: "b", body: { input: "Summarize doc B.", model: "gemini-2.5-flash" } },
+]);
 ```
+
+A public `GeminiFilesClient` (from `@cavi-ai/api-client/providers/gemini`) is
+also available for the Gemini Files API (resumable upload / download / retrieve /
+delete); batch file mode uses it internally for large submissions.
 
 Keep Gemini API keys backend-owned; browser and mobile apps should call your
 backend rather than embedding the key.
@@ -465,7 +485,7 @@ you read token usage the same way regardless of backend:
 
 ```ts
 const run = await client.startRun({ input: "Summarize.", model: "claude-opus-4-8" });
-run.tokens?.inputTokens;   // normalized across Claude / Codex / gateways
+run.tokens?.inputTokens;   // normalized across Claude / Codex / Gemini / gateways
 run.tokens?.outputTokens;
 run.tokens?.cacheReadTokens;
 run.tokens?.raw;           // lossless provider-native counts
@@ -689,8 +709,9 @@ function Panel() {
 
 Providers that declare `supports.batch` accept a set of runs, process them
 asynchronously, and return results correlated by `customId`. Backed by Claude
-(Anthropic Message Batches) and Codex/OpenAI (the OpenAI Batch API's file-based
-upload → poll → download flow is hidden behind the same methods).
+(Anthropic Message Batches), Codex/OpenAI (the OpenAI Batch API's file-based
+upload → poll → download flow), and Gemini (`batchGenerateContent` with inline
+or file input).
 
 ```ts
 import { ClaudeApiClient } from "@cavi-ai/api-client/providers/claude";
@@ -711,11 +732,10 @@ if (status.resultsAvailable) {
 ```
 
 `getBatchResults` throws until the batch has ended — poll `getBatch` and check
-`resultsAvailable`. Codex/OpenAI result downloads are parsed strictly and throw
-`invalid_json` if the returned JSONL is malformed; the exported
+`resultsAvailable`. Codex/OpenAI and Gemini result downloads are parsed strictly
+and throw `invalid_json` if the returned JSONL is malformed; the exported
 `parseOpenAIBatchOutput` helper keeps its compatible default of skipping
-malformed lines unless `{ malformedLine: "throw" }` is passed. A Gemini batch
-backend is a planned follow-up.
+malformed lines unless `{ malformedLine: "throw" }` is passed.
 
 ### CAVI Extension Adapters
 

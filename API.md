@@ -78,8 +78,17 @@ not expose gateway surfaces (teams, kanban, media, wiki, websocket).
   `POST /v1beta/models/:model:generateContent` and
   `POST /v1beta/models/:model:streamGenerateContent?alt=sse` — Gemini Developer
   API at `generativelanguage.googleapis.com`; `x-goog-api-key` auth; model is
-  in the URL path (explicit model required, no default ships);
+  in the URL path (explicit model required per run unless `defaultModel` is set
+  on `GeminiApiClient`); registry aliases `google` and `google-gemini`;
   `getRun`/`cancelRun` throw `EndpointNotFound` (synchronous API).
+- Gemini batch (`providers/gemini`, `supports.batch`):
+  `POST /v1beta/models/:model:batchGenerateContent` (inline requests under ~18MB,
+  otherwise JSONL via `POST /upload/v1beta/files` resumable upload),
+  `GET /v1beta/batches/:batchId`, `POST /v1beta/batches/:batchId:cancel`;
+  results inline on the batch object or via
+  `GET /download/v1beta/:responsesFile:download?alt=media`. All requests in a
+  batch must use the same model (`ValidationFailed` otherwise). Public
+  `GeminiFilesClient` mirrors `CodexFilesClient` for direct file operations.
 
 ## Core Gateway
 
