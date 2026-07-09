@@ -44,6 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The low-level `parseOpenAIBatchOutput` helper preserves its default skip
   behavior and exposes opt-in strict parsing.
 
+### Security
+
+- HTTP error previews, trace `path`/`url` output, invalid-JSON errors, and
+  gateway error messages now redact secret-looking query params and body fields
+  (`token=`, `api_key=`, `Bearer …`, etc.) via `REDACTION_PLACEHOLDER`, so
+  credentials no longer leak into error strings, logs, or `onTrace` hooks.
+
 ## [0.9.0] - 2026-07-02
 
 ### Added

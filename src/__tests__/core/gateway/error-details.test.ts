@@ -4,6 +4,7 @@ import {
   formatGatewayHttpErrorMessage,
   parseGatewayErrorText,
 } from "../../../core/gateway/client/error-details";
+import { REDACTION_PLACEHOLDER } from "../../../core/http/redaction";
 
 describe("gateway error details", () => {
   it("extracts nested gateway error messages and codes", () => {
@@ -53,5 +54,20 @@ describe("gateway error details", () => {
         code: "not_found",
       }),
     ).toBe("Gateway API 404: Not Found [not_found] - route unavailable");
+  });
+
+  it("redacts secrets in formatted gateway HTTP errors", () => {
+    const message = formatGatewayHttpErrorMessage({
+      label: "Gateway API?token=query-secret",
+      status: 401,
+      statusText: "Unauthorized token=status-secret",
+      message: "api_key=sk-live",
+      code: "secret=code-secret",
+    });
+
+    expect(message).toContain(`token=${REDACTION_PLACEHOLDER}`);
+    expect(message).toContain(`api_key=${REDACTION_PLACEHOLDER}`);
+    expect(message).toContain(`secret=${REDACTION_PLACEHOLDER}`);
+    expect(message).not.toMatch(/query-secret|status-secret|sk-live|code-secret/u);
   });
 });
