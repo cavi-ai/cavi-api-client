@@ -48,11 +48,25 @@ function geminiFetch(): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
+function countingFetch(base: typeof fetch): { fetchImpl: typeof fetch; callCount: () => number } {
+  let calls = 0;
+  const fetchImpl = (async (...args: Parameters<typeof fetch>) => {
+    calls += 1;
+    return base(...args);
+  }) as typeof fetch;
+  return { fetchImpl, callCount: () => calls };
+}
+
 const ctx: RuntimeConformanceContext = {
   makeClient: () => new GeminiApiClient({ apiKey: "k", fetchImpl: geminiFetch() }),
   runBody: { input: "hi", model: "gemini-2.5-flash" },
   streamRunBody: { input: "hi", model: "gemini-2.5-flash" },
   batchRequests: [{ customId: "a", body: { input: "hi", model: "gemini-2.5-flash" } }],
+  makeInstrumentedClient: () => {
+    const { fetchImpl, callCount } = countingFetch(geminiFetch());
+    return { client: new GeminiApiClient({ apiKey: "k", fetchImpl }), callCount };
+  },
+  dryRunInvalidRunBody: { input: "hi" }, // no model — must still throw ValidationFailed
 };
 
 describe("Gemini provider — runtime conformance", () => {

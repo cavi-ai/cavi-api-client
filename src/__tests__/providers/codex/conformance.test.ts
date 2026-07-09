@@ -73,11 +73,24 @@ function codexFetch(): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
+function countingFetch(base: typeof fetch): { fetchImpl: typeof fetch; callCount: () => number } {
+  let calls = 0;
+  const fetchImpl = (async (...args: Parameters<typeof fetch>) => {
+    calls += 1;
+    return base(...args);
+  }) as typeof fetch;
+  return { fetchImpl, callCount: () => calls };
+}
+
 const ctx: RuntimeConformanceContext = {
   makeClient: () => new CodexApiClient({ apiKey: "sk-test", fetchImpl: codexFetch() }),
   runBody: { input: "hi" },
   streamRunBody: { input: "hi" },
   batchRequests: [{ customId: "conf-1", body: { input: "hi", model: "gpt-5-codex" } }],
+  makeInstrumentedClient: () => {
+    const { fetchImpl, callCount } = countingFetch(codexFetch());
+    return { client: new CodexApiClient({ apiKey: "sk-test", fetchImpl }), callCount };
+  },
 };
 
 describe("Codex provider — runtime conformance", () => {

@@ -56,11 +56,25 @@ function claudeFetch(): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
+function countingFetch(base: typeof fetch): { fetchImpl: typeof fetch; callCount: () => number } {
+  let calls = 0;
+  const fetchImpl = (async (...args: Parameters<typeof fetch>) => {
+    calls += 1;
+    return base(...args);
+  }) as typeof fetch;
+  return { fetchImpl, callCount: () => calls };
+}
+
 const ctx: RuntimeConformanceContext = {
   makeClient: () => new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: claudeFetch() }),
   runBody: { input: "hi", model: "claude-opus-4-8" },
   streamRunBody: { input: "hi", model: "claude-opus-4-8" },
   batchRequests: [{ customId: "a", body: { input: "hi", model: "claude-opus-4-8" } }],
+  makeInstrumentedClient: () => {
+    const { fetchImpl, callCount } = countingFetch(claudeFetch());
+    return { client: new ClaudeApiClient({ apiKey: "sk-test", fetchImpl }), callCount };
+  },
+  dryRunInvalidRunBody: { input: "hi" }, // no model — must still throw ValidationFailed
 };
 
 describe("Claude provider — runtime conformance", () => {
