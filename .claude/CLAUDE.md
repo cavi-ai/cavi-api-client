@@ -9,11 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm test                 # vitest run — guardrails + behavior (the only test command)
-npm run build            # tsc → dist/ (run before publishing or linking a changed package)
-npm run clean            # rm -rf dist
-npm run coverage         # vitest run --coverage
-npx tsc --noEmit         # typecheck only — strict mode is the lint gate (no separate linter)
+pnpm test                 # vitest run — guardrails + behavior (the only test command)
+pnpm run build            # tsc → dist/ (run before publishing or linking a changed package)
+pnpm run clean            # rm -rf dist
+pnpm run coverage         # vitest run --coverage
+pnpm exec tsc --noEmit    # typecheck only — strict mode is the lint gate (no separate linter)
 npx vitest run src/__tests__/core/gateway/envelope.test.ts   # single test file
 npx vitest run -t "withFallback"                             # single test by name
 ```

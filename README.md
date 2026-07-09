@@ -110,6 +110,9 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/core/http` — `BaseHttpApiClient`, raw/JSON clients, redaction
 - `@cavi-ai/api-client/core/data`
 - `@cavi-ai/api-client/core/errors`
+- `@cavi-ai/api-client/core/memory` — the `MemoryStore` contract
+  (`remember`/`recall`/`forget`, `MemoryScope`, `MemoryFact`); gateway/harness-
+  agnostic, implemented by node-only engines and runtime providers elsewhere
 - `@cavi-ai/api-client/core/runtime` — `RuntimeClient`, run-stream contract
 - `@cavi-ai/api-client/core/sse`
 - `@cavi-ai/api-client/core/ws`
@@ -117,6 +120,9 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/core/env`
 - `@cavi-ai/api-client/contracts`
 - `@cavi-ai/api-client/extensions/cavi` — `CaviControlApiClient`, registry, portal, library, adapters
+- `./extensions/cavi/library-clip-contract.json` — the CaviClip ingest
+  contract (`endpoint`, `defaultTeam`, `sourceTag`) as a raw JSON asset export,
+  for hosts that need the contract without importing TypeScript
 - `@cavi-ai/api-client/providers/hermes`
 - `@cavi-ai/api-client/providers/openclaw`
 - `@cavi-ai/api-client/providers/claude` — Claude (Anthropic): the stateless
