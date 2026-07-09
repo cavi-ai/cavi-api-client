@@ -61,4 +61,24 @@ describe("docs integrity", () => {
       ).toBe(true);
     }
   });
+
+  it("documents every published subpath export in the README", () => {
+    // Reverse of the check above: every package.json export key (other than
+    // the root ".") must be mentioned in README.md at least once, so a new
+    // export can't ship undocumented. Matches on the export key's path
+    // portion (the key minus its leading ".") rather than requiring the
+    // literal "@cavi-ai/api-client" prefix, since some exports — e.g. the
+    // clip-contract JSON asset — are documented by their relative export
+    // path instead of a package-specifier import path.
+    const exportedKeys = Object.keys(
+      (JSON.parse(read("package.json")) as { exports: Record<string, unknown> }).exports,
+    ).filter((key) => key !== ".");
+    for (const key of exportedKeys) {
+      const pathPortion = key.slice(1);
+      expect(
+        readme.includes(pathPortion),
+        `package.json exports "${key}" but README.md never mentions it`,
+      ).toBe(true);
+    }
+  });
 });
