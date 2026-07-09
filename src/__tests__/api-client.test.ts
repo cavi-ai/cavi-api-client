@@ -36,6 +36,8 @@ import {
   resolveTeamWorkspaceApiPath,
   resolveTeamWorkspacePath,
   DEFAULT_TEAM_ROUTE_KEYS,
+  getErrorCode,
+  ApiClientErrorCode,
 } from "../index";
 import {
   GatewayMediaApiClient,
@@ -1685,6 +1687,7 @@ describe("agnostic HTTP API client package", () => {
     expect(String((openclawErrors[0] as Error).message)).toContain(
       "WebSocket JSON-RPC",
     );
+    expect(getErrorCode(openclawErrors[0])).toBe(ApiClientErrorCode.EndpointNotFound);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     await openclawSubscription.dispose();
     expect(() =>
