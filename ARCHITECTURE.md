@@ -61,6 +61,10 @@ Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch
 (JSONL upload → batch creation → poll → download), with results mapped to
 `RuntimeRunStatus` by `customId`; downloaded result JSONL is parsed strictly so
 malformed provider files fail with `invalid_json` instead of silently dropping rows.
+Gemini also implements the batch surface (`supports.batch`) over the Gemini
+`batchGenerateContent` API (inline requests under ~18MB, otherwise JSONL file
+upload via `GeminiFilesClient`), with the same canonical batch methods and strict
+result JSONL parsing.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (full agent/environment/session lifecycle) with SSE steering,

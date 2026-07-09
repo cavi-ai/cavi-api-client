@@ -7,7 +7,7 @@ export function createGeminiProviderModule(
   return {
     kind: "gemini",
     aliases: ["google", "google-gemini"],
-    capabilities: { runs: true, streaming: true },
+    capabilities: { runs: true, streaming: true, batch: true },
     createApiClient: (clientOptions) =>
       new GeminiApiClient({
         ...config,

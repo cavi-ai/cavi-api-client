@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Gemini batch backend** — `GeminiApiClient` now implements the batch surface
+  over Google's `batchGenerateContent` API (inline requests under ~18MB,
+  otherwise JSONL upload via the Gemini Files API). Results map to
+  `RuntimeRunStatus` (incl. normalized `tokens`) by `customId`; all requests in
+  a batch must share the same model.
+- **`GeminiFilesClient`** (`@cavi-ai/api-client/providers/gemini`) — resumable
+  file upload, download, retrieve, and delete for the Gemini Files API.
+
+### Changed
+
+- Documentation: README, CONTRIBUTING, and the architecture hero diagram now
+  list Gemini alongside the other built-in runtime providers (Codex, Claude) in
+  taglines, provider overviews, and contributor layer maps. README Gemini
+  section now documents `streamRun`, optional `defaultModel`, synchronous
+  `getRun`/`cancelRun` behavior, and batch support.
+
 ## [0.10.0] - 2026-07-09
 
 ### Added
