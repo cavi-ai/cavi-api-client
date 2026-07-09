@@ -72,6 +72,7 @@ const BUILT_IN_PROVIDER_MODULES = [
   OPENCLAW_PROVIDER_MODULE,
 ] as const;
 const SRC_ROOT = path.join(PACKAGE_ROOT, "src");
+const DIST_ROOT = path.join(PACKAGE_ROOT, "dist");
 const DIST_CORE_GATEWAY_ROOT = path.join(PACKAGE_ROOT, "dist", "core", "gateway");
 const PACKAGE_JSON = path.join(PACKAGE_ROOT, "package.json");
 const TS_CONFIG = path.join(PACKAGE_ROOT, "tsconfig.json");
@@ -234,7 +235,7 @@ function walkFiles(root: string): string[] {
       files.push(...walkFiles(absolute));
       continue;
     }
-    if (/\.(?:ts|tsx|json|md)$/u.test(entry)) {
+    if (/\.(?:js|ts|tsx|json|md)$/u.test(entry)) {
       files.push(absolute);
     }
   }
@@ -284,6 +285,25 @@ function productionSourceFiles(): string[] {
     const relative = rel(filePath);
     return !isTestOnlySource(relative);
   });
+}
+
+function sourceCandidatesForDistArtifact(filePath: string): string[] {
+  const relative = path.relative(DIST_ROOT, filePath);
+  if (relative.endsWith(".d.ts")) {
+    const sourceBase = relative.slice(0, -".d.ts".length);
+    return [
+      path.join(SRC_ROOT, `${sourceBase}.ts`),
+      path.join(SRC_ROOT, `${sourceBase}.tsx`),
+    ];
+  }
+  if (relative.endsWith(".js")) {
+    const sourceBase = relative.slice(0, -".js".length);
+    return [
+      path.join(SRC_ROOT, `${sourceBase}.ts`),
+      path.join(SRC_ROOT, `${sourceBase}.tsx`),
+    ];
+  }
+  return [];
 }
 
 function isTestOnlySource(relative: string): boolean {
@@ -445,9 +465,21 @@ describe("package hardening", () => {
       scripts?: Record<string, string>;
     };
 
+    expect(packageJson.scripts?.build).toContain("pnpm run clean");
     expect(packageJson.scripts?.prepack).toBe("pnpm run build");
-    expect(packageJson.scripts?.prepublishOnly).toContain("pnpm test");
-    expect(packageJson.scripts?.prepublishOnly).toContain("pnpm run build");
+    expect(packageJson.scripts?.prepublishOnly).toBe("pnpm run verify");
+  });
+
+  it("keeps dist free of stale compiled modules", () => {
+    const offenders = walkFilesIfExists(DIST_ROOT)
+      .filter((filePath) => /\.(?:js|d\.ts)$/u.test(filePath))
+      .filter((filePath) => {
+        const candidates = sourceCandidatesForDistArtifact(filePath);
+        return candidates.length > 0 && !candidates.some((candidate) => existsSync(candidate));
+      })
+      .map(rel);
+
+    expect(offenders).toEqual([]);
   });
 
   it("keeps React bindings under strict TypeScript", () => {
