@@ -166,4 +166,17 @@ describe("CodexApiClient", () => {
       cacheReadTokens: 20,
     });
   });
+
+  it("dryRun:true short-circuits startRun with zero network calls (A3)", async () => {
+    const fetchImpl = mockFetch({ id: "resp_1", status: "queued" });
+    const client = new CodexApiClient({ apiKey: "sk-test", fetchImpl });
+
+    const status = await client.startRun({ input: "hi", model: "gpt-5-codex", dryRun: true });
+
+    expect(fetchImpl.calls).toHaveLength(0);
+    expect(status.status).toBe("dry_run");
+    expect(status.model).toBe("gpt-5-codex");
+    expect(status.tokens).toBeUndefined();
+    expect(status.output).toBeUndefined();
+  });
 });
