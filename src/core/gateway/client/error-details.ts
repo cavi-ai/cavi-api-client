@@ -1,3 +1,5 @@
+import { redactPreviewText } from "../../http/redaction.js";
+
 export function cleanGatewayErrorText(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -6,7 +8,7 @@ export function cleanGatewayErrorText(value: unknown): string | null {
   if (!trimmed) {
     return null;
   }
-  return trimmed.slice(0, 180);
+  return redactPreviewText(trimmed, 180);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -60,13 +62,14 @@ export function formatGatewayHttpErrorMessage(params: {
   message?: string | null;
   code?: string | null;
 }): string {
+  const label = cleanGatewayErrorText(params.label) ?? "Gateway API";
   const statusText = cleanGatewayErrorText(params.statusText);
   const detail = cleanGatewayErrorText(params.message);
   const code = cleanGatewayErrorText(params.code);
 
   const base = statusText
-    ? `${params.label} ${params.status}: ${statusText}`
-    : `${params.label} ${params.status}`;
+    ? `${label} ${params.status}: ${statusText}`
+    : `${label} ${params.status}`;
   const withCode = code ? `${base} [${code}]` : base;
   return detail && detail !== statusText
     ? `${withCode} - ${detail}`

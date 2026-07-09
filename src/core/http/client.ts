@@ -8,6 +8,7 @@ import {
   type HttpApiTransport,
 } from "./types.js";
 import { HttpApiError } from "./errors.js";
+import { redactPreviewText } from "./redaction.js";
 import { getErrorMessage } from "../errors.js";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -33,7 +34,11 @@ function normalizeBasePath(basePath?: string): string {
 }
 
 function previewErrorBody(body: string): string {
-  return body.length > 500 ? `${body.slice(0, 500)}…` : body;
+  return redactPreviewText(body, 500);
+}
+
+function previewTraceText(value: string): string {
+  return redactPreviewText(value, 2_000);
 }
 
 function buildUrl(baseUrl: string, basePath: string, path: string): string {
@@ -179,6 +184,8 @@ export class BaseHttpApiClient {
     const headers = this.buildHeaders(init);
     const body = this.buildBody(init);
     const url = this.resolveUrl(normalizedPath);
+    const tracePath = previewTraceText(normalizedPath);
+    const traceUrl = previewTraceText(url);
 
     try {
       const response = await this.fetchImpl(
@@ -192,15 +199,15 @@ export class BaseHttpApiClient {
           at: Date.now(),
           surface: this.surface,
           method,
-          path: normalizedPath,
-          url,
+          path: tracePath,
+          url: traceUrl,
           ok: false,
           status: response.status,
           durationMs: Date.now() - startedAt,
           error: previewErrorBody(errorText),
         });
         throw new HttpApiError({
-          message: `${method} ${normalizedPath} failed with HTTP ${response.status}`,
+          message: `${method} ${tracePath} failed with HTTP ${response.status}`,
           path: normalizedPath,
           url,
           method,
@@ -213,8 +220,8 @@ export class BaseHttpApiClient {
         at: Date.now(),
         surface: this.surface,
         method,
-        path: normalizedPath,
-        url,
+        path: tracePath,
+        url: traceUrl,
         ok: true,
         status: response.status,
         durationMs: Date.now() - startedAt,
@@ -226,18 +233,19 @@ export class BaseHttpApiClient {
         throw error;
       }
       const message = getErrorMessage(error);
+      const safeMessage = previewErrorBody(message);
       this.emitTrace({
         at: Date.now(),
         surface: this.surface,
         method,
-        path: normalizedPath,
-        url,
+        path: tracePath,
+        url: traceUrl,
         ok: false,
         durationMs: Date.now() - startedAt,
-        error: message,
+        error: safeMessage,
       });
       throw new HttpApiError({
-        message: `${method} ${normalizedPath} failed: ${message}`,
+        message: `${method} ${tracePath} failed: ${safeMessage}`,
         path: normalizedPath,
         url,
         method,
@@ -261,8 +269,9 @@ export class BaseHttpApiClient {
       const contentType = response.headers.get("content-type") ?? "unknown";
       const preview = previewErrorBody(text.trim());
       const parseMessage = getErrorMessage(error);
+      const safePath = previewTraceText(this.resolvePath(path));
       throw new HttpApiError({
-        message: `${init?.method ?? "GET"} ${this.resolvePath(path)} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
+        message: `${init?.method ?? "GET"} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
         path: this.resolvePath(path),
         url: this.resolveUrl(path),
         method: init?.method ?? "GET",
