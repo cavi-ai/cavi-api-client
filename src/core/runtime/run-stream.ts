@@ -2,6 +2,7 @@
 // (Anthropic SSE, gateway WebSocket, run-detail poll, mock) into these types.
 
 import type { RuntimeUsage } from "./usage.js";
+import type { RuntimeRunState } from "./run.js";
 
 export const RUN_STREAM_EVENT_NAMES = {
   MESSAGE_DELTA: "message.delta",
@@ -47,6 +48,8 @@ export type RunStreamRunCompletedEvent = {
   /** Provider-agnostic normalized usage, when the terminal stream carries it. */
   usage?: RuntimeUsage;
   at?: number;
+  /** Present only on a dryRun short-circuit stream event (A3): "dry_run". */
+  status?: RuntimeRunState;
 };
 
 export type RunStreamRunFailedEvent = {
