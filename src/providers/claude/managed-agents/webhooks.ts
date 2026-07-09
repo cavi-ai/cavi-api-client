@@ -14,6 +14,7 @@
 
 /** Webhook `data.type` values Anthropic emits. */
 export const MANAGED_AGENT_WEBHOOK_EVENT_TYPES = [
+  "session.status_scheduled",
   "session.status_run_started",
   "session.status_idled",
   "session.status_rescheduled",
@@ -22,6 +23,19 @@ export const MANAGED_AGENT_WEBHOOK_EVENT_TYPES = [
   "session.thread_idled",
   "session.thread_terminated",
   "session.outcome_evaluation_ended",
+  "agent.created",
+  "agent.updated",
+  "agent.archived",
+  "agent.deleted",
+  "deployment.created",
+  "deployment.updated",
+  "deployment.paused",
+  "deployment.unpaused",
+  "deployment.archived",
+  "deployment.deleted",
+  "deployment_run.started",
+  "deployment_run.succeeded",
+  "deployment_run.failed",
   "vault.created",
   "vault.archived",
   "vault.deleted",
