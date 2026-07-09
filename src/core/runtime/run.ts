@@ -31,6 +31,7 @@ export type RuntimeRunState =
   | "failed"
   | "cancelled"
   | "stopping"
+  | "dry_run"
   | (string & {});
 
 /** The UNIVERSAL run status. Gateway-only fields live on `GatewayRunStatus`. */

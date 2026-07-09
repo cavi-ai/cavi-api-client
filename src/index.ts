@@ -73,6 +73,10 @@ export {
   type TokenPrices,
 } from "./core/runtime/usage.js";
 export {
+  buildDryRunStatus,
+  buildDryRunStreamEvent,
+} from "./core/runtime/dry-run.js";
+export {
   type RuntimeBatchRequest,
   type RuntimeBatchStatus,
   type RuntimeBatchResult,
