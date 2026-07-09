@@ -27,9 +27,22 @@ function sseStream(blocks: string[]): ReadableStream<Uint8Array> {
 }
 
 function geminiFetch(): typeof fetch {
-  return vi.fn(async (url: unknown) => {
-    if (String(url).includes(":streamGenerateContent")) {
+  return vi.fn(async (url: unknown, init?: RequestInit) => {
+    const target = String(url);
+    if (target.includes(":streamGenerateContent")) {
       return new Response(sseStream(SSE), { status: 200, headers: { "content-type": "text/event-stream" } });
+    }
+    if (target.includes(":batchGenerateContent")) {
+      return new Response(
+        JSON.stringify({ name: "batches/conformance", metadata: { state: "JOB_STATE_SUCCEEDED", model: "gemini-2.5-flash" }, response: { inlinedResponses: [{ metadata: { key: "a" }, response: RESPONSE }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    if (target.includes("/batches/")) {
+      return new Response(
+        JSON.stringify({ name: "batches/conformance", metadata: { state: "JOB_STATE_SUCCEEDED", model: "gemini-2.5-flash" }, response: { inlinedResponses: [{ metadata: { key: "a" }, response: RESPONSE }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
     }
     return new Response(JSON.stringify(RESPONSE), { status: 200, headers: { "content-type": "application/json" } });
   }) as unknown as typeof fetch;
@@ -39,6 +52,7 @@ const ctx: RuntimeConformanceContext = {
   makeClient: () => new GeminiApiClient({ apiKey: "k", fetchImpl: geminiFetch() }),
   runBody: { input: "hi", model: "gemini-2.5-flash" },
   streamRunBody: { input: "hi", model: "gemini-2.5-flash" },
+  batchRequests: [{ customId: "a", body: { input: "hi", model: "gemini-2.5-flash" } }],
 };
 
 describe("Gemini provider — runtime conformance", () => {

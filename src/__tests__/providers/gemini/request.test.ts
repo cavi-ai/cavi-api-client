@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGeminiRequestBody } from "../../../providers/gemini/client";
+import { buildGeminiRequestBody } from "../../../providers/gemini/request";
 
 describe("buildGeminiRequestBody", () => {
   it("throws ValidationFailed when no model is given", () => {
