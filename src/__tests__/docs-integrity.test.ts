@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -79,6 +79,20 @@ describe("docs integrity", () => {
         readme.includes(pathPortion),
         `package.json exports "${key}" but README.md never mentions it`,
       ).toBe(true);
+    }
+  });
+
+  it("ships compile-checked consumer journeys", () => {
+    for (const file of [
+      "runtime-node.ts",
+      "runtime-browser.ts",
+      "runtime-registry.ts",
+      "custom-provider.ts",
+      "runtime-capabilities.ts",
+      "react-gateway.tsx",
+      "narrow-imports.ts",
+    ]) {
+      expect(existsSync(path.join(PACKAGE_ROOT, "docs/examples", file)), file).toBe(true);
     }
   });
 });

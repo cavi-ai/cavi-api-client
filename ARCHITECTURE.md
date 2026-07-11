@@ -45,13 +45,21 @@ gateway backends, adding teams, kanban, workspace, and operator surfaces. Each
 provider declares a capability profile; calling an unsupported surface returns a
 typed `EndpointNotFound` rather than crashing.
 
-Consumers build one client and choose a provider through a registry.
+Consumers build one client and choose a provider through a runtime-owned registry.
 `createGatewayProviderRegistry` holds gateway providers; the generic
 `createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in
 modules live under `src/providers/{hermes,openclaw,claude,codex,gemini}`; host applications can
 supply their own `RuntimeProviderModule` / `GatewayProviderModule`. A provider
 authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie,
 or api-key) instead of the core hardcoding a token.
+
+The provider-neutral module, registry, and `createRuntimeClient` factory live in
+`core/runtime/providers`; gateway provider APIs extend and compatibility-export
+that kernel. Narrow runtime provider entries exclude CAVI product adapters.
+Historical Hermes/OpenClaw team-registry exports remain deprecated forwarding
+aliases, while their implementations are owned by `extensions/cavi/providers`.
+The public `testing` entry exposes runner-neutral conformance reports for
+third-party provider authors.
 
 OpenClaw/Hermes-specific behavior belongs in the matching provider module; Claude
 (Anthropic) is runtime-only and maps `startRun` to the Messages API. Claude also

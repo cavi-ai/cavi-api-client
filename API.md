@@ -58,6 +58,14 @@ These are runtime-only providers reached via their subpaths (`./providers/claude
 `./providers/codex`, `./providers/gemini`). They implement `RuntimeClient` and do
 not expose gateway surfaces (teams, kanban, media, wiki, websocket).
 
+Provider-neutral construction is exported from the root and
+`./core/runtime/providers`: `createRuntimeProviderRegistry` resolves provider
+kinds and aliases, while `createRuntimeClient(provider, { registry,
+clientOptions })` returns a universal `RuntimeClient`. New consumers should use
+the narrow `./providers/*/runtime` or `./providers/claude/messages` entries.
+Third-party modules can validate metadata and method parity through
+`./testing` without depending on Vitest.
+
 - **Claude** (`providers/claude`): `POST /v1/messages` — Anthropic Messages API;
   `x-api-key` auth. Also ships `ClaudeManagedAgentClient` (`managed-agents/`
   beta) for stateful sessions over the Anthropic Managed Agents beta.
