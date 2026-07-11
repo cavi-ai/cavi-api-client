@@ -6,6 +6,7 @@ import {
 import type { RuntimeClient } from "../../core/runtime/client";
 import type { RuntimeRunStartBody } from "../../core/runtime/run";
 import type { RuntimeBatchRequest } from "../../core/runtime/batch";
+import { ApiClientErrorCode, getErrorCode } from "../../core/errors";
 
 export type RuntimeConformanceContext = {
   /** Build a fresh, mock-backed client for each check. */
@@ -16,6 +17,17 @@ export type RuntimeConformanceContext = {
   streamRunBody?: RuntimeRunStartBody;
   /** A batch submission fixture; required only for providers that declare supports.batch. */
   batchRequests?: RuntimeBatchRequest[];
+  /**
+   * Build a fresh client instrumented to count its own outbound transport
+   * calls (fetch or RPC). Required only by the dryRun checks (A3).
+   */
+  makeInstrumentedClient?: () => { client: RuntimeClient; callCount: () => number };
+  /**
+   * A run body that fails this provider's own build/validate step (e.g.
+   * missing model) — proves dryRun still validates before short-circuiting.
+   * Omit for providers with no such client-side validation.
+   */
+  dryRunInvalidRunBody?: RuntimeRunStartBody;
 };
 
 export type ConformanceCheck = {
@@ -158,10 +170,66 @@ export const RUNTIME_BATCH_CONFORMANCE_CHECKS: ConformanceCheck[] = [
   },
 ];
 
+export const RUNTIME_DRYRUN_CONFORMANCE_CHECKS: ConformanceCheck[] = [
+  {
+    name: "dryRun: startRun makes zero network calls and returns a dry_run status",
+    run: async ({ makeInstrumentedClient, runBody }) => {
+      if (!makeInstrumentedClient) return; // provider fixture doesn't opt into instrumentation
+      const { client, callCount } = makeInstrumentedClient();
+      const status = await client.startRun({ ...runBody, dryRun: true });
+      assert(callCount() === 0, `startRun with dryRun:true must make zero network calls, made ${callCount()}`);
+      assert(status.status === "dry_run", `status must be "dry_run", got "${status.status}"`);
+      assert(typeof status.run_id === "string" && status.run_id.length > 0, "run_id must be present");
+      assert(status.tokens === undefined, "tokens must be absent on a dry run");
+      assert(status.output === undefined, "output must be absent on a dry run");
+      if (typeof runBody.model === "string" && runBody.model) {
+        assert(
+          status.model === runBody.model,
+          `resolved model must be echoed on the dry_run status, expected "${runBody.model}", got "${status.model}"`,
+        );
+      }
+    },
+  },
+  {
+    name: "dryRun: a malformed request still throws ValidationFailed before the network short-circuit",
+    run: async ({ makeInstrumentedClient, dryRunInvalidRunBody }) => {
+      if (!makeInstrumentedClient || !dryRunInvalidRunBody) return; // provider has no such validation to prove
+      const { client, callCount } = makeInstrumentedClient();
+      let threw = false;
+      try {
+        await client.startRun({ ...dryRunInvalidRunBody, dryRun: true });
+      } catch (error) {
+        threw = true;
+        assert(
+          getErrorCode(error) === ApiClientErrorCode.ValidationFailed,
+          `expected ValidationFailed, got ${String(getErrorCode(error))}`,
+        );
+      }
+      assert(threw, "a malformed dryRun request must still throw");
+      assert(callCount() === 0, "a validation failure must not make a network call either");
+    },
+  },
+  {
+    name: "dryRun: streamRun emits exactly one terminal dry_run event, zero network calls",
+    run: async ({ makeInstrumentedClient, streamRunBody }) => {
+      if (!makeInstrumentedClient || streamRunBody == null) return;
+      const { client, callCount } = makeInstrumentedClient();
+      if (typeof client.streamRun !== "function") return;
+      const events: RunStreamEvent[] = [];
+      await client.streamRun({ ...streamRunBody, dryRun: true }, { onEvent: (event) => events.push(event) });
+      assert(callCount() === 0, `streamRun with dryRun:true must make zero network calls, made ${callCount()}`);
+      assert(events.length === 1, `streamRun dryRun must emit exactly one event, got ${events.length}`);
+      assert(events[0]!.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, "dry-run stream event must be RUN_COMPLETED-shaped");
+      assert((events[0] as { status?: string }).status === "dry_run", "dry-run stream event must carry status dry_run");
+    },
+  },
+];
+
 export const ALL_RUNTIME_CONFORMANCE_CHECKS: ConformanceCheck[] = [
   ...RUNTIME_CONFORMANCE_CHECKS,
   ...RUNTIME_STREAMING_CONFORMANCE_CHECKS,
   ...RUNTIME_BATCH_CONFORMANCE_CHECKS,
+  ...RUNTIME_DRYRUN_CONFORMANCE_CHECKS,
 ];
 
 /** Run a set of checks, collecting per-check pass/fail (never throws). */

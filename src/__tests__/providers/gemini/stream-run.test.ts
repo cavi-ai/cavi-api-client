@@ -56,4 +56,21 @@ describe("GeminiApiClient.streamRun", () => {
     await client.streamRun({ input: "hi", model: "gemini-2.5-flash" }, { onEvent: (e) => events.push(e) });
     expect(events.at(-1)!.event).toBe(RUN_STREAM_EVENT_NAMES.RUN_COMPLETED);
   });
+
+  it("dryRun:true short-circuits streamRun with zero network calls and one terminal dry_run event (A3)", async () => {
+    const fetchImpl = vi.fn();
+    const client = new GeminiApiClient({ apiKey: "k", fetchImpl: fetchImpl as unknown as typeof fetch });
+    const events: RunStreamEvent[] = [];
+    let completed = false;
+
+    await client.streamRun(
+      { input: "hi", model: "gemini-2.5-flash", dryRun: true },
+      { onEvent: (e) => events.push(e), onComplete: () => { completed = true; } },
+    );
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, status: "dry_run" });
+    expect(completed).toBe(true);
+  });
 });

@@ -21,11 +21,24 @@ function gatewayFetch(): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
+function countingFetch(base: typeof fetch): { fetchImpl: typeof fetch; callCount: () => number } {
+  let calls = 0;
+  const fetchImpl = (async (...args: Parameters<typeof fetch>) => {
+    calls += 1;
+    return base(...args);
+  }) as typeof fetch;
+  return { fetchImpl, callCount: () => calls };
+}
+
 const ctx: RuntimeConformanceContext = {
   makeClient: () => new GatewayApiClient({ baseUrl: "https://gw.example", fetchImpl: gatewayFetch() }),
   runBody: { input: "hi" },
   // No streamRunBody: GatewayApiClient has no streamRun (subscribe-by-runId model),
   // so the streaming check self-skips (F4).
+  makeInstrumentedClient: () => {
+    const { fetchImpl, callCount } = countingFetch(gatewayFetch());
+    return { client: new GatewayApiClient({ baseUrl: "https://gw.example", fetchImpl }), callCount };
+  },
 };
 
 describe("GatewayApiClient — runtime conformance", () => {

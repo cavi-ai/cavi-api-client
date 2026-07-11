@@ -5,6 +5,7 @@ import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
+import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type {
   RuntimeBatchRequest,
@@ -84,6 +85,9 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
 
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
     const { model, payload } = buildGeminiRequestBody(body, this.defaultModel);
+    if (body.dryRun) {
+      return buildDryRunStatus(model);
+    }
     const response = await this.request<GeminiGenerateContentResponse>(geminiGenerateContentPath(model), {
       method: "POST",
       body: payload,
@@ -97,6 +101,11 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
     options: { signal?: AbortSignal } = {},
   ): Promise<void> {
     const { model, payload } = buildGeminiRequestBody(body, this.defaultModel);
+    if (body.dryRun) {
+      handlers.onEvent(buildDryRunStreamEvent(model));
+      handlers.onComplete?.();
+      return;
+    }
     const runId = newGeminiRunId();
 
     const controller = new AbortController();

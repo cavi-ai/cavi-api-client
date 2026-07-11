@@ -5,6 +5,7 @@ import {
   withMutationResult,
 } from "../../../core/gateway/envelope/index";
 import { GatewayHttpError } from "../../../core/http/gateway-error";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors";
 
 describe("envelope fallback classification", () => {
   it("treats unknown-method WS errors as fallback-eligible (old gateway binary)", async () => {
@@ -104,5 +105,41 @@ describe("envelope fallback classification", () => {
         },
       }),
     ).rejects.toThrow("Valid email address required.");
+  });
+
+  it("rethrows a GatewayHttpError 401/403 instead of degrading (withFallback)", async () => {
+    await expect(
+      withFallback({
+        area: "overview",
+        expectedContract: "GET /api/overview",
+        note: "Overview unavailable",
+        fallback: { ok: false },
+        run: async () => { throw new GatewayHttpError("forbidden", 403); },
+      }),
+    ).rejects.toThrow(GatewayHttpError);
+  });
+
+  it("rethrows a synthesized Auth-typed ApiClientError instead of degrading (withFallback)", async () => {
+    await expect(
+      withFallback({
+        area: "overview",
+        expectedContract: "GET /api/overview",
+        note: "Overview unavailable",
+        fallback: { ok: false },
+        run: async () => { throw new ApiClientError("session expired", { type: ApiClientErrorType.Auth }); },
+      }),
+    ).rejects.toThrow(ApiClientError);
+  });
+
+  it("rethrows an auth_required-coded ApiClientError instead of degrading (withMutationResult)", async () => {
+    await expect(
+      withMutationResult({
+        area: "project-board-backlog-create",
+        expectedContract: "POST /api/plugins/cavi-control/kanban/backlog",
+        note: "Backlog create unavailable",
+        fallback: () => ({ id: "local" }),
+        run: async () => { throw new ApiClientError("login required", { code: ApiClientErrorCode.AuthRequired }); },
+      }),
+    ).rejects.toThrow(ApiClientError);
   });
 });

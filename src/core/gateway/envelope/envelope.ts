@@ -1,5 +1,5 @@
 import { GatewayHttpError } from "../../http/gateway-error.js";
-import { getErrorMessage } from "../../errors.js";
+import { getErrorMessage, isAuthError } from "../../errors.js";
 import type {
   ContractGap,
   ContractGapReason,
@@ -147,10 +147,7 @@ export async function withFallback<TData>(params: {
       contractGaps: [],
     };
   } catch (error) {
-    if (
-      error instanceof GatewayHttpError &&
-      (error.status === 401 || error.status === 403)
-    ) {
+    if (isAuthError(error)) {
       throw error;
     }
 
@@ -192,10 +189,7 @@ export async function withMutationResult<TData>(params: {
       contractGaps: [],
     };
   } catch (error) {
-    if (
-      error instanceof GatewayHttpError &&
-      (error.status === 401 || error.status === 403)
-    ) {
+    if (isAuthError(error)) {
       throw error;
     }
     const classified = classifyFallbackError(error);

@@ -8,6 +8,7 @@ import type {
   RunEventStreamSubscription,
 } from "../../core/gateway/run/event-stream.js";
 import { GATEWAY_API_ENDPOINTS } from "../../contracts/paths.js";
+import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 
 export type OpenClawSseRunEventProviderOptions = GatewaySseRunEventProviderOptions;
 
@@ -23,8 +24,9 @@ export class OpenClawSseRunEventProvider extends GatewaySseRunEventProvider {
     _params: RunEventStreamSubscribeParams,
     handlers: RunEventStreamHandlers,
   ): Promise<RunEventStreamSubscription> {
-    const error = new Error(
+    const error = new ApiClientError(
       "OpenClaw run events are WebSocket JSON-RPC event frames; use createGatewayWebSocketClient(...).onEvent(...) instead of SSE.",
+      { code: ApiClientErrorCode.EndpointNotFound },
     );
     const notify = () => handlers.onError?.(error);
     if (typeof queueMicrotask === "function") {

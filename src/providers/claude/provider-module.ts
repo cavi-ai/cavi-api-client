@@ -17,7 +17,7 @@ export function createClaudeProviderModule(
   return {
     kind: "claude-sdk",
     aliases: ["claude", "anthropic"],
-    capabilities: { runs: true, streaming: true },
+    capabilities: { runs: true, streaming: true, batch: true },
     createApiClient: (clientOptions) =>
       new ClaudeApiClient({
         ...config,
