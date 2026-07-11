@@ -9,3 +9,4 @@ export {
 } from "./client.js";
 export * from "./protocol.js";
 export * from "./run-stream.js";
+export * from "./dry-run.js";

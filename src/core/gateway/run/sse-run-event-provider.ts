@@ -19,6 +19,7 @@ import type {
   RunEventStreamSubscribeParams,
   RunEventStreamSubscription,
 } from "./event-stream.js";
+import { normalizeRuntimeUsage, type RuntimeUsage } from "../../runtime/usage.js";
 
 export type GatewaySseRunEventEndpointMap = {
   run: (runId: string) => string;
@@ -229,6 +230,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
         output?: string;
         error?: string;
         timestamp?: string;
+        usage?: Record<string, number>;
       };
       try {
         payload = text.trim() ? (JSON.parse(text) as typeof payload) : {};
@@ -241,10 +243,12 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
         : runId;
       const at = parseTimestamp(payload.timestamp);
       if (status === "completed") {
+        const tokens = payload.usage ? normalizeRuntimeUsage(payload.usage, "gateway") : undefined;
         handlers.onEvent({
           event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
           runId: resolvedRunId,
           output: typeof payload.output === "string" ? payload.output : undefined,
+          ...(tokens ? { usage: tokens } : {}),
           at,
         });
         return;
@@ -283,6 +287,7 @@ type RawGatewaySseEvent = {
   error?: string;
   timestamp?: string;
   choices?: unknown;
+  usage?: Record<string, number>;
   [key: string]: unknown;
 };
 
@@ -307,10 +312,12 @@ function emitFromRaw(
     return;
   }
   if (eventName === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED) {
+    const tokens = readGatewaySseUsage(raw);
     handlers.onEvent({
       event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
       runId,
       output: typeof raw.output === "string" ? raw.output : undefined,
+      ...(tokens ? { usage: tokens } : {}),
       at,
     });
     return;
@@ -465,6 +472,12 @@ function stringifyPayload(value: unknown): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function readGatewaySseUsage(raw: RawGatewaySseEvent): RuntimeUsage | undefined {
+  const usage = raw.usage;
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return undefined;
+  return normalizeRuntimeUsage(usage as Record<string, number>, "gateway");
 }
 
 function parseTimestamp(value: unknown): number | undefined {

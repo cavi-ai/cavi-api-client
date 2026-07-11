@@ -9,6 +9,7 @@ import {
   getErrorType,
   isAbortError,
   isAuthError,
+  isEndpointNotFoundError,
   serializeError,
   stringifyUnknownError,
   toError,
@@ -116,5 +117,12 @@ describe("core error helpers", () => {
     ).toBe(true);
     expect(isAuthError(httpError(404))).toBe(false);
     expect(isAuthError(new Error("network error"))).toBe(false);
+  });
+
+  it("recognizes endpoint-not-found errors", () => {
+    expect(
+      isEndpointNotFoundError(new ApiClientError("no such surface", { code: ApiClientErrorCode.EndpointNotFound })),
+    ).toBe(true);
+    expect(isEndpointNotFoundError(new Error("other"))).toBe(false);
   });
 });

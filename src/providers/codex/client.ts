@@ -5,6 +5,7 @@ import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/typ
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
+import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
@@ -86,9 +87,13 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
   }
 
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
+    const payload = buildCodexResponseBody(body, this.defaultModel, { background: true, store: true });
+    if (body.dryRun) {
+      return buildDryRunStatus(payload.model as string);
+    }
     const response = await this.request<OpenAIResponse>(CODEX_API_ENDPOINTS.responses, {
       method: "POST",
-      body: buildCodexResponseBody(body, this.defaultModel, { background: true, store: true }),
+      body: payload,
     });
     return mapOpenAIResponseToRunStatus(response);
   }
@@ -166,6 +171,17 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     handlers: RunEventStreamHandlers,
     options: { signal?: AbortSignal } = {},
   ): Promise<void> {
+    const payload = buildCodexResponseBody(body, this.defaultModel, {
+      background: true,
+      store: true,
+      stream: true,
+    });
+    if (body.dryRun) {
+      handlers.onEvent(buildDryRunStreamEvent(payload.model as string));
+      handlers.onComplete?.();
+      return;
+    }
+
     const controller = new AbortController();
     if (options.signal) {
       if (options.signal.aborted) controller.abort();
@@ -175,7 +191,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     try {
       const response = await this.requestRaw(CODEX_API_ENDPOINTS.responses, {
         method: "POST",
-        body: buildCodexResponseBody(body, this.defaultModel, { background: true, store: true, stream: true }),
+        body: payload,
         signal: controller.signal,
       });
       if (!response.body) {

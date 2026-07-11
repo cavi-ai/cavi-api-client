@@ -15,6 +15,7 @@ import type {
 } from "../../runtime/run.js";
 import type { RuntimeCapabilities } from "../../runtime/capabilities.js";
 import { normalizeRuntimeUsage } from "../../runtime/usage.js";
+import { buildDryRunStatus } from "../../runtime/dry-run.js";
 
 export type GatewayCapabilities = GatewayCommandCapabilities & {
   object?: string;
@@ -121,6 +122,9 @@ export class GatewayApiClient extends BaseHttpApiClient implements RuntimeClient
   }
 
   async startRun(body: GatewayRunStartBody): Promise<GatewayRunStatus> {
+    if (body.dryRun) {
+      return buildDryRunStatus(body.model);
+    }
     const status = await this.request<GatewayRunStatus>(this.endpoints.runs, {
       method: "POST",
       body,

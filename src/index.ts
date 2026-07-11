@@ -17,6 +17,7 @@ export {
   getErrorType,
   isAbortError,
   isAuthError,
+  isEndpointNotFoundError,
   serializeError,
   stringifyUnknownError,
   toError,
@@ -72,6 +73,10 @@ export {
   type RuntimeUsage,
   type TokenPrices,
 } from "./core/runtime/usage.js";
+export {
+  buildDryRunStatus,
+  buildDryRunStreamEvent,
+} from "./core/runtime/dry-run.js";
 export {
   type RuntimeBatchRequest,
   type RuntimeBatchStatus,

@@ -4,7 +4,9 @@ import {
 } from "../../core/gateway/client/client.js";
 import type { HttpApiClientOptions } from "../../core/http/types.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
-import { getErrorMessage } from "../../core/errors.js";
+import { ApiClientError, ApiClientErrorCode, getErrorMessage } from "../../core/errors.js";
+import { buildDryRunStatus } from "../../core/runtime/dry-run.js";
+import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import { resolveHttpWebSocketTargets } from "../../core/ws/index.js";
 import {
   OPENCLAW_DEFAULT_CAPABILITIES,
@@ -238,8 +240,19 @@ export class OpenClawApiClient extends GatewayApiClient {
     });
   }
 
+  override async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
+    const base = await super.getRuntimeCapabilities();
+    return {
+      ...base,
+      supports: { ...base.supports, wiki: false, media: false },
+    };
+  }
+
   override async startRun(body: GatewayRunStartBody): Promise<OpenClawRunStatus> {
     const params = buildChatSendParams(body);
+    if (body.dryRun) {
+      return { ...buildDryRunStatus(body.model), object: "openclaw.run" };
+    }
     const payload = await this.getRpcClient().request<unknown>(
       OPENCLAW_RPC_METHODS.chatSend,
       params,
@@ -254,7 +267,9 @@ export class OpenClawApiClient extends GatewayApiClient {
   override async getRun(runId: string): Promise<OpenClawRunStatus> {
     const normalizedRunId = runId.trim();
     if (!normalizedRunId) {
-      throw new Error("OpenClawApiClient.getRun: missing runId");
+      throw new ApiClientError("OpenClawApiClient.getRun: missing runId", {
+        code: ApiClientErrorCode.ValidationFailed,
+      });
     }
     const payload = await this.getRpcClient().request<unknown>(
       OPENCLAW_RPC_METHODS.agentWait,
@@ -272,7 +287,9 @@ export class OpenClawApiClient extends GatewayApiClient {
   override async stopRun(runId: string): Promise<{ status: string }> {
     const normalizedRunId = runId.trim();
     if (!normalizedRunId) {
-      throw new Error("OpenClawApiClient.stopRun: missing runId");
+      throw new ApiClientError("OpenClawApiClient.stopRun: missing runId", {
+        code: ApiClientErrorCode.ValidationFailed,
+      });
     }
     const payload = await this.getRpcClient().request<unknown>(
       OPENCLAW_RPC_METHODS.sessionsAbort,
@@ -287,8 +304,9 @@ export class OpenClawApiClient extends GatewayApiClient {
   }
 
   override async resolveRunApproval<T = unknown>(): Promise<T> {
-    throw new Error(
+    throw new ApiClientError(
       "OpenClawApiClient.resolveRunApproval: OpenClaw does not expose the Hermes REST run approval endpoint; use plugin-specific approval RPC methods when available.",
+      { code: ApiClientErrorCode.EndpointNotFound },
     );
   }
 
