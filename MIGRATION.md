@@ -1,4 +1,4 @@
-# Migrating to @cavi-ai/api-client 2.x
+# Migrating to the curated 0.10.x API
 
 The root entry now exports only the curated stable API. Provider modules, the
 CAVI extension, framework bindings, and low-level core primitives moved to

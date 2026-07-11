@@ -1,5 +1,6 @@
 import type { RuntimeProviderModule } from "../../core/gateway/providers/types.js";
 import { ClaudeApiClient, type ClaudeApiClientOptions } from "./client.js";
+import { CLAUDE_RUNTIME_SUPPORT } from "./capabilities.js";
 
 /**
  * Build the runtime-only Claude (Anthropic) provider module. The Anthropic API
@@ -14,16 +15,18 @@ import { ClaudeApiClient, type ClaudeApiClientOptions } from "./client.js";
 export function createClaudeProviderModule(
   config: ClaudeApiClientOptions,
 ): RuntimeProviderModule {
+  const createClient: NonNullable<RuntimeProviderModule["createClient"]> = (clientOptions) =>
+    new ClaudeApiClient({
+      ...config,
+      ...(clientOptions.baseUrl ? { baseUrl: clientOptions.baseUrl } : {}),
+      ...(clientOptions.fetchImpl ? { fetchImpl: clientOptions.fetchImpl } : {}),
+      ...(clientOptions.onTrace ? { onTrace: clientOptions.onTrace } : {}),
+    });
   return {
     kind: "claude-sdk",
     aliases: ["claude", "anthropic"],
-    capabilities: { runs: true, streaming: true, batch: true },
-    createApiClient: (clientOptions) =>
-      new ClaudeApiClient({
-        ...config,
-        ...(clientOptions.baseUrl ? { baseUrl: clientOptions.baseUrl } : {}),
-        ...(clientOptions.fetchImpl ? { fetchImpl: clientOptions.fetchImpl } : {}),
-        ...(clientOptions.onTrace ? { onTrace: clientOptions.onTrace } : {}),
-      }),
+    capabilities: CLAUDE_RUNTIME_SUPPORT,
+    createClient,
+    createApiClient: createClient,
   };
 }

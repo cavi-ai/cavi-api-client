@@ -26,6 +26,37 @@
 npm install @cavi-ai/api-client
 ```
 
+Create one provider registry, then construct the universal `RuntimeClient`:
+
+```ts
+import {
+  createRuntimeClient,
+  createRuntimeProviderRegistry,
+  runtimeSupports,
+} from "@cavi-ai/api-client";
+import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
+
+const registry = createRuntimeProviderRegistry({
+  modules: [createCodexProviderModule({ apiKey: process.env.OPENAI_API_KEY! })],
+});
+const client = createRuntimeClient("codex", {
+  registry,
+  clientOptions: { baseUrl: "https://api.openai.com" },
+});
+const capabilities = await client.getRuntimeCapabilities();
+
+if (runtimeSupports(capabilities, "streaming")) {
+  await client.streamRun?.(
+    { input: "Summarize the release notes." },
+    { onEvent: (event) => console.log(event) },
+  );
+}
+```
+
+Provider modules capture provider credentials. The universal factory receives
+only provider-neutral transport options and returns the same `RuntimeClient`
+shape for every provider.
+
 ## Contents
 
 - [Why This Package Exists](#why-this-package-exists)
@@ -114,6 +145,7 @@ behind a **subpath** so consumers import only the slice they need:
   (`remember`/`recall`/`forget`, `MemoryScope`, `MemoryFact`); gateway/harness-
   agnostic, implemented by node-only engines and runtime providers elsewhere
 - `@cavi-ai/api-client/core/runtime` — `RuntimeClient`, run-stream contract
+- `@cavi-ai/api-client/core/runtime/providers` — runtime registry and factory kernel
 - `@cavi-ai/api-client/core/sse`
 - `@cavi-ai/api-client/core/ws`
 - `@cavi-ai/api-client/core/gateway` — gateway resource clients (media, wiki, agent-config, jobs)
@@ -134,6 +166,17 @@ behind a **subpath** so consumers import only the slice they need:
   (`GeminiApiClient`, `createGeminiProviderModule`, `GeminiFilesClient`,
   `x-goog-api-key` auth, model in URL path, batch + canonical run-stream events)
 - `@cavi-ai/api-client/frameworks/react`
+- Narrow entries are available for new code:
+  `@cavi-ai/api-client/providers/claude/messages`,
+  `@cavi-ai/api-client/providers/claude/managed-agents`,
+  `@cavi-ai/api-client/providers/codex/runtime`,
+  `@cavi-ai/api-client/providers/codex/files`,
+  `@cavi-ai/api-client/providers/gemini/runtime`,
+  `@cavi-ai/api-client/providers/gemini/files`,
+  `@cavi-ai/api-client/providers/hermes/runtime`, and
+  `@cavi-ai/api-client/providers/openclaw/runtime`.
+- `@cavi-ai/api-client/testing` exposes the runner-neutral
+  `inspectRuntimeProviderConformance` report for third-party providers.
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
 > and low-level primitives moved off the root entry to their subpaths. See

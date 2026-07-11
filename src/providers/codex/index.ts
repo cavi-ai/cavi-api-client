@@ -6,6 +6,7 @@ export {
   type CodexApiClientOptions,
 } from "./client.js";
 export { createCodexProviderModule } from "./provider-module.js";
+export { CODEX_RUNTIME_SUPPORT } from "./capabilities.js";
 export {
   mapOpenAIResponseStreamEvent,
   readOpenAIResponseRunId,

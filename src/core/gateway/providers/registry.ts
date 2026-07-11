@@ -1,5 +1,8 @@
 import { normalizeGatewayProviderToken } from "./normalize.js";
 import {
+  createRuntimeProviderRegistry as createUniversalRuntimeProviderRegistry,
+} from "../../runtime/providers/registry.js";
+import {
   GATEWAY_PROVIDER_ENV_KEYS,
   type CreateGatewayProviderRegistryOptions,
   type CreateProviderRegistryOptions,
@@ -10,24 +13,15 @@ import {
   type RuntimeProviderModule,
 } from "./types.js";
 
-function providerModuleKeys(module: RuntimeProviderModule): readonly string[] {
-  const keys = new Set<string>();
-  for (const key of [module.kind, ...(module.aliases ?? [])]) {
-    const normalized = normalizeGatewayProviderToken(key);
-    if (normalized) {
-      keys.add(normalized);
-    }
-  }
-  return [...keys];
-}
-
 export function createProviderRegistry<M extends RuntimeProviderModule>(
   options: CreateProviderRegistryOptions<M> = {},
 ): ProviderRegistry<M> {
   const modules = [...(options.modules ?? [])];
   const byKey = new Map<string, M>();
   for (const module of modules) {
-    for (const key of providerModuleKeys(module)) {
+    for (const rawKey of [module.kind, ...(module.aliases ?? [])]) {
+      const key = normalizeGatewayProviderToken(rawKey);
+      if (!key) continue;
       if (byKey.has(key) && options.allowOverrides !== true) {
         throw new Error(`Duplicate provider key "${key}"`);
       }
@@ -54,7 +48,7 @@ export function createGatewayProviderRegistry(
 export function createRuntimeProviderRegistry(
   options: CreateProviderRegistryOptions<RuntimeProviderModule> = {},
 ): ProviderRegistry<RuntimeProviderModule> {
-  return createProviderRegistry<RuntimeProviderModule>(options);
+  return createUniversalRuntimeProviderRegistry(options);
 }
 
 function gatewayProviderRegistryFromOptions(

@@ -4,6 +4,7 @@ import { bearerCredentials } from "../../core/http/credentials.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
+import { CODEX_RUNTIME_SUPPORT } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
 import {
@@ -82,7 +83,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
       providerKind: "codex-responses",
       protocolVersion: "responses-v1",
       auth: { type: "bearer", required: true },
-      supports: { runs: true, streaming: true, batch: true },
+      supports: CODEX_RUNTIME_SUPPORT,
     };
   }
 

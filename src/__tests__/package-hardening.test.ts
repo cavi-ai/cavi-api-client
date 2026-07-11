@@ -239,6 +239,7 @@ const EXPECTED_TS_INCLUDE = [
   "src/contracts/**/*.ts",
   "src/extensions/**/*.ts",
   "src/providers/**/*.ts",
+  "src/testing/**/*.ts",
   "src/frameworks/**/*.ts",
   "src/frameworks/**/*.tsx",
 ] as const;
@@ -512,6 +513,9 @@ describe("package hardening", () => {
     expect(packageJson.scripts?.build).toContain("pnpm run clean");
     expect(packageJson.scripts?.prepack).toBe("pnpm run build");
     expect(packageJson.scripts?.prepublishOnly).toBe("pnpm run verify");
+    expect(packageJson.scripts?.verify).toBe(
+      "pnpm run clean && pnpm test && pnpm run typecheck:docs && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
+    );
   });
 
   it("keeps dist free of stale compiled modules", () => {
