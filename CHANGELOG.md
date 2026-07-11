@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `@cavi-ai/api-client/core/kanban` — the first unified capability interface: a
+  provider-agnostic `KanbanClient` with canonical card types that preserve the
+  backend's native status alongside a canonical status category. Ships an
+  OpenClaw Workboard adapter and a `@cavi-ai/api-client/testing` kanban
+  conformance kit (`inspectKanbanConformance`) that any `supports.kanban`
+  provider must pass.
+
 ## [0.11.0] - 2026-07-11
 
 ### Added
