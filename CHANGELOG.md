@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-11
+
 ### Added
 
 - Added the runtime-owned provider kernel with `createRuntimeClient`,
@@ -20,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `@cavi-ai/api-client/testing` with runner-neutral provider conformance
   reports, plus compile-checked Node, browser, React, registry, custom-provider,
   capability, and narrow-import examples.
+- Added `dryRun: true` to `startRun`/`streamRun`: the call short-circuits with
+  zero network/RPC calls and returns a `dry_run` status/stream event across
+  every provider, backed by `buildDryRunStatus`/`buildDryRunStreamEvent` and the
+  new `dry_run` run state.
+- Added the `isEndpointNotFoundError` type guard (exported and documented).
 
 ### Changed
 
@@ -33,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Claude and Codex provider modules now advertise the batch capability already
   implemented by their clients. Built-in runtime modules and clients share one
   frozen capability map to prevent metadata drift.
+- Usage is normalized into `tokens` on `RUN_COMPLETED` for both the live stream
+  and the poll fallback.
+- OpenClaw now throws typed errors — `EndpointNotFound` from the SSE subscribe
+  stub, and `ApiClientError` for a missing runId or unsupported
+  `resolveRunApproval` — and reports `wiki: false`/`media: false` (core RPC gates
+  both pre-plugin).
+- The 401/403-never-degrades invariant now routes through `isAuthError()` in the
+  degradation envelope and operator-control.
 - Corrected migration and root-entry documentation that described the current
   `0.10.x` package as `2.x`.
 
