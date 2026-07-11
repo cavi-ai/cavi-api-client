@@ -82,6 +82,44 @@ describe("docs integrity", () => {
     }
   });
 
+  it("API.md documents no private host-deployment surfaces the package doesn't implement", () => {
+    // API.md is the package's public route catalog; it must describe only what the
+    // code implements. Private CAVI deployment plugins / persona portals once leaked
+    // in as hand-written rows (martina/scout/angela/machine/front-door/trading/wu-tang
+    // — 0 occurrences in src). The durable fix is to regenerate API.md from the
+    // *paths.ts / *surfaces.ts owner files; this guard backstops that.
+    const apiMd = read("API.md");
+
+    // 1) The portal surface must use the generic `:portal` dispatcher — never a baked
+    //    persona. The manifest supplies portal identity at runtime. This catches ANY
+    //    hardcoded persona, not just the ones removed once.
+    const bakedPortals = [
+      ...new Set(
+        Array.from(apiMd.matchAll(/\/api\/plugins\/portal\/([a-z][a-z0-9-]*)\//g), (m) => m[1]),
+      ),
+    ];
+    expect(
+      bakedPortals,
+      `API.md hardcodes portal persona(s) instead of the :portal dispatcher: ${bakedPortals.join(", ")}`,
+    ).toEqual([]);
+
+    // 2) Known private deployment plugins that this package does not implement.
+    const forbidden = [
+      "martina",
+      "wuTang",
+      "wu-tang",
+      "frontDoor",
+      "front-door",
+      "/plugins/trading",
+      "/plugins/machine/",
+    ];
+    const leaked = forbidden.filter((token) => apiMd.includes(token));
+    expect(
+      leaked,
+      `API.md references private surfaces not implemented in this package: ${leaked.join(", ")}`,
+    ).toEqual([]);
+  });
+
   it("ships compile-checked consumer journeys", () => {
     for (const file of [
       "runtime-node.ts",
