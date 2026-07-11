@@ -11,8 +11,16 @@ import type {
   GatewayWebSocketClient,
   GatewayWebSocketClientOptions,
 } from "../../ws/index.js";
-import type { RuntimeClient } from "../../runtime/client.js";
-import type { RuntimeSurface } from "../../runtime/capabilities.js";
+import type {
+  CreateRuntimeProviderRegistryOptions,
+  RuntimeProviderModule as RuntimeProviderModuleBase,
+  RuntimeProviderRegistry,
+} from "../../runtime/providers/types.js";
+
+export type {
+  RuntimeClientOptions,
+  RuntimeProviderRegistry,
+} from "../../runtime/providers/types.js";
 
 export type GatewayProviderKind =
   | "hermes"
@@ -48,13 +56,8 @@ export interface GatewayProviderFactories {
   ) => GatewayAgentConfigApiClient;
 }
 
-/** The universal provider plugin. Every provider (incl. runtime-only ones) is one. */
-export interface RuntimeProviderModule {
-  kind: GatewayProviderKind;
-  aliases?: readonly string[];
-  capabilities?: Partial<Record<RuntimeSurface, boolean>>;
-  createApiClient?: (clientOptions: HttpApiClientOptions) => RuntimeClient;
-}
+/** @deprecated Import RuntimeProviderModule from core/runtime. */
+export interface RuntimeProviderModule extends RuntimeProviderModuleBase {}
 
 export interface GatewayProviderModule
   extends RuntimeProviderModule,
@@ -63,21 +66,14 @@ export interface GatewayProviderModule
   createApiClient?: (clientOptions: HttpApiClientOptions) => GatewayApiClient;
 }
 
-export interface ProviderRegistry<
-  M extends RuntimeProviderModule = GatewayProviderModule,
-> {
-  resolveProvider(provider: string | null | undefined): M | null;
-  listProviders(): readonly M[];
-}
+export type ProviderRegistry<M extends RuntimeProviderModule = GatewayProviderModule> =
+  RuntimeProviderRegistry<M>;
 
 export type GatewayProviderRegistry = ProviderRegistry<GatewayProviderModule>;
 
 export type CreateProviderRegistryOptions<
   M extends RuntimeProviderModule = GatewayProviderModule,
-> = {
-  modules?: readonly M[] | null;
-  allowOverrides?: boolean;
-};
+> = CreateRuntimeProviderRegistryOptions<M>;
 
 export type CreateGatewayProviderRegistryOptions =
   CreateProviderRegistryOptions<GatewayProviderModule>;

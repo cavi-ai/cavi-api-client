@@ -87,6 +87,13 @@ export {
 } from "./core/runtime/batch.js";
 export { unsupportedRuntimeSurface, type RuntimeClient } from "./core/runtime/client.js";
 export {
+  createRuntimeClient,
+  normalizeRuntimeProviderToken,
+  type CreateRuntimeClientOptions,
+  type RuntimeClientOptions,
+  type RuntimeProviderRegistry,
+} from "./core/runtime/providers/index.js";
+export {
   checkProtocolVersion,
   assertProtocolVersion,
   type ProtocolVersionCheck,
