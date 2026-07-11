@@ -1,12 +1,2 @@
-import {
-  createTeamRegistry,
-  type TeamRegistry,
-  type TeamRegistryConfig,
-} from "../../extensions/cavi/registry/team-registry.js";
-import { TEAM_REGISTRY_CONFIG } from "./team-registry-config.js";
-
-export function createHermesTeamRegistry(
-  config: TeamRegistryConfig = TEAM_REGISTRY_CONFIG,
-): TeamRegistry {
-  return createTeamRegistry(config, { provider: "hermes" });
-}
+/** @deprecated Import from @cavi-ai/api-client/extensions/cavi. */
+export { createHermesTeamRegistry } from "../../extensions/cavi/providers/hermes/team-registry.js";
