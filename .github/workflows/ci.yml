@@ -28,7 +28,7 @@ jobs:
       HUSKY: 0
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Enable pnpm
         run: |
@@ -36,7 +36,7 @@ jobs:
           corepack prepare pnpm@10.32.1 --activate
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
