@@ -112,6 +112,11 @@
       "import": "./dist/core/runtime/providers/index.js",
       "default": "./dist/core/runtime/providers/index.js"
     },
+    "./core/kanban": {
+      "types": "./dist/core/kanban/index.d.ts",
+      "import": "./dist/core/kanban/index.js",
+      "default": "./dist/core/kanban/index.js"
+    },
     "./core/sse": {
       "types": "./dist/core/sse/index.d.ts",
       "import": "./dist/core/sse/index.js",
