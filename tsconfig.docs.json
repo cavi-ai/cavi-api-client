@@ -19,6 +19,6 @@
       "@cavi-ai/api-client/*": ["./src/*"]
     }
   },
-  "include": ["docs/**/*.ts"],
+  "include": ["docs/**/*.ts", "docs/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,4 +1,4 @@
-// @cavi-ai/api-client — root entry (2.x curated stable API).
+// @cavi-ai/api-client — curated root API for the current 0.x release line.
 //
 // Providers, the CAVI extension, framework bindings, and low-level core
 // primitives are intentionally NOT re-exported here. Import them from their
