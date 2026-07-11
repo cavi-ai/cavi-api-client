@@ -146,6 +146,9 @@ behind a **subpath** so consumers import only the slice they need:
   agnostic, implemented by node-only engines and runtime providers elsewhere
 - `@cavi-ai/api-client/core/runtime` — `RuntimeClient`, run-stream contract
 - `@cavi-ai/api-client/core/runtime/providers` — runtime registry and factory kernel
+- `@cavi-ai/api-client/core/kanban` — the provider-agnostic `KanbanClient`
+  interface + canonical card/status types; providers (OpenClaw Workboard today)
+  adapt to it
 - `@cavi-ai/api-client/core/sse`
 - `@cavi-ai/api-client/core/ws`
 - `@cavi-ai/api-client/core/gateway` — gateway resource clients (media, wiki, agent-config, jobs)
