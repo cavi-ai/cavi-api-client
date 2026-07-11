@@ -5,3 +5,5 @@ export function normalizeGatewayProviderToken(
   if (!normalized) return null;
   return normalized === "generic" ? "gateway" : normalized;
 }
+
+export { normalizeRuntimeProviderToken } from "../../runtime/providers/normalize.js";

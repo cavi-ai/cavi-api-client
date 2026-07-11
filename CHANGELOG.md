@@ -10,6 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the runtime-owned provider kernel with `createRuntimeClient`,
+  `createRuntimeProviderRegistry`, provider-neutral transport options, and the
+  `@cavi-ai/api-client/core/runtime/providers` entry.
+- Added narrow provider entries for Claude Messages/Managed Agents, Codex
+  runtime/files, Gemini runtime/files, Hermes runtime, and OpenClaw runtime.
+- Added `@cavi-ai/api-client/testing` with runner-neutral provider conformance
+  reports, plus compile-checked Node, browser, React, registry, custom-provider,
+  capability, and narrow-import examples.
+
+### Changed
+
+- Moved CAVI team-registry compatibility ownership under
+  `extensions/cavi/providers`; legacy Hermes/OpenClaw exports remain deprecated
+  forwarding aliases.
+- Verification now starts from a clean `dist` before testing and packing.
+
+### Fixed
+
+- Claude and Codex provider modules now advertise the batch capability already
+  implemented by their clients. Built-in runtime modules and clients share one
+  frozen capability map to prevent metadata drift.
+- Corrected migration and root-entry documentation that described the current
+  `0.10.x` package as `2.x`.
+
 ## [0.10.1] - 2026-07-09
 
 ### Added

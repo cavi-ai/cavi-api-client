@@ -4,6 +4,7 @@ export {
   type GeminiApiClientOptions,
 } from "./client.js";
 export { createGeminiProviderModule } from "./provider-module.js";
+export { GEMINI_RUNTIME_SUPPORT } from "./capabilities.js";
 export {
   GEMINI_API_BASE_URL,
   GEMINI_API_VERSION,

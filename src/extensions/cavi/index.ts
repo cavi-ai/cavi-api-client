@@ -53,3 +53,4 @@ export * from "./discourse/normalize.js";
 export * from "./domain/index.js";
 export * from "./registry/team-registry.js";
 export * from "./registry/team-registry-config.js";
+export * from "./providers/index.js";
