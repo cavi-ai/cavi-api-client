@@ -107,6 +107,11 @@
       "import": "./dist/core/runtime/index.js",
       "default": "./dist/core/runtime/index.js"
     },
+    "./core/runtime/providers": {
+      "types": "./dist/core/runtime/providers/index.d.ts",
+      "import": "./dist/core/runtime/providers/index.js",
+      "default": "./dist/core/runtime/providers/index.js"
+    },
     "./core/sse": {
       "types": "./dist/core/sse/index.d.ts",
       "import": "./dist/core/sse/index.js",
