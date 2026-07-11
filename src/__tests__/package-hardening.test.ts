@@ -239,6 +239,7 @@ const EXPECTED_TS_INCLUDE = [
   "src/contracts/**/*.ts",
   "src/extensions/**/*.ts",
   "src/providers/**/*.ts",
+  "src/testing/**/*.ts",
   "src/frameworks/**/*.ts",
   "src/frameworks/**/*.tsx",
 ] as const;

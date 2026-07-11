@@ -212,6 +212,11 @@
       "types": "./dist/frameworks/react/index.d.ts",
       "import": "./dist/frameworks/react/index.js",
       "default": "./dist/frameworks/react/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
     }
   },
   "scripts": {
