@@ -158,15 +158,55 @@
       "import": "./dist/providers/claude/index.js",
       "default": "./dist/providers/claude/index.js"
     },
+    "./providers/claude/messages": {
+      "types": "./dist/providers/claude/messages.d.ts",
+      "import": "./dist/providers/claude/messages.js",
+      "default": "./dist/providers/claude/messages.js"
+    },
+    "./providers/claude/managed-agents": {
+      "types": "./dist/providers/claude/managed-agents/index.d.ts",
+      "import": "./dist/providers/claude/managed-agents/index.js",
+      "default": "./dist/providers/claude/managed-agents/index.js"
+    },
     "./providers/codex": {
       "types": "./dist/providers/codex/index.d.ts",
       "import": "./dist/providers/codex/index.js",
       "default": "./dist/providers/codex/index.js"
     },
+    "./providers/codex/runtime": {
+      "types": "./dist/providers/codex/runtime.d.ts",
+      "import": "./dist/providers/codex/runtime.js",
+      "default": "./dist/providers/codex/runtime.js"
+    },
+    "./providers/codex/files": {
+      "types": "./dist/providers/codex/files-entry.d.ts",
+      "import": "./dist/providers/codex/files-entry.js",
+      "default": "./dist/providers/codex/files-entry.js"
+    },
     "./providers/gemini": {
       "types": "./dist/providers/gemini/index.d.ts",
       "import": "./dist/providers/gemini/index.js",
       "default": "./dist/providers/gemini/index.js"
+    },
+    "./providers/gemini/runtime": {
+      "types": "./dist/providers/gemini/runtime.d.ts",
+      "import": "./dist/providers/gemini/runtime.js",
+      "default": "./dist/providers/gemini/runtime.js"
+    },
+    "./providers/gemini/files": {
+      "types": "./dist/providers/gemini/files-entry.d.ts",
+      "import": "./dist/providers/gemini/files-entry.js",
+      "default": "./dist/providers/gemini/files-entry.js"
+    },
+    "./providers/hermes/runtime": {
+      "types": "./dist/providers/hermes/runtime.d.ts",
+      "import": "./dist/providers/hermes/runtime.js",
+      "default": "./dist/providers/hermes/runtime.js"
+    },
+    "./providers/openclaw/runtime": {
+      "types": "./dist/providers/openclaw/runtime.d.ts",
+      "import": "./dist/providers/openclaw/runtime.js",
+      "default": "./dist/providers/openclaw/runtime.js"
     },
     "./frameworks/react": {
       "types": "./dist/frameworks/react/index.d.ts",

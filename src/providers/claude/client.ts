@@ -4,6 +4,7 @@ import { apiKeyCredentials } from "../../core/http/credentials.js";
 import { HttpApiError } from "../../core/http/errors.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
+import { CLAUDE_RUNTIME_SUPPORT } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
@@ -70,7 +71,7 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       providerKind: "claude-sdk",
       protocolVersion: this.defaultHeaders["anthropic-version"] ?? null,
       auth: { type: "api-key", required: true },
-      supports: { runs: true, streaming: true, batch: true },
+      supports: CLAUDE_RUNTIME_SUPPORT,
     };
   }
 
@@ -217,4 +218,3 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
   }
 
 }
-

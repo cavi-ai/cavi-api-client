@@ -3,6 +3,7 @@ import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/typ
 import { apiKeyCredentials } from "../../core/http/credentials.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
+import { GEMINI_RUNTIME_SUPPORT } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
@@ -79,7 +80,7 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
     return {
       providerKind: "gemini",
       auth: { type: "api-key", required: true },
-      supports: { runs: true, streaming: true, batch: true },
+      supports: GEMINI_RUNTIME_SUPPORT,
     };
   }
 
