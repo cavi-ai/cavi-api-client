@@ -254,48 +254,9 @@ The plugin alias paths mirror the operator paths under
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |
-| `portal.dashboard` | GET | `/api/plugins/portal/:portal/dashboard` | Generic portal dashboard aggregate. |
+| `portal.dashboard` | GET | `/api/plugins/portal/:portal/dashboard` | Generic portal dashboard aggregate. The `:portal` identity is supplied by the host team manifest and resolved via `resolvePortalApiPath`; the package hardcodes no portal or persona names. |
 | `portal.config` | POST | `/api/plugins/portal/:portal/config` | Generic portal config patch endpoint. |
-| `martina.dashboard` | GET | `/api/plugins/portal/martina/dashboard` | Martina portal dashboard. |
-| `martina.config` | GET/POST | `/api/plugins/portal/martina/config` | Martina portal config read or patch. |
-| `martina.runs` | GET | `/api/plugins/portal/martina/runs` | Martina run inventory. |
-| `martina.run` | GET | `/api/plugins/portal/martina/runs/:runId` | Martina run detail. |
-| `martina.doctor` | GET | `/api/plugins/portal/martina/doctor` | Martina diagnostics. |
-| `martina.queuesMove` | POST | `/api/plugins/portal/martina/queues/move` | Move Martina queue entries. |
-| `martina.artifactFile` | GET | `/api/plugins/portal/martina/artifacts/:bucket/:name` | Fetch a Martina artifact file. |
-| `martina.artifactPreview` | GET | `/api/plugins/portal/martina/artifacts/:bucket/:name/preview` | Fetch a Martina artifact preview. |
-| `scout.dashboard` | GET | `/api/plugins/portal/scout/dashboard` | Scout portal dashboard. |
-| `angela.dashboard` | GET | `/api/plugins/portal/angela/dashboard` | Angela portal dashboard. |
-| `machine.dashboard` | GET | `/api/plugins/machine/dashboard` | Machine portal aggregate snapshot. |
-| `machine.inbox` | POST | `/api/plugins/machine/inbox` | Machine-owned media/action upload route. |
-| `machine.media` | GET | `/api/plugins/machine/media?name=:filename` | Authenticated machine media fetch endpoint. |
-| `machine.tts` | POST | `/api/plugins/machine/tts` | Text-to-speech render path. |
-| `machine.memeJobs` | GET | `/api/plugins/machine/meme/jobs` | Meme job listing or mutation surface. |
-| `machine.ttsProviders` | GET | `/api/plugins/machine/tts/providers` | Voice/TTS provider inventory. |
-| `machine.comedyRun` | POST | `/v1/runs` | Machine comedy action using the gateway run fallback. |
 | `portalMemory.snapshot` | GET | `/api/plugins/portal-memory/teams/:teamSlug/members/:memberId/:memoryKey` | Portal memory snapshot endpoint. |
-
-## Front Door And Trading
-
-| Key | Method | Path | Description |
-| --- | --- | --- | --- |
-| `frontDoor.dashboard` | GET | `/api/plugins/front-door/dashboard` | Front Door dashboard endpoint. |
-| `frontDoor.ideaList` | GET | `/api/plugins/front-door/ideas` | Front Door idea list endpoint. |
-| `frontDoor.ideaCreate` | POST | `/api/plugins/front-door/ideas` | Front Door idea creation endpoint. |
-| `frontDoor.ideaDetail` | GET | `/api/plugins/front-door/ideas/:id` | Front Door idea detail endpoint. |
-| `frontDoor.ideaPatch` | PATCH | `/api/plugins/front-door/ideas/:id` | Front Door idea patch endpoint. |
-| `frontDoor.ideaPromote` | POST | `/api/plugins/front-door/ideas/:id/promote` | Front Door idea promotion endpoint. |
-| `frontDoor.projectList` | GET | `/api/plugins/front-door/projects` | Front Door project list endpoint. |
-| `frontDoor.projectDetail` | GET | `/api/plugins/front-door/projects/:id` | Front Door project detail endpoint. |
-| `frontDoor.articleList` | GET | `/api/plugins/front-door/articles` | Front Door article list endpoint. |
-| `frontDoor.articleCreate` | POST | `/api/plugins/front-door/articles` | Front Door article creation endpoint. |
-| `frontDoor.memoryList` | GET | `/api/plugins/front-door/memory` | Front Door memory list endpoint. |
-| `frontDoor.memoryCreate` | POST | `/api/plugins/front-door/memory` | Front Door memory creation endpoint. |
-| `frontDoor.inboxUpload` | POST | `/api/plugins/front-door/inbox` | Front Door inbox upload endpoint. |
-| `trading.dashboard` | GET | `/api/plugins/trading/dashboard` | Trading workspace dashboard endpoint. |
-| `trading.researchPackets` | GET | `/api/plugins/trading/research-packets` | Trading research packet endpoint. |
-| `trading.sourceRegistry` | GET | `/api/plugins/trading/source-registry` | Trading source registry endpoint. |
-| `wuTang.githubProxyWildcard` | GET | `/api/plugins/wu-tang/github/*` | GitHub proxy route pattern; keep credentials server-side. |
 
 ## Library APIs
 
@@ -346,6 +307,11 @@ Native Workboard methods are WebSocket RPC messages, not HTTP routes. This
 package mirrors the upstream OpenClaw method names and card field enums so
 clients can call them without hand-built strings; OpenClaw remains the runtime
 contract owner.
+
+The provider-agnostic `KanbanClient` (`@cavi-ai/api-client/core/kanban`) is the
+capability interface over these methods: the OpenClaw Workboard adapter maps its
+canonical card/status types onto the RPC calls below, and any `supports.kanban`
+provider is held to the `@cavi-ai/api-client/testing` kanban conformance kit.
 
 | Group | Method | Description |
 | --- | --- | --- |
