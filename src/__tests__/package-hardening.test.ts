@@ -18,6 +18,7 @@ import {
   resolveGatewayProviderKind,
   resolvePath,
   resolveRepoRoot,
+  resolveSurfaceContractPath,
   type GatewayProviderModule,
 } from "../index";
 import {
@@ -131,10 +132,40 @@ const API_URL_LITERAL_RE = new RegExp(
   "u",
 );
 const CAVI_CONTROL_ROUTE_LITERAL_RE = /(["'`])\/cavi-control\/api(?:\/|["'`])/u;
-const SURFACE_FIRST_CANONICAL_PATH_RE = /canonicalPath:\s*(?:\([^)]*\)\s*=>\s*)?(["'`])\/(?:cavi-control|library)\/api(?:\/|[?]|["'`])/u;
 const CAVI_EXTENSION_ROUTE_RE = /(?:cavi-control|portal-memory|\/library\/api|extensions\/cavi)/u;
 // Regression net: no CAVI fleet-agent slug may reappear baked into the package.
 const FLEET_SLUG_RE = /\b(?:martina|scout|angela|machine|trading|wu-tang|front-door|deb|tony|method-man)\b/u;
+// PLAN-DEVIATION: the plan's draft regex was `api|v1|health` only, on the
+// (incorrect) assumption that every contract resolves under one of those
+// roots. In reality, CAVI_SURFACE_CONTRACTS' `cavi.operator.*` entries
+// canonically resolve under `/cavi-control/api/operator/...` — see
+// `CAVI_CONTROL_OPERATOR_API_BASE` in extensions/cavi/contracts/paths.ts,
+// whose own comment documents this as the deliberate canonical mount (with
+// `/api/plugins/cavi-control/operator` kept only as a fallback alias). That
+// root is already part of this file's own established ROUTE_ROOTS allowlist
+// above, so it's added here too rather than flagging real, intentional
+// production routes as violations.
+const API_FIRST_SURFACE_PATH_RE = /^\/(?:api|v1|health|cavi-control)(?:\/|$)/u;
+// One shared params bag covering every path param name used across both
+// SURFACE_CONTRACTS maps (global + CAVI), so every contract's `path(...)`
+// can be resolved for real instead of regexing source text for a field
+// ("canonicalPath") that doesn't exist.
+const SAMPLE_SURFACE_PARAMS: Record<string, string> = {
+  kind: "audio",
+  jobId: "job-1",
+  assetId: "asset-1",
+  vaultId: "vault-1",
+  path: "notes/example.md",
+  teamId: "team-1",
+  workspacePath: "src/index.ts",
+  actionId: "action-1",
+  agentId: "agent-1",
+  portal: "portal-1",
+  taskId: "task-1",
+  teamSlug: "team-1",
+  memberId: "member-1",
+  memoryKey: "memory-1",
+};
 const PATH_OWNER_RE = /(?:^|[-_/])paths\.ts$/u;
 const PATH_COMPAT_FILES = new Set<string>();
 const CONTRACT_OWNER_FILES = new Set([
@@ -411,7 +442,20 @@ describe("package hardening", () => {
   });
 
   it("keeps canonical surface contracts api-first", () => {
-    expect(read(SURFACE_PATHS)).not.toMatch(SURFACE_FIRST_CANONICAL_PATH_RE);
+    // Executes every contract's real path(...) resolver — global SURFACE_CONTRACTS
+    // (../contracts/surfaces.ts) and CAVI_SURFACE_CONTRACTS (../extensions/cavi/
+    // contracts/surfaces.ts) — instead of regexing source text for a field name
+    // ("canonicalPath") that never existed on SurfaceContract (the field is `path`).
+    const allContracts = { ...SURFACE_CONTRACTS, ...CAVI_SURFACE_CONTRACTS };
+    const offenders = Object.entries(allContracts)
+      .map(([key, contract]) => ({
+        key,
+        resolved: resolveSurfaceContractPath(contract, SAMPLE_SURFACE_PARAMS),
+      }))
+      .filter(({ resolved }) => !API_FIRST_SURFACE_PATH_RE.test(resolved))
+      .map(({ key, resolved }) => `${key} -> ${resolved}`);
+
+    expect(offenders).toEqual([]);
   });
 
   it("keeps stale legacy source paths out of src", () => {
@@ -553,6 +597,21 @@ describe("package hardening", () => {
       .filter((filePath) => /\.tsx?$/u.test(filePath) && !/\.test\.tsx?$/u.test(filePath))
       .filter((filePath) => !PROVIDER_EXTENSION_IMPORT_ALLOWLIST.has(rel(filePath)))
       .filter((filePath) => /from\s+["'][^"']*extensions\/cavi/u.test(read(filePath)))
+      .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps contracts independent from providers and extensions", () => {
+    // contracts/ sits below extensions/cavi and providers/ in the dependency
+    // direction (core -> contracts -> extensions/cavi -> providers/frameworks).
+    // A contracts/** file must never import upward. Mirrors the core-gateway
+    // and providers import-direction tests above.
+    const offenders = walkFiles(path.join(SRC_ROOT, "contracts"))
+      .filter((filePath) => {
+        const source = read(filePath);
+        return /from\s+["'][^"']*(?:(?:\.\.\/)+providers\/|(?:\.\.\/)+extensions\/)/u.test(source);
+      })
       .map(rel);
 
     expect(offenders).toEqual([]);
