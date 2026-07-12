@@ -52,6 +52,19 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
 - `normalizeRuntimeUsage(raw, providerKind)` — best-effort normalizer for a flat native record.
 - `TokenPrices` + `estimateUsageCost(usage, prices)` — pluggable cost; no price table ships.
 
+## Runtime Errors
+
+Exported from the root.
+
+- `RuntimeErrorMetadata` records the provider, transport, operation, retryability,
+  and optional retry delay, HTTP status, and provider code for a runtime failure.
+- `ApiClientError` accepts optional `runtime` metadata, retrievable with
+  `getRuntimeErrorMetadata(error)`.
+- `ApiClientErrorCode` includes provider-neutral capability, permission, request,
+  conflict, rate-limit, transport, protocol, and overload failure codes.
+- `serializeError(error)` retains its stable `name`, `message`, `type`, and `code`
+  shape; runtime metadata is intentionally excluded.
+
 ## Runtime Control-Plane Contracts
 
 Exported from the root and `@cavi-ai/api-client/core/runtime`.

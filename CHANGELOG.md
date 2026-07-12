@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Provider-neutral runtime error codes and optional typed runtime metadata on
+  `ApiClientError`, with a root-exported metadata getter and unchanged error
+  serialization.
 - Provider-neutral runtime control-plane metadata and pagination contracts,
   plus typed HTTP, SSE, WebSocket, JSON-RPC, stdio, and Unix-socket transport
   capabilities with stable-transport detection.

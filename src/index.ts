@@ -15,6 +15,7 @@ export {
   getErrorMessage,
   getErrorStatus,
   getErrorType,
+  getRuntimeErrorMetadata,
   isAbortError,
   isAuthError,
   isEndpointNotFoundError,
@@ -22,6 +23,7 @@ export {
   stringifyUnknownError,
   toError,
   type ApiClientErrorOptions,
+  type RuntimeErrorMetadata,
   type SerializedApiClientError,
 } from "./core/errors.js";
 export {
