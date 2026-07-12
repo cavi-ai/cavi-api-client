@@ -107,6 +107,14 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
 - `RuntimeControlPlane` — aggregates declared transports and optional focused
   clients for sessions, models, usage, tasks, workspaces, authentication status,
   and events.
+- `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
+  implemented control-plane transports and focused modules; declarations do not
+  add those methods to `RuntimeClient`.
+- `RUNTIME_PROVIDER_CAPABILITY_MATRIX` and
+  `getRuntimeProviderCapabilityRow(provider)` — frozen, provider-by-provider
+  records of existing runtime surfaces, implemented transports, and separately
+  declared control-plane modules. The foundation matrix intentionally declares
+  no control-plane modules until provider adapters exist.
 
 ## Runtime Providers
 

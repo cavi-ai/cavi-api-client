@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authentication status, usage and cost, tasks, and workspaces.
 - Normalized runtime control-plane event contracts, continuity inspection, event
   subscriptions, and the aggregate `RuntimeControlPlane` provider surface.
+- Optional provider control-plane declarations and factories, plus a frozen
+  capability matrix for all six shipped provider entries. The matrix records
+  existing runtime and transport facts without advertising control-plane
+  modules before adapters exist.
 - `@cavi-ai/api-client/core/kanban` — the first unified capability interface: a
   provider-agnostic `KanbanClient` with canonical card types that preserve the
   backend's native status alongside a canonical status category. Ships an
