@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Provider-neutral runtime control-plane metadata and pagination contracts,
+  plus typed HTTP, SSE, WebSocket, JSON-RPC, stdio, and Unix-socket transport
+  capabilities with stable-transport detection.
 - `@cavi-ai/api-client/core/kanban` — the first unified capability interface: a
   provider-agnostic `KanbanClient` with canonical card types that preserve the
   backend's native status alongside a canonical status category. Ships an
