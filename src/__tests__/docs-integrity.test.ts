@@ -120,6 +120,22 @@ describe("docs integrity", () => {
     ).toEqual([]);
   });
 
+  it("API.md documents the runtime control-plane foundation without advertising adapters", () => {
+    const apiMd = read("API.md");
+
+    for (const publicContract of [
+      "RuntimeControlPlane",
+      "RuntimeEventClient",
+      "RuntimeTransportCapabilities",
+      "RuntimeAuthStatus",
+    ]) {
+      expect(apiMd, `API.md is missing ${publicContract}`).toContain(publicContract);
+    }
+    expect(apiMd).toContain(
+      "All provider control-plane module declarations are initially empty until provider adapter plans land.",
+    );
+  });
+
   it("ships compile-checked consumer journeys", () => {
     for (const file of [
       "runtime-node.ts",
@@ -127,6 +143,7 @@ describe("docs integrity", () => {
       "runtime-registry.ts",
       "custom-provider.ts",
       "runtime-capabilities.ts",
+      "custom-runtime-provider.ts",
       "react-gateway.tsx",
       "narrow-imports.ts",
     ]) {

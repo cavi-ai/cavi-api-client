@@ -89,6 +89,28 @@ into a single-provider client. The shared conformance kit
 (`src/__tests__/support/runtime-conformance.ts`) is the executable contract every
 provider must pass.
 
+## Execution and Control-Plane Separation
+
+The execution plane remains `RuntimeClient`: runs, run status, cancellation,
+streaming, and optional batch processing. `RuntimeControlPlane` is an additive,
+optional plane for provider discovery and administration. It groups six focused
+clients—sessions, models, usage, tasks, workspace, and read-only authentication
+status—alongside normalized control-plane events and independently declared
+transport capabilities.
+
+Provider declarations are stable-first and truthful: an absent or experimental
+module is unsupported, and a factory may return only modules it declares. The
+initial built-in provider declarations are empty because this release ships the
+contract foundation and conformance machinery, not provider adapters. The frozen
+root capability matrix remains supported and records that absence explicitly.
+
+Authentication status is metadata, never credential transport; secret-bearing
+fields such as tokens, API keys, passwords, cookies, and authorization headers
+are prohibited. Hosted Codex using OpenAI Responses and the planned
+`codex-app-server` JSON-RPC integration are separate provider identities and will
+be designed as separate adapters. Existing execution-plane consumers require no
+migration.
+
 ## Route Ownership
 
 API route literals are centralized:

@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runner-neutral control-plane conformance inspection through the testing
   subpath, with curated root and core runtime contract exports that preserve the
   supported root capability-matrix surface without leaking provider adapters.
+- Compile-checked control-plane provider guidance documenting the additive
+  execution/control-plane split, stable-first declarations, secret-safe auth
+  status, and the truthful adapter-free initial capability matrix.
 - `@cavi-ai/api-client/core/kanban` — the first unified capability interface: a
   provider-agnostic `KanbanClient` with canonical card types that preserve the
   backend's native status alongside a canonical status category. Ships an
