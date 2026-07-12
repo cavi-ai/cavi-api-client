@@ -52,6 +52,27 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
 - `normalizeRuntimeUsage(raw, providerKind)` — best-effort normalizer for a flat native record.
 - `TokenPrices` + `estimateUsageCost(usage, prices)` — pluggable cost; no price table ships.
 
+## Runtime Control-Plane Contracts
+
+Exported from the root and `@cavi-ai/api-client/core/runtime`.
+
+- `RuntimeProviderStability` — provider contract stability: `stable` or
+  `experimental`.
+- `RuntimeControlPlaneSource` — identifies a provider operation by its
+  transport (`http`, `sse`, `websocket`, `json-rpc`, `stdio`, or
+  `unix-socket`) and method name.
+- `RuntimeControlPlaneMetadata` — provider, stability, source, and optional
+  lossless `providerData` metadata for a control-plane result.
+- `RuntimePage<T>` — a readonly data page with an optional continuation cursor.
+- `RUNTIME_TRANSPORT_KINDS` and `RuntimeTransportKind` — the supported transport
+  vocabulary.
+- `RuntimeTransportCapability` and `RuntimeTransportCapabilities` — describe
+  declared transport stability, authentication, reconnect, replay, and
+  cancellation capabilities.
+- `runtimeTransportSupports(capabilities, kind)` — returns `true` only when the
+  requested transport is declared with `stable` stability; undeclared and
+  experimental transports return `false`.
+
 ## Runtime Providers
 
 These are runtime-only providers reached via their subpaths (`./providers/claude`,
