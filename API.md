@@ -72,6 +72,18 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
 - `runtimeTransportSupports(capabilities, kind)` — returns `true` only when the
   requested transport is declared with `stable` stability; undeclared and
   experimental transports return `false`.
+- `SessionClient` and `RuntimeSessionSummary` — list, inspect, and optionally
+  cancel provider sessions while retaining canonical lifecycle and source metadata.
+- `ModelCatalogClient`, `RuntimeModelDescriptor`, `AuthStatusClient`, and
+  `RuntimeAuthStatus` — read-only model availability and secret-safe authentication
+  status contracts.
+- `UsageClient`, `RuntimeUsageQuery`, and `RuntimeUsageSummary` — normalized token
+  usage with cost availability that distinguishes available, estimated, and
+  unavailable monetary values.
+- `TaskClient` and `RuntimeTaskSummary` — list, inspect, and optionally cancel
+  provider tasks with associated run, session, and thread references.
+- `WorkspaceClient` and `RuntimeWorkspaceDescriptor` — read-only workspace
+  discovery without introducing arbitrary filesystem access.
 
 ## Runtime Providers
 
