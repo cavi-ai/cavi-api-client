@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capabilities with stable-transport detection.
 - Focused provider-neutral control-plane contracts for sessions, model catalogs,
   authentication status, usage and cost, tasks, and workspaces.
+- Normalized runtime control-plane event contracts, continuity inspection, event
+  subscriptions, and the aggregate `RuntimeControlPlane` provider surface.
 - `@cavi-ai/api-client/core/kanban` — the first unified capability interface: a
   provider-agnostic `KanbanClient` with canonical card types that preserve the
   backend's native status alongside a canonical status category. Ships an

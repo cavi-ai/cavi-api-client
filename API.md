@@ -84,6 +84,16 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
   provider tasks with associated run, session, and thread references.
 - `WorkspaceClient` and `RuntimeWorkspaceDescriptor` — read-only workspace
   discovery without introducing arbitrary filesystem access.
+- `RUNTIME_CONTROL_PLANE_EVENT_NAMES`, `RuntimeControlPlaneEvent`, and
+  `RuntimeEventClient` — a normalized event vocabulary and subscription surface
+  covering operation lifecycle, deltas, tools, approvals, usage, and stream
+  continuity without changing the existing run-stream contract.
+- `inspectRuntimeEventSequence(events)` — reports terminal-event counts and
+  explicit stream gaps; a sequence is valid only when it has exactly one terminal
+  event.
+- `RuntimeControlPlane` — aggregates declared transports and optional focused
+  clients for sessions, models, usage, tasks, workspaces, authentication status,
+  and events.
 
 ## Runtime Providers
 
