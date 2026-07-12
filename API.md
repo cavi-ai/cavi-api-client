@@ -111,10 +111,15 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
   implemented control-plane transports and focused modules; declarations do not
   add those methods to `RuntimeClient`.
 - `RUNTIME_PROVIDER_CAPABILITY_MATRIX` and
-  `getRuntimeProviderCapabilityRow(provider)` — frozen, provider-by-provider
+  `getRuntimeProviderCapabilityRow(provider)` — available from provider matrix
+  modules as frozen, provider-by-provider
   records of existing runtime surfaces, implemented transports, and separately
   declared control-plane modules. The foundation matrix intentionally declares
   no control-plane modules until provider adapters exist.
+- `inspectRuntimeControlPlaneConformance(fixture)` — exported from
+  `@cavi-ai/api-client/testing`; validates that a provider's control-plane
+  factory, declared transports, and declared focused modules match its exposed
+  runner-neutral control-plane object, and rejects undeclared exposed modules.
 
 ## Runtime Providers
 
