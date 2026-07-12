@@ -42,7 +42,24 @@ describe("runtime event sequence", () => {
   });
 
   it("exports the complete normalized event vocabulary and aggregate", () => {
-    expect(RUNTIME_CONTROL_PLANE_EVENT_NAMES).toHaveLength(16);
+    expect(RUNTIME_CONTROL_PLANE_EVENT_NAMES).toEqual([
+      "operation.started",
+      "operation.updated",
+      "message.delta",
+      "reasoning.delta",
+      "tool.started",
+      "tool.progress",
+      "tool.completed",
+      "approval.requested",
+      "approval.resolved",
+      "usage.updated",
+      "stream.reconnected",
+      "stream.gap",
+      "operation.completed",
+      "operation.failed",
+      "operation.cancelled",
+      "operation.interrupted",
+    ]);
     expectTypeOf<RuntimeControlPlane>().toBeObject();
   });
 });

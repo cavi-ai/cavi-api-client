@@ -96,7 +96,23 @@ export function getRuntimeErrorMetadata(error: unknown): RuntimeErrorMetadata | 
     return undefined;
   }
   const runtime = error.runtime;
-  return isRecord(runtime) ? runtime as RuntimeErrorMetadata : undefined;
+  if (!isRecord(runtime) || Array.isArray(runtime)) {
+    return undefined;
+  }
+  const { provider, transport, operation, retryable, retryAfterMs, status, providerCode } = runtime;
+  if (
+    typeof provider !== "string" || !provider.trim() ||
+    typeof transport !== "string" || !transport.trim() ||
+    typeof operation !== "string" || !operation.trim() ||
+    typeof retryable !== "boolean" ||
+    (retryAfterMs !== undefined &&
+      (typeof retryAfterMs !== "number" || !Number.isFinite(retryAfterMs))) ||
+    (status !== undefined && (typeof status !== "number" || !Number.isFinite(status))) ||
+    (providerCode !== undefined && typeof providerCode !== "string")
+  ) {
+    return undefined;
+  }
+  return runtime as RuntimeErrorMetadata;
 }
 
 export function stringifyUnknownError(error: unknown): string {

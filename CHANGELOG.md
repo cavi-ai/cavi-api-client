@@ -39,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conformance kit (`inspectKanbanConformance`) that any `supports.kanban`
   provider must pass.
 
+### Fixed
+
+- Runtime error metadata now validates its required and optional fields before
+  narrowing unknown values, while preserving the stable serialized error shape.
+- Control-plane conformance now rejects both missing declared transports and
+  undeclared exposed transports, and the provider matrix no longer represents
+  OpenClaw's WebSocket RPC encoding as a separate transport or marks Hermes
+  WebSocket support stable without sufficient implementation evidence.
+
 ## [0.11.0] - 2026-07-11
 
 ### Added

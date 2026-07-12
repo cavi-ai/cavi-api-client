@@ -53,6 +53,50 @@ describe("inspectRuntimeControlPlaneConformance", () => {
     );
   });
 
+  it("fails when the control plane exposes an undeclared transport", async () => {
+    const report = await inspectRuntimeControlPlaneConformance({
+      module: {
+        kind: "acme",
+        controlPlane: { transports: {} },
+        createClient,
+        createControlPlane: () => ({
+          transports: {
+            websocket: { kind: "websocket", stability: "stable", authenticated: true },
+          },
+        }),
+      },
+      clientOptions,
+    });
+
+    expect(report.checks).toContainEqual(
+      expect.objectContaining({ id: "transport:websocket", status: "fail" }),
+    );
+  });
+
+  it("fails when exposed transport capabilities differ from the declaration", async () => {
+    const report = await inspectRuntimeControlPlaneConformance({
+      module: {
+        kind: "acme",
+        controlPlane: {
+          transports: {
+            http: { kind: "http", stability: "stable", authenticated: true },
+          },
+        },
+        createClient,
+        createControlPlane: () => ({
+          transports: {
+            http: { kind: "http", stability: "experimental", authenticated: true },
+          },
+        }),
+      },
+      clientOptions,
+    });
+
+    expect(report.checks).toContainEqual(
+      expect.objectContaining({ id: "transport:http", status: "fail" }),
+    );
+  });
+
   it("fails when a module advertises sessions without a sessions client", async () => {
     const report = await inspectRuntimeControlPlaneConformance({
       module: {
