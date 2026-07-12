@@ -5,3 +5,5 @@ export * from "./models.js";
 export * from "./usage.js";
 export * from "./tasks.js";
 export * from "./workspace.js";
+export * from "./events.js";
+export * from "./control-plane.js";
