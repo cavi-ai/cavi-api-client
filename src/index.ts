@@ -89,6 +89,41 @@ export {
 } from "./core/runtime/batch.js";
 export { unsupportedRuntimeSurface, type RuntimeClient } from "./core/runtime/client.js";
 export {
+  RUNTIME_CONTROL_PLANE_EVENT_NAMES,
+  RUNTIME_TRANSPORT_KINDS,
+  inspectRuntimeEventSequence,
+  runtimeTransportSupports,
+  type AuthStatusClient,
+  type ModelCatalogClient,
+  type RuntimeAuthStatus,
+  type RuntimeControlPlane,
+  type RuntimeControlPlaneEvent,
+  type RuntimeControlPlaneEventName,
+  type RuntimeControlPlaneMetadata,
+  type RuntimeControlPlaneSource,
+  type RuntimeEventClient,
+  type RuntimeEventSequenceInspection,
+  type RuntimeEventSubscription,
+  type RuntimeModelDescriptor,
+  type RuntimePage,
+  type RuntimeProviderStability,
+  type RuntimeSessionState,
+  type RuntimeSessionSummary,
+  type RuntimeTaskState,
+  type RuntimeTaskSummary,
+  type RuntimeTransportCapabilities,
+  type RuntimeTransportCapability,
+  type RuntimeTransportKind,
+  type RuntimeUsageCost,
+  type RuntimeUsageQuery,
+  type RuntimeUsageSummary,
+  type RuntimeWorkspaceDescriptor,
+  type SessionClient,
+  type TaskClient,
+  type UsageClient,
+  type WorkspaceClient,
+} from "./core/runtime/control-plane/index.js";
+export {
   createRuntimeClient,
   normalizeRuntimeProviderToken,
   type CreateRuntimeClientOptions,
@@ -96,12 +131,6 @@ export {
   type RuntimeClientOptions,
   type RuntimeProviderRegistry,
 } from "./core/runtime/providers/index.js";
-export {
-  RUNTIME_PROVIDER_CAPABILITY_MATRIX,
-  getRuntimeProviderCapabilityRow,
-  type RuntimeProviderCapabilityMatrixKey,
-  type RuntimeProviderCapabilityRow,
-} from "./providers/capability-matrix.js";
 export {
   checkProtocolVersion,
   assertProtocolVersion,

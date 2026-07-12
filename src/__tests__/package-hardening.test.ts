@@ -936,6 +936,17 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("curates runner-neutral control-plane exports without leaking implementation internals", () => {
+    const rootIndex = read(path.join(SRC_ROOT, "index.ts"));
+    const testingIndex = read(path.join(SRC_ROOT, "testing", "index.ts"));
+
+    expect(rootIndex).toContain('from "./core/runtime/control-plane/index.js"');
+    expect(testingIndex).toContain('export * from "./runtime-control-plane-conformance.js"');
+    expect(rootIndex).not.toContain('from "./providers/capability-matrix.js"');
+    expect(rootIndex).not.toMatch(/(?:CLAUDE|CODEX|GEMINI|HERMES|OPENCLAW)_PROVIDER_MODULE/u);
+    expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
+  });
+
   it("builds only canonical and compat folders", () => {
     const tsconfig = JSON.parse(read(TS_CONFIG)) as {
       include?: string[];
