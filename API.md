@@ -69,6 +69,12 @@ Exported from the root.
 
 Exported from the root and `@cavi-ai/api-client/core/runtime`.
 
+Runtime execution (`RuntimeClient`) remains the universal run and stream contract.
+The control plane is a separate, optional discovery and administration surface:
+providers expose only the focused modules they actually implement. Consumers
+should prefer stable transport declarations and treat absent or experimental
+modules as unsupported instead of assuming a fallback exists.
+
 - `RuntimeProviderStability` — provider contract stability: `stable` or
   `experimental`.
 - `RuntimeControlPlaneSource` — identifies a provider operation by its
@@ -89,7 +95,8 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
   cancel provider sessions while retaining canonical lifecycle and source metadata.
 - `ModelCatalogClient`, `RuntimeModelDescriptor`, `AuthStatusClient`, and
   `RuntimeAuthStatus` — read-only model availability and secret-safe authentication
-  status contracts.
+  status contracts. Authentication status must never expose tokens, API keys,
+  passwords, cookies, authorization headers, or other credential material.
 - `UsageClient`, `RuntimeUsageQuery`, and `RuntimeUsageSummary` — normalized token
   usage with cost availability that distinguishes available, estimated, and
   unavailable monetary values.
@@ -122,6 +129,19 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
   `@cavi-ai/api-client/testing`; validates that a provider's control-plane
   factory, declared transports, and declared focused modules match its exposed
   runner-neutral control-plane object, and rejects undeclared exposed modules.
+
+All provider control-plane module declarations are initially empty until provider adapter plans land.
+The six focused clients are sessions, models, usage, tasks, workspace, and
+authentication status; `RuntimeEventClient` is the event subscription contract,
+and `RuntimeTransportCapabilities` declares the available transports separately.
+The contract foundation is shipped, but no built-in provider control-plane adapter
+is advertised yet. In particular, hosted Codex over OpenAI Responses and a future
+`codex-app-server` JSON-RPC provider are distinct identities and must not be
+presented as one adapter.
+
+Existing consumers require no migration: `RuntimeClient`, `GatewayClient`, and
+all established imports retain their behavior. Adopt the control plane only when
+a provider module truthfully declares and returns the required optional modules.
 
 ## Runtime Providers
 
