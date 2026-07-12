@@ -94,6 +94,30 @@ describe("core error helpers", () => {
     });
   });
 
+  it("rejects malformed runtime error metadata", () => {
+    const valid = {
+      provider: "codex-app-server",
+      transport: "json-rpc",
+      operation: "turn/start",
+      retryable: false,
+    };
+    const malformed = [
+      [],
+      {},
+      { ...valid, provider: " " },
+      { ...valid, transport: 1 },
+      { ...valid, operation: "" },
+      { ...valid, retryable: "false" },
+      { ...valid, retryAfterMs: Number.NaN },
+      { ...valid, status: Number.POSITIVE_INFINITY },
+      { ...valid, providerCode: 429 },
+    ];
+
+    for (const runtime of malformed) {
+      expect(getRuntimeErrorMetadata({ runtime })).toBeUndefined();
+    }
+  });
+
   it("recognizes abort-shaped errors", () => {
     expect(isAbortError(new DOMException("cancelled", "AbortError"))).toBe(true);
     expect(

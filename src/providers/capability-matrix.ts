@@ -23,10 +23,11 @@ const websocket = Object.freeze({
   authenticated: true,
   reconnect: true,
 } as const);
-const jsonRpc = Object.freeze({
-  kind: "json-rpc",
-  stability: "stable",
+const experimentalWebsocket = Object.freeze({
+  kind: "websocket",
+  stability: "experimental",
   authenticated: true,
+  reconnect: true,
 } as const);
 
 function row(
@@ -58,12 +59,11 @@ export const RUNTIME_PROVIDER_CAPABILITY_MATRIX = Object.freeze({
   "claude-managed-agents": row({ runs: true, streaming: true }, { http, sse }),
   codex: row({ runs: true, streaming: true, batch: true }, { http, sse }),
   gemini: row({ runs: true, streaming: true, batch: true }, { http, sse }),
-  hermes: row(gatewayRuntime, { http, sse, websocket }),
+  hermes: row(gatewayRuntime, { http, sse, websocket: experimentalWebsocket }),
   openclaw: row({ ...gatewayRuntime, media: false, wiki: false }, {
     http,
     sse,
     websocket,
-    "json-rpc": jsonRpc,
   }),
 });
 

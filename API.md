@@ -59,7 +59,8 @@ Exported from the root.
 - `RuntimeErrorMetadata` records the provider, transport, operation, retryability,
   and optional retry delay, HTTP status, and provider code for a runtime failure.
 - `ApiClientError` accepts optional `runtime` metadata, retrievable with
-  `getRuntimeErrorMetadata(error)`.
+  `getRuntimeErrorMetadata(error)`. The getter returns `undefined` for malformed
+  metadata instead of treating arbitrary object or array values as trusted data.
 - `ApiClientErrorCode` includes provider-neutral capability, permission, request,
   conflict, rate-limit, transport, protocol, and overload failure codes.
 - `serializeError(error)` retains its stable `name`, `message`, `type`, and `code`

@@ -22,18 +22,34 @@ describe("runtime provider capability matrix", () => {
     }
   });
 
-  it("records runtime surfaces and implemented transports separately", () => {
-    expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX.claude).toMatchObject({
-      runtime: { runs: true, streaming: true, batch: true },
-      transports: { http: expect.any(Object), sse: expect.any(Object) },
-    });
-    expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX.openclaw).toMatchObject({
-      runtime: { runs: true, streaming: true, media: false, wiki: false },
-      transports: {
-        http: expect.any(Object),
-        sse: expect.any(Object),
-        websocket: expect.any(Object),
-        "json-rpc": expect.any(Object),
+  it("records exact implemented runtime surfaces and transports for every provider", () => {
+    const http = { kind: "http", stability: "stable", authenticated: true };
+    const sse = {
+      kind: "sse", stability: "stable", authenticated: true,
+      reconnect: false, replay: false, cancellation: true,
+    };
+    const websocket = {
+      kind: "websocket", stability: "stable", authenticated: true, reconnect: true,
+    };
+    const gatewayRuntime = {
+      runs: true, streaming: true, teams: true, kanban: true, workspace: true,
+      operator: true, discourse: true, media: true, wiki: true, agentConfig: true,
+    };
+
+    expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX).toEqual({
+      claude: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
+      "claude-managed-agents": { runtime: { runs: true, streaming: true }, transports: { http, sse }, controlPlane: {} },
+      codex: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
+      gemini: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
+      hermes: {
+        runtime: gatewayRuntime,
+        transports: { http, sse, websocket: { ...websocket, stability: "experimental" } },
+        controlPlane: {},
+      },
+      openclaw: {
+        runtime: { ...gatewayRuntime, media: false, wiki: false },
+        transports: { http, sse, websocket },
+        controlPlane: {},
       },
     });
   });

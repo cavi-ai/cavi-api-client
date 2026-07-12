@@ -1,4 +1,5 @@
 import type { RuntimeControlPlane } from "../core/runtime/control-plane/index.js";
+import { RUNTIME_TRANSPORT_KINDS } from "../core/runtime/control-plane/index.js";
 import type {
   RuntimeClientOptions,
   RuntimeProviderModule,
@@ -46,14 +47,17 @@ export async function inspectRuntimeControlPlaneConformance(
 
   const controlPlane = factory?.(fixture.clientOptions);
   if (controlPlane !== undefined) {
-    for (const [kind, capability] of Object.entries(declaration?.transports ?? {})) {
-      const exposed = controlPlane.transports[kind as keyof typeof controlPlane.transports];
+    for (const kind of RUNTIME_TRANSPORT_KINDS) {
+      const capability = declaration?.transports?.[kind];
+      const exposed = controlPlane.transports[kind];
       add(
         `transport:${kind}`,
-        exposed !== undefined && Object.entries(capability).every(
-          ([key, value]) => exposed[key as keyof typeof exposed] === value,
-        ),
-        `Declared ${kind} transport capability must match the control-plane object.`,
+        capability === undefined
+          ? exposed === undefined
+          : exposed !== undefined && Object.entries(capability).every(
+            ([key, value]) => exposed[key as keyof typeof exposed] === value,
+          ),
+        `${kind} must be exposed if and only if it is declared, with matching capabilities.`,
       );
     }
 
