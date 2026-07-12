@@ -5,6 +5,7 @@ import {
   ApiClientErrorType,
   getErrorCode,
   getErrorMessage,
+  getRuntimeErrorMetadata,
   getErrorStatus,
   getErrorType,
   isAbortError,
@@ -62,6 +63,34 @@ describe("core error helpers", () => {
       message: "no gateway",
       type: ApiClientErrorType.Transport,
       code: ApiClientErrorCode.SocketClosed,
+    });
+  });
+
+  it("preserves safe runtime error metadata without changing serialization", () => {
+    const error = new ApiClientError("overloaded", {
+      type: ApiClientErrorType.Transport,
+      code: ApiClientErrorCode.ServerOverloaded,
+      runtime: {
+        provider: "codex-app-server",
+        transport: "json-rpc",
+        operation: "turn/start",
+        retryable: true,
+        retryAfterMs: 250,
+      },
+    });
+
+    expect(getRuntimeErrorMetadata(error)).toEqual({
+      provider: "codex-app-server",
+      transport: "json-rpc",
+      operation: "turn/start",
+      retryable: true,
+      retryAfterMs: 250,
+    });
+    expect(serializeError(error)).toEqual({
+      name: "ApiClientError",
+      message: "overloaded",
+      type: "transport",
+      code: "server_overloaded",
     });
   });
 
