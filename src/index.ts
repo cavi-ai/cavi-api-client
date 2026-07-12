@@ -92,9 +92,16 @@ export {
   createRuntimeClient,
   normalizeRuntimeProviderToken,
   type CreateRuntimeClientOptions,
+  type RuntimeControlPlaneDeclaration,
   type RuntimeClientOptions,
   type RuntimeProviderRegistry,
 } from "./core/runtime/providers/index.js";
+export {
+  RUNTIME_PROVIDER_CAPABILITY_MATRIX,
+  getRuntimeProviderCapabilityRow,
+  type RuntimeProviderCapabilityMatrixKey,
+  type RuntimeProviderCapabilityRow,
+} from "./providers/capability-matrix.js";
 export {
   checkProtocolVersion,
   assertProtocolVersion,
