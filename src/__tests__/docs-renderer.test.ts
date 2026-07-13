@@ -20,6 +20,33 @@ let manifest: import("../../scripts/docs/types.mjs").ReleaseManifest;
 let contracts: Awaited<ReturnType<typeof loadContracts>>;
 let navigation: unknown;
 
+const curatedPaths = [
+  "introduction/overview.md",
+  "introduction/installation.md",
+  "introduction/quickstart.md",
+  "concepts/runtime-client.md",
+  "concepts/providers-and-transports.md",
+  "concepts/routing-and-capabilities.md",
+  "concepts/compatibility.md",
+  "guides/requests.md",
+  "guides/streaming.md",
+  "guides/files.md",
+  "guides/batching.md",
+  "guides/manifests.md",
+  "guides/react.md",
+  "guides/testing.md",
+] as const;
+
+function navigationPaths(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(navigationPaths);
+  if (!value || typeof value !== "object") return [];
+  const entry = value as Record<string, unknown>;
+  return [
+    ...(typeof entry.path === "string" ? [entry.path] : []),
+    ...Object.values(entry).flatMap(navigationPaths),
+  ];
+}
+
 beforeAll(async () => {
   manifest = JSON.parse(
     await readFile("docs/api-client/source/releases/0.11.0-manifest.json", "utf8"),
@@ -66,6 +93,34 @@ describe("renderDocumentation", () => {
     expect(() => validateRenderedDocumentation(output, manifest)).not.toThrow();
     for (const releaseExport of manifest.exports) {
       expect(output.has(`reference/${subpathSlug(releaseExport.subpath)}.md`)).toBe(true);
+    }
+  });
+
+  it("resolves every curated navigation page exactly once", () => {
+    const output = render();
+    const paths = navigationPaths(navigation);
+
+    for (const pagePath of paths) {
+      expect(output.has(pagePath), `${pagePath} must resolve from navigation`).toBe(true);
+    }
+
+    for (const pagePath of curatedPaths) {
+      expect(
+        paths.filter((candidate) => candidate === pagePath),
+        `${pagePath} must occur exactly once in navigation`,
+      ).toHaveLength(1);
+      expect(output.has(pagePath), `${pagePath} must resolve to a curated page`).toBe(true);
+    }
+  });
+
+  it("locks every curated page to the documented mirror release", () => {
+    const output = render();
+    const notice = "This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.";
+
+    for (const pagePath of curatedPaths) {
+      const page = output.get(pagePath)!;
+      expect(page, pagePath).toMatch(/^---\ndocumentedVersion: 0\.11\.0\n---\n/u);
+      expect(page, pagePath).toContain(notice);
     }
   });
 
