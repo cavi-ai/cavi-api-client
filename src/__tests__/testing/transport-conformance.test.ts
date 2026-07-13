@@ -136,6 +136,32 @@ describe("inspectTransportConformance", () => {
       .toEqual(["mutation_replayed", "protocol_mismatch", "protocol_mismatch"]);
   });
 
+  it("derives same-generation WebSocket replay", async () => {
+    const fixture: WebSocketTransportConformanceFixture = { kind: "websocket", run: async () => ({
+      ...shared(), kind: "websocket", lifecycle: [
+        { state: "opened", generation: 1 },
+        { state: "sent", generation: 1, frame: { sequence: 1, messageId: "mutation-1" } },
+        { state: "sent", generation: 1, frame: { sequence: 2, messageId: "mutation-1" } },
+        { state: "closed", generation: 1 },
+      ],
+    }) };
+    expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
+      .toEqual(["mutation_replayed"]);
+  });
+
+  it.each(["sent", "delivered"] as const)("rejects pre-open and post-close %s events", async (state) => {
+    const fixture: WebSocketTransportConformanceFixture = { kind: "websocket", run: async () => ({
+      ...shared(), kind: "websocket", lifecycle: [
+        { state, generation: 1, frame: { sequence: 1 } },
+        { state: "opened", generation: 1 },
+        { state: "closed", generation: 1 },
+        { state, generation: 1, frame: { sequence: 2 } },
+      ],
+    }) };
+    expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
+      .toContain("protocol_mismatch");
+  });
+
   it("derives JSON-RPC correlation, notification, and close failures", async () => {
     const fixture: JsonRpcTransportConformanceFixture = { kind: "json-rpc", run: async () => ({
       ...shared(), kind: "json-rpc", requests: [{ id: 1 }, { id: 1 }, { id: 3 }],
@@ -188,6 +214,16 @@ describe("inspectTransportConformance", () => {
     }
   });
 
+  it.each(["stdio", "unix"] as const)("compares %s decoded object keys structurally", async (kind) => {
+    const fixture = { kind, run: async () => ({
+      ...shared(), kind, codec: "json-lines" as const,
+      chunks: [bytes("{\"alpha\":1,\"beta\":2}\n")],
+      expectedValues: [{ beta: 2, alpha: 1 }], writtenMessageIds: [],
+      lifecycle: ["open" as const, "closed" as const],
+    }) } as StdioTransportConformanceFixture | UnixTransportConformanceFixture;
+    expect((await inspectTransportConformance(fixture)).ok).toBe(true);
+  });
+
   it("reports abort and retry bounds from raw fixture observations", async () => {
     const fixture = compliant.sse();
     const report = await inspectTransportConformance({ ...fixture, run: async () => ({
@@ -221,6 +257,7 @@ describe("inspectTransportConformance", () => {
     "token budget exceeded",
     "cookie policy accepted",
     "Cookie: theme=dark; locale=en-US",
+    "Cookie: not_session=secret; authorization_theme=dark",
     "https://example.test/?token=page-2",
   ])("does not flag redacted or benign text: %s", async (serialized) => {
     const fixture = compliant.http();

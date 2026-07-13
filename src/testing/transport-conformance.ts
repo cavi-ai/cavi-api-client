@@ -128,13 +128,30 @@ type TransportConformanceObservation =
 const credentialPatterns = [
   /\bauthorization\b\s*[:=]\s*["']?\s*(?:basic|bearer)\s+[^\s"',;}]+/iu,
   /\bclient_secret\b\s*[:=]\s*["']?[^\s"',;}]+/iu,
-  /\b(?:set-cookie|cookie)\b\s*:[^\r\n]*(?:session|sid|auth(?:_token)?|access_token|jwt)\s*=[^;\s]+/iu,
   /[?&](?:access_token|api_key|client_secret|auth|jwt|session)=[^&#\s]+/iu,
 ] as const;
+const authenticationCookieNames = new Set([
+  "access_token", "auth", "auth_token", "jwt", "session", "session_id", "sessionid", "sid",
+]);
+
+function exposesAuthenticationCookie(serialized: string): boolean {
+  const headerPattern = /(?:^|\r?\n)\s*(?:set-cookie|cookie)\s*:\s*([^\r\n]*)/giu;
+  for (const header of serialized.matchAll(headerPattern)) {
+    for (const segment of (header[1] ?? "").split(";")) {
+      const equals = segment.indexOf("=");
+      if (equals < 0) continue;
+      const name = segment.slice(0, equals).trim().toLowerCase();
+      const value = segment.slice(equals + 1).trim();
+      if (authenticationCookieNames.has(name) && value.length > 0) return true;
+    }
+  }
+  return false;
+}
 
 function exposesAuthenticationMaterial(serialized: string): boolean {
   const withoutRedactions = serialized.replace(/\[REDACTED\]/giu, "");
-  return credentialPatterns.some((pattern) => pattern.test(withoutRedactions));
+  return exposesAuthenticationCookie(withoutRedactions) ||
+    credentialPatterns.some((pattern) => pattern.test(withoutRedactions));
 }
 
 function addProtocolIssue(issues: TransportConformanceIssue[], message: string): void {
@@ -209,19 +226,19 @@ function inspectWebSocket(
   for (const event of observation.lifecycle) {
     if (event.state === "opened") { state.set(event.generation, "open"); connections += 1; continue; }
     if (event.state === "closed") { state.set(event.generation, "closed"); continue; }
-    if (state.get(event.generation) !== "open" && event.state === "delivered") afterClose = true;
+    if (state.get(event.generation) !== "open") afterClose = true;
     if (event.state === "delivered") {
       const previous = lastDelivered.get(event.generation);
       if (previous !== undefined && event.frame.sequence <= previous) outOfOrder = true;
       lastDelivered.set(event.generation, event.frame.sequence);
     } else if (event.frame.messageId) {
       const previous = sentGeneration.get(event.frame.messageId);
-      if (previous !== undefined && previous !== event.generation) replayed = true;
+      if (previous !== undefined) replayed = true;
       sentGeneration.set(event.frame.messageId, event.generation);
     }
   }
   if (outOfOrder) addProtocolIssue(issues, "WebSocket delivered frames out of sequence.");
-  if (afterClose) addProtocolIssue(issues, "WebSocket delivered a frame after its connection closed.");
+  if (afterClose) addProtocolIssue(issues, "WebSocket sent or delivered a frame while its connection was not open.");
   if (replayed) issues.push({ code: "mutation_replayed", message: "WebSocket replayed a message across connections." });
   return connections;
 }
@@ -262,7 +279,7 @@ function inspectBytes(
   try {
     for (const chunk of observation.chunks) decoded.push(...decoder.push(chunk));
     decoded.push(...decoder.finish());
-    if (JSON.stringify(decoded) !== JSON.stringify(observation.expectedValues)) {
+    if (canonicalJson(decoded) !== canonicalJson(observation.expectedValues)) {
       addProtocolIssue(issues, `${observation.kind} decoded values do not match expectations.`);
     }
   } catch {
@@ -281,6 +298,15 @@ function inspectBytes(
     });
   }
   return observation.lifecycle.filter((state) => state === "open").length;
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort((left, right) =>
+    left < right ? -1 : left > right ? 1 : 0);
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
 }
 
 const issueCodeOrder = [
