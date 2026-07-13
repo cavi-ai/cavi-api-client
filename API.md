@@ -66,6 +66,52 @@ Exported from the root.
 - `serializeError(error)` retains its stable `name`, `message`, `type`, and `code`
   shape; runtime metadata is intentionally excluded.
 
+## Shared Transport Runtime
+
+Universal factories are exported from
+`@cavi-ai/api-client/core/transport`: `createHttpTransport`,
+`createSseTransport`, `createWebSocketTransport`, and
+`createJsonRpcTransport`. The curated root exports only `TransportKind`,
+`TransportLifecycleEvent`, `TransportErrorMetadata`, `TransportError`, and
+`getTransportErrorMetadata`; factories stay subpath-only.
+
+- HTTP retries are finite and opt-in. Reads and explicitly idempotent requests
+  may retry; mutations require an explicit idempotency key and otherwise have
+  no replay.
+- SSE and WebSocket reconnect policies are bounded. SSE carries the latest
+  cursor as `Last-Event-ID` and suppresses duplicate event IDs within the
+  configured bounded dedupe capacity.
+- JSON-RPC composes over a WebSocket message channel or over framed stdio and
+  Unix byte channels using `createFramedMessageChannel` with `jsonLinesCodec`
+  or `contentLengthCodec`.
+- `TransportError` messages are credential-redacted, while
+  `getTransportErrorMetadata` exposes safe kind, phase, operation, retry, and
+  status metadata. `TransportLifecycleEvent` reports connection and retry state
+  without credentials.
+
+These factories are transport infrastructure, not a provider adapter. They do
+not declare provider capabilities or map an upstream runtime API.
+
+### Node Transport Drivers
+
+Exported only from `@cavi-ai/api-client/core/transport/node` so universal and
+root imports remain free of Node built-ins.
+
+- `createStdioTransport(options)` owns a spawned process, exposes its stdout and
+  stdin as a `TransportByteChannel`, honors stdin backpressure, and applies an
+  explicit ignore, inherit, or callback stderr policy.
+- `createUnixSocketTransport(options)` owns a Unix-domain socket and optionally
+  performs bounded reconnect attempts. Writes fail while disconnected and are
+  never queued or replayed onto a replacement socket.
+- Both drivers expose `closed`; the Unix-socket driver also exposes `ready`.
+  Abort and `close()` are idempotent and release each owned resource once.
+- `spawnImpl` and `connectImpl` accept structural interfaces for deterministic
+  testing without exporting Node-specific declaration types.
+- Unix-socket `dependencies` can inject the transport clock, random source, and
+  abort-aware sleep for deterministic reconnect and deadline control.
+- Unix reconnects are bounded; disconnected writes fail and have no write
+  replay onto a replacement socket.
+
 ## Runtime Control-Plane Contracts
 
 Exported from the root and `@cavi-ai/api-client/core/runtime`.

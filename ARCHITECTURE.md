@@ -111,6 +111,19 @@ are prohibited. Hosted Codex using OpenAI Responses and the planned
 be designed as separate adapters. Existing execution-plane consumers require no
 migration.
 
+Node-owned stdio and Unix-domain socket byte channels live behind the dedicated
+`@cavi-ai/api-client/core/transport/node` subpath. The root and universal
+transport graphs do not import this entry, and its public declarations use
+structural process and socket shapes rather than Node library types.
+
+The universal `@cavi-ai/api-client/core/transport` entry owns HTTP, SSE,
+WebSocket, JSON-RPC, framing, lifecycle, and secret-safe error infrastructure.
+Retries are finite and opt-in; mutation replay requires explicit idempotency.
+SSE resumes from a cursor with bounded event-ID dedupe, while WebSocket and Unix
+reconnects are bounded and do not replay pending writes. JSON-RPC composes over
+WebSocket or framed stdio/Unix channels. These primitives are not a provider
+adapter and do not imply that any provider implements a corresponding surface.
+
 ## Route Ownership
 
 API route literals are centralized:
