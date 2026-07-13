@@ -3,4 +3,5 @@ export * from "./backoff.js";
 export * from "./error.js";
 export * from "./http.js";
 export * from "./lifecycle.js";
+export * from "./sse.js";
 export * from "./types.js";
