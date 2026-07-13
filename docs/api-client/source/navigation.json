@@ -1,0 +1,14 @@
+{
+  "title": "@cavi-ai/api-client",
+  "version": "0.11.0",
+  "sections": [
+    {
+      "title": "API reference",
+      "path": "reference/index.md"
+    },
+    {
+      "title": "Contracts",
+      "path": "contracts/runtime-request.md"
+    }
+  ]
+}
