@@ -1,4 +1,5 @@
 import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../errors.js";
+import { redactSensitiveText } from "../http/redaction.js";
 import type { TransportKind, TransportPhase } from "./types.js";
 
 export type TransportErrorMetadata = Readonly<{
@@ -14,6 +15,11 @@ export type TransportErrorMetadata = Readonly<{
 
 const kinds = new Set<TransportKind>(["http", "sse", "websocket", "json-rpc", "stdio", "unix"]);
 const phases = new Set<TransportPhase>(["configure", "authenticate", "connect", "request", "decode", "close"]);
+const bearerCredentialPattern = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gu;
+
+function safeTransportMessage(message: string): string {
+  return redactSensitiveText(message.replace(bearerCredentialPattern, "$1[REDACTED]"));
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -41,7 +47,7 @@ export class TransportError extends ApiClientError {
   readonly transport: TransportErrorMetadata;
 
   constructor(message: string, options: { metadata: TransportErrorMetadata; cause?: unknown }) {
-    super(message, {
+    super(safeTransportMessage(message), {
       type: ApiClientErrorType.Transport,
       code: ApiClientErrorCode.TransportUnavailable,
       cause: options.cause,

@@ -37,6 +37,23 @@ describe("transport errors", () => {
     expect(JSON.stringify(error)).not.toContain("secret");
   });
 
+  it("redacts sensitive values from the public transport error message", () => {
+    const error = new TransportError(
+      "Authorization: Bearer abc.secret payload={token:top-secret} password=hunter2",
+      {
+        metadata: {
+          kind: "http", phase: "request", operation: "models.list", retryable: false, attempt: 1,
+        },
+      },
+    );
+
+    const serialized = JSON.stringify(serializeError(error));
+    expect(serialized).toContain("[REDACTED]");
+    expect(serialized).not.toContain("abc.secret");
+    expect(serialized).not.toContain("top-secret");
+    expect(serialized).not.toContain("hunter2");
+  });
+
   it("rejects malformed transport metadata field by field", () => {
     expect(getTransportErrorMetadata({ transport: { kind: "http" } })).toBeUndefined();
     expect(getTransportErrorMetadata({ transport: {

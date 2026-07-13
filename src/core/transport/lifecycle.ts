@@ -6,13 +6,14 @@ import {
   normalizeTransportAbort,
   validateTransportRetryPolicy,
 } from "./backoff.js";
-import { getTransportErrorMetadata } from "./error.js";
+import { TransportError, getTransportErrorMetadata } from "./error.js";
 import type {
   TransportAuthResolver,
   TransportDependencies,
   TransportKind,
   TransportLifecycle,
   TransportLifecycleEvent,
+  TransportOperationSafety,
   TransportRetryPolicy,
 } from "./types.js";
 
@@ -29,7 +30,13 @@ export function createTransportLifecycle(
   if (listener) listeners.add(listener);
   return {
     emit(event) {
-      for (const current of [...listeners]) current(event);
+      for (const current of [...listeners]) {
+        try {
+          current(event);
+        } catch {
+          // Observability must never change transport behavior.
+        }
+      }
     },
     subscribe(current) {
       listeners.add(current);
@@ -47,6 +54,7 @@ export type TransportAttemptContext = Readonly<{
 export async function runTransportAttempts<T>(options: Readonly<{
   kind: TransportKind;
   operation: string;
+  safety: TransportOperationSafety;
   policy: TransportRetryPolicy;
   execute: (context: TransportAttemptContext) => Promise<T>;
   auth?: TransportAuthResolver;
@@ -62,7 +70,21 @@ export async function runTransportAttempts<T>(options: Readonly<{
   for (let attempt = 1; attempt <= options.policy.maxAttempts; attempt += 1) {
     if (options.signal?.aborted) throw normalizeTransportAbort(options.signal);
     try {
-      const headers = await resolveTransportHeaders(options.headers, options.auth);
+      let headers: Record<string, string>;
+      try {
+        headers = await resolveTransportHeaders(options.headers, options.auth);
+      } catch (error) {
+        throw new TransportError("Transport authentication failed", {
+          metadata: {
+            kind: options.kind,
+            phase: "authenticate",
+            operation: options.operation,
+            retryable: false,
+            attempt,
+          },
+          cause: error,
+        });
+      }
       if (options.signal?.aborted) throw normalizeTransportAbort(options.signal);
       return await options.execute({ attempt, headers, signal: options.signal });
     } catch (error) {
@@ -70,7 +92,11 @@ export async function runTransportAttempts<T>(options: Readonly<{
         throw normalizeTransportAbort(options.signal, error);
       }
       const metadata = getTransportErrorMetadata(error);
-      if (!metadata?.retryable || attempt >= options.policy.maxAttempts) throw error;
+      if (
+        options.safety === "mutation" ||
+        !metadata?.retryable ||
+        attempt >= options.policy.maxAttempts
+      ) throw error;
       const delayMs = computeBackoffDelay(
         options.policy,
         attempt,
