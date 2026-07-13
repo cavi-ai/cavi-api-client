@@ -44,6 +44,15 @@ export {
   buildGatewayHttpError,
   isGatewayHttpError,
 } from "./core/http/gateway-error.js";
+export {
+  TransportError,
+  getTransportErrorMetadata,
+  type TransportErrorMetadata,
+} from "./core/transport/error.js";
+export {
+  type TransportKind,
+  type TransportLifecycleEvent,
+} from "./core/transport/types.js";
 
 // ── Auth seam (construct any provider) ───────────────────────────────────────
 export {

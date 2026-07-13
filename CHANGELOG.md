@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Universal shared transport infrastructure at
+  `@cavi-ai/api-client/core/transport`, with `createHttpTransport`,
+  `createSseTransport`, `createWebSocketTransport`, and
+  `createJsonRpcTransport`; curated root transport contracts and guards; and
+  compile-checked browser and Node examples. Retries and reconnects are bounded
+  and opt-in, mutations require explicit idempotency for replay, SSE resumes by
+  cursor with bounded dedupe, and errors/lifecycle events remain secret-safe.
 - Node-only stdio and Unix-domain socket byte-channel drivers under
   `@cavi-ai/api-client/core/transport/node`, with bounded opt-in reconnects,
   backpressure handling, no write replay, and exact-once owned-resource cleanup.

@@ -153,6 +153,8 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/core/ws`
 - `@cavi-ai/api-client/core/gateway` — gateway resource clients (media, wiki, agent-config, jobs)
 - `@cavi-ai/api-client/core/env`
+- `@cavi-ai/api-client/core/transport` — universal HTTP, SSE, WebSocket,
+  JSON-RPC, framing, lifecycle, and error infrastructure
 - `@cavi-ai/api-client/core/transport/node` — Node-only stdio and Unix-domain
   socket `TransportByteChannel` drivers
 - `@cavi-ai/api-client/contracts`
@@ -187,6 +189,29 @@ behind a **subpath** so consumers import only the slice they need:
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
 > and low-level primitives moved off the root entry to their subpaths. See
 > [MIGRATION.md](MIGRATION.md) for the import map.
+
+### Shared Transport Infrastructure
+
+Universal runtimes import `createHttpTransport`, `createSseTransport`,
+`createWebSocketTransport`, and `createJsonRpcTransport` from
+`@cavi-ai/api-client/core/transport`. Node applications may additionally import
+`createStdioTransport` and `createUnixSocketTransport` from the isolated
+`@cavi-ai/api-client/core/transport/node` entry. The root and universal entry
+stay free of Node built-ins. See the compile-checked
+[browser](docs/examples/runtime-transport-browser.ts) and
+[Node](docs/examples/runtime-transport-node.ts) examples.
+
+Retries and reconnects are finite, opt-in policies. HTTP mutations are never
+replayed unless the caller supplies an explicit idempotency key. SSE reconnects
+resume from the latest cursor and suppress duplicate event IDs within a bounded
+window; WebSocket and Unix-socket reconnects are also bounded, and pending
+writes are never replayed onto a replacement connection. JSON-RPC composes over
+WebSocket message channels or framed stdio/Unix byte streams.
+
+Transport errors redact credentials and expose structured
+`TransportErrorMetadata`; lifecycle events provide secret-safe connection and
+retry observability. This is transport infrastructure, not a provider adapter:
+it does not claim support for any provider surface or map provider methods.
 
 ## Quick Start
 

@@ -137,6 +137,11 @@
       "import": "./dist/core/env/index.js",
       "default": "./dist/core/env/index.js"
     },
+    "./core/transport": {
+      "types": "./dist/core/transport/index.d.ts",
+      "import": "./dist/core/transport/index.js",
+      "default": "./dist/core/transport/index.js"
+    },
     "./core/transport/node": {
       "types": "./dist/core/transport/node/index.d.ts",
       "import": "./dist/core/transport/node/index.js",
