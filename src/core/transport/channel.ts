@@ -43,7 +43,6 @@ export function createFramedMessageChannel<T>(
   const notifyClosed = (error?: unknown) => {
     if (closed) return;
     closed = true;
-    closedError = error;
     unsubscribeMessages();
     unsubscribeClose();
     let closeError = error;
@@ -55,8 +54,16 @@ export function createFramedMessageChannel<T>(
       closeError = decoderError;
     }
     listeners.clear();
-    for (const listener of closeListeners) listener(closeError);
+    closedError = closeError;
+    const closingListeners = [...closeListeners];
     closeListeners.clear();
+    for (const listener of closingListeners) {
+      try {
+        listener(closeError);
+      } catch {
+        // Close observers are isolated so every subscriber sees termination.
+      }
+    }
   };
   unsubscribeClose = bytes.subscribeClose(notifyClosed);
   if (closed) unsubscribeClose();

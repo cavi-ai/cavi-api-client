@@ -3,6 +3,7 @@ import {
   TransportError,
   contentLengthCodec,
   createFramedMessageChannel,
+  createJsonRpcTransport,
   jsonLinesCodec,
   jsonTextCodec,
   type TransportByteChannel,
@@ -131,5 +132,36 @@ describe("transport framing", () => {
     const late = vi.fn();
     channel.subscribeClose(late);
     expect(late).toHaveBeenCalledWith(failure);
+  });
+
+  it("isolates throwing close subscribers so JSON-RPC still rejects pending requests", async () => {
+    const byteChannel = createFakeByteChannel();
+    const channel = createFramedMessageChannel(byteChannel, jsonLinesCodec());
+    channel.subscribeClose(() => { throw new Error("listener failed"); });
+    const rpc = createJsonRpcTransport({ channel, id: () => 1 });
+    const rejected = vi.fn();
+    const pending = rpc.request("models/list").catch((error: unknown) => {
+      rejected(error);
+      throw error;
+    });
+
+    expect(() => byteChannel.remoteClose()).not.toThrow();
+    await expect(pending).rejects.toMatchObject({ transport: { phase: "close" } });
+    expect(rejected).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists decoder finalization errors for current and late close subscribers", () => {
+    const byteChannel = createFakeByteChannel();
+    const channel = createFramedMessageChannel(byteChannel, jsonLinesCodec());
+    const current = vi.fn();
+    channel.subscribeClose(current);
+    byteChannel.receive(bytes('{"incomplete":'));
+    byteChannel.remoteClose();
+    const closeError = current.mock.calls[0]![0];
+    expect(closeError).toBeInstanceOf(TransportError);
+
+    const late = vi.fn();
+    channel.subscribeClose(late);
+    expect(late).toHaveBeenCalledWith(closeError);
   });
 });
