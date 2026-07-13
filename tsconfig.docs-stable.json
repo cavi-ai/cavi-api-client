@@ -9,10 +9,7 @@
     "skipLibCheck": true,
     "types": ["node"],
     "noEmit": true,
-    "paths": {
-      "@cavi-ai/api-client": ["/private/tmp/cavi-docs-stable-0.11.0/package/dist/index.d.ts"],
-      "@cavi-ai/api-client/*": ["/private/tmp/cavi-docs-stable-0.11.0/package/dist/*"]
-    }
+    "paths": {}
   },
   "include": ["docs/**/*.ts", "docs/**/*.tsx"],
   "exclude": ["node_modules", "dist"]

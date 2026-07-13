@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -20,22 +20,17 @@ let manifest: import("../../scripts/docs/types.mjs").ReleaseManifest;
 let contracts: Awaited<ReturnType<typeof loadContracts>>;
 let navigation: unknown;
 
-const curatedPaths = [
-  "introduction/overview.md",
-  "introduction/installation.md",
-  "introduction/quickstart.md",
-  "concepts/runtime-client.md",
-  "concepts/providers-and-transports.md",
-  "concepts/routing-and-capabilities.md",
-  "concepts/compatibility.md",
-  "guides/requests.md",
-  "guides/streaming.md",
-  "guides/files.md",
-  "guides/batching.md",
-  "guides/manifests.md",
-  "guides/react.md",
-  "guides/testing.md",
-] as const;
+let curatedPaths: string[];
+
+async function markdownPaths(directory: string, prefix = ""): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const paths = await Promise.all(entries.map(async (entry) => {
+    const relative = path.posix.join(prefix, entry.name);
+    if (entry.isDirectory()) return markdownPaths(path.join(directory, entry.name), relative);
+    return entry.isFile() && entry.name.endsWith(".md") ? [relative] : [];
+  }));
+  return paths.flat().sort();
+}
 
 function navigationPaths(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap(navigationPaths);
@@ -55,6 +50,7 @@ beforeAll(async () => {
   navigation = JSON.parse(
     await readFile("docs/api-client/source/navigation.json", "utf8"),
   );
+  curatedPaths = await markdownPaths("docs/api-client/source/pages");
 });
 
 afterEach(async () => {
@@ -104,12 +100,22 @@ describe("renderDocumentation", () => {
       expect(output.has(pagePath), `${pagePath} must resolve from navigation`).toBe(true);
     }
 
-    for (const pagePath of curatedPaths) {
-      expect(
-        paths.filter((candidate) => candidate === pagePath),
-        `${pagePath} must occur exactly once in navigation`,
-      ).toHaveLength(1);
-      expect(output.has(pagePath), `${pagePath} must resolve to a curated page`).toBe(true);
+    const curatedNavigationPaths = paths.filter((pagePath) =>
+      !pagePath.startsWith("reference/") && !pagePath.startsWith("contracts/")
+    ).sort();
+    expect(curatedNavigationPaths).toEqual(curatedPaths);
+  });
+
+  it("keeps every rendered relative Markdown link inside the artifact", () => {
+    const output = render();
+    for (const [pagePath, contents] of output) {
+      if (!pagePath.endsWith(".md")) continue;
+      for (const match of contents.matchAll(/\[[^\]]*\]\(([^)]+)\)/gu)) {
+        const target = match[1].split("#", 1)[0];
+        if (!target || /^(?:[a-z]+:|\/)/iu.test(target)) continue;
+        const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(pagePath), target));
+        expect(output.has(resolved), `${pagePath} links to missing artifact path ${resolved}`).toBe(true);
+      }
     }
   });
 
@@ -216,6 +222,23 @@ describe("renderDocumentation", () => {
     expect(await readFile(path.join(output, "reference/index.md"), "utf8")).toContain(
       "createRuntimeClient<TInput>",
     );
+  });
+
+  it("requires an explicit stable tarball for docs typechecking", async () => {
+    const env = { ...process.env };
+    delete env.CAVI_API_CLIENT_STABLE_TARBALL;
+    await expect(execFileAsync(process.execPath, ["scripts/docs/typecheck-stable.mjs"], { env }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("CAVI_API_CLIENT_STABLE_TARBALL is required") });
+  });
+
+  it("rejects a stable tarball whose digest does not match", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-digest-test-"));
+    temporaryDirectories.push(workspace);
+    const tarball = path.join(workspace, "wrong.tgz");
+    await writeFile(tarball, "not the stable artifact");
+    await expect(execFileAsync(process.execPath, ["scripts/docs/typecheck-stable.mjs"], {
+      env: { ...process.env, CAVI_API_CLIENT_STABLE_TARBALL: tarball },
+    })).rejects.toMatchObject({ stderr: expect.stringContaining("stable artifact digest mismatch") });
   });
 
   it("rejects a missing symbol page with its exact subpath and symbol", () => {
