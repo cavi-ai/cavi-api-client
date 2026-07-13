@@ -76,7 +76,7 @@ export function createStdioTransport(
 
   const listeners = new Set<(chunk: Uint8Array) => void>();
   const closeListeners = new Set<(error?: unknown) => void>();
-  const drainWaiters = new Set<{ resolve: () => void; reject: (error: unknown) => void }>();
+  const drainWaiters = new Set<{ reject: (error: unknown) => void }>();
   let terminal = false;
   let closeError: unknown;
   let resourcesClosed = false;
@@ -158,18 +158,28 @@ export function createStdioTransport(
       if (writable) return;
       if (terminal) throw closeError ?? error("stdio process is closed", "request");
       await new Promise<void>((resolve, reject) => {
-        const waiter = { resolve, reject };
-        drainWaiters.add(waiter);
-        const abort = (): void => {
+        let settled = false;
+        const cleanup = (): void => {
           drainWaiters.delete(waiter);
-          reject(normalizeTransportAbort(signal));
+          signal?.removeEventListener("abort", abort);
         };
+        const fail = (failure: unknown): void => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(failure);
+        };
+        const abort = (): void => fail(normalizeTransportAbort(signal));
+        const waiter = { reject: fail };
+        drainWaiters.add(waiter);
         signal?.addEventListener("abort", abort, { once: true });
         child.stdin.once("drain", () => {
-          if (!drainWaiters.delete(waiter)) return;
-          signal?.removeEventListener("abort", abort);
+          if (settled) return;
+          settled = true;
+          cleanup();
           resolve();
         });
+        if (signal?.aborted) abort();
       });
     },
     subscribe(listener) {

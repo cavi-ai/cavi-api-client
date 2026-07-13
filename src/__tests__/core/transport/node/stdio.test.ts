@@ -42,6 +42,29 @@ function fakeChild() {
   };
 }
 
+function trackedAbortSignal() {
+  const listeners = new Set<() => void>();
+  let aborted = false;
+  const signal = {
+    get aborted() { return aborted; },
+    get reason() { return aborted ? new Error("later abort") : undefined; },
+    addEventListener: vi.fn((_event: string, listener: EventListenerOrEventListenerObject) => {
+      listeners.add(typeof listener === "function" ? listener as () => void : () => listener.handleEvent(new Event("abort")));
+    }),
+    removeEventListener: vi.fn((_event: string, listener: EventListenerOrEventListenerObject) => {
+      if (typeof listener === "function") listeners.delete(listener as () => void);
+    }),
+  } as unknown as AbortSignal;
+  return {
+    signal,
+    active: () => listeners.size,
+    abort: () => {
+      aborted = true;
+      for (const listener of [...listeners]) listener();
+    },
+  };
+}
+
 describe("Node stdio transport", () => {
   it("validates before spawning", () => {
     const spawnImpl = vi.fn();
@@ -110,6 +133,29 @@ describe("Node stdio transport", () => {
     const channel = createStdioTransport({ command: "codex", spawnImpl: () => child.process });
     await expect(channel.write(Uint8Array.of(1))).rejects.toThrow(/closed|exited/iu);
   });
+
+  it.each(["exit", "close"] as const)(
+    "removes a pending write abort listener before terminal %s settlement",
+    async (terminal) => {
+      const child = fakeChild();
+      const tracked = trackedAbortSignal();
+      child.write.mockReturnValueOnce(false);
+      const channel = createStdioTransport({ command: "codex", spawnImpl: () => child.process });
+      let settlements = 0;
+      const writing = channel.write(Uint8Array.of(1), tracked.signal).catch((error) => {
+        settlements += 1;
+        throw error;
+      });
+      expect(tracked.active()).toBe(1);
+      if (terminal === "exit") child.emit("exit", 1, null);
+      else await channel.close();
+      await expect(writing).rejects.toThrow(/closed|exited/iu);
+      expect(tracked.active()).toBe(0);
+      tracked.abort();
+      await Promise.resolve();
+      expect(settlements).toBe(1);
+    },
+  );
 
   it("ends and terminates an owned child exactly once on abort or close", async () => {
     const child = fakeChild();
