@@ -111,6 +111,11 @@ are prohibited. Hosted Codex using OpenAI Responses and the planned
 be designed as separate adapters. Existing execution-plane consumers require no
 migration.
 
+Node-owned stdio and Unix-domain socket byte channels live behind the dedicated
+`@cavi-ai/api-client/core/transport/node` subpath. The root and universal
+transport graphs do not import this entry, and its public declarations use
+structural process and socket shapes rather than Node library types.
+
 ## Route Ownership
 
 API route literals are centralized:

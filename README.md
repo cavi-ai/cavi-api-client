@@ -153,6 +153,8 @@ behind a **subpath** so consumers import only the slice they need:
 - `@cavi-ai/api-client/core/ws`
 - `@cavi-ai/api-client/core/gateway` — gateway resource clients (media, wiki, agent-config, jobs)
 - `@cavi-ai/api-client/core/env`
+- `@cavi-ai/api-client/core/transport/node` — Node-only stdio and Unix-domain
+  socket `TransportByteChannel` drivers
 - `@cavi-ai/api-client/contracts`
 - `@cavi-ai/api-client/extensions/cavi` — `CaviControlApiClient`, registry, portal, library, adapters
 - `./extensions/cavi/library-clip-contract.json` — the CaviClip ingest

@@ -137,6 +137,11 @@
       "import": "./dist/core/env/index.js",
       "default": "./dist/core/env/index.js"
     },
+    "./core/transport/node": {
+      "types": "./dist/core/transport/node/index.d.ts",
+      "import": "./dist/core/transport/node/index.js",
+      "default": "./dist/core/transport/node/index.js"
+    },
     "./contracts": {
       "types": "./dist/contracts/index.d.ts",
       "import": "./dist/contracts/index.js",
@@ -248,6 +253,7 @@
     }
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "@types/react": "^19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "^4.1.10",
