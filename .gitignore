@@ -8,6 +8,8 @@ docs/.code-review-graph/
 .env.test.local
 .env.production.local
 dist
+coverage/
+*.tgz
 # Added by code-review-graph
 .code-review-graph/
 .remember/

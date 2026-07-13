@@ -12,12 +12,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Provider-neutral runtime error codes and optional typed runtime metadata on
+  `ApiClientError`, with a root-exported metadata getter and unchanged error
+  serialization.
+- Provider-neutral runtime control-plane metadata and pagination contracts,
+  plus typed HTTP, SSE, WebSocket, JSON-RPC, stdio, and Unix-socket transport
+  capabilities with stable-transport detection.
+- Focused provider-neutral control-plane contracts for sessions, model catalogs,
+  authentication status, usage and cost, tasks, and workspaces.
+- Normalized runtime control-plane event contracts, continuity inspection, event
+  subscriptions, and the aggregate `RuntimeControlPlane` provider surface.
+- Optional provider control-plane declarations and factories, plus a frozen
+  capability matrix for all six shipped provider entries. The matrix records
+  existing runtime and transport facts without advertising control-plane
+  modules before adapters exist.
+- Runner-neutral control-plane conformance inspection through the testing
+  subpath, with curated root and core runtime contract exports that preserve the
+  supported root capability-matrix surface without leaking provider adapters.
+- Compile-checked control-plane provider guidance documenting the additive
+  execution/control-plane split, stable-first declarations, secret-safe auth
+  status, and the truthful adapter-free initial capability matrix.
 - `@cavi-ai/api-client/core/kanban` — the first unified capability interface: a
   provider-agnostic `KanbanClient` with canonical card types that preserve the
   backend's native status alongside a canonical status category. Ships an
   OpenClaw Workboard adapter and a `@cavi-ai/api-client/testing` kanban
   conformance kit (`inspectKanbanConformance`) that any `supports.kanban`
   provider must pass.
+
+### Fixed
+
+- Runtime error metadata now validates its required and optional fields before
+  narrowing unknown values, while preserving the stable serialized error shape.
+- Control-plane conformance now rejects both missing declared transports and
+  undeclared exposed transports, and the provider matrix no longer represents
+  OpenClaw's WebSocket RPC encoding as a separate transport or marks Hermes
+  WebSocket support stable without sufficient implementation evidence.
 
 ## [0.11.0] - 2026-07-11
 

@@ -936,6 +936,21 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("preserves matrix and runner-neutral control-plane exports without leaking provider adapters", () => {
+    const rootIndex = read(path.join(SRC_ROOT, "index.ts"));
+    const testingIndex = read(path.join(SRC_ROOT, "testing", "index.ts"));
+
+    expect(rootIndex).toContain('from "./core/runtime/control-plane/index.js"');
+    expect(testingIndex).toContain('export * from "./runtime-control-plane-conformance.js"');
+    expect(rootIndex).toContain('from "./providers/capability-matrix.js"');
+    expect(rootIndex).toContain("RUNTIME_PROVIDER_CAPABILITY_MATRIX");
+    expect(rootIndex).toContain("getRuntimeProviderCapabilityRow");
+    expect(rootIndex).toContain("RuntimeProviderCapabilityMatrixKey");
+    expect(rootIndex).toContain("RuntimeProviderCapabilityRow");
+    expect(rootIndex).not.toMatch(/(?:CLAUDE|CODEX|GEMINI|HERMES|OPENCLAW)_PROVIDER_MODULE/u);
+    expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
+  });
+
   it("builds only canonical and compat folders", () => {
     const tsconfig = JSON.parse(read(TS_CONFIG)) as {
       include?: string[];
