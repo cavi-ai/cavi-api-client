@@ -100,6 +100,8 @@ const CAVI_PORTAL_CONTRACTS = path.join(SRC_ROOT, "extensions", "cavi", "portal"
 const CORE_GATEWAY_WEBSOCKET = path.join(SRC_ROOT, "core", "gateway", "websocket.ts");
 const CORE_SSE_INDEX = path.join(SRC_ROOT, "core", "sse", "index.ts");
 const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
+const CORE_TRANSPORT_INDEX = path.join(SRC_ROOT, "core", "transport", "index.ts");
+const CORE_TRANSPORT_NODE_INDEX = path.join(SRC_ROOT, "core", "transport", "node", "index.ts");
 const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
 const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "client", "fetch.ts");
 const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshots", "loaders.ts");
@@ -342,6 +344,21 @@ function isTestOnlySource(relative: string): boolean {
   return /\.test\.tsx?$/u.test(relative) || relative.startsWith("src/__tests__/");
 }
 
+function relativeImportGraph(entry: string): string[] {
+  const visited = new Set<string>();
+  const visit = (filePath: string): void => {
+    if (visited.has(filePath)) return;
+    visited.add(filePath);
+    const source = read(filePath);
+    for (const match of source.matchAll(/(?:from\s+|import\s*)["'](\.{1,2}\/[^"']+)["']/gu)) {
+      const target = path.resolve(path.dirname(filePath), match[1].replace(/\.js$/u, ".ts"));
+      if (existsSync(target)) visit(target);
+    }
+  };
+  visit(entry);
+  return [...visited];
+}
+
 describe("package hardening", () => {
   it("keeps the public dependency surface to @cavi-ai/api-client only", () => {
     const offenders = selfScannedSources().flatMap((filePath) => {
@@ -574,6 +591,33 @@ describe("package hardening", () => {
       'export * from "./providers/index.js";',
       'export * from "./jobs.js";',
     ].join("\n"));
+  });
+
+  it("publishes isolated universal and Node transport subpaths", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+
+    expect(packageJson.exports["./core/transport"]).toEqual({
+      types: "./dist/core/transport/index.d.ts",
+      import: "./dist/core/transport/index.js",
+      default: "./dist/core/transport/index.js",
+    });
+    expect(packageJson.exports["./core/transport/node"]).toEqual({
+      types: "./dist/core/transport/node/index.d.ts",
+      import: "./dist/core/transport/node/index.js",
+      default: "./dist/core/transport/node/index.js",
+    });
+
+    for (const entry of [path.join(SRC_ROOT, "index.ts"), CORE_TRANSPORT_INDEX]) {
+      const offenders = relativeImportGraph(entry)
+        .filter((filePath) => /(?:^|\n)\s*import[\s\S]*?from\s+["']node:/u.test(read(filePath)))
+        .map(rel);
+      expect(offenders, `${rel(entry)} reaches Node built-ins`).toEqual([]);
+    }
+    expect(read(path.join(SRC_ROOT, "index.ts"))).not.toContain("core/transport/node");
+    expect(read(CORE_TRANSPORT_NODE_INDEX)).toContain('export * from "./stdio.js";');
+    expect(read(CORE_TRANSPORT_NODE_INDEX)).toContain('export * from "./unix-socket.js";');
   });
 
   it("keeps core gateway independent from CAVI and provider implementations", () => {
@@ -949,6 +993,32 @@ describe("package hardening", () => {
     expect(rootIndex).toContain("RuntimeProviderCapabilityRow");
     expect(rootIndex).not.toMatch(/(?:CLAUDE|CODEX|GEMINI|HERMES|OPENCLAW)_PROVIDER_MODULE/u);
     expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
+  });
+
+  it("curates transport contracts and guards at root without exporting factories", () => {
+    const rootIndex = read(path.join(SRC_ROOT, "index.ts"));
+
+    for (const symbol of [
+      "TransportKind",
+      "TransportLifecycleEvent",
+      "TransportErrorMetadata",
+      "TransportError",
+      "getTransportErrorMetadata",
+    ]) {
+      expect(rootIndex, `root is missing ${symbol}`).toContain(symbol);
+    }
+    for (const factory of [
+      "createHttpTransport",
+      "createJsonRpcTransport",
+      "createSseTransport",
+      "createWebSocketTransport",
+      "createStdioTransport",
+      "createUnixSocketTransport",
+    ]) {
+      expect(rootIndex, `root must not export ${factory}`).not.toContain(factory);
+    }
+    expect(rootIndex).toContain("RUNTIME_PROVIDER_CAPABILITY_MATRIX");
+    expect(rootIndex).toContain("getRuntimeProviderCapabilityRow");
   });
 
   it("builds only canonical and compat folders", () => {
