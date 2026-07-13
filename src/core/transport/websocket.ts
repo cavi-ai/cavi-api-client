@@ -69,7 +69,9 @@ function defaultDecode(data: unknown): unknown {
 }
 
 function defaultEncode(message: unknown): string {
-  return JSON.stringify(message);
+  const encoded = JSON.stringify(message);
+  if (typeof encoded !== "string") throw new TypeError("Message is not JSON encodable");
+  return encoded;
 }
 
 export function createWebSocketTransport(
@@ -142,7 +144,8 @@ export function createWebSocketTransport(
         }
       };
 
-      const failDecode = (): void => {
+      const failDecode = (origin: WebSocketLike): void => {
+        if (terminal || origin !== socket) return;
         const error = makeError("WebSocket message decoding failed", "decode", false);
         closeSocket();
         finish(error);
@@ -150,6 +153,7 @@ export function createWebSocketTransport(
 
       const attach = (current: WebSocketLike): void => {
         socket = current;
+        let decodeChain = Promise.resolve();
         const onOpen: EventListener = () => {
           if (terminal || current !== socket) return;
           opened = true;
@@ -167,11 +171,11 @@ export function createWebSocketTransport(
               try { listener(message); } catch { /* Message observers are isolated. */ }
             }
           };
-          try {
-            const decoded = (connectOptions.decode ?? defaultDecode)(data);
-            if (decoded instanceof Promise) void decoded.then(deliver, failDecode);
-            else deliver(decoded);
-          } catch { failDecode(); }
+          decodeChain = decodeChain.then(async () => {
+            if (terminal || current !== socket) return;
+            const decoded = await (connectOptions.decode ?? defaultDecode)(data);
+            deliver(decoded);
+          }).catch(() => failDecode(current));
         };
         const onError: EventListener = () => {
           if (current.readyState === 3) void handleClose(1006, false);
