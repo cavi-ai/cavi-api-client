@@ -8,17 +8,15 @@ const encoder = new TextEncoder();
 export type JsonFrameCodecOptions = Readonly<{ maxFrameBytes?: number }>;
 export type ContentLengthCodecOptions = Readonly<{ maxHeaderBytes?: number; maxBodyBytes?: number }>;
 
-function decodeError(message: string, cause?: unknown): TransportError {
+function decodeError(message: string): TransportError {
   return new TransportError(message, {
     metadata: { kind: "stdio", phase: "decode", operation: "frame.decode", retryable: false, attempt: 1 },
-    ...(cause === undefined ? {} : { cause }),
   });
 }
 
-function encodeError(message: string, cause?: unknown): TransportError {
+function encodeError(message: string): TransportError {
   return new TransportError(message, {
     metadata: { kind: "stdio", phase: "request", operation: "frame.encode", retryable: false, attempt: 1 },
-    ...(cause === undefined ? {} : { cause }),
   });
 }
 
@@ -26,13 +24,13 @@ function parseJson<T>(value: Uint8Array): T {
   let text: string;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(value);
-  } catch (cause) {
-    throw decodeError("Frame contains invalid UTF-8", cause);
+  } catch {
+    throw decodeError("Frame contains invalid UTF-8");
   }
   try {
     return JSON.parse(text) as T;
-  } catch (cause) {
-    throw decodeError("Frame contains invalid JSON", cause);
+  } catch {
+    throw decodeError("Frame contains invalid JSON");
   }
 }
 
@@ -41,8 +39,8 @@ function encodeJson(value: unknown): Uint8Array {
     const text = JSON.stringify(value);
     if (text === undefined) throw new TypeError("Value is not JSON serializable");
     return encoder.encode(text);
-  } catch (cause) {
-    throw encodeError("Value could not be encoded as JSON", cause);
+  } catch {
+    throw encodeError("Value could not be encoded as JSON");
   }
 }
 
@@ -148,8 +146,8 @@ export function contentLengthCodec<T = unknown>(
             let header: string;
             try {
               header = new TextDecoder("ascii", { fatal: true }).decode(buffered.subarray(0, end));
-            } catch (cause) {
-              throw decodeError("Content-Length header is invalid", cause);
+            } catch {
+              throw decodeError("Content-Length header is invalid");
             }
             const lines = header.split("\r\n");
             const lengths = lines.filter((line) => /^content-length\s*:/iu.test(line));
