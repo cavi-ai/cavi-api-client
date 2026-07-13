@@ -85,127 +85,152 @@
   "reference": [
     {
       "subpath": ".",
+      "kind": "declaration",
       "path": "reference/index.md"
     },
     {
       "subpath": "./contracts",
+      "kind": "declaration",
       "path": "reference/contracts.md"
     },
     {
       "subpath": "./core/data",
+      "kind": "declaration",
       "path": "reference/core-data.md"
     },
     {
       "subpath": "./core/env",
+      "kind": "declaration",
       "path": "reference/core-env.md"
     },
     {
       "subpath": "./core/errors",
+      "kind": "declaration",
       "path": "reference/core-errors.md"
     },
     {
       "subpath": "./core/gateway",
+      "kind": "declaration",
       "path": "reference/core-gateway.md"
     },
     {
       "subpath": "./core/http",
+      "kind": "declaration",
       "path": "reference/core-http.md"
     },
     {
       "subpath": "./core/kanban",
+      "kind": "declaration",
       "path": "reference/core-kanban.md"
     },
     {
       "subpath": "./core/memory",
+      "kind": "declaration",
       "path": "reference/core-memory.md"
     },
     {
       "subpath": "./core/runtime",
+      "kind": "declaration",
       "path": "reference/core-runtime.md"
     },
     {
       "subpath": "./core/runtime/providers",
+      "kind": "declaration",
       "path": "reference/core-runtime-providers.md"
     },
     {
       "subpath": "./core/sse",
+      "kind": "declaration",
       "path": "reference/core-sse.md"
     },
     {
-      "subpath": "./core/transport"
-    },
-    {
-      "subpath": "./core/transport/node"
-    },
-    {
       "subpath": "./core/ws",
+      "kind": "declaration",
       "path": "reference/core-ws.md"
     },
     {
       "subpath": "./extensions/cavi",
+      "kind": "declaration",
       "path": "reference/extensions-cavi.md"
     },
     {
-      "subpath": "./extensions/cavi/library-clip-contract.json"
+      "subpath": "./extensions/cavi/library-clip-contract.json",
+      "kind": "asset",
+      "target": "./src/extensions/cavi/library/clip-contract.json"
     },
     {
       "subpath": "./frameworks/react",
+      "kind": "declaration",
       "path": "reference/frameworks-react.md"
     },
     {
       "subpath": "./providers/claude",
+      "kind": "declaration",
       "path": "reference/providers-claude.md"
     },
     {
       "subpath": "./providers/claude/managed-agents",
+      "kind": "declaration",
       "path": "reference/providers-claude-managed-agents.md"
     },
     {
       "subpath": "./providers/claude/messages",
+      "kind": "declaration",
       "path": "reference/providers-claude-messages.md"
     },
     {
       "subpath": "./providers/codex",
+      "kind": "declaration",
       "path": "reference/providers-codex.md"
     },
     {
       "subpath": "./providers/codex/files",
+      "kind": "declaration",
       "path": "reference/providers-codex-files.md"
     },
     {
       "subpath": "./providers/codex/runtime",
+      "kind": "declaration",
       "path": "reference/providers-codex-runtime.md"
     },
     {
       "subpath": "./providers/gemini",
+      "kind": "declaration",
       "path": "reference/providers-gemini.md"
     },
     {
       "subpath": "./providers/gemini/files",
+      "kind": "declaration",
       "path": "reference/providers-gemini-files.md"
     },
     {
       "subpath": "./providers/gemini/runtime",
+      "kind": "declaration",
       "path": "reference/providers-gemini-runtime.md"
     },
     {
       "subpath": "./providers/hermes",
+      "kind": "declaration",
       "path": "reference/providers-hermes.md"
     },
     {
       "subpath": "./providers/hermes/runtime",
+      "kind": "declaration",
       "path": "reference/providers-hermes-runtime.md"
     },
     {
       "subpath": "./providers/openclaw",
+      "kind": "declaration",
       "path": "reference/providers-openclaw.md"
     },
     {
       "subpath": "./providers/openclaw/runtime",
+      "kind": "declaration",
       "path": "reference/providers-openclaw-runtime.md"
     },
     {
       "subpath": "./testing",
+      "kind": "declaration",
       "path": "reference/testing.md"
     }
   ]

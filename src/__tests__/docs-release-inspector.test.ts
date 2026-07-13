@@ -49,8 +49,15 @@ describe("inspectRelease", () => {
     expect(manifest.exports.map((entry) => entry.subpath)).toEqual([
       ".",
       "./core/runtime",
+      "./schema.json",
     ]);
+    expect(manifest.exports[0].kind).toBe("declaration");
     expect(manifest.exports[0].types).toBe("./dist/index.d.ts");
+    expect(manifest.exports[2]).toEqual({
+      subpath: "./schema.json",
+      kind: "asset",
+      target: "./schema.json",
+    });
     expect(manifest.symbols).toContainEqual({
       subpath: ".",
       name: "RuntimeClient",
@@ -122,7 +129,7 @@ describe("inspectRelease", () => {
     const manifest = await inspectRelease(tarball);
 
     expect(manifest.exports).toEqual([
-      { subpath: ".", types: "./dist/index.d.ts" },
+      { subpath: ".", kind: "declaration", types: "./dist/index.d.ts" },
     ]);
   });
 
@@ -154,9 +161,10 @@ describe("inspectRelease", () => {
     const manifest = await inspectRelease(tarball);
 
     expect(manifest.exports).toEqual([
-      { subpath: ".", types: "./dist/index.d.ts" },
+      { subpath: ".", kind: "declaration", types: "./dist/index.d.ts" },
       {
         subpath: "./core/runtime",
+        kind: "declaration",
         types: "./dist/core/runtime/index.d.ts",
       },
     ]);

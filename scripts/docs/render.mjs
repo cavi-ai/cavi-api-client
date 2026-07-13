@@ -96,20 +96,24 @@ export function renderDocumentation(input) {
   }, null, 2)}\n`);
   const navigation = structuredClone(input.navigation);
   if (navigation && typeof navigation === "object" && !Array.isArray(navigation)) {
-    const releaseSubpaths = new Set(input.manifest.exports.map(({ subpath }) => subpath));
-    const packageSubpaths = Array.isArray(navigation.packageExports)
-      ? navigation.packageExports.filter((subpath) => typeof subpath === "string")
-      : [];
-    navigation.reference = [...new Set([...releaseSubpaths, ...packageSubpaths])]
-      .sort((left, right) => left.localeCompare(right))
-      .map((subpath) => releaseSubpaths.has(subpath)
-        ? { subpath, path: `reference/${subpathSlug(subpath)}.md` }
-        : { subpath });
-    delete navigation.packageExports;
+    navigation.reference = [...input.manifest.exports]
+      .sort((left, right) => left.subpath.localeCompare(right.subpath))
+      .map((releaseExport) => releaseExport.kind === "declaration"
+        ? {
+            subpath: releaseExport.subpath,
+            kind: "declaration",
+            path: `reference/${subpathSlug(releaseExport.subpath)}.md`,
+          }
+        : {
+            subpath: releaseExport.subpath,
+            kind: "asset",
+            target: releaseExport.target,
+          });
   }
   output.set("navigation.json", `${JSON.stringify(navigation, null, 2)}\n`);
 
   for (const releaseExport of [...input.manifest.exports].sort((a, b) => a.subpath.localeCompare(b.subpath))) {
+    if (releaseExport.kind !== "declaration") continue;
     output.set(
       `reference/${subpathSlug(releaseExport.subpath)}.md`,
       renderReferencePage(input.manifest, releaseExport.subpath),
@@ -154,6 +158,7 @@ export function validateRenderedDocumentation(output, manifest) {
   /** @type {string[]} */
   const diagnostics = [];
   for (const releaseExport of manifest.exports) {
+    if (releaseExport.kind !== "declaration") continue;
     const pagePath = `reference/${subpathSlug(releaseExport.subpath)}.md`;
     if (!output.has(pagePath)) {
       diagnostics.push(`${releaseExport.subpath}: expected reference index page ${pagePath}; observed missing`);

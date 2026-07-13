@@ -88,7 +88,32 @@ describe("renderDocumentation", () => {
 
     expect(() => validateRenderedDocumentation(output, manifest)).not.toThrow();
     for (const releaseExport of manifest.exports) {
-      expect(output.has(`reference/${subpathSlug(releaseExport.subpath)}.md`)).toBe(true);
+      if (releaseExport.kind === "declaration") {
+        expect(output.has(`reference/${subpathSlug(releaseExport.subpath)}.md`)).toBe(true);
+      }
+    }
+  });
+
+  it("maps the exact stable manifest to typed navigation targets", () => {
+    const output = render();
+    const renderedNavigation = JSON.parse(output.get("navigation.json")!) as {
+      reference: Array<{ subpath: string; kind: string; path?: string; target?: string }>;
+    };
+
+    expect(renderedNavigation.reference.map(({ subpath }) => subpath)).toEqual(
+      manifest.exports.map(({ subpath }) => subpath).sort(),
+    );
+    for (const entry of renderedNavigation.reference) {
+      const stableExport = manifest.exports.find(({ subpath }) => subpath === entry.subpath)!;
+      expect(entry.kind).toBe(stableExport.kind);
+      if (stableExport.kind === "declaration") {
+        expect(entry.path).toBe(`reference/${subpathSlug(entry.subpath)}.md`);
+        expect(output.has(entry.path!)).toBe(true);
+        expect(entry.target).toBeUndefined();
+      } else {
+        expect(entry.path).toBeUndefined();
+        expect(entry.target).toBe(stableExport.target);
+      }
     }
   });
 
@@ -158,7 +183,7 @@ describe("renderDocumentation", () => {
       package: "@cavi-ai/api-client",
       version: "0.11.0",
       sha256: "a".repeat(64),
-      exports: [{ subpath: ".", types: "./dist/index.d.ts" }],
+      exports: [{ subpath: ".", kind: "declaration", types: "./dist/index.d.ts" }],
       symbols: [{ subpath: ".", name: "request", kind: "function", signature: stableSignature }],
     };
 
@@ -181,7 +206,7 @@ describe("renderDocumentation", () => {
         package: "@cavi-ai/api-client",
         version: "0.11.0",
         sha256: "a".repeat(64),
-        exports: [{ subpath: ".", types: "./dist/index.d.ts" }],
+        exports: [{ subpath: ".", kind: "declaration", types: "./dist/index.d.ts" }],
         symbols: [{ subpath: ".", name: "request", kind: "function", signature: "" }],
       },
       contracts: [],

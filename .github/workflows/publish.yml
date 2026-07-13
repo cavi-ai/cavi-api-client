@@ -29,6 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
+      CAVI_API_CLIENT_STABLE_TARBALL: ${{ runner.temp }}/cavi-docs-stable/cavi-ai-api-client-0.11.0.tgz
+      CAVI_DOCS_PACKAGE_TGZ: ${{ runner.temp }}/cavi-docs-stable/cavi-ai-api-client-0.11.0.tgz
+      SOURCE_DATE_EPOCH: 1783740944
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -47,6 +50,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Provision stable documentation artifact
+        run: |
+          mkdir -p "$RUNNER_TEMP/cavi-docs-stable"
+          npm pack @cavi-ai/api-client@0.11.0 --pack-destination "$RUNNER_TEMP/cavi-docs-stable"
+          echo "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a  $CAVI_API_CLIENT_STABLE_TARBALL" | sha256sum --check --strict
 
       - name: Verify package
         run: pnpm run verify

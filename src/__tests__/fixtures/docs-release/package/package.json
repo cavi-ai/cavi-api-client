@@ -9,6 +9,7 @@
     "./core/runtime": {
       "types": "./dist/core/runtime/index.d.ts",
       "import": "./dist/core/runtime/index.js"
-    }
+    },
+    "./schema.json": "./schema.json"
   }
 }

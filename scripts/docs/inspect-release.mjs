@@ -51,7 +51,7 @@ function declarationSignature(declarations) {
  * @param {import("./types.mjs").ReleaseExport} right
  */
 function compareExports(left, right) {
-  return left.subpath.localeCompare(right.subpath) || left.types.localeCompare(right.types);
+  return left.subpath.localeCompare(right.subpath);
 }
 
 /**
@@ -113,9 +113,11 @@ function normalizePublicExports(exportsField) {
     ? publicSubpaths.map((subpath) => [subpath, exportsMap[subpath]])
     : [[".", exportsField]];
 
-  return entries.flatMap(([subpath, target]) => {
+  return entries.map(([subpath, target]) => {
     const types = resolveTypesTarget(target);
-    return types ? [{ subpath, types }] : [];
+    if (types) return { subpath, kind: "declaration", types };
+    if (typeof target === "string") return { subpath, kind: "asset", target };
+    throw new Error(`${subpath}: unsupported public export without a declaration or asset target`);
   });
 }
 
@@ -151,6 +153,7 @@ export async function inspectRelease(tgzPath) {
     /** @type {Map<string, string>} */
     const declarationPaths = new Map();
     for (const releaseExport of releaseExports) {
+      if (releaseExport.kind !== "declaration") continue;
       const declarationPath = path.resolve(packageDirectory, releaseExport.types);
       const relativePath = path.relative(packageDirectory, declarationPath);
       if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
@@ -183,6 +186,28 @@ export async function inspectRelease(tgzPath) {
         throw new Error(`missing declaration: ${releaseExport.types}`);
       }
       declarationPaths.set(releaseExport.subpath, resolvedDeclarationPath);
+    }
+
+    for (const releaseExport of releaseExports) {
+      if (releaseExport.kind !== "asset") continue;
+      const assetPath = path.resolve(packageDirectory, releaseExport.target);
+      const relativePath = path.relative(packageDirectory, assetPath);
+      if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+        throw new Error(`asset target escapes package: ${releaseExport.target}`);
+      }
+      let assetStat;
+      let resolvedAssetPath;
+      try {
+        assetStat = await lstat(assetPath);
+        resolvedAssetPath = await realpath(assetPath);
+      } catch {
+        throw new Error(`missing asset: ${releaseExport.target}`);
+      }
+      const resolvedRelativePath = path.relative(resolvedPackageDirectory, resolvedAssetPath);
+      if (assetStat.isSymbolicLink() || resolvedRelativePath.startsWith("..") || path.isAbsolute(resolvedRelativePath)) {
+        throw new Error(`asset target escapes package: ${releaseExport.target}`);
+      }
+      if (!assetStat.isFile()) throw new Error(`missing asset: ${releaseExport.target}`);
     }
 
     const program = ts.createProgram([...declarationPaths.values()], {

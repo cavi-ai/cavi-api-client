@@ -34,11 +34,39 @@ describe("docs integrity", () => {
     expect(manifest.version).toBe("0.11.0");
   });
 
-  it("lists every package export in generated reference navigation", () => {
-    const navigation = read("docs/api-client/v0.11.0/navigation.json");
-    for (const subpath of Object.keys(pkg.exports)) {
-      expect(navigation, `generated navigation is missing package export ${subpath}`).toContain(subpath);
+  it("maps the exact stable release manifest to generated reference navigation", () => {
+    const stableManifest = JSON.parse(read("docs/api-client/source/releases/0.11.0-manifest.json")) as {
+      exports: Array<{ subpath: string; kind: "declaration" | "asset"; types?: string; target?: string }>;
+    };
+    const navigation = JSON.parse(read("docs/api-client/v0.11.0/navigation.json")) as {
+      reference: Array<{ subpath: string; kind: "declaration" | "asset"; path?: string; target?: string }>;
+    };
+    expect(navigation.reference.map(({ subpath }) => subpath)).toEqual(
+      stableManifest.exports.map(({ subpath }) => subpath).sort(),
+    );
+    for (const entry of navigation.reference) {
+      const stableExport = stableManifest.exports.find(({ subpath }) => subpath === entry.subpath)!;
+      expect(entry.kind).toBe(stableExport.kind);
+      if (entry.kind === "declaration") {
+        expect(entry.path).toMatch(/^reference\/.+\.md$/u);
+        expect(existsSync(path.join(PACKAGE_ROOT, "docs/api-client/v0.11.0", entry.path!))).toBe(true);
+      } else {
+        expect(entry.path).toBeUndefined();
+        expect(entry.target).toBe(stableExport.target);
+      }
     }
+  });
+
+  it("provisions immutable stable docs inputs before publish verification", () => {
+    const workflow = read(".github/workflows/publish.yml");
+    expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
+    expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
+    expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
+    expect(workflow).toContain("93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a");
+    expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
+      workflow.indexOf("Verify package"),
+    );
   });
 
   it("package.json version has a matching CHANGELOG entry", () => {
