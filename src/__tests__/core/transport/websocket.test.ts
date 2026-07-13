@@ -53,6 +53,16 @@ function createFakeWebSocketFactory() {
 
 const reconnect = { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 } as const;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("WebSocket transport", () => {
   it("opens, decodes messages, encodes sends, and closes once", async () => {
     const fake = createFakeWebSocketFactory();
@@ -64,10 +74,10 @@ describe("WebSocket transport", () => {
     fake.open(0);
     await channel.ready;
     fake.message(0, '{"event":"ready"}');
+    await vi.waitFor(() => expect(received).toEqual([{ event: "ready" }]));
     await channel.send({ method: "ping" });
     await channel.close("finished");
     await channel.close("ignored");
-    expect(received).toEqual([{ event: "ready" }]);
     expect(fake.sockets[0]!.send).toHaveBeenCalledWith('{"method":"ping"}');
     expect(fake.sockets[0]!.close).toHaveBeenCalledOnce();
   });
@@ -153,11 +163,75 @@ describe("WebSocket transport", () => {
     fake.open(0);
     await channel.ready;
     fake.message(0, new TextEncoder().encode('{"ok":true}').buffer);
-    await Promise.resolve();
-    expect(received).toEqual([{ ok: true }]);
+    await vi.waitFor(() => expect(received).toEqual([{ ok: true }]));
     fake.message(0, "secret-not-json");
     const error = await closed;
     expect(error).toMatchObject({ message: "WebSocket message decoding failed", transport: { phase: "decode" } });
     expect(JSON.stringify(error)).not.toContain("secret-not-json");
+  });
+
+  it("ignores a stale decoder rejection after reconnect", async () => {
+    const fake = createFakeWebSocketFactory();
+    const stale = deferred<unknown>();
+    const channel = createWebSocketTransport({
+      webSocketFactory: fake.factory,
+      dependencies: { sleep: async () => undefined, now: () => 0, random: () => 0.5 },
+    }).connect({
+      url: "wss://runtime.test",
+      reconnect,
+      decode: (data) => data === "stale" ? stale.promise : JSON.parse(String(data)),
+    });
+    const received: unknown[] = [];
+    const closed = vi.fn();
+    channel.subscribe((message) => received.push(message));
+    channel.subscribeClose(closed);
+    fake.open(0);
+    await channel.ready;
+    fake.message(0, "stale");
+    fake.close(0, 1012);
+    await vi.waitFor(() => expect(fake.sockets).toHaveLength(2));
+    fake.open(1);
+    fake.message(1, '{"generation":2}');
+    stale.reject(new Error("stale decoder secret"));
+    await vi.waitFor(() => expect(received).toEqual([{ generation: 2 }]));
+    expect(closed).not.toHaveBeenCalled();
+    expect(fake.sockets[1]!.close).not.toHaveBeenCalled();
+  });
+
+  it("preserves frame order when async decode promises resolve out of order", async () => {
+    const fake = createFakeWebSocketFactory();
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    const channel = createWebSocketTransport({ webSocketFactory: fake.factory }).connect({
+      url: "wss://runtime.test",
+      decode: (data) => data === "first" ? first.promise : second.promise,
+    });
+    const received: unknown[] = [];
+    channel.subscribe((message) => received.push(message));
+    fake.open(0);
+    await channel.ready;
+    fake.message(0, "first");
+    fake.message(0, "second");
+    second.resolve("decoded-second");
+    await Promise.resolve();
+    expect(received).toEqual([]);
+    first.resolve("decoded-first");
+    await vi.waitFor(() => expect(received).toEqual(["decoded-first", "decoded-second"]));
+  });
+
+  it("rejects JSON values that cannot be encoded and never sends them", async () => {
+    const fake = createFakeWebSocketFactory();
+    const channel = createWebSocketTransport({ webSocketFactory: fake.factory }).connect({
+      url: "wss://runtime.test",
+    });
+    fake.open(0);
+    await channel.ready;
+    for (const value of [undefined, () => undefined, Symbol("secret")]) {
+      await expect(channel.send(value)).rejects.toMatchObject({
+        message: "WebSocket message encoding failed",
+        transport: { phase: "request", retryable: false },
+      });
+    }
+    expect(fake.sockets[0]!.send).not.toHaveBeenCalled();
   });
 });
