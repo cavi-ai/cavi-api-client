@@ -1,0 +1,1 @@
+{"id":"runtime-response","title":"Runtime response","version":"0.11.0","stability":"stable","sourceOfTruth":"upstream-compatible-mirror","symbols":[{"subpath":"./core/runtime","name":"RuntimeRunStatus"}],"capability":"supported","evidence":["src/__tests__/core/runtime/run-types.test.ts"],"summary":"Run status returned by a compatible runtime client."}

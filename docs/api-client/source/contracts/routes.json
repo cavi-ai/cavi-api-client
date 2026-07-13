@@ -1,0 +1,1 @@
+{"id":"routes","title":"Runtime routes","version":"0.11.0","stability":"stable","sourceOfTruth":"upstream-compatible-mirror","symbols":[{"subpath":"./contracts","name":"TeamRouteKey"}],"capability":"supported","evidence":["src/__tests__/contracts/route-resolver.test.ts"],"summary":"Route keys mirrored for compatible gateway integrations."}
