@@ -1,7 +1,7 @@
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { CAPABILITY_STATES, DOCUMENTED_VERSION } from "./types.mjs";
+import { CAPABILITY_STATES, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
 
 const CONTRACTS_DIRECTORY = "docs/api-client/source/contracts";
 const REQUIRED_KEYS = ["id", "title", "version", "stability", "sourceOfTruth", "symbols", "capability", "evidence", "summary"];
@@ -39,12 +39,17 @@ function repositoryPath(root, relativePath) {
 
 /** @param {string} root @param {import("./types.mjs").ReleaseManifest} manifest @returns {Promise<ContractRecord[]>} */
 export async function loadContracts(root, manifest) {
+  const resolvedRoot = await realpath(root);
   const directory = path.join(root, CONTRACTS_DIRECTORY);
   const filenames = (await readdir(directory)).filter((name) => name.endsWith(".json")).sort();
   /** @type {ContractDiagnostic[]} */
   const diagnostics = [];
   /** @type {ContractRecord[]} */
   const records = [];
+
+  if (manifest.package !== DOCUMENTED_PACKAGE) {
+    diagnostics.push({ contractId: "registry", requirement: `manifest package to equal ${DOCUMENTED_PACKAGE}`, observed: shown(manifest.package), action: `use the ${DOCUMENTED_PACKAGE} release manifest` });
+  }
 
   for (const filename of filenames) {
     const fallbackId = path.basename(filename, ".json");
@@ -90,7 +95,13 @@ export async function loadContracts(root, manifest) {
         continue;
       }
       try {
-        if (!(await lstat(evidencePath)).isFile()) throw new Error("not a file");
+        const resolvedEvidencePath = await realpath(evidencePath);
+        const relativeEvidencePath = path.relative(resolvedRoot, resolvedEvidencePath);
+        if (relativeEvidencePath.startsWith("..") || path.isAbsolute(relativeEvidencePath)) {
+          diagnostics.push({ contractId: id, requirement: "evidence path to be contained by the repository root", observed: evidence, action: "use a file whose resolved target is inside the repository" });
+          continue;
+        }
+        if (!(await lstat(resolvedEvidencePath)).isFile()) throw new Error("not a file");
       } catch {
         diagnostics.push({ contractId: id, requirement: `evidence file ${evidence} to exist`, observed: "missing", action: "add the evidence file or correct its path" });
       }
