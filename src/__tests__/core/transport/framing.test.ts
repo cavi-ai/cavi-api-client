@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   TransportError,
   contentLengthCodec,
@@ -15,16 +15,34 @@ const text = (value: Uint8Array): string => new TextDecoder().decode(value);
 function createFakeByteChannel(): TransportByteChannel & {
   chunks: Uint8Array[];
   receive(chunk: Uint8Array): void;
+  remoteClose(error?: unknown): void;
   closed: boolean;
 } {
   const listeners = new Set<(chunk: Uint8Array) => void>();
+  const closeListeners = new Set<(error?: unknown) => void>();
+  let closeError: unknown;
   return {
     chunks: [],
     closed: false,
     async write(chunk) { this.chunks.push(chunk); },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    async close() { this.closed = true; },
+    subscribeClose(listener) {
+      if (this.closed) { listener(closeError); return () => {}; }
+      closeListeners.add(listener);
+      return () => closeListeners.delete(listener);
+    },
+    async close() {
+      if (this.closed) return;
+      this.closed = true;
+      for (const listener of closeListeners) listener();
+    },
     receive(chunk) { for (const listener of listeners) listener(chunk); },
+    remoteClose(error) {
+      if (this.closed) return;
+      this.closed = true;
+      closeError = error;
+      for (const listener of closeListeners) listener(error);
+    },
   };
 }
 
@@ -75,6 +93,18 @@ describe("transport framing", () => {
     expect(() => incomplete.finish()).toThrow(/incomplete/i);
   });
 
+  it("does not retain parser or serializer exceptions as public causes", () => {
+    const inspectCause = (operation: () => unknown): unknown => {
+      try { operation(); } catch (error) { return (error as { cause?: unknown }).cause; }
+      throw new Error("Expected operation to fail");
+    };
+    expect(inspectCause(() => jsonTextCodec().createDecoder().push(bytes("{bad}"))))
+      .toBeUndefined();
+    expect(inspectCause(() => jsonTextCodec().encode({
+      toJSON() { throw new Error("serializer-secret"); },
+    }))).toBeUndefined();
+  });
+
   it("composes a byte channel with a frame codec", async () => {
     const byteChannel = createFakeByteChannel();
     const channel = createFramedMessageChannel(byteChannel, jsonLinesCodec<{ value: number }>());
@@ -87,5 +117,19 @@ describe("transport framing", () => {
     unsubscribe();
     await channel.close();
     expect(byteChannel.closed).toBe(true);
+  });
+
+  it("forwards remote byte-channel closure to message-channel subscribers", () => {
+    const byteChannel = createFakeByteChannel();
+    const channel = createFramedMessageChannel(byteChannel, jsonLinesCodec());
+    const closed: unknown[] = [];
+    channel.subscribeClose((error) => closed.push(error));
+    const failure = new Error("remote closed");
+    byteChannel.remoteClose(failure);
+    byteChannel.remoteClose(new Error("duplicate"));
+    expect(closed).toEqual([failure]);
+    const late = vi.fn();
+    channel.subscribeClose(late);
+    expect(late).toHaveBeenCalledWith(failure);
   });
 });

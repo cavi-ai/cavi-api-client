@@ -58,7 +58,24 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
     options.onProtocolError?.(error);
   };
 
-  const unsubscribe = options.channel.subscribe((message) => {
+  let unsubscribeMessages = () => {};
+  let unsubscribeClose = () => {};
+
+  const finish = () => {
+    if (closed) return;
+    closed = true;
+    unsubscribeMessages();
+    unsubscribeClose();
+    notificationListeners.clear();
+    const error = rpcError("JSON-RPC transport closed before the request completed", "close");
+    for (const request of pending.values()) {
+      request.removeAbortListener();
+      request.reject(error);
+    }
+    pending.clear();
+  };
+
+  unsubscribeMessages = options.channel.subscribe((message) => {
     if (!isRecord(message) || message.jsonrpc !== "2.0") {
       reportProtocolError("Received an invalid JSON-RPC message");
       return;
@@ -78,7 +95,10 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
     }
     const hasResult = Object.prototype.hasOwnProperty.call(message, "result");
     const hasError = Object.prototype.hasOwnProperty.call(message, "error");
-    if (hasResult === hasError || (hasError && !isRecord(message.error))) {
+    const validError = hasError && isRecord(message.error) &&
+      typeof message.error.code === "number" && Number.isFinite(message.error.code) &&
+      typeof message.error.message === "string";
+    if (hasResult === hasError || (hasError && !validError)) {
       reportProtocolError("Received a malformed JSON-RPC response");
       return;
     }
@@ -86,12 +106,12 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
     request.removeAbortListener();
     if (hasResult) request.resolve(message.result);
     else {
-      const remoteError = message.error as Record<string, unknown>;
-      const code = typeof remoteError.code === "string" || typeof remoteError.code === "number"
-        ? remoteError.code : undefined;
-      request.reject(rpcError("JSON-RPC request failed", "request", code));
+      const remoteError = message.error as { code: number };
+      request.reject(rpcError("JSON-RPC request failed", "request", remoteError.code));
     }
   });
+  unsubscribeClose = options.channel.subscribeClose(() => finish());
+  if (closed) unsubscribeClose();
 
   const assertOpen = () => {
     if (closed) throw rpcError("JSON-RPC transport is closed", "close");
@@ -121,14 +141,21 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
         pending.set(id, { resolve: (value) => resolve(value as T), reject, removeAbortListener });
         requestOptions.signal?.addEventListener("abort", onAbort, { once: true });
         const message = { jsonrpc: "2.0", id, method, ...(params === undefined ? {} : { params }) };
-        void options.channel.send(message, requestOptions.signal).catch((cause) => {
+        const failSend = () => {
           const request = pending.get(id);
           if (!request) return;
           pending.delete(id);
           request.removeAbortListener();
           reject(rpcError("JSON-RPC request could not be sent", "request"));
-          void cause;
-        });
+        };
+        let send: Promise<void>;
+        try {
+          send = options.channel.send(message, requestOptions.signal);
+        } catch {
+          failSend();
+          return;
+        }
+        void send.catch(failSend);
       });
     },
     async notify(method, params, notifyOptions: { signal?: AbortSignal } = {}) {
@@ -147,15 +174,7 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
     },
     close() {
       if (closePromise) return closePromise;
-      closed = true;
-      unsubscribe();
-      notificationListeners.clear();
-      const error = rpcError("JSON-RPC transport closed before the request completed", "close");
-      for (const request of pending.values()) {
-        request.removeAbortListener();
-        request.reject(error);
-      }
-      pending.clear();
+      finish();
       closePromise = options.channel.close("JSON-RPC transport closed");
       return closePromise;
     },
