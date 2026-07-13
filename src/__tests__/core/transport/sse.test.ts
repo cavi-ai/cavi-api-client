@@ -137,6 +137,71 @@ describe("SSE transport", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  it("does not expose authentication resolver failures through cause", async () => {
+    const resolverError = new Error("authorization: Bearer resolver-secret");
+    const transport = createSseTransport({
+      baseUrl: "https://runtime.test",
+      auth: async () => { throw resolverError; },
+      fetchImpl: vi.fn(async () => sseResponse("data: unreachable\n\n")),
+    });
+    const error = await transport.subscribe({
+      path: "/events",
+      onMessage: () => undefined,
+    }).done.catch((value: unknown) => value);
+
+    expect(error).toMatchObject({
+      message: "Transport authentication failed",
+      transport: { phase: "authenticate", retryable: false, attempt: 1 },
+    });
+    expect(error.cause).toBeUndefined();
+    expect(JSON.stringify(error)).not.toContain("resolver-secret");
+  });
+
+  it("does not reconnect or replay when an id-less message handler throws", async () => {
+    const fetchImpl = vi.fn(async () => sseResponse("data: once\n\n"));
+    const onMessage = vi.fn(() => { throw new Error("consumer failed"); });
+    const transport = createSseTransport({
+      baseUrl: "https://runtime.test",
+      fetchImpl,
+      dependencies: { sleep: async () => undefined, random: () => 0.5, now: () => 0 },
+    });
+
+    await expect(transport.subscribe({
+      path: "/events",
+      reconnect: { ...reconnect, maxAttempts: 3 },
+      onMessage,
+    }).done).rejects.toMatchObject({
+      message: "SSE message handler failed",
+      transport: { phase: "decode", retryable: false, attempt: 1 },
+    });
+    expect(onMessage).toHaveBeenCalledOnce();
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("does not regress the cursor when an older id is replayed", async () => {
+    const fetchImpl = sequenceFetch([
+      sseResponse("id: 1\ndata: first\n\nid: 2\ndata: second\n\n"),
+      sseResponse("id: 1\ndata: duplicate\n\n"),
+      sseResponse("data: final\n\n"),
+    ]);
+    const transport = createSseTransport({ baseUrl: "https://runtime.test", fetchImpl });
+    await transport.subscribe({
+      path: "/events",
+      reconnect: { ...reconnect, maxAttempts: 3 },
+      onMessage: () => undefined,
+    }).done;
+
+    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({ "Last-Event-ID": "2" });
+    expect(fetchImpl.mock.calls[2]?.[1]?.headers).toMatchObject({ "Last-Event-ID": "2" });
+  });
+
+  it("does not reconnect by default", async () => {
+    const fetchImpl = vi.fn(async () => sseResponse("data: complete\n\n"));
+    const transport = createSseTransport({ baseUrl: "https://runtime.test", fetchImpl });
+    await transport.subscribe({ path: "/events", onMessage: () => undefined }).done;
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("close and external abort settle once and emit closed once", async () => {
     const external = new AbortController();
     const events: unknown[] = [];
