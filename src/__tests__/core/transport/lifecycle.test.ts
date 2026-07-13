@@ -125,7 +125,7 @@ describe("transport lifecycle", () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
-  it("normalizes auth resolver failures without exposing their message", async () => {
+  it("normalizes auth resolver failures without retaining authentication material", async () => {
     const cause = new Error("Bearer auth-secret-token");
     const promise = runTransportAttempts({
       kind: "http", operation: "models.list", safety: "read",
@@ -134,13 +134,15 @@ describe("transport lifecycle", () => {
       execute: async () => "unreachable",
     });
 
-    await expect(promise).rejects.toMatchObject({
+    const error = await promise.catch((failure) => failure);
+    expect(error).toMatchObject({
       name: "TransportError",
       message: "Transport authentication failed",
-      cause,
       transport: { phase: "authenticate", operation: "models.list", retryable: false, attempt: 1 },
     });
-    await expect(promise).rejects.not.toThrow("auth-secret-token");
+    expect(error.cause).toBeUndefined();
+    expect(JSON.stringify(error)).not.toContain("auth-secret-token");
+    expect(JSON.stringify({ error, cause: error.cause })).not.toContain("Bearer");
   });
 
   it("preserves abort classification from the auth resolver", async () => {

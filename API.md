@@ -107,6 +107,8 @@ root imports remain free of Node built-ins.
   Abort and `close()` are idempotent and release each owned resource once.
 - `spawnImpl` and `connectImpl` accept structural interfaces for deterministic
   testing without exporting Node-specific declaration types.
+- Unix-socket `dependencies` can inject the transport clock, random source, and
+  abort-aware sleep for deterministic reconnect and deadline control.
 - Unix reconnects are bounded; disconnected writes fail and have no write
   replay onto a replacement socket.
 

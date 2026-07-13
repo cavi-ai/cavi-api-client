@@ -51,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Transport authentication failures no longer retain resolver errors that may
+  contain credentials; WebSocket disconnect handling is exact-once per socket
+  generation; and Unix-socket reconnect timing uses injectable dependencies.
 - Runtime error metadata now validates its required and optional fields before
   narrowing unknown values, while preserving the stable serialized error shape.
 - Control-plane conformance now rejects both missing declared transports and

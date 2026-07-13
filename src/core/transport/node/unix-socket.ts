@@ -8,13 +8,14 @@ import {
 } from "../backoff.js";
 import type { TransportByteChannel } from "../channel.js";
 import { TransportError } from "../error.js";
-import type { TransportReconnectPolicy } from "../types.js";
+import type { TransportDependencies, TransportReconnectPolicy } from "../types.js";
 
 export type UnixSocketTransportOptions = Readonly<{
   path: string;
   reconnect?: TransportReconnectPolicy;
   signal?: AbortSignal;
   connectImpl?: UnixSocketConnect;
+  dependencies?: Partial<TransportDependencies>;
 }>;
 
 export interface UnixSocketLike {
@@ -48,12 +49,17 @@ export function createUnixSocketTransport(
   const policy = options.reconnect ?? noReconnect;
   validateTransportRetryPolicy(policy);
   const factory = options.connectImpl ?? defaultConnect;
+  const dependencies: TransportDependencies = {
+    now: options.dependencies?.now ?? (() => Date.now()),
+    random: options.dependencies?.random ?? (() => Math.random()),
+    sleep: options.dependencies?.sleep ?? abortableSleep,
+  };
   const listeners = new Set<(chunk: Uint8Array) => void>();
   const closeListeners = new Set<(error?: unknown) => void>();
   const destroyed = new WeakSet<object>();
   const writeWaiters = new WeakMap<object, Set<(error: unknown) => void>>();
   const controller = new AbortController();
-  const startedAt = Date.now();
+  const startedAt = dependencies.now();
   let socket: UnixSocketLike | undefined;
   let attempt = 1;
   let connected = false;
@@ -116,13 +122,13 @@ export function createUnixSocketTransport(
       return;
     }
     reconnecting = true;
-    const delay = computeBackoffDelay(policy, attempt, Math.random());
-    if (policy.deadlineMs !== undefined && Date.now() - startedAt + delay > policy.deadlineMs) {
+    const delay = computeBackoffDelay(policy, attempt, dependencies.random());
+    if (policy.deadlineMs !== undefined && dependencies.now() - startedAt + delay > policy.deadlineMs) {
       reconnecting = false;
       finish(makeError("Unix socket reconnect deadline exceeded", "close"));
       return;
     }
-    try { await abortableSleep(delay, controller.signal); }
+    try { await dependencies.sleep(delay, controller.signal); }
     catch { reconnecting = false; if (!terminal) finish(makeError("Unix socket connection closed", "close")); return; }
     reconnecting = false;
     if (terminal) return;

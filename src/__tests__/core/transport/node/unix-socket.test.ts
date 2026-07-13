@@ -107,32 +107,53 @@ describe("Node Unix-socket transport", () => {
   });
 
   it("does not let a stale socket reconnect or deliver data after disconnect", async () => {
-    vi.useFakeTimers();
-    try {
-      const factory = socketFactory();
-      const channel = createUnixSocketTransport({
-        path: "/tmp/runtime.sock",
-        connectImpl: factory.connect,
-        reconnect: { maxAttempts: 2, baseDelayMs: 20, maxDelayMs: 20 },
-      });
-      const received = vi.fn();
-      channel.subscribe(received);
-      let ready = false;
-      void channel.ready.then(() => { ready = true; });
-      factory.sockets[0]!.emit("error", new Error("failed"));
-      factory.sockets[0]!.emit("connect");
-      factory.sockets[0]!.emit("data", Uint8Array.of(9));
-      await Promise.resolve();
-      expect(ready).toBe(false);
-      expect(received).not.toHaveBeenCalled();
-      await expect(channel.write(Uint8Array.of(1))).rejects.toThrow(/not connected/iu);
-      await vi.advanceTimersByTimeAsync(20);
-      expect(factory.connect).toHaveBeenCalledTimes(2);
-      factory.sockets[1]!.emit("connect");
-      await channel.ready;
-    } finally {
-      vi.useRealTimers();
-    }
+    const factory = socketFactory();
+    const sleep = vi.fn(async () => undefined);
+    const random = vi.fn(() => 0.25);
+    const channel = createUnixSocketTransport({
+      path: "/tmp/runtime.sock",
+      connectImpl: factory.connect,
+      reconnect: { maxAttempts: 2, baseDelayMs: 20, maxDelayMs: 20 },
+      dependencies: { now: () => 100, random, sleep },
+    });
+    const received = vi.fn();
+    channel.subscribe(received);
+    let ready = false;
+    void channel.ready.then(() => { ready = true; });
+    factory.sockets[0]!.emit("error", new Error("failed"));
+    factory.sockets[0]!.emit("connect");
+    factory.sockets[0]!.emit("data", Uint8Array.of(9));
+    await Promise.resolve();
+    expect(ready).toBe(false);
+    expect(received).not.toHaveBeenCalled();
+    await expect(channel.write(Uint8Array.of(1))).rejects.toThrow(/not connected/iu);
+    await vi.waitFor(() => expect(factory.connect).toHaveBeenCalledTimes(2));
+    expect(sleep).toHaveBeenCalledWith(20, expect.any(AbortSignal));
+    expect(random).toHaveBeenCalledOnce();
+    factory.sockets[1]!.emit("connect");
+    await channel.ready;
+  });
+
+  it("uses injected time to stop before a reconnect deadline", async () => {
+    const factory = socketFactory();
+    const sleep = vi.fn(async () => undefined);
+    const now = vi.fn()
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(111);
+    const channel = createUnixSocketTransport({
+      path: "/tmp/runtime.sock",
+      connectImpl: factory.connect,
+      reconnect: { maxAttempts: 2, baseDelayMs: 10, maxDelayMs: 10, deadlineMs: 20 },
+      dependencies: { now, random: () => 0.5, sleep },
+    });
+    factory.sockets[0]!.emit("error", new Error("failed"));
+    const error = await channel.closed.catch((failure) => failure);
+    expect(error).toMatchObject({
+      message: "Unix socket reconnect deadline exceeded",
+      transport: { phase: "close", attempt: 1 },
+    });
+    expect(sleep).not.toHaveBeenCalled();
+    expect(factory.connect).toHaveBeenCalledOnce();
   });
 
   it("treats error without close as disconnect and rejects pending writes", async () => {
