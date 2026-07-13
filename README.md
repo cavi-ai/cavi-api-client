@@ -354,6 +354,9 @@ const client = createGatewayApiClient(config.gateway, {
 
 Provider modules should reuse core transports. They should not fork JSON request
 handling, RPC flow, SSE parsing, trace redaction, or error normalization.
+The shared `createWebSocketTransport` accepts a browser-compatible socket
+factory, optional URL/subprotocol resolvers for reconnect-time credential
+refresh, and explicit bounded reconnect policy; sent messages are never replayed.
 
 ### Providers
 
