@@ -44,9 +44,17 @@ function normalizeBaseUrl(baseUrl: string): URL {
   return new URL(normalized);
 }
 
-function operationSafety(request: HttpTransportRequest): TransportOperationSafety {
+function normalizeIdempotencyKey(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized === undefined || normalized.length === 0 ? undefined : normalized;
+}
+
+function operationSafety(
+  request: HttpTransportRequest,
+  idempotencyKey: string | undefined,
+): TransportOperationSafety {
   if (request.method === "GET" || request.method === "HEAD") return "read";
-  return request.idempotencyKey === undefined ? "mutation" : "idempotent";
+  return idempotencyKey === undefined ? "mutation" : "idempotent";
 }
 
 function isTransientStatus(status: number): boolean {
@@ -66,6 +74,7 @@ function mergeHeaders(
   defaults: Readonly<Record<string, string>> | undefined,
   request: HttpTransportRequest,
   authHeaders: Readonly<Record<string, string>>,
+  idempotencyKey: string | undefined,
 ): Record<string, string> {
   const headers: Record<string, string> = {};
   const setHeader = (name: string, value: string): void => {
@@ -80,7 +89,7 @@ function mergeHeaders(
   const suppliedIdempotencyHeader = Object.keys(headers).find((name) =>
     name.toLowerCase() === "idempotency-key");
   if (suppliedIdempotencyHeader !== undefined) delete headers[suppliedIdempotencyHeader];
-  if (request.idempotencyKey !== undefined) headers["Idempotency-Key"] = request.idempotencyKey;
+  if (idempotencyKey !== undefined) headers["Idempotency-Key"] = idempotencyKey;
   return headers;
 }
 
@@ -118,7 +127,8 @@ export function createHttpTransport(options: HttpTransportOptions): HttpTranspor
 
   return {
     async request<T = unknown>(request: HttpTransportRequest): Promise<T> {
-      const safety = operationSafety(request);
+      const idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey);
+      const safety = operationSafety(request, idempotencyKey);
       const operation = `${request.method} ${request.path}`;
       const url = new URL(request.path, baseUrl).toString();
 
@@ -132,7 +142,7 @@ export function createHttpTransport(options: HttpTransportOptions): HttpTranspor
         lifecycle,
         signal: request.signal,
         execute: async ({ attempt, headers: freshHeaders, signal }) => {
-          const headers = mergeHeaders(options.defaultHeaders, request, freshHeaders);
+          const headers = mergeHeaders(options.defaultHeaders, request, freshHeaders, idempotencyKey);
           let response: Response;
           try {
             response = await fetchImpl(url, {
