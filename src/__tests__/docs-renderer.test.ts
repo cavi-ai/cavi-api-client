@@ -1,7 +1,11 @@
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { promisify } from "node:util";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { buildDocumentation } from "../../scripts/docs/build.mjs";
 import { loadContracts } from "../../scripts/docs/contracts.mjs";
 import {
   renderDocumentation,
@@ -10,6 +14,8 @@ import {
 } from "../../scripts/docs/render.mjs";
 
 const root = path.resolve(".");
+const execFileAsync = promisify(execFile);
+const temporaryDirectories: string[] = [];
 let manifest: import("../../scripts/docs/types.mjs").ReleaseManifest;
 let contracts: Awaited<ReturnType<typeof loadContracts>>;
 let navigation: unknown;
@@ -22,6 +28,12 @@ beforeAll(async () => {
   navigation = JSON.parse(
     await readFile("docs/api-client/source/navigation.json", "utf8"),
   );
+});
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map((directory) =>
+    rm(directory, { recursive: true, force: true })
+  ));
 });
 
 function render() {
@@ -72,6 +84,83 @@ describe("renderDocumentation", () => {
       schemaVersion: 1,
       generatedAt: "2023-11-14T22:13:20.000Z",
     });
+  });
+
+  it("renders the exact stable declaration signature without a placeholder fallback", () => {
+    const stableSignature = [
+      "export declare function request<TInput, TOutput>(",
+      "    input: TInput,",
+      "    options?: { signal?: AbortSignal },",
+      "): Promise<TOutput>;",
+    ].join("\n");
+    const stableManifest = {
+      package: "@cavi-ai/api-client",
+      version: "0.11.0",
+      sha256: "a".repeat(64),
+      exports: [{ subpath: ".", types: "./dist/index.d.ts" }],
+      symbols: [{ subpath: ".", name: "request", kind: "function", signature: stableSignature }],
+    };
+
+    const output = renderDocumentation({
+      manifest: stableManifest,
+      contracts: [],
+      navigation: {},
+      curatedRoot: "unused",
+      sourceDateEpoch: 1_700_000_000,
+    });
+    const page = output.get("reference/index.md")!;
+
+    expect(page).toContain(stableSignature);
+    expect(page).not.toContain("export function request;");
+  });
+
+  it("rejects a stable manifest symbol without an inspected declaration signature", () => {
+    expect(() => renderDocumentation({
+      manifest: {
+        package: "@cavi-ai/api-client",
+        version: "0.11.0",
+        sha256: "a".repeat(64),
+        exports: [{ subpath: ".", types: "./dist/index.d.ts" }],
+        symbols: [{ subpath: ".", name: "request", kind: "function", signature: "" }],
+      },
+      contracts: [],
+      navigation: {},
+      curatedRoot: "unused",
+      sourceDateEpoch: 1_700_000_000,
+    })).toThrow(".:request: expected declaration signature from stable release manifest; observed missing");
+  });
+
+  it("parses build arguments and writes rendered files to the selected directory", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-build-test-"));
+    temporaryDirectories.push(workspace);
+    const fixtureRoot = path.join(workspace, "root");
+    const output = path.join(workspace, "output");
+    await mkdir(path.join(fixtureRoot, "docs/api-client/source/contracts"), { recursive: true });
+    await writeFile(
+      path.join(fixtureRoot, "docs/api-client/source/navigation.json"),
+      '{"title":"fixture"}\n',
+    );
+
+    await expect(buildDocumentation(["--output", output])).rejects.toThrow(
+      "missing required option --tarball",
+    );
+    const tarball = path.join(workspace, "release.tgz");
+    await execFileAsync("tar", ["-czf", tarball, "package"], {
+      cwd: path.resolve("src/__tests__/fixtures/docs-release"),
+    });
+    const rendered = await buildDocumentation([
+      "--source-date-epoch", "1700000000",
+      "--root", fixtureRoot,
+      "--tarball", tarball,
+      "--output", output,
+    ]);
+
+    expect(await readFile(path.join(output, "manifest.json"), "utf8")).toBe(
+      rendered.get("manifest.json"),
+    );
+    expect(await readFile(path.join(output, "reference/index.md"), "utf8")).toContain(
+      "createRuntimeClient<TInput>",
+    );
   });
 
   it("rejects a missing symbol page with its exact subpath and symbol", () => {

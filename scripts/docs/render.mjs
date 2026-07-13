@@ -11,11 +11,12 @@ function symbolAnchor(subpath, name) {
   return `symbol-${identity.toLowerCase().replaceAll(/[^a-z0-9]+/gu, "-").replaceAll(/^-|-$/gu, "")}`;
 }
 
-/** @param {import("./types.mjs").ReleaseSymbol & {signature?: string}} symbol */
+/** @param {import("./types.mjs").ReleaseSymbol} symbol */
 function declarationSignature(symbol) {
-  if (symbol.signature) return symbol.signature.trim();
-  if (symbol.kind === "variable") return `export const ${symbol.name};`;
-  return `export ${symbol.kind} ${symbol.name};`;
+  if (typeof symbol.signature !== "string" || !symbol.signature.trim()) {
+    throw new Error(`${symbol.subpath}:${symbol.name}: expected declaration signature from stable release manifest; observed missing`);
+  }
+  return symbol.signature.trim();
 }
 
 /** @param {ReleaseManifest} manifest @param {string} subpath */

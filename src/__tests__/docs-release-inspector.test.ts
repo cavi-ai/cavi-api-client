@@ -55,6 +55,32 @@ describe("inspectRelease", () => {
       subpath: ".",
       name: "RuntimeClient",
       kind: "interface",
+      signature: [
+        "export interface RuntimeClient<TInput = string> {",
+        "    run(input: TInput): Promise<string>;",
+        "}",
+      ].join("\n"),
+    });
+    expect(manifest.symbols).toContainEqual({
+      subpath: "./core/runtime",
+      name: "RuntimeStatus",
+      kind: "type",
+      signature: [
+        "export type RuntimeStatus<TMetadata extends object = object> = {",
+        "    state: \"idle\" | \"running\";",
+        "    metadata?: TMetadata;",
+        "};",
+      ].join("\n"),
+    });
+    expect(manifest.symbols).toContainEqual({
+      subpath: ".",
+      name: "createRuntimeClient",
+      kind: "function",
+      signature: [
+        "export declare function createRuntimeClient<TInput>(endpoint: URL, options?: {",
+        "    timeoutMs?: number;",
+        "}): RuntimeClient<TInput>;",
+      ].join("\n"),
     });
     expect(manifest.sha256).toMatch(/^[a-f0-9]{64}$/u);
   });

@@ -11,6 +11,7 @@
  * @property {string} subpath
  * @property {string} name
  * @property {string} kind
+ * @property {string} signature
  */
 
 /**
