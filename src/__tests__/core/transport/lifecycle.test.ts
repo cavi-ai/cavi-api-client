@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors.js";
 import {
   TransportError,
   abortableSleep,
@@ -141,6 +141,24 @@ describe("transport lifecycle", () => {
       transport: { phase: "authenticate", operation: "models.list", retryable: false, attempt: 1 },
     });
     await expect(promise).rejects.not.toThrow("auth-secret-token");
+  });
+
+  it("preserves abort classification from the auth resolver", async () => {
+    const signal = new AbortController().signal;
+    const resolverAbort = new ApiClientError("resolver stopped", {
+      type: ApiClientErrorType.Abort,
+      code: ApiClientErrorCode.Aborted,
+    });
+
+    await expect(runTransportAttempts({
+      kind: "http", operation: "models.list", safety: "read", signal,
+      auth: async () => { throw resolverAbort; },
+      policy: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
+      execute: async () => "unreachable",
+    })).rejects.toMatchObject({
+      type: ApiClientErrorType.Abort,
+      code: ApiClientErrorCode.Aborted,
+    });
   });
 
   it("isolates lifecycle listener failures from transport behavior", async () => {

@@ -74,6 +74,9 @@ export async function runTransportAttempts<T>(options: Readonly<{
       try {
         headers = await resolveTransportHeaders(options.headers, options.auth);
       } catch (error) {
+        if (isAbortError(error)) {
+          throw normalizeTransportAbort(options.signal, error);
+        }
         throw new TransportError("Transport authentication failed", {
           metadata: {
             kind: options.kind,
