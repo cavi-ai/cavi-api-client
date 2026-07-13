@@ -136,7 +136,6 @@ export function createSseTransport(transportOptions: SseTransportOptions): SseTr
                 if (controller.signal.aborted || isAbortError(error)) return;
                 throw new TransportError("Transport authentication failed", {
                   metadata: { kind: "sse", phase: "authenticate", operation, retryable: false, attempt },
-                  cause: error,
                 });
               }
               if (controller.signal.aborted) return;
@@ -191,8 +190,8 @@ export function createSseTransport(transportOptions: SseTransportOptions): SseTr
                 if (message.retry !== undefined && message.retry >= 0) serverRetryMs = message.retry;
                 const id = message.id;
                 if (id !== undefined && id.length > 0) {
-                  cursor = id;
                   if (seenIds.has(id)) return;
+                  cursor = id;
                   if (dedupeCapacity > 0) {
                     seenIds.add(id);
                     while (seenIds.size > dedupeCapacity) {
@@ -202,10 +201,23 @@ export function createSseTransport(transportOptions: SseTransportOptions): SseTr
                     }
                   }
                 }
-                connectOptions.onMessage(message);
+                try {
+                  connectOptions.onMessage(message);
+                } catch {
+                  throw new TransportError("SSE message handler failed", {
+                    metadata: {
+                      kind: "sse",
+                      phase: "decode",
+                      operation,
+                      retryable: false,
+                      attempt,
+                    },
+                  });
+                }
               });
             } catch (error) {
               if (controller.signal.aborted || isAbortError(error)) return;
+              if (error instanceof TransportError && !error.transport.retryable) throw error;
               const normalized = new TransportError("SSE stream decoding failed", {
                 metadata: { kind: "sse", phase: "decode", operation, retryable: true, attempt },
               });
