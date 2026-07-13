@@ -8,3 +8,4 @@ export * from "./json-rpc.js";
 export * from "./lifecycle.js";
 export * from "./sse.js";
 export * from "./types.js";
+export * from "./websocket.js";

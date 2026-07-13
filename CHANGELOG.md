@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A browser-safe `createWebSocketTransport` message channel with injected
+  socket construction and codecs, explicit bounded reconnect, refreshed
+  connection hooks, close metadata, and no send replay.
 - Provider-neutral runtime error codes and optional typed runtime metadata on
   `ApiClientError`, with a root-exported metadata getter and unchanged error
   serialization.
