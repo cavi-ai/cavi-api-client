@@ -19,29 +19,36 @@ const shared = (): TransportConformanceSharedObservation => ({
   serializedEvents: [],
   openResources: 0,
 });
+const bytes = (value: string): Uint8Array => new TextEncoder().encode(value);
 
 const compliant = {
   http: (): HttpTransportConformanceFixture => ({ kind: "http", run: async () => ({
-    ...shared(), kind: "http", requests: [{ method: "GET", attempt: 1, status: 200 }],
+    ...shared(), kind: "http", requests: [{
+      operationId: "read-1", method: "GET", attempt: 1, status: 200, idempotencyEligible: true,
+    }],
   }) }),
   sse: (): SseTransportConformanceFixture => ({ kind: "sse", run: async () => ({
     ...shared(), kind: "sse", connections: [{ attempt: 1 }], deliveredIds: ["1", "2"],
   }) }),
   websocket: (): WebSocketTransportConformanceFixture => ({ kind: "websocket", run: async () => ({
-    ...shared(), kind: "websocket", connections: [{ generation: 1 }],
-    frames: [{ direction: "sent", sequence: 1, generation: 1 }],
+    ...shared(), kind: "websocket", lifecycle: [
+      { state: "opened", generation: 1 },
+      { state: "sent", generation: 1, frame: { sequence: 1, messageId: "read-1" } },
+      { state: "closed", generation: 1 },
+    ],
   }) }),
   "json-rpc": (): JsonRpcTransportConformanceFixture => ({ kind: "json-rpc", run: async () => ({
-    ...shared(), kind: "json-rpc", requestIds: [1], responseIds: [1],
-    notifications: [{ method: "progress", hasId: false }], pendingAfterClose: 0,
+    ...shared(), kind: "json-rpc", requests: [{ id: 1 }], responses: [{ id: 1 }],
+    notifications: [{ method: "progress", hasId: false }],
   }) }),
   stdio: (): StdioTransportConformanceFixture => ({ kind: "stdio", run: async () => ({
-    ...shared(), kind: "stdio", frames: [{ bytes: new Uint8Array([1]), decodedMessages: 1 }],
-    lifecycle: ["open", "closed"],
+    ...shared(), kind: "stdio", codec: "json-lines", chunks: [bytes("{\"ok\":true}\n")],
+    expectedValues: [{ ok: true }], writtenMessageIds: ["read-1"], lifecycle: ["open", "closed"],
   }) }),
   unix: (): UnixTransportConformanceFixture => ({ kind: "unix", run: async () => ({
-    ...shared(), kind: "unix", frames: [{ bytes: new Uint8Array([1]), decodedMessages: 1 }],
-    lifecycle: ["open", "closed"],
+    ...shared(), kind: "unix", codec: "content-length",
+    chunks: [bytes("Content-Length: 11\r\n\r\n{\"ok\":true}")],
+    expectedValues: [{ ok: true }], writtenMessageIds: ["read-1"], lifecycle: ["open", "closed"],
   }) }),
 } satisfies Record<TransportKind, () => TransportConformanceFixture>;
 
@@ -56,8 +63,8 @@ describe("inspectTransportConformance", () => {
     const fixture: HttpTransportConformanceFixture = { kind: "http", run: async () => ({
       ...shared(), kind: "http", maxAttempts: 2,
       requests: [
-        { method: "POST", attempt: 1, status: 503 },
-        { method: "POST", attempt: 2, status: 99 },
+        { operationId: "write-1", method: "POST", attempt: 1, status: 503, idempotencyEligible: false },
+        { operationId: "write-1", method: "POST", attempt: 2, status: 99, idempotencyEligible: false },
       ],
     }) };
     expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
@@ -68,13 +75,38 @@ describe("inspectTransportConformance", () => {
     const fixture: HttpTransportConformanceFixture = { kind: "http", run: async () => ({
       ...shared(), kind: "http", maxAttempts: 2,
       requests: [
-        { method: "POST", attempt: 1, status: 503, idempotencyKey: "operation-1" },
-        { method: "POST", attempt: 2, status: 200, idempotencyKey: "operation-1" },
+        { operationId: "write-1", method: "POST", attempt: 1, status: 503,
+          idempotencyEligible: true, idempotencyKey: " operation-1 " },
+        { operationId: "write-1", method: "POST", attempt: 2, status: 200,
+          idempotencyEligible: true, idempotencyKey: "operation-1" },
       ],
     }) };
     expect(await inspectTransportConformance(fixture)).toEqual({
       ok: true, kind: "http", issues: [],
     });
+  });
+
+  it("allows two distinct non-idempotent mutations", async () => {
+    const fixture: HttpTransportConformanceFixture = { kind: "http", run: async () => ({
+      ...shared(), kind: "http", requests: [
+        { operationId: "write-1", method: "POST", attempt: 1, status: 200, idempotencyEligible: false },
+        { operationId: "write-2", method: "POST", attempt: 1, status: 200, idempotencyEligible: false },
+      ],
+    }) };
+    expect((await inspectTransportConformance(fixture)).ok).toBe(true);
+  });
+
+  it("rejects a changed idempotency key across one operation", async () => {
+    const fixture: HttpTransportConformanceFixture = { kind: "http", run: async () => ({
+      ...shared(), kind: "http", maxAttempts: 2, requests: [
+        { operationId: "write-1", method: "POST", attempt: 1, status: 503,
+          idempotencyEligible: true, idempotencyKey: "key-1" },
+        { operationId: "write-1", method: "POST", attempt: 2, status: 200,
+          idempotencyEligible: true, idempotencyKey: "key-2" },
+      ],
+    }) };
+    expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
+      .toContain("protocol_mismatch");
   });
 
   it("derives SSE resume and duplicate-delivery failures", async () => {
@@ -89,13 +121,15 @@ describe("inspectTransportConformance", () => {
 
   it("derives WebSocket ordering and post-close delivery failures", async () => {
     const fixture: WebSocketTransportConformanceFixture = { kind: "websocket", run: async () => ({
-      ...shared(), kind: "websocket", connections: [{ generation: 1, closedAtSequence: 2 }],
-      frames: [
-        { direction: "sent", sequence: 1, generation: 1, messageId: "mutation-1" },
-        { direction: "sent", sequence: 2, generation: 1, messageId: "mutation-1" },
-        { direction: "delivered", sequence: 2, generation: 1 },
-        { direction: "delivered", sequence: 1, generation: 1 },
-        { direction: "delivered", sequence: 3, generation: 1 },
+      ...shared(), kind: "websocket", maxAttempts: 2, lifecycle: [
+        { state: "opened", generation: 1 },
+        { state: "sent", generation: 1, frame: { sequence: 1, messageId: "mutation-1" } },
+        { state: "closed", generation: 1 },
+        { state: "delivered", generation: 1, frame: { sequence: 1 } },
+        { state: "opened", generation: 2 },
+        { state: "sent", generation: 2, frame: { sequence: 1, messageId: "mutation-1" } },
+        { state: "delivered", generation: 2, frame: { sequence: 2 } },
+        { state: "delivered", generation: 2, frame: { sequence: 1 } },
       ],
     }) };
     expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
@@ -104,22 +138,54 @@ describe("inspectTransportConformance", () => {
 
   it("derives JSON-RPC correlation, notification, and close failures", async () => {
     const fixture: JsonRpcTransportConformanceFixture = { kind: "json-rpc", run: async () => ({
-      ...shared(), kind: "json-rpc", requestIds: [1], responseIds: [2],
-      notifications: [{ method: "progress", hasId: true }], pendingAfterClose: 1,
+      ...shared(), kind: "json-rpc", requests: [{ id: 1 }, { id: 1 }, { id: 3 }],
+      responses: [{ id: 2 }, { id: 2 }], notifications: [{ method: "progress", hasId: true }],
     }) };
     expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
-      .toEqual(["protocol_mismatch", "protocol_mismatch", "resource_leak"]);
+      .toEqual([
+        "protocol_mismatch", "protocol_mismatch", "protocol_mismatch",
+        "protocol_mismatch", "protocol_mismatch",
+      ]);
   });
 
-  it.each(["stdio", "unix"] as const)("derives %s framing and lifecycle failures", async (kind) => {
+  it.each(["stdio", "unix"] as const)("derives %s malformed and truncated framing", async (kind) => {
+    for (const [codec, chunks] of [
+      ["json-lines", [bytes("{bad}\n")]],
+      ["content-length", [bytes("Content-Length: 9\r\n\r\n{}")]],
+    ] as const) {
+      const fixture = { kind, run: async () => ({
+        ...shared(), kind, codec, chunks, expectedValues: [], writtenMessageIds: [],
+        lifecycle: ["open" as const, "closed" as const],
+      }) } as StdioTransportConformanceFixture | UnixTransportConformanceFixture;
+      expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
+        .toContain("protocol_mismatch");
+    }
+  });
+
+  it.each(["stdio", "unix"] as const)("decodes multiple %s frames across chunks", async (kind) => {
     const fixture = { kind, run: async () => ({
-      ...shared(), kind, frames: [
-        { bytes: new Uint8Array(), decodedMessages: 1, messageId: "mutation-1" },
-        { bytes: new Uint8Array([1]), decodedMessages: 1, messageId: "mutation-1" },
-      ], lifecycle: ["open" as const],
+      ...shared(), kind, codec: "json-lines" as const,
+      chunks: [bytes("{\"n\":1}\n{\"n\":"), bytes("2}\n")],
+      expectedValues: [{ n: 1 }, { n: 2 }], writtenMessageIds: ["1", "2"],
+      lifecycle: ["open" as const, "closed" as const],
     }) } as StdioTransportConformanceFixture | UnixTransportConformanceFixture;
-    expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
-      .toEqual(["mutation_replayed", "protocol_mismatch", "resource_leak"]);
+    expect((await inspectTransportConformance(fixture)).ok).toBe(true);
+  });
+
+  it.each(["stdio", "unix"] as const)("derives %s header, trailing, and decode mismatches", async (kind) => {
+    for (const observation of [
+      { codec: "content-length" as const, chunks: [bytes("Bad: 2\r\n\r\n{}")], expectedValues: [] },
+      { codec: "content-length" as const,
+        chunks: [bytes("Content-Length: 2\r\n\r\n{}trailing")], expectedValues: [{}] },
+      { codec: "json-lines" as const, chunks: [bytes("{\"actual\":1}\n")], expectedValues: [{ expected: 1 }] },
+    ]) {
+      const fixture = { kind, run: async () => ({
+        ...shared(), kind, ...observation, writtenMessageIds: [],
+        lifecycle: ["open" as const, "closed" as const],
+      }) } as StdioTransportConformanceFixture | UnixTransportConformanceFixture;
+      expect((await inspectTransportConformance(fixture)).issues.map(({ code }) => code))
+        .toContain("protocol_mismatch");
+    }
   });
 
   it("reports abort and retry bounds from raw fixture observations", async () => {
@@ -135,11 +201,11 @@ describe("inspectTransportConformance", () => {
     "Authorization: Basic dXNlcjpwYXNz",
     "authorization='Bearer quoted-secret'",
     "client_secret=hunter2",
-    "Cookie: session=secret",
-    "Set-Cookie: sid=secret",
+    "Cookie: session=secret; theme=dark",
+    "Set-Cookie: auth_token=secret",
     "https://example.test/?access_token=secret",
     "https://example.test/?api_key=secret",
-    "https://example.test/?token=secret",
+    "https://example.test/?jwt=secret",
   ])("detects authentication material: %s", async (serialized) => {
     const fixture = compliant.http();
     const report = await inspectTransportConformance({ ...fixture, run: async () => ({
@@ -154,6 +220,8 @@ describe("inspectTransportConformance", () => {
     "client_secret=[REDACTED]",
     "token budget exceeded",
     "cookie policy accepted",
+    "Cookie: theme=dark; locale=en-US",
+    "https://example.test/?token=page-2",
   ])("does not flag redacted or benign text: %s", async (serialized) => {
     const fixture = compliant.http();
     const report = await inspectTransportConformance({ ...fixture, run: async () => ({
@@ -188,5 +256,18 @@ describe("inspectTransportConformance", () => {
       ["Authorization: Bearer secret", "Cookie: a=secret"], ["1", "1"],
     ));
     expect(left).toEqual(right);
+  });
+
+  it("orders issues without locale-sensitive comparison", async () => {
+    const original = String.prototype.localeCompare;
+    String.prototype.localeCompare = () => { throw new Error("locale-sensitive comparator used"); };
+    try {
+      const fixture = compliant.sse();
+      await expect(inspectTransportConformance({ ...fixture, run: async () => ({
+        ...(await fixture.run()), deliveredIds: ["2", "2"], openResources: 1,
+      }) })).resolves.toEqual(expect.objectContaining({ ok: false }));
+    } finally {
+      String.prototype.localeCompare = original;
+    }
   });
 });
