@@ -66,6 +66,22 @@ Exported from the root.
 - `serializeError(error)` retains its stable `name`, `message`, `type`, and `code`
   shape; runtime metadata is intentionally excluded.
 
+## Node Transport Drivers
+
+Exported only from `@cavi-ai/api-client/core/transport/node` so universal and
+root imports remain free of Node built-ins.
+
+- `createStdioTransport(options)` owns a spawned process, exposes its stdout and
+  stdin as a `TransportByteChannel`, honors stdin backpressure, and applies an
+  explicit ignore, inherit, or callback stderr policy.
+- `createUnixSocketTransport(options)` owns a Unix-domain socket and optionally
+  performs bounded reconnect attempts. Writes fail while disconnected and are
+  never queued or replayed onto a replacement socket.
+- Both drivers expose `closed`; the Unix-socket driver also exposes `ready`.
+  Abort and `close()` are idempotent and release each owned resource once.
+- `spawnImpl` and `connectImpl` accept structural interfaces for deterministic
+  testing without exporting Node-specific declaration types.
+
 ## Runtime Control-Plane Contracts
 
 Exported from the root and `@cavi-ai/api-client/core/runtime`.

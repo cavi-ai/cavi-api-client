@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Node-only stdio and Unix-domain socket byte-channel drivers under
+  `@cavi-ai/api-client/core/transport/node`, with bounded opt-in reconnects,
+  backpressure handling, no write replay, and exact-once owned-resource cleanup.
 - Provider-neutral runtime error codes and optional typed runtime metadata on
   `ApiClientError`, with a root-exported metadata getter and unchanged error
   serialization.
