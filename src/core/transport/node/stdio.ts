@@ -68,10 +68,9 @@ export function createStdioTransport(
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
       ...(options.env === undefined ? {} : { env: options.env }),
     });
-  } catch (cause) {
+  } catch {
     throw new TransportError("stdio process spawn failed", {
       metadata: { kind: "stdio", phase: "connect", operation: "spawn", retryable: false, attempt: 1 },
-      cause,
     });
   }
 
@@ -157,6 +156,7 @@ export function createStdioTransport(
       try { writable = child.stdin.write(chunk); }
       catch { throw error("stdio write failed", "request"); }
       if (writable) return;
+      if (terminal) throw closeError ?? error("stdio process is closed", "request");
       await new Promise<void>((resolve, reject) => {
         const waiter = { resolve, reject };
         drainWaiters.add(waiter);

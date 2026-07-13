@@ -79,10 +79,18 @@ describe("Node stdio transport", () => {
   });
 
   it("normalizes spawn and nonzero-exit failures without stderr text", async () => {
-    expect(() => createStdioTransport({
-      command: "codex",
-      spawnImpl: () => { throw new Error("token=top-secret"); },
-    })).toThrow(/stdio process spawn failed/iu);
+    let spawnError: unknown;
+    try {
+      createStdioTransport({
+        command: "codex",
+        spawnImpl: () => { throw new Error("token=top-secret"); },
+      });
+    } catch (error) {
+      spawnError = error;
+    }
+    expect(spawnError).toMatchObject({ message: "stdio process spawn failed" });
+    expect((spawnError as { cause?: unknown }).cause).toBeUndefined();
+    expect(JSON.stringify(spawnError)).not.toContain("top-secret");
 
     const child = fakeChild();
     const channel = createStdioTransport({ command: "codex", spawnImpl: () => child.process });
@@ -91,6 +99,16 @@ describe("Node stdio transport", () => {
     const error = await channel.closed.catch((value) => value);
     expect(String(error)).not.toContain("top-secret");
     expect(getTransportErrorMetadata(error)).toMatchObject({ kind: "stdio", phase: "close", code: 7 });
+  });
+
+  it("rejects backpressure when exit occurs synchronously inside stdin.write", async () => {
+    const child = fakeChild();
+    child.write.mockImplementationOnce(() => {
+      child.emit("exit", 1, null);
+      return false;
+    });
+    const channel = createStdioTransport({ command: "codex", spawnImpl: () => child.process });
+    await expect(channel.write(Uint8Array.of(1))).rejects.toThrow(/closed|exited/iu);
   });
 
   it("ends and terminates an owned child exactly once on abort or close", async () => {

@@ -93,8 +93,10 @@ export function createUnixSocketTransport(
     controller.abort();
     options.signal?.removeEventListener("abort", onAbort);
     const writeFailure = failure ?? makeError("Unix socket is not connected", "request");
-    for (const reject of writeWaiters.get(socket as object) ?? []) reject(writeFailure);
-    if (socket) writeWaiters.delete(socket as object);
+    if (socket) {
+      for (const reject of writeWaiters.get(socket as object) ?? []) reject(writeFailure);
+      writeWaiters.delete(socket as object);
+    }
     destroy(socket, graceful);
     if (!everConnected) rejectReady(failure ?? makeError("Unix socket closed", "close"));
     listeners.clear();
@@ -130,30 +132,31 @@ export function createUnixSocketTransport(
   const attach = (current: UnixSocketLike): void => {
     socket = current;
     let handledClose = false;
-    current.on("connect", () => {
-      if (terminal || current !== socket) return;
-      connected = true;
-      if (!everConnected) { everConnected = true; resolveReady(); }
-    });
-    current.on("data", (chunk) => {
-      if (terminal || current !== socket || !connected) return;
-      const bytes = Uint8Array.from(chunk);
-      for (const listener of [...listeners]) {
-        try { listener(bytes); } catch { /* Data observers are isolated. */ }
-      }
-    });
-    current.on("drain", () => undefined);
-    current.on("error", () => undefined);
     const disconnected = (): void => {
       if (handledClose || terminal || current !== socket) return;
       handledClose = true;
       connected = false;
+      socket = undefined;
       const failure = makeError("Unix socket is not connected", "request");
       for (const reject of writeWaiters.get(current as object) ?? []) reject(failure);
       writeWaiters.delete(current as object);
       destroy(current);
       void scheduleReconnect();
     };
+    current.on("connect", () => {
+      if (terminal || handledClose || current !== socket) return;
+      connected = true;
+      if (!everConnected) { everConnected = true; resolveReady(); }
+    });
+    current.on("data", (chunk) => {
+      if (terminal || handledClose || current !== socket || !connected) return;
+      const bytes = Uint8Array.from(chunk);
+      for (const listener of [...listeners]) {
+        try { listener(bytes); } catch { /* Data observers are isolated. */ }
+      }
+    });
+    current.on("drain", () => undefined);
+    current.on("error", disconnected);
     current.on("end", disconnected);
     current.on("close", disconnected);
   };
@@ -180,6 +183,9 @@ export function createUnixSocketTransport(
       try { writable = current.write(chunk); }
       catch { throw makeError("Unix socket write failed", "request"); }
       if (writable) return;
+      if (terminal || !connected || current !== socket) {
+        throw makeError("Unix socket is not connected", "request");
+      }
       await new Promise<void>((resolve, reject) => {
         const waiters = writeWaiters.get(current as object) ?? new Set<(error: unknown) => void>();
         writeWaiters.set(current as object, waiters);

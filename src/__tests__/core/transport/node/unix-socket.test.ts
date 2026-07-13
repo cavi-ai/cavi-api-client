@@ -41,6 +41,27 @@ describe("Node Unix-socket transport", () => {
     expect(connectImpl).not.toHaveBeenCalled();
   });
 
+  it("settles safely when pre-aborted or when initial connect throws", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const aborted = createUnixSocketTransport({
+      path: "/tmp/runtime.sock", signal: controller.signal, connectImpl: vi.fn(),
+    });
+    await expect(aborted.ready).rejects.toMatchObject({ name: "TransportError" });
+    await expect(aborted.closed).resolves.toBeUndefined();
+
+    const failed = createUnixSocketTransport({
+      path: "/tmp/runtime.sock",
+      connectImpl: () => { throw new Error("path=/tmp/runtime.sock token=hidden"); },
+    });
+    const readyError = await failed.ready.catch((error) => error);
+    const closedError = await failed.closed.catch((error) => error);
+    expect(readyError).toMatchObject({ name: "TransportError" });
+    expect(closedError).toBe(readyError);
+    expect(JSON.stringify(closedError)).not.toContain("hidden");
+    expect(JSON.stringify(closedError)).not.toContain("runtime.sock");
+  });
+
   it("delivers partial data chunks and honors write backpressure", async () => {
     const factory = socketFactory();
     const channel = createUnixSocketTransport({ path: "/tmp/runtime.sock", connectImpl: factory.connect });
@@ -83,6 +104,64 @@ describe("Node Unix-socket transport", () => {
     const writing = channel.write(Uint8Array.of(1));
     factory.sockets[0]!.emit("close");
     await expect(writing).rejects.toThrow(/not connected/iu);
+  });
+
+  it("does not let a stale socket reconnect or deliver data after disconnect", async () => {
+    vi.useFakeTimers();
+    try {
+      const factory = socketFactory();
+      const channel = createUnixSocketTransport({
+        path: "/tmp/runtime.sock",
+        connectImpl: factory.connect,
+        reconnect: { maxAttempts: 2, baseDelayMs: 20, maxDelayMs: 20 },
+      });
+      const received = vi.fn();
+      channel.subscribe(received);
+      let ready = false;
+      void channel.ready.then(() => { ready = true; });
+      factory.sockets[0]!.emit("error", new Error("failed"));
+      factory.sockets[0]!.emit("connect");
+      factory.sockets[0]!.emit("data", Uint8Array.of(9));
+      await Promise.resolve();
+      expect(ready).toBe(false);
+      expect(received).not.toHaveBeenCalled();
+      await expect(channel.write(Uint8Array.of(1))).rejects.toThrow(/not connected/iu);
+      await vi.advanceTimersByTimeAsync(20);
+      expect(factory.connect).toHaveBeenCalledTimes(2);
+      factory.sockets[1]!.emit("connect");
+      await channel.ready;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("treats error without close as disconnect and rejects pending writes", async () => {
+    const factory = socketFactory();
+    const channel = createUnixSocketTransport({ path: "/tmp/runtime.sock", connectImpl: factory.connect, reconnect });
+    factory.sockets[0]!.emit("connect");
+    await channel.ready;
+    factory.sockets[0]!.write.mockReturnValueOnce(false);
+    const writing = channel.write(Uint8Array.of(1));
+    factory.sockets[0]!.emit("error", new Error("path=/tmp/runtime.sock token=hidden"));
+    await expect(writing).rejects.toThrow(/not connected/iu);
+    await vi.waitFor(() => expect(factory.connect).toHaveBeenCalledTimes(2));
+    factory.sockets[1]!.emit("error", new Error("token=hidden"));
+    const failure = await channel.closed.catch((error) => error);
+    expect(failure).toMatchObject({ name: "TransportError" });
+    expect(JSON.stringify(failure)).not.toContain("hidden");
+    expect(JSON.stringify(failure)).not.toContain("runtime.sock");
+  });
+
+  it("rejects backpressure when close occurs synchronously inside socket.write", async () => {
+    const factory = socketFactory();
+    const channel = createUnixSocketTransport({ path: "/tmp/runtime.sock", connectImpl: factory.connect });
+    factory.sockets[0]!.emit("connect");
+    await channel.ready;
+    factory.sockets[0]!.write.mockImplementationOnce(() => {
+      factory.sockets[0]!.emit("close");
+      return false;
+    });
+    await expect(channel.write(Uint8Array.of(1))).rejects.toThrow(/not connected/iu);
   });
 
   it("bounds reconnect attempts and reports a safe terminal error", async () => {
