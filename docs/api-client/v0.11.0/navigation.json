@@ -1,0 +1,212 @@
+{
+  "title": "@cavi-ai/api-client",
+  "version": "0.11.0",
+  "sections": [
+    {
+      "title": "Introduction",
+      "pages": [
+        {
+          "title": "Overview",
+          "path": "introduction/overview.md"
+        },
+        {
+          "title": "Installation",
+          "path": "introduction/installation.md"
+        },
+        {
+          "title": "Quickstart",
+          "path": "introduction/quickstart.md"
+        }
+      ]
+    },
+    {
+      "title": "Concepts",
+      "pages": [
+        {
+          "title": "Runtime client",
+          "path": "concepts/runtime-client.md"
+        },
+        {
+          "title": "Providers and transports",
+          "path": "concepts/providers-and-transports.md"
+        },
+        {
+          "title": "Routing and capabilities",
+          "path": "concepts/routing-and-capabilities.md"
+        },
+        {
+          "title": "Compatibility",
+          "path": "concepts/compatibility.md"
+        }
+      ]
+    },
+    {
+      "title": "Guides",
+      "pages": [
+        {
+          "title": "Requests",
+          "path": "guides/requests.md"
+        },
+        {
+          "title": "Streaming",
+          "path": "guides/streaming.md"
+        },
+        {
+          "title": "Files",
+          "path": "guides/files.md"
+        },
+        {
+          "title": "Batching",
+          "path": "guides/batching.md"
+        },
+        {
+          "title": "Manifests",
+          "path": "guides/manifests.md"
+        },
+        {
+          "title": "React",
+          "path": "guides/react.md"
+        },
+        {
+          "title": "Testing",
+          "path": "guides/testing.md"
+        }
+      ]
+    },
+    {
+      "title": "API reference",
+      "path": "reference/index.md"
+    },
+    {
+      "title": "Contracts",
+      "path": "contracts/runtime-request.md"
+    }
+  ],
+  "reference": [
+    {
+      "subpath": ".",
+      "path": "reference/index.md"
+    },
+    {
+      "subpath": "./contracts",
+      "path": "reference/contracts.md"
+    },
+    {
+      "subpath": "./core/data",
+      "path": "reference/core-data.md"
+    },
+    {
+      "subpath": "./core/env",
+      "path": "reference/core-env.md"
+    },
+    {
+      "subpath": "./core/errors",
+      "path": "reference/core-errors.md"
+    },
+    {
+      "subpath": "./core/gateway",
+      "path": "reference/core-gateway.md"
+    },
+    {
+      "subpath": "./core/http",
+      "path": "reference/core-http.md"
+    },
+    {
+      "subpath": "./core/kanban",
+      "path": "reference/core-kanban.md"
+    },
+    {
+      "subpath": "./core/memory",
+      "path": "reference/core-memory.md"
+    },
+    {
+      "subpath": "./core/runtime",
+      "path": "reference/core-runtime.md"
+    },
+    {
+      "subpath": "./core/runtime/providers",
+      "path": "reference/core-runtime-providers.md"
+    },
+    {
+      "subpath": "./core/sse",
+      "path": "reference/core-sse.md"
+    },
+    {
+      "subpath": "./core/transport"
+    },
+    {
+      "subpath": "./core/transport/node"
+    },
+    {
+      "subpath": "./core/ws",
+      "path": "reference/core-ws.md"
+    },
+    {
+      "subpath": "./extensions/cavi",
+      "path": "reference/extensions-cavi.md"
+    },
+    {
+      "subpath": "./extensions/cavi/library-clip-contract.json"
+    },
+    {
+      "subpath": "./frameworks/react",
+      "path": "reference/frameworks-react.md"
+    },
+    {
+      "subpath": "./providers/claude",
+      "path": "reference/providers-claude.md"
+    },
+    {
+      "subpath": "./providers/claude/managed-agents",
+      "path": "reference/providers-claude-managed-agents.md"
+    },
+    {
+      "subpath": "./providers/claude/messages",
+      "path": "reference/providers-claude-messages.md"
+    },
+    {
+      "subpath": "./providers/codex",
+      "path": "reference/providers-codex.md"
+    },
+    {
+      "subpath": "./providers/codex/files",
+      "path": "reference/providers-codex-files.md"
+    },
+    {
+      "subpath": "./providers/codex/runtime",
+      "path": "reference/providers-codex-runtime.md"
+    },
+    {
+      "subpath": "./providers/gemini",
+      "path": "reference/providers-gemini.md"
+    },
+    {
+      "subpath": "./providers/gemini/files",
+      "path": "reference/providers-gemini-files.md"
+    },
+    {
+      "subpath": "./providers/gemini/runtime",
+      "path": "reference/providers-gemini-runtime.md"
+    },
+    {
+      "subpath": "./providers/hermes",
+      "path": "reference/providers-hermes.md"
+    },
+    {
+      "subpath": "./providers/hermes/runtime",
+      "path": "reference/providers-hermes-runtime.md"
+    },
+    {
+      "subpath": "./providers/openclaw",
+      "path": "reference/providers-openclaw.md"
+    },
+    {
+      "subpath": "./providers/openclaw/runtime",
+      "path": "reference/providers-openclaw-runtime.md"
+    },
+    {
+      "subpath": "./testing",
+      "path": "reference/testing.md"
+    }
+  ]
+}

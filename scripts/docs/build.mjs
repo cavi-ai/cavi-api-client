@@ -19,6 +19,8 @@ function parseArguments(argv) {
     }
     values[option.slice(2)] = value;
   }
+  values.tarball ??= values.package;
+  values.output ??= values.out;
   for (const required of ["tarball", "output", "source-date-epoch"]) {
     if (!values[required]) throw new Error(`missing required option --${required}`);
   }
@@ -35,6 +37,12 @@ export async function buildDocumentation(argv) {
   const navigation = JSON.parse(
     await readFile(path.join(root, "docs/api-client/source/navigation.json"), "utf8"),
   );
+  try {
+    const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    navigation.packageExports = Object.keys(packageJson.exports ?? {});
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
   const rendered = renderDocumentation({
     manifest,
     contracts,
