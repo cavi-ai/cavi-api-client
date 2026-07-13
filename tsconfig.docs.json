@@ -13,6 +13,7 @@
     "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,
+    "types": ["node"],
     "noEmit": true,
     "paths": {
       "@cavi-ai/api-client": ["./src/index.ts"],

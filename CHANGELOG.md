@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Universal shared transport infrastructure at
+  `@cavi-ai/api-client/core/transport`, with `createHttpTransport`,
+  `createSseTransport`, `createWebSocketTransport`, and
+  `createJsonRpcTransport`; curated root transport contracts and guards; and
+  compile-checked browser and Node examples. Retries and reconnects are bounded
+  and opt-in, mutations require explicit idempotency for replay, SSE resumes by
+  cursor with bounded dedupe, and errors/lifecycle events remain secret-safe.
+- Node-only stdio and Unix-domain socket byte-channel drivers under
+  `@cavi-ai/api-client/core/transport/node`, with bounded opt-in reconnects,
+  backpressure handling, no write replay, and exact-once owned-resource cleanup.
 - Provider-neutral runtime error codes and optional typed runtime metadata on
   `ApiClientError`, with a root-exported metadata getter and unchanged error
   serialization.
@@ -41,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Transport authentication failures no longer retain resolver errors that may
+  contain credentials; WebSocket disconnect handling is exact-once per socket
+  generation; and Unix-socket reconnect timing uses injectable dependencies.
 - Runtime error metadata now validates its required and optional fields before
   narrowing unknown values, while preserving the stable serialized error shape.
 - Control-plane conformance now rejects both missing declared transports and

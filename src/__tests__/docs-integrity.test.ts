@@ -13,6 +13,8 @@ const read = (rel: string) => readFileSync(path.join(PACKAGE_ROOT, rel), "utf8")
 const pkg = JSON.parse(read("package.json")) as { version: string };
 const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
+const api = read("API.md");
+const architecture = read("ARCHITECTURE.md");
 
 describe("docs integrity", () => {
   it("package.json version has a matching CHANGELOG entry", () => {
@@ -146,8 +148,30 @@ describe("docs integrity", () => {
       "custom-runtime-provider.ts",
       "react-gateway.tsx",
       "narrow-imports.ts",
+      "runtime-transport-browser.ts",
+      "runtime-transport-node.ts",
     ]) {
       expect(existsSync(path.join(PACKAGE_ROOT, "docs/examples", file)), file).toBe(true);
     }
+  });
+
+  it("documents the shared transport runtime and its isolation boundaries", () => {
+    const publicDocs = `${readme}\n${api}\n${architecture}\n${changelog}`;
+
+    for (const token of [
+      "@cavi-ai/api-client/core/transport",
+      "@cavi-ai/api-client/core/transport/node",
+      "createHttpTransport",
+      "createJsonRpcTransport",
+      "createSseTransport",
+      "createWebSocketTransport",
+      "createStdioTransport",
+      "createUnixSocketTransport",
+    ]) {
+      expect(publicDocs, `transport docs are missing ${token}`).toContain(token);
+    }
+    expect(publicDocs).toMatch(/(?:no|never)[ -](?:write )?replay/iu);
+    expect(publicDocs).toMatch(/Node(?:-only| isolation| built-ins)/u);
+    expect(publicDocs).toMatch(/not (?:a )?provider adapter/iu);
   });
 });

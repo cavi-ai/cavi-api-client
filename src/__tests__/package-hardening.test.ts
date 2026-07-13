@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
   GATEWAY_PROVIDER_ENV_KEYS,
@@ -100,11 +101,36 @@ const CAVI_PORTAL_CONTRACTS = path.join(SRC_ROOT, "extensions", "cavi", "portal"
 const CORE_GATEWAY_WEBSOCKET = path.join(SRC_ROOT, "core", "gateway", "websocket.ts");
 const CORE_SSE_INDEX = path.join(SRC_ROOT, "core", "sse", "index.ts");
 const CORE_WS_INDEX = path.join(SRC_ROOT, "core", "ws", "index.ts");
+const CORE_TRANSPORT_INDEX = path.join(SRC_ROOT, "core", "transport", "index.ts");
+const CORE_TRANSPORT_NODE_INDEX = path.join(SRC_ROOT, "core", "transport", "node", "index.ts");
 const CORE_JSON_HTTP_CLIENT = path.join(SRC_ROOT, "core", "http", "json-client.ts");
 const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "client", "fetch.ts");
 const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshots", "loaders.ts");
 const REACT_GATEWAY_PROVIDER = path.join(SRC_ROOT, "frameworks", "react", "gateway-provider.tsx");
 const HARDENING_TEST_PATH = "src/__tests__/package-hardening.test.ts";
+// Frozen with TypeScript's module checker from origin/main at
+// 0a8864a216ba68f1fabec537ca02951ee305b475. Additions require an explicit
+// allowlist entry below; never regenerate this from the working tree.
+const ROOT_EXPORT_BASELINE = path.join(
+  SRC_ROOT,
+  "__tests__",
+  "fixtures",
+  "root-exports-origin-main.json",
+);
+const TRANSPORT_NODE_REEXPORT_FIXTURE = path.join(
+  SRC_ROOT,
+  "__tests__",
+  "fixtures",
+  "transport-node-reexport",
+  "entry.ts",
+);
+const APPROVED_ROOT_TRANSPORT_ADDITIONS = [
+  "TransportError",
+  "TransportErrorMetadata",
+  "TransportKind",
+  "TransportLifecycleEvent",
+  "getTransportErrorMetadata",
+] as const;
 
 const FORBIDDEN_PACKAGES = [
   "@cavi/data",
@@ -342,6 +368,61 @@ function isTestOnlySource(relative: string): boolean {
   return /\.test\.tsx?$/u.test(relative) || relative.startsWith("src/__tests__/");
 }
 
+function relativeImportGraph(entry: string): string[] {
+  const visited = new Set<string>();
+  const visit = (filePath: string): void => {
+    if (visited.has(filePath)) return;
+    visited.add(filePath);
+    const source = read(filePath);
+    for (const specifier of staticModuleSpecifiers(source, filePath)) {
+      if (!specifier.startsWith(".")) continue;
+      const target = path.resolve(path.dirname(filePath), specifier.replace(/\.js$/u, ".ts"));
+      if (existsSync(target)) visit(target);
+    }
+  };
+  visit(entry);
+  return [...visited];
+}
+
+function staticModuleSpecifiers(source: string, fileName = "source.ts"): string[] {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+  const specifiers: string[] = [];
+  for (const statement of sourceFile.statements) {
+    if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) &&
+      statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
+      specifiers.push(statement.moduleSpecifier.text);
+      continue;
+    }
+    if (ts.isImportEqualsDeclaration(statement) &&
+      ts.isExternalModuleReference(statement.moduleReference) &&
+      statement.moduleReference.expression &&
+      ts.isStringLiteral(statement.moduleReference.expression)) {
+      specifiers.push(statement.moduleReference.expression.text);
+    }
+  }
+  return specifiers;
+}
+
+function staticNodeSpecifiers(source: string, fileName?: string): string[] {
+  return staticModuleSpecifiers(source, fileName).filter((specifier) =>
+    specifier.startsWith("node:"));
+}
+
+function rootExportNames(entry: string): string[] {
+  const program = ts.createProgram([entry], {
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ES2022,
+    skipLibCheck: true,
+  });
+  const source = program.getSourceFile(entry);
+  if (!source) throw new Error(`TypeScript did not load ${entry}`);
+  const checker = program.getTypeChecker();
+  const symbol = checker.getSymbolAtLocation(source);
+  if (!symbol) throw new Error(`TypeScript did not resolve the module symbol for ${entry}`);
+  return checker.getExportsOfModule(symbol).map((current) => current.name).sort();
+}
+
 describe("package hardening", () => {
   it("keeps the public dependency surface to @cavi-ai/api-client only", () => {
     const offenders = selfScannedSources().flatMap((filePath) => {
@@ -574,6 +655,51 @@ describe("package hardening", () => {
       'export * from "./providers/index.js";',
       'export * from "./jobs.js";',
     ].join("\n"));
+  });
+
+  it("publishes isolated universal and Node transport subpaths", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, unknown>;
+    };
+
+    expect(packageJson.exports["./core/transport"]).toEqual({
+      types: "./dist/core/transport/index.d.ts",
+      import: "./dist/core/transport/index.js",
+      default: "./dist/core/transport/index.js",
+    });
+    expect(packageJson.exports["./core/transport/node"]).toEqual({
+      types: "./dist/core/transport/node/index.d.ts",
+      import: "./dist/core/transport/node/index.js",
+      default: "./dist/core/transport/node/index.js",
+    });
+
+    for (const entry of [path.join(SRC_ROOT, "index.ts"), CORE_TRANSPORT_INDEX]) {
+      const offenders = relativeImportGraph(entry)
+        .flatMap((filePath) => staticNodeSpecifiers(read(filePath), filePath).map(
+          (specifier) => `${rel(filePath)} -> ${specifier}`,
+        ));
+      expect(offenders, `${rel(entry)} reaches Node built-ins`).toEqual([]);
+    }
+    expect(read(path.join(SRC_ROOT, "index.ts"))).not.toContain("core/transport/node");
+    expect(read(CORE_TRANSPORT_NODE_INDEX)).toContain('export * from "./stdio.js";');
+    expect(read(CORE_TRANSPORT_NODE_INDEX)).toContain('export * from "./unix-socket.js";');
+  });
+
+  it("finds static Node imports reached only through re-export barrels", () => {
+    const graph = relativeImportGraph(TRANSPORT_NODE_REEXPORT_FIXTURE);
+    const nodeSpecifiers = graph.flatMap((filePath) =>
+      staticNodeSpecifiers(read(filePath), filePath));
+
+    expect(graph.map((filePath) => path.basename(filePath)).sort()).toEqual([
+      "barrel.ts",
+      "entry.ts",
+      "leaf.ts",
+    ]);
+    expect(nodeSpecifiers).toEqual(["node:fs"]);
+    expect(staticModuleSpecifiers(read(path.join(
+      path.dirname(TRANSPORT_NODE_REEXPORT_FIXTURE),
+      "leaf.ts",
+    )))).not.toContain("node:path");
   });
 
   it("keeps core gateway independent from CAVI and provider implementations", () => {
@@ -949,6 +1075,29 @@ describe("package hardening", () => {
     expect(rootIndex).toContain("RuntimeProviderCapabilityRow");
     expect(rootIndex).not.toMatch(/(?:CLAUDE|CODEX|GEMINI|HERMES|OPENCLAW)_PROVIDER_MODULE/u);
     expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
+  });
+
+  it("curates transport contracts and guards at root without exporting factories", () => {
+    const rootIndex = read(path.join(SRC_ROOT, "index.ts"));
+    const originMainBaseline = JSON.parse(read(ROOT_EXPORT_BASELINE)) as string[];
+    const expectedRootExports = [
+      ...originMainBaseline,
+      ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
+    ].sort();
+
+    expect(rootExportNames(path.join(SRC_ROOT, "index.ts"))).toEqual(expectedRootExports);
+    for (const factory of [
+      "createHttpTransport",
+      "createJsonRpcTransport",
+      "createSseTransport",
+      "createWebSocketTransport",
+      "createStdioTransport",
+      "createUnixSocketTransport",
+    ]) {
+      expect(rootIndex, `root must not export ${factory}`).not.toContain(factory);
+    }
+    expect(rootIndex).toContain("RUNTIME_PROVIDER_CAPABILITY_MATRIX");
+    expect(rootIndex).toContain("getRuntimeProviderCapabilityRow");
   });
 
   it("builds only canonical and compat folders", () => {
