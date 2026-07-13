@@ -10,4 +10,5 @@ export {
 export * from "./protocol.js";
 export * from "./run-stream.js";
 export * from "./dry-run.js";
+export * from "./control-plane/index.js";
 export * from "./providers/index.js";

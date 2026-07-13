@@ -5,6 +5,7 @@ import {
   ApiClientErrorType,
   getErrorCode,
   getErrorMessage,
+  getRuntimeErrorMetadata,
   getErrorStatus,
   getErrorType,
   isAbortError,
@@ -63,6 +64,58 @@ describe("core error helpers", () => {
       type: ApiClientErrorType.Transport,
       code: ApiClientErrorCode.SocketClosed,
     });
+  });
+
+  it("preserves safe runtime error metadata without changing serialization", () => {
+    const error = new ApiClientError("overloaded", {
+      type: ApiClientErrorType.Transport,
+      code: ApiClientErrorCode.ServerOverloaded,
+      runtime: {
+        provider: "codex-app-server",
+        transport: "json-rpc",
+        operation: "turn/start",
+        retryable: true,
+        retryAfterMs: 250,
+      },
+    });
+
+    expect(getRuntimeErrorMetadata(error)).toEqual({
+      provider: "codex-app-server",
+      transport: "json-rpc",
+      operation: "turn/start",
+      retryable: true,
+      retryAfterMs: 250,
+    });
+    expect(serializeError(error)).toEqual({
+      name: "ApiClientError",
+      message: "overloaded",
+      type: "transport",
+      code: "server_overloaded",
+    });
+  });
+
+  it("rejects malformed runtime error metadata", () => {
+    const valid = {
+      provider: "codex-app-server",
+      transport: "json-rpc",
+      operation: "turn/start",
+      retryable: false,
+    };
+    const malformed = [
+      [],
+      {},
+      { ...valid, provider: " " },
+      { ...valid, transport: 1 },
+      { ...valid, operation: "" },
+      { ...valid, retryable: "false" },
+      { ...valid, retryAfterMs: Number.NaN },
+      { ...valid, status: Number.POSITIVE_INFINITY },
+      { ...valid, providerCode: 429 },
+    ];
+
+    for (const runtime of malformed) {
+      expect(getRuntimeErrorMetadata({ runtime })).toBeUndefined();
+    }
   });
 
   it("recognizes abort-shaped errors", () => {

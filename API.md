@@ -52,6 +52,98 @@ Exported from the root and `@cavi-ai/api-client/core/runtime`.
 - `normalizeRuntimeUsage(raw, providerKind)` — best-effort normalizer for a flat native record.
 - `TokenPrices` + `estimateUsageCost(usage, prices)` — pluggable cost; no price table ships.
 
+## Runtime Errors
+
+Exported from the root.
+
+- `RuntimeErrorMetadata` records the provider, transport, operation, retryability,
+  and optional retry delay, HTTP status, and provider code for a runtime failure.
+- `ApiClientError` accepts optional `runtime` metadata, retrievable with
+  `getRuntimeErrorMetadata(error)`. The getter returns `undefined` for malformed
+  metadata instead of treating arbitrary object or array values as trusted data.
+- `ApiClientErrorCode` includes provider-neutral capability, permission, request,
+  conflict, rate-limit, transport, protocol, and overload failure codes.
+- `serializeError(error)` retains its stable `name`, `message`, `type`, and `code`
+  shape; runtime metadata is intentionally excluded.
+
+## Runtime Control-Plane Contracts
+
+Exported from the root and `@cavi-ai/api-client/core/runtime`.
+
+Runtime execution (`RuntimeClient`) remains the universal run and stream contract.
+The control plane is a separate, optional discovery and administration surface:
+providers expose only the focused modules they actually implement. Consumers
+should prefer stable transport declarations and treat absent or experimental
+modules as unsupported instead of assuming a fallback exists.
+
+- `RuntimeProviderStability` — provider contract stability: `stable` or
+  `experimental`.
+- `RuntimeControlPlaneSource` — identifies a provider operation by its
+  transport (`http`, `sse`, `websocket`, `json-rpc`, `stdio`, or
+  `unix-socket`) and method name.
+- `RuntimeControlPlaneMetadata` — provider, stability, source, and optional
+  lossless `providerData` metadata for a control-plane result.
+- `RuntimePage<T>` — a readonly data page with an optional continuation cursor.
+- `RUNTIME_TRANSPORT_KINDS` and `RuntimeTransportKind` — the supported transport
+  vocabulary.
+- `RuntimeTransportCapability` and `RuntimeTransportCapabilities` — describe
+  declared transport stability, authentication, reconnect, replay, and
+  cancellation capabilities.
+- `runtimeTransportSupports(capabilities, kind)` — returns `true` only when the
+  requested transport is declared with `stable` stability; undeclared and
+  experimental transports return `false`.
+- `SessionClient` and `RuntimeSessionSummary` — list, inspect, and optionally
+  cancel provider sessions while retaining canonical lifecycle and source metadata.
+- `ModelCatalogClient`, `RuntimeModelDescriptor`, `AuthStatusClient`, and
+  `RuntimeAuthStatus` — read-only model availability and secret-safe authentication
+  status contracts. Authentication status must never expose tokens, API keys,
+  passwords, cookies, authorization headers, or other credential material.
+- `UsageClient`, `RuntimeUsageQuery`, and `RuntimeUsageSummary` — normalized token
+  usage with cost availability that distinguishes available, estimated, and
+  unavailable monetary values.
+- `TaskClient` and `RuntimeTaskSummary` — list, inspect, and optionally cancel
+  provider tasks with associated run, session, and thread references.
+- `WorkspaceClient` and `RuntimeWorkspaceDescriptor` — read-only workspace
+  discovery without introducing arbitrary filesystem access.
+- `RUNTIME_CONTROL_PLANE_EVENT_NAMES`, `RuntimeControlPlaneEvent`, and
+  `RuntimeEventClient` — a normalized event vocabulary and subscription surface
+  covering operation lifecycle, deltas, tools, approvals, usage, and stream
+  continuity without changing the existing run-stream contract.
+- `inspectRuntimeEventSequence(events)` — reports terminal-event counts and
+  explicit stream gaps; a sequence is valid only when it has exactly one terminal
+  event.
+- `RuntimeControlPlane` — aggregates declared transports and optional focused
+  clients for sessions, models, usage, tasks, workspaces, authentication status,
+  and events.
+- `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
+  implemented control-plane transports and focused modules; declarations do not
+  add those methods to `RuntimeClient`.
+- `RUNTIME_PROVIDER_CAPABILITY_MATRIX` and
+  `getRuntimeProviderCapabilityRow(provider)` — supported root exports providing
+  frozen, provider-by-provider
+  records of existing runtime surfaces, implemented transports, and separately
+  declared control-plane modules. The foundation matrix intentionally declares
+  no control-plane modules until provider adapters exist. Prefer the narrower
+  control-plane contracts above when a consumer does not need cross-provider
+  matrix discovery.
+- `inspectRuntimeControlPlaneConformance(fixture)` — exported from
+  `@cavi-ai/api-client/testing`; validates that a provider's control-plane
+  factory, declared transports, and declared focused modules match its exposed
+  runner-neutral control-plane object, and rejects undeclared exposed modules.
+
+All provider control-plane module declarations are initially empty until provider adapter plans land.
+The six focused clients are sessions, models, usage, tasks, workspace, and
+authentication status; `RuntimeEventClient` is the event subscription contract,
+and `RuntimeTransportCapabilities` declares the available transports separately.
+The contract foundation is shipped, but no built-in provider control-plane adapter
+is advertised yet. In particular, hosted Codex over OpenAI Responses and a future
+`codex-app-server` JSON-RPC provider are distinct identities and must not be
+presented as one adapter.
+
+Existing consumers require no migration: `RuntimeClient`, `GatewayClient`, and
+all established imports retain their behavior. Adopt the control plane only when
+a provider module truthfully declares and returns the required optional modules.
+
 ## Runtime Providers
 
 These are runtime-only providers reached via their subpaths (`./providers/claude`,

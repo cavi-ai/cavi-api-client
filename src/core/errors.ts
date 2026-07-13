@@ -31,12 +31,31 @@ export enum ApiClientErrorCode {
   ProtocolMismatch = "protocol_mismatch",
   AuthRequired = "auth_required",
   AuthForbidden = "auth_forbidden",
+  CapabilityUnavailable = "capability_unavailable",
+  PermissionDenied = "permission_denied",
+  InvalidRequest = "invalid_request",
+  Conflict = "conflict",
+  RateLimited = "rate_limited",
+  TransportUnavailable = "transport_unavailable",
+  TransportProtocolError = "transport_protocol_error",
+  ServerOverloaded = "server_overloaded",
 }
+
+export type RuntimeErrorMetadata = {
+  provider: string;
+  transport: string;
+  operation: string;
+  retryable: boolean;
+  retryAfterMs?: number;
+  status?: number;
+  providerCode?: string;
+};
 
 export type ApiClientErrorOptions = {
   type?: ApiClientErrorType | string;
   code?: ApiClientErrorCode | string;
   cause?: unknown;
+  runtime?: RuntimeErrorMetadata;
 };
 
 export type SerializedApiClientError = {
@@ -49,12 +68,14 @@ export type SerializedApiClientError = {
 export class ApiClientError extends Error {
   readonly type: ApiClientErrorType | string;
   readonly code: ApiClientErrorCode | string;
+  readonly runtime?: RuntimeErrorMetadata;
 
   constructor(message: string, options: ApiClientErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "ApiClientError";
     this.type = options.type ?? ApiClientErrorType.Unknown;
     this.code = options.code ?? ApiClientErrorCode.Unknown;
+    this.runtime = options.runtime;
   }
 }
 
@@ -68,6 +89,30 @@ function readStringProperty(value: unknown, key: string): string | undefined {
   }
   const raw = value[key];
   return typeof raw === "string" && raw.trim() ? raw : undefined;
+}
+
+export function getRuntimeErrorMetadata(error: unknown): RuntimeErrorMetadata | undefined {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+  const runtime = error.runtime;
+  if (!isRecord(runtime) || Array.isArray(runtime)) {
+    return undefined;
+  }
+  const { provider, transport, operation, retryable, retryAfterMs, status, providerCode } = runtime;
+  if (
+    typeof provider !== "string" || !provider.trim() ||
+    typeof transport !== "string" || !transport.trim() ||
+    typeof operation !== "string" || !operation.trim() ||
+    typeof retryable !== "boolean" ||
+    (retryAfterMs !== undefined &&
+      (typeof retryAfterMs !== "number" || !Number.isFinite(retryAfterMs))) ||
+    (status !== undefined && (typeof status !== "number" || !Number.isFinite(status))) ||
+    (providerCode !== undefined && typeof providerCode !== "string")
+  ) {
+    return undefined;
+  }
+  return runtime as RuntimeErrorMetadata;
 }
 
 export function stringifyUnknownError(error: unknown): string {

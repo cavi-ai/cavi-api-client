@@ -179,7 +179,8 @@ behind a **subpath** so consumers import only the slice they need:
   `@cavi-ai/api-client/providers/hermes/runtime`, and
   `@cavi-ai/api-client/providers/openclaw/runtime`.
 - `@cavi-ai/api-client/testing` exposes the runner-neutral
-  `inspectRuntimeProviderConformance` report for third-party providers.
+  `inspectRuntimeProviderConformance` and `inspectRuntimeControlPlaneConformance`
+  reports for third-party providers.
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
 > and low-level primitives moved off the root entry to their subpaths. See
@@ -297,6 +298,27 @@ Everything is exported from `@cavi-ai/api-client/providers/claude`, targeting th
 > unchanged — Managed Agents is an additive sibling under the same subpath.
 
 ## Core Concepts
+
+### Runtime Execution and Control Plane
+
+`RuntimeClient` remains the execution contract for starting, inspecting,
+cancelling, and streaming runs. The additive `RuntimeControlPlane` is separate:
+it can expose focused clients for sessions, models, usage, tasks, workspaces, and
+read-only authentication status, plus normalized events and declared transport
+capabilities. A provider must omit a module it does not implement; consumers
+should rely on stable declarations and never infer support from provider identity.
+
+The package currently ships the contracts, capability matrix, and conformance
+inspection—not built-in control-plane adapters. Every shipped provider's
+control-plane module declaration is therefore empty. Hosted Codex/OpenAI
+Responses remains distinct from the future `codex-app-server` JSON-RPC adapter.
+Authentication status is observational only and cannot contain secrets such as
+tokens, API keys, passwords, cookies, or authorization headers.
+
+This foundation is additive. Existing `RuntimeClient` and `GatewayClient`
+consumers do not need to change; adopt `createControlPlane` only after a provider
+truthfully declares the optional modules it returns. See the compile-checked
+[custom runtime provider example](docs/examples/custom-runtime-provider.ts).
 
 ### One Client Shape
 
