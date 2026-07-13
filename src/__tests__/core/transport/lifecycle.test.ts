@@ -16,6 +16,7 @@ describe("transport lifecycle", () => {
     const result = await runTransportAttempts({
       kind: "http",
       operation: "models.list",
+      safety: "read",
       policy: { maxAttempts: 2, baseDelayMs: 10, maxDelayMs: 10, jitterRatio: 0 },
       dependencies: { now: () => 0, random: () => 0.5, sleep },
       lifecycle: createTransportLifecycle((event) => events.push(event)),
@@ -39,6 +40,7 @@ describe("transport lifecycle", () => {
     }); });
     await expect(runTransportAttempts({
       kind: "stdio", operation: "read",
+      safety: "read",
       policy: { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 2 },
       execute,
     })).rejects.toThrow("fatal");
@@ -60,6 +62,7 @@ describe("transport lifecycle", () => {
     });
     await expect(runTransportAttempts({
       kind: "http", operation: "x",
+      safety: "read",
       policy: { maxAttempts: 2, baseDelayMs: 10, maxDelayMs: 10, deadlineMs: 9 },
       dependencies: { now: () => 0, random: () => 0.5, sleep },
       execute: async () => { throw error; },
@@ -77,6 +80,7 @@ describe("transport lifecycle", () => {
     });
     await expect(runTransportAttempts({
       kind: "http", operation: "x", signal: controller.signal,
+      safety: "read",
       policy: { maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1 }, execute,
     })).rejects.toMatchObject({ type: ApiClientErrorType.Abort, code: ApiClientErrorCode.Aborted });
     expect(execute).toHaveBeenCalledTimes(1);
@@ -96,6 +100,7 @@ describe("transport lifecycle", () => {
     const seen: string[] = [];
     await runTransportAttempts({
       kind: "http", operation: "x", auth: resolver,
+      safety: "read",
       policy: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
       execute: async ({ attempt, headers }) => {
         seen.push(headers.Authorization);
@@ -106,6 +111,55 @@ describe("transport lifecycle", () => {
       },
     });
     expect(seen).toEqual(["one", "two"]);
+  });
+
+  it("never retries a non-idempotent mutation", async () => {
+    const execute = vi.fn(async () => { throw new TransportError("temporary", {
+      metadata: { kind: "http", phase: "request", operation: "messages.create", retryable: true, attempt: 1 },
+    }); });
+
+    await expect(runTransportAttempts({
+      kind: "http", operation: "messages.create", safety: "mutation",
+      policy: { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 1 }, execute,
+    })).rejects.toThrow("temporary");
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes auth resolver failures without exposing their message", async () => {
+    const cause = new Error("Bearer auth-secret-token");
+    const promise = runTransportAttempts({
+      kind: "http", operation: "models.list", safety: "read",
+      auth: async () => { throw cause; },
+      policy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0 },
+      execute: async () => "unreachable",
+    });
+
+    await expect(promise).rejects.toMatchObject({
+      name: "TransportError",
+      message: "Transport authentication failed",
+      cause,
+      transport: { phase: "authenticate", operation: "models.list", retryable: false, attempt: 1 },
+    });
+    await expect(promise).rejects.not.toThrow("auth-secret-token");
+  });
+
+  it("isolates lifecycle listener failures from transport behavior", async () => {
+    const lifecycle = createTransportLifecycle(() => { throw new Error("observer failed"); });
+    let attempt = 0;
+    const result = await runTransportAttempts({
+      kind: "http", operation: "models.list", safety: "read", lifecycle,
+      policy: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
+      execute: async () => {
+        attempt += 1;
+        if (attempt === 1) throw new TransportError("temporary", {
+          metadata: { kind: "http", phase: "request", operation: "models.list", retryable: true, attempt },
+        });
+        return "ok";
+      },
+    });
+
+    expect(result).toBe("ok");
+    expect(attempt).toBe(2);
   });
 
   it("unsubscribes lifecycle listeners", () => {

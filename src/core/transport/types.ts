@@ -2,6 +2,8 @@ export type TransportKind = "http" | "sse" | "websocket" | "json-rpc" | "stdio" 
 
 export type TransportPhase = "configure" | "authenticate" | "connect" | "request" | "decode" | "close";
 
+export type TransportOperationSafety = "read" | "idempotent" | "connection" | "mutation";
+
 export type TransportAuth = Readonly<{ headers?: Readonly<Record<string, string>> }>;
 
 export type TransportAuthResolver = () => TransportAuth | Promise<TransportAuth>;
