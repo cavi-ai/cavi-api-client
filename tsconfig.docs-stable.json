@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "noEmit": true,
+    "paths": {
+      "@cavi-ai/api-client": ["/private/tmp/cavi-docs-stable-0.11.0/package/dist/index.d.ts"],
+      "@cavi-ai/api-client/*": ["/private/tmp/cavi-docs-stable-0.11.0/package/dist/*"]
+    }
+  },
+  "include": ["docs/**/*.ts", "docs/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -3,6 +3,11 @@ import { CodexFilesClient } from "@cavi-ai/api-client/providers/codex/files";
 import { GeminiFilesClient } from "@cavi-ai/api-client/providers/gemini/files";
 import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes/runtime";
 import { OPENCLAW_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/openclaw/runtime";
+import type { TeamManifest } from "@cavi-ai/api-client/contracts";
+
+export function readManifestVersion(manifest: TeamManifest) {
+  return manifest.version;
+}
 
 export const narrowImports = {
   ClaudeApiClient,

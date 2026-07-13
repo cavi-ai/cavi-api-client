@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 /** @typedef {import("./types.mjs").ReleaseManifest} ReleaseManifest */
 
 /** @param {string} subpath */
@@ -101,8 +104,25 @@ export function renderDocumentation(input) {
     output.set(`contracts/${contract.id}.md`, renderContractPage(contract));
   }
 
+  for (const pagePath of navigationPaths(input.navigation)) {
+    if (!pagePath.startsWith("reference/") && !pagePath.startsWith("contracts/")) {
+      output.set(pagePath, readFileSync(path.join(input.curatedRoot, "pages", pagePath), "utf8"));
+    }
+  }
+
   validateRenderedDocumentation(output, input.manifest);
   return new Map([...output].sort(([left], [right]) => left.localeCompare(right)));
+}
+
+/** @param {unknown} value @returns {string[]} */
+function navigationPaths(value) {
+  if (Array.isArray(value)) return value.flatMap(navigationPaths);
+  if (!value || typeof value !== "object") return [];
+  const entry = /** @type {Record<string, unknown>} */ (value);
+  return [
+    ...(typeof entry.path === "string" ? [entry.path] : []),
+    ...Object.values(entry).flatMap(navigationPaths),
+  ];
 }
 
 /** @param {Map<string, string>} output @param {ReleaseManifest} manifest */

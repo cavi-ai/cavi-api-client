@@ -3,6 +3,35 @@
   "version": "0.11.0",
   "sections": [
     {
+      "title": "Introduction",
+      "pages": [
+        { "title": "Overview", "path": "introduction/overview.md" },
+        { "title": "Installation", "path": "introduction/installation.md" },
+        { "title": "Quickstart", "path": "introduction/quickstart.md" }
+      ]
+    },
+    {
+      "title": "Concepts",
+      "pages": [
+        { "title": "Runtime client", "path": "concepts/runtime-client.md" },
+        { "title": "Providers and transports", "path": "concepts/providers-and-transports.md" },
+        { "title": "Routing and capabilities", "path": "concepts/routing-and-capabilities.md" },
+        { "title": "Compatibility", "path": "concepts/compatibility.md" }
+      ]
+    },
+    {
+      "title": "Guides",
+      "pages": [
+        { "title": "Requests", "path": "guides/requests.md" },
+        { "title": "Streaming", "path": "guides/streaming.md" },
+        { "title": "Files", "path": "guides/files.md" },
+        { "title": "Batching", "path": "guides/batching.md" },
+        { "title": "Manifests", "path": "guides/manifests.md" },
+        { "title": "React", "path": "guides/react.md" },
+        { "title": "Testing", "path": "guides/testing.md" }
+      ]
+    },
+    {
       "title": "API reference",
       "path": "reference/index.md"
     },

@@ -1,13 +1,11 @@
-import { createRuntimeClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
+import { CodexApiClient } from "@cavi-ai/api-client/providers/codex/runtime";
 
-export async function inspectNodeRuntime(apiKey: string) {
-  const registry = createRuntimeProviderRegistry({
-    modules: [createCodexProviderModule({ apiKey })],
+export async function runQuickstart(apiKey: string) {
+  const client = new CodexApiClient({
+    apiKey,
+    defaultModel: "gpt-5",
   });
-  const client = createRuntimeClient("codex", {
-    registry,
-    clientOptions: { baseUrl: "https://api.openai.com" },
+  return client.startRun({
+    input: "Summarize why capability checks matter in one sentence.",
   });
-  return client.getRuntimeCapabilities();
 }

@@ -245,7 +245,7 @@
     "lint:md": "markdownlint-cli2",
     "typecheck": "tsc --noEmit",
     "typecheck:gate": "tsc --noEmit -p tsconfig.gate.json",
-    "typecheck:docs": "tsc --noEmit -p tsconfig.docs.json",
+    "typecheck:docs": "node scripts/docs/typecheck-stable.mjs",
     "diagnose": "node scripts/diagnose.mjs",
     "diagnose:static": "node scripts/diagnose.mjs --mode=static",
     "verify": "pnpm run clean && pnpm test && pnpm run typecheck:docs && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
