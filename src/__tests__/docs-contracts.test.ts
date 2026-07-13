@@ -1,27 +1,20 @@
-import { execFile } from "node:child_process";
-import { cp, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { loadContracts } from "../../scripts/docs/contracts.mjs";
-import { inspectRelease } from "../../scripts/docs/inspect-release.mjs";
 
 const root = path.resolve(".");
 const contractsDirectory = "docs/api-client/source/contracts";
-const releaseFixture = path.resolve("src/__tests__/fixtures/docs-contracts-release/package");
-const execFileAsync = promisify(execFile);
+const manifestSnapshotPath = path.resolve(
+  "docs/api-client/source/releases/0.11.0-manifest.json",
+);
 const temporaryDirectories: string[] = [];
-let manifest: Awaited<ReturnType<typeof inspectRelease>>;
+let manifest: import("../../scripts/docs/types.mjs").ReleaseManifest;
 
 beforeAll(async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), "cavi-docs-contracts-release-"));
-  temporaryDirectories.push(directory);
-  await cp(releaseFixture, path.join(directory, "package"), { recursive: true });
-  const tarball = path.join(directory, "release.tgz");
-  await execFileAsync("tar", ["-czf", tarball, "package"], { cwd: directory });
-  manifest = await inspectRelease(tarball);
+  manifest = JSON.parse(await readFile(manifestSnapshotPath, "utf8"));
 });
 
 afterEach(async () => {
@@ -67,6 +60,22 @@ describe("loadContracts", () => {
       "runtime-response",
       "stream-event",
     ]);
+    expect(manifest.sha256).toBe(
+      "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
+    );
+    expect(manifest.symbols).toContainEqual({
+      subpath: "./core/errors",
+      name: "ApiClientError",
+      kind: "class",
+    });
+  });
+
+  it("rejects a manifest for a different package", async () => {
+    await expect(
+      loadContracts(root, { ...manifest, package: "@cavi-ai/not-the-api-client" }),
+    ).rejects.toThrow(
+      /registry: expected manifest package to equal @cavi-ai\/api-client; observed @cavi-ai\/not-the-api-client; fix:/u,
+    );
   });
 
   it("rejects an unsupported capability state", async () => {
@@ -119,6 +128,57 @@ describe("loadContracts", () => {
 
     await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
       /stream-event: expected sourceOfTruth to equal upstream-compatible-mirror; observed canonical; fix:/u,
+    );
+  });
+
+  it.each([
+    ["version", "0.11.1", /version to equal 0\.11\.0/u],
+    ["stability", "experimental", /stability to equal stable/u],
+    ["summary", "   ", /summary to be a non-empty string/u],
+    ["symbols", [{ subpath: "", name: "ApiClientError" }], /each symbol to contain non-empty subpath and name/u],
+    ["symbols", "not-an-array", /symbols to be a non-empty array/u],
+    ["evidence", [42], /evidence path to be repository-relative/u],
+    ["evidence", [], /evidence to be a non-empty array/u],
+    ["evidence", ["../outside.test.ts"], /evidence path to be repository-relative/u],
+    ["evidence", [path.resolve("outside.test.ts")], /evidence path to be repository-relative/u],
+  ])("rejects malformed %s fields", async (field, value, diagnostic) => {
+    const registryRoot = await mutableRegistry();
+    await mutateRecord(registryRoot, "runtime-error.json", (record) => {
+      record[field] = value;
+    });
+
+    await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(diagnostic);
+  });
+
+  it("rejects an evidence symlink whose target escapes the repository", async () => {
+    const registryRoot = await mutableRegistry();
+    const externalDirectory = await mkdtemp(path.join(tmpdir(), "cavi-docs-external-"));
+    temporaryDirectories.push(externalDirectory);
+    const externalEvidence = path.join(externalDirectory, "evidence.test.ts");
+    await writeFile(externalEvidence, "// external\n");
+    const linkPath = path.join(registryRoot, "escaped-evidence.test.ts");
+    await symlink(externalEvidence, linkPath);
+    await mutateRecord(registryRoot, "runtime-error.json", (record) => {
+      record.evidence = ["escaped-evidence.test.ts"];
+    });
+
+    await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
+      /runtime-error: expected evidence path to be contained by the repository root; observed escaped-evidence\.test\.ts; fix:/u,
+    );
+  });
+
+  it("rejects an intermediate evidence symlink that escapes the repository", async () => {
+    const registryRoot = await mutableRegistry();
+    const externalDirectory = await mkdtemp(path.join(tmpdir(), "cavi-docs-external-"));
+    temporaryDirectories.push(externalDirectory);
+    await writeFile(path.join(externalDirectory, "evidence.test.ts"), "// external\n");
+    await symlink(externalDirectory, path.join(registryRoot, "linked-directory"));
+    await mutateRecord(registryRoot, "runtime-error.json", (record) => {
+      record.evidence = ["linked-directory/evidence.test.ts"];
+    });
+
+    await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
+      /runtime-error: expected evidence path to be contained by the repository root; observed linked-directory\/evidence\.test\.ts; fix:/u,
     );
   });
 });
