@@ -595,7 +595,7 @@ describe("package hardening", () => {
     expect(packageJson.scripts?.prepack).toBe("pnpm run build");
     expect(packageJson.scripts?.prepublishOnly).toBe("pnpm run verify");
     expect(packageJson.scripts?.verify).toBe(
-      "pnpm run clean && pnpm test && pnpm run typecheck:docs && pnpm run build && pnpm run lint:md && HUSKY=0 pnpm pack --dry-run",
+      "pnpm run clean && pnpm test && pnpm run typecheck:docs && pnpm run build && pnpm run docs:check && pnpm exec markdownlint-cli2 '**/*.md' '#node_modules' '#dist' && pnpm pack --dry-run",
     );
   });
 

@@ -224,6 +224,39 @@ describe("renderDocumentation", () => {
     );
   });
 
+  it("reports the exact generated path when a committed artifact drifts", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-check-test-"));
+    temporaryDirectories.push(workspace);
+    const tarball = path.join(workspace, "release.tgz");
+    const committed = path.join(workspace, "committed");
+    const fixtureRoot = path.join(workspace, "root");
+    await mkdir(path.join(fixtureRoot, "docs/api-client/source/contracts"), { recursive: true });
+    await writeFile(
+      path.join(fixtureRoot, "docs/api-client/source/navigation.json"),
+      '{"title":"fixture"}\n',
+    );
+    await execFileAsync("tar", ["-czf", tarball, "package"], {
+      cwd: path.resolve("src/__tests__/fixtures/docs-release"),
+    });
+    await buildDocumentation([
+      "--source-date-epoch", "1700000000",
+      "--root", fixtureRoot,
+      "--tarball", tarball,
+      "--output", committed,
+    ]);
+    await writeFile(path.join(committed, "reference/index.md"), "drift\n");
+
+    await expect(execFileAsync(process.execPath, [
+      "scripts/docs/check.mjs",
+      "--package", tarball,
+      "--out", committed,
+      "--source-date-epoch", "1700000000",
+      "--root", fixtureRoot,
+    ])).rejects.toMatchObject({
+      stderr: expect.stringContaining("generated documentation drift: reference/index.md"),
+    });
+  });
+
   it("requires an explicit stable tarball for docs typechecking", async () => {
     const env = { ...process.env };
     delete env.CAVI_API_CLIENT_STABLE_TARBALL;

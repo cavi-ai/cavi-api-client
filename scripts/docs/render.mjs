@@ -30,6 +30,7 @@ function renderReferencePage(manifest, subpath) {
     .sort((left, right) => left.name.localeCompare(right.name) || left.kind.localeCompare(right.kind));
   const body = symbols.map((symbol) => [
     `<a id="${symbolAnchor(symbol.subpath, symbol.name)}"></a>`,
+    "",
     `## ${symbol.name}`,
     "",
     `Kind: ${symbol.kind}`,
@@ -37,8 +38,9 @@ function renderReferencePage(manifest, subpath) {
     "```ts",
     declarationSignature(symbol),
     "```",
+    "",
   ].join("\n"));
-  return [`# ${title}`, "", `Package subpath: ${subpath}`, "", ...body, ""].join("\n");
+  return [`# ${title}`, "", `Package subpath: ${subpath}`, "", ...body].join("\n");
 }
 
 /** @param {import("./contracts.mjs").ContractRecord} contract */
@@ -92,7 +94,20 @@ export function renderDocumentation(input) {
     schemaVersion: 1,
     generatedAt: generatedAt.toISOString(),
   }, null, 2)}\n`);
-  output.set("navigation.json", `${JSON.stringify(input.navigation, null, 2)}\n`);
+  const navigation = structuredClone(input.navigation);
+  if (navigation && typeof navigation === "object" && !Array.isArray(navigation)) {
+    const releaseSubpaths = new Set(input.manifest.exports.map(({ subpath }) => subpath));
+    const packageSubpaths = Array.isArray(navigation.packageExports)
+      ? navigation.packageExports.filter((subpath) => typeof subpath === "string")
+      : [];
+    navigation.reference = [...new Set([...releaseSubpaths, ...packageSubpaths])]
+      .sort((left, right) => left.localeCompare(right))
+      .map((subpath) => releaseSubpaths.has(subpath)
+        ? { subpath, path: `reference/${subpathSlug(subpath)}.md` }
+        : { subpath });
+    delete navigation.packageExports;
+  }
+  output.set("navigation.json", `${JSON.stringify(navigation, null, 2)}\n`);
 
   for (const releaseExport of [...input.manifest.exports].sort((a, b) => a.subpath.localeCompare(b.subpath))) {
     output.set(

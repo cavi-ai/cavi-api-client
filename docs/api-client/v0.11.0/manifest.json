@@ -1,0 +1,9 @@
+{
+  "package": "@cavi-ai/api-client",
+  "version": "0.11.0",
+  "tag": "v0.11.0",
+  "sha256": "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
+  "tarballDigest": "sha256:93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T03:35:44.000Z"
+}

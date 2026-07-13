@@ -10,13 +10,37 @@ import { describe, expect, it } from "vitest";
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const read = (rel: string) => readFileSync(path.join(PACKAGE_ROOT, rel), "utf8");
 
-const pkg = JSON.parse(read("package.json")) as { version: string };
+const pkg = JSON.parse(read("package.json")) as {
+  version: string;
+  exports: Record<string, unknown>;
+  scripts: Record<string, string>;
+};
 const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
 const api = read("API.md");
 const architecture = read("ARCHITECTURE.md");
 
 describe("docs integrity", () => {
+  it("publishes reproducible documentation build and drift-check commands", () => {
+    expect(pkg.scripts["docs:build"]).toBeDefined();
+    expect(pkg.scripts["docs:check"]).toBeDefined();
+    expect(pkg.scripts.verify).toContain("docs:check");
+  });
+
+  it("commits the generated reference artifact for the package version", () => {
+    const manifest = JSON.parse(read("docs/api-client/v0.11.0/manifest.json")) as {
+      version: string;
+    };
+    expect(manifest.version).toBe("0.11.0");
+  });
+
+  it("lists every package export in generated reference navigation", () => {
+    const navigation = read("docs/api-client/v0.11.0/navigation.json");
+    for (const subpath of Object.keys(pkg.exports)) {
+      expect(navigation, `generated navigation is missing package export ${subpath}`).toContain(subpath);
+    }
+  });
+
   it("package.json version has a matching CHANGELOG entry", () => {
     // Before publishing version X.Y.Z, CHANGELOG.md must carry a `## [X.Y.Z]`
     // heading (Keep-a-Changelog). A missing heading means the release notes were
