@@ -63,11 +63,14 @@ describe("loadContracts", () => {
     expect(manifest.sha256).toBe(
       "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
     );
-    expect(manifest.symbols).toContainEqual({
-      subpath: "./core/errors",
-      name: "ApiClientError",
-      kind: "class",
-    });
+    expect(manifest.symbols).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        subpath: "./core/errors",
+        name: "ApiClientError",
+        kind: "class",
+        signature: expect.stringContaining("constructor(message: string"),
+      }),
+    ]));
   });
 
   it("rejects a manifest for a different package", async () => {

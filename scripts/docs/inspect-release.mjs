@@ -22,6 +22,30 @@ function declarationKind(declaration) {
   return ts.SyntaxKind[declaration.kind].replace(/Declaration$/u, "").toLowerCase();
 }
 
+const declarationPrinter = ts.createPrinter({
+  newLine: ts.NewLineKind.LineFeed,
+  removeComments: false,
+});
+
+/** @param {ts.Declaration} declaration */
+function printableDeclaration(declaration) {
+  return ts.isVariableDeclaration(declaration) && ts.isVariableDeclarationList(declaration.parent)
+    ? declaration.parent.parent
+    : declaration;
+}
+
+/** @param {readonly ts.Declaration[]} declarations */
+function declarationSignature(declarations) {
+  return declarations.map((declaration) => {
+    const node = printableDeclaration(declaration);
+    return declarationPrinter.printNode(
+      ts.EmitHint.Unspecified,
+      node,
+      node.getSourceFile(),
+    ).trim();
+  }).join("\n");
+}
+
 /**
  * @param {import("./types.mjs").ReleaseExport} left
  * @param {import("./types.mjs").ReleaseExport} right
@@ -180,12 +204,14 @@ export async function inspectRelease(tgzPath) {
           exportedSymbol.flags & ts.SymbolFlags.Alias
             ? checker.getAliasedSymbol(exportedSymbol)
             : exportedSymbol;
-        const declaration = symbol.declarations?.[0] ?? exportedSymbol.declarations?.[0];
+        const declarations = symbol.declarations ?? exportedSymbol.declarations;
+        const declaration = declarations?.[0];
         if (!declaration) continue;
         symbols.push({
           subpath,
           name: exportedSymbol.getName(),
           kind: declarationKind(declaration),
+          signature: declarationSignature(declarations),
         });
       }
     }
