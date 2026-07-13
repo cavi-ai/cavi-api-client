@@ -37,12 +37,6 @@ export async function buildDocumentation(argv) {
   const navigation = JSON.parse(
     await readFile(path.join(root, "docs/api-client/source/navigation.json"), "utf8"),
   );
-  try {
-    const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-    navigation.packageExports = Object.keys(packageJson.exports ?? {});
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
   const rendered = renderDocumentation({
     manifest,
     contracts,

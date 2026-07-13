@@ -40,7 +40,27 @@ passed, TypeScript build passed, docs drift check passed, Markdown lint reported
 ## Scope and concern
 
 No runtime dependencies, sibling repositories, runtime services, or public
-release state were changed. The immutable release tarball has fewer export keys
-than the current checkout's same-version `package.json`; generated navigation
-therefore records every current export, while it only assigns reference-page
-paths to subpaths verified in the stable release artifact.
+release state were changed.
+
+## Review resolution
+
+Stable artifact truth now exclusively owns the generated reference surface.
+`inspect-release.mjs` records every packed export as either a `declaration` or
+an `asset`; `build.mjs` no longer reads or unions the current checkout's
+`package.json` exports. The generated navigation contains exactly the 30 packed
+v0.11.0 exports, gives every declaration a validated reference page, and types
+`./extensions/cavi/library-clip-contract.json` as an asset with its packed
+target. The current-only `./core/transport` and `./core/transport/node` exports
+are absent.
+
+The publish workflow now provisions the immutable npm artifact
+`@cavi-ai/api-client@0.11.0` in an isolated runner-temp directory, verifies
+SHA-256 `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`,
+and supplies both tarball environment variables plus
+`SOURCE_DATE_EPOCH=1783740944` before verification. Fetching the already packed
+npm artifact avoids invoking this checkout's `prepack` or build hooks.
+
+Review-fix verification used the supplied real tarball. Focused suites passed
+3 files and 34 tests. The full `pnpm run verify` gate passed 158 test files and
+858 tests, stable docs typechecking, TypeScript build, docs drift checking,
+Markdown lint with 0 errors, and package dry-run. `git diff --check` passed.

@@ -3,7 +3,9 @@
 /**
  * @typedef {object} ReleaseExport
  * @property {string} subpath
- * @property {string} types
+ * @property {"declaration" | "asset"} kind
+ * @property {string} [types]
+ * @property {string} [target]
  */
 
 /**
