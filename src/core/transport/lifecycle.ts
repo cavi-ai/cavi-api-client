@@ -85,7 +85,6 @@ export async function runTransportAttempts<T>(options: Readonly<{
             retryable: false,
             attempt,
           },
-          cause: error,
         });
       }
       if (options.signal?.aborted) throw normalizeTransportAbort(options.signal);

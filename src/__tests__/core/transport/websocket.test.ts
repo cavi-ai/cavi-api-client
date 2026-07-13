@@ -135,6 +135,44 @@ describe("WebSocket transport", () => {
     expect(JSON.stringify({ events, error })).not.toContain("secret");
   });
 
+  it("handles error and close once per socket generation", async () => {
+    const fake = createFakeWebSocketFactory();
+    const waits: Array<ReturnType<typeof deferred<void>>> = [];
+    const events: unknown[] = [];
+    const channel = createWebSocketTransport({
+      webSocketFactory: fake.factory,
+      dependencies: {
+        now: () => 0,
+        random: () => 0.5,
+        sleep: () => {
+          const wait = deferred<void>();
+          waits.push(wait);
+          return wait.promise;
+        },
+      },
+      onLifecycleEvent: (event) => events.push(event),
+    }).connect({ url: "wss://runtime.test", reconnect });
+    fake.open(0);
+    await channel.ready;
+    fake.sockets[0]!.readyState = 3;
+    const errorListener = [...fake.sockets[0]!.listeners.get("error")!][0]!;
+    const closeListener = [...fake.sockets[0]!.listeners.get("close")!][0]!;
+    errorListener({ type: "error" } as Event);
+    closeListener({ type: "close", code: 1006, wasClean: false } as unknown as Event);
+    expect(waits).toHaveLength(1);
+    expect(events.filter((event) => (event as { state?: string }).state === "retrying")).toHaveLength(1);
+    waits[0]!.resolve();
+    await vi.waitFor(() => expect(fake.sockets).toHaveLength(2));
+    expect([...fake.sockets[0]!.listeners.values()].every((set) => set.size === 0)).toBe(true);
+    fake.close(1, 1006);
+    await vi.waitFor(() => expect(
+      events.filter((event) => (event as { state?: string }).state === "closed"),
+    ).toHaveLength(1));
+    expect(fake.sockets).toHaveLength(2);
+    expect([...fake.sockets[1]!.listeners.values()].every((set) => set.size === 0)).toBe(true);
+    expect(events.at(-1)).toMatchObject({ state: "closed", attempt: 2 });
+  });
+
   it("aborts, cleans listeners, and notifies close subscribers exactly once", async () => {
     const fake = createFakeWebSocketFactory();
     const controller = new AbortController();

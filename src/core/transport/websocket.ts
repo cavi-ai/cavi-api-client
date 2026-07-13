@@ -154,6 +154,7 @@ export function createWebSocketTransport(
       const attach = (current: WebSocketLike): void => {
         socket = current;
         let decodeChain = Promise.resolve();
+        let disconnectHandled = false;
         const onOpen: EventListener = () => {
           if (terminal || current !== socket) return;
           opened = true;
@@ -177,12 +178,17 @@ export function createWebSocketTransport(
             deliver(decoded);
           }).catch(() => failDecode(current));
         };
+        const disconnect = (code: number, wasClean: boolean): void => {
+          if (disconnectHandled || terminal || current !== socket) return;
+          disconnectHandled = true;
+          void handleClose(code, wasClean);
+        };
         const onError: EventListener = () => {
-          if (current.readyState === 3) void handleClose(1006, false);
+          if (current.readyState === 3) disconnect(1006, false);
         };
         const onClose: EventListener = (event) => {
           const close = event as Event & { code?: number; wasClean?: boolean };
-          void handleClose(close.code ?? 1006, close.wasClean ?? false);
+          disconnect(close.code ?? 1006, close.wasClean ?? false);
         };
         current.addEventListener("open", onOpen);
         current.addEventListener("message", onMessage);
