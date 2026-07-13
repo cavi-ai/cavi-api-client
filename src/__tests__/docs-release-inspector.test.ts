@@ -1,5 +1,13 @@
 import { execFile } from "node:child_process";
-import { cp, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -71,6 +79,77 @@ describe("inspectRelease", () => {
 
     await expect(inspectRelease(tarball)).rejects.toThrow(
       /missing declaration.*\.\/dist\/core\/runtime\/index\.d\.ts/u,
+    );
+  });
+
+  it("normalizes a root conditional exports map", async () => {
+    const tarball = await packFixture(async (packageDirectory) => {
+      const packageJsonPath = path.join(packageDirectory, "package.json");
+      const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
+      packageJson.exports = {
+        types: "./dist/index.d.ts",
+        import: "./dist/index.js",
+      };
+      await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+    });
+
+    const manifest = await inspectRelease(tarball);
+
+    expect(manifest.exports).toEqual([
+      { subpath: ".", types: "./dist/index.d.ts" },
+    ]);
+  });
+
+  it("resolves nested type conditions for public subpaths only", async () => {
+    const tarball = await packFixture(async (packageDirectory) => {
+      const packageJsonPath = path.join(packageDirectory, "package.json");
+      const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
+      packageJson.exports = {
+        ".": {
+          import: {
+            types: "./dist/index.d.ts",
+            default: "./dist/index.js",
+          },
+        },
+        "./core/runtime": {
+          node: {
+            import: {
+              types: "./dist/core/runtime/index.d.ts",
+            },
+          },
+        },
+        import: {
+          types: "./dist/private.d.ts",
+        },
+      };
+      await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+    });
+
+    const manifest = await inspectRelease(tarball);
+
+    expect(manifest.exports).toEqual([
+      { subpath: ".", types: "./dist/index.d.ts" },
+      {
+        subpath: "./core/runtime",
+        types: "./dist/core/runtime/index.d.ts",
+      },
+    ]);
+  });
+
+  it("rejects a declaration symlink that escapes the extracted package", async () => {
+    const tarball = await packFixture(async (packageDirectory) => {
+      const declarationPath = path.join(packageDirectory, "dist/index.d.ts");
+      const externalDeclaration = path.join(
+        path.dirname(packageDirectory),
+        "external-index.d.ts",
+      );
+      await writeFile(externalDeclaration, "export interface Escaped {}\n");
+      await unlink(declarationPath);
+      await symlink(externalDeclaration, declarationPath);
+    });
+
+    await expect(inspectRelease(tarball)).rejects.toThrow(
+      /declaration target escapes package.*\.\/dist\/index\.d\.ts/u,
     );
   });
 });

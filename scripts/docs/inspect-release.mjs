@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -43,6 +43,59 @@ function compareSymbols(left, right) {
 }
 
 /**
+ * @param {unknown} target
+ * @returns {string | undefined}
+ */
+function resolveTypesTarget(target) {
+  if (Array.isArray(target)) {
+    for (const candidate of target) {
+      const types = resolveTypesTarget(candidate);
+      if (types) return types;
+    }
+    return undefined;
+  }
+  if (!target || typeof target !== "object") return undefined;
+
+  const conditions = /** @type {Record<string, unknown>} */ (target);
+  if (typeof conditions.types === "string") return conditions.types;
+  if (conditions.types && typeof conditions.types === "object") {
+    const types = resolveTypesTarget(conditions.types);
+    if (types) return types;
+  }
+
+  for (const [condition, candidate] of Object.entries(conditions)) {
+    if (condition === "types" || condition === "." || condition.startsWith("./")) {
+      continue;
+    }
+    const types = resolveTypesTarget(candidate);
+    if (types) return types;
+  }
+  return undefined;
+}
+
+/**
+ * @param {unknown} exportsField
+ * @returns {import("./types.mjs").ReleaseExport[]}
+ */
+function normalizePublicExports(exportsField) {
+  if (!exportsField || typeof exportsField !== "object") return [];
+
+  const exportsMap = /** @type {Record<string, unknown>} */ (exportsField);
+  const publicSubpaths = Object.keys(exportsMap).filter(
+    (key) => key === "." || key.startsWith("./"),
+  );
+  /** @type {[string, unknown][]} */
+  const entries = publicSubpaths.length
+    ? publicSubpaths.map((subpath) => [subpath, exportsMap[subpath]])
+    : [[".", exportsField]];
+
+  return entries.flatMap(([subpath, target]) => {
+    const types = resolveTypesTarget(target);
+    return types ? [{ subpath, types }] : [];
+  });
+}
+
+/**
  * Inspect the public TypeScript surface of a stable package tarball.
  *
  * @param {string} tgzPath
@@ -58,6 +111,7 @@ export async function inspectRelease(tgzPath) {
   try {
     await execFileAsync("tar", ["-xzf", tgzPath, "-C", temporaryDirectory]);
     const packageDirectory = path.join(temporaryDirectory, "package");
+    const resolvedPackageDirectory = await realpath(packageDirectory);
     const pkg = JSON.parse(
       await readFile(path.join(packageDirectory, "package.json"), "utf8"),
     );
@@ -68,13 +122,7 @@ export async function inspectRelease(tgzPath) {
       );
     }
 
-    const releaseExports = Object.entries(pkg.exports ?? {})
-      .flatMap(([subpath, target]) =>
-        target && typeof target === "object" && typeof target.types === "string"
-          ? [{ subpath, types: target.types }]
-          : [],
-      )
-      .sort(compareExports);
+    const releaseExports = normalizePublicExports(pkg.exports).sort(compareExports);
 
     /** @type {Map<string, string>} */
     const declarationPaths = new Map();
@@ -86,13 +134,31 @@ export async function inspectRelease(tgzPath) {
           `declaration target escapes package: ${releaseExport.types}`,
         );
       }
+      let declarationStat;
+      let resolvedDeclarationPath;
       try {
-        const declarationStat = await stat(declarationPath);
-        if (!declarationStat.isFile()) throw new Error("not a file");
+        declarationStat = await lstat(declarationPath);
+        resolvedDeclarationPath = await realpath(declarationPath);
       } catch {
         throw new Error(`missing declaration: ${releaseExport.types}`);
       }
-      declarationPaths.set(releaseExport.subpath, declarationPath);
+      const resolvedRelativePath = path.relative(
+        resolvedPackageDirectory,
+        resolvedDeclarationPath,
+      );
+      if (
+        declarationStat.isSymbolicLink() ||
+        resolvedRelativePath.startsWith("..") ||
+        path.isAbsolute(resolvedRelativePath)
+      ) {
+        throw new Error(
+          `declaration target escapes package: ${releaseExport.types}`,
+        );
+      }
+      if (!declarationStat.isFile()) {
+        throw new Error(`missing declaration: ${releaseExport.types}`);
+      }
+      declarationPaths.set(releaseExport.subpath, resolvedDeclarationPath);
     }
 
     const program = ts.createProgram([...declarationPaths.values()], {
