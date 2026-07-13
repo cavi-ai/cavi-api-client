@@ -1,0 +1,1 @@
+{"id":"runtime-request","title":"Runtime request","version":"0.11.0","stability":"stable","sourceOfTruth":"upstream-compatible-mirror","symbols":[{"subpath":"./core/runtime","name":"RuntimeRunStartBody"}],"capability":"supported","evidence":["src/__tests__/core/runtime/run-types.test.ts"],"summary":"Request accepted by a compatible runtime client."}

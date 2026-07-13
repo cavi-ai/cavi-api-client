@@ -1,0 +1,1 @@
+{"id":"runtime-error","title":"Runtime error","version":"0.11.0","stability":"stable","sourceOfTruth":"upstream-compatible-mirror","symbols":[{"subpath":"./core/errors","name":"RuntimeErrorMetadata"}],"capability":"supported","evidence":["src/__tests__/core/errors.test.ts"],"summary":"Error metadata exposed by this compatible client mirror."}
