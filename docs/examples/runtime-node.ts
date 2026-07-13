@@ -5,7 +5,14 @@ export async function runQuickstart(apiKey: string) {
     apiKey,
     defaultModel: "gpt-5",
   });
-  return client.startRun({
+  let run = await client.startRun({
     input: "Summarize why capability checks matter in one sentence.",
   });
+
+  while (run.status === "started" || run.status === "running") {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    run = await client.getRun(run.run_id);
+  }
+
+  return run;
 }

@@ -28,4 +28,18 @@ Status: DONE
 
 ## Concerns
 
-The stable tarball is intentionally not copied into the repository. The default artifact path matches the approved CAVI workspace; other environments must set `CAVI_API_CLIENT_STABLE_TARBALL` to the same digest-locked artifact.
+The stable tarball is intentionally not copied into the repository. Every environment, including CI, must provision the digest-locked artifact and set `CAVI_API_CLIENT_STABLE_TARBALL` explicitly.
+
+## Review finding fixes
+
+- The renderer now copies every compile-checked TypeScript example into `examples/` in the generated artifact. All curated links target that stable artifact path, and a regression resolves every rendered relative Markdown link entirely inside the artifact.
+- The Codex quickstart now reflects the actual v0.11.0 background API: it starts the complete request, polls `getRun(run_id)` while status is `started` or `running`, and documents the expected completed output and other terminal outcomes.
+- Stable docs typechecking no longer contains a developer path or shared extraction directory. It requires `CAVI_API_CLIENT_STABLE_TARBALL`, verifies the v0.11.0 digest, uses a unique `mkdtemp` workspace, generates declaration mappings for that workspace, and always cleans it up. Regression tests cover the actionable absent-variable error and digest mismatch.
+- Navigation integrity now discovers every curated Markdown page recursively and compares its exact sorted multiset with curated navigation entries, detecting both unlisted pages and duplicate entries without a maintained path list.
+
+### Review verification
+
+- Focused content gate: 2 files passed, 22 tests passed.
+- Exact stable typecheck: `CAVI_API_CLIENT_STABLE_TARBALL=.../cavi-ai-api-client-0.11.0.tgz pnpm run typecheck:docs` exited 0 after verifying digest `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`.
+- Full `pnpm run verify`: 158 test files passed, 852 tests passed; stable docs typecheck, build, Markdown lint (0 errors), and package dry-run all passed.
+- `git diff --check` exited 0.

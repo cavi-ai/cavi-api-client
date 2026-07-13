@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 /** @typedef {import("./types.mjs").ReleaseManifest} ReleaseManifest */
@@ -107,6 +107,15 @@ export function renderDocumentation(input) {
   for (const pagePath of navigationPaths(input.navigation)) {
     if (!pagePath.startsWith("reference/") && !pagePath.startsWith("contracts/")) {
       output.set(pagePath, readFileSync(path.join(input.curatedRoot, "pages", pagePath), "utf8"));
+    }
+  }
+
+  const examplesRoot = path.join(input.curatedRoot, "..", "..", "examples");
+  if (existsSync(examplesRoot)) {
+    for (const entry of readdirSync(examplesRoot, { withFileTypes: true })) {
+      if (entry.isFile() && /\.tsx?$/u.test(entry.name)) {
+        output.set(`examples/${entry.name}`, readFileSync(path.join(examplesRoot, entry.name), "utf8"));
+      }
     }
   }
 
