@@ -52,6 +52,12 @@ describe("HTTP transport", () => {
     const transport = createHttpTransport({ baseUrl: "https://runtime.test", auth, fetchImpl });
     await expect(transport.request({ method: "GET", path: "/models", response: "json", retry: retryPolicy })).resolves.toEqual({ ok: true });
     expect(auth).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, expect.any(String), expect.objectContaining({
+      headers: expect.objectContaining({ authorization: "Bearer first" }),
+    }));
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, expect.any(String), expect.objectContaining({
+      headers: expect.objectContaining({ authorization: "Bearer second" }),
+    }));
   });
 
   it("requires an idempotency key before retrying mutations", async () => {
@@ -68,7 +74,7 @@ describe("HTTP transport", () => {
     await expect(transport.request({
       method: "POST",
       path: "/tasks",
-      idempotencyKey: "request-1",
+      idempotencyKey: "  request-1  ",
       response: "text",
       retry: { ...retryPolicy, maxDelayMs: 3_000 },
     })).resolves.toBe("ok");
@@ -76,6 +82,22 @@ describe("HTTP transport", () => {
     expect(fetchImpl).toHaveBeenNthCalledWith(1, expect.any(String), expect.objectContaining({
       headers: expect.objectContaining({ "Idempotency-Key": "request-1" }),
     }));
+  });
+
+  it.each(["", "   "])("does not retry or inject an invalid idempotency key %j", async (idempotencyKey) => {
+    const fetchImpl = vi.fn(async () => new Response("busy", { status: 503 }));
+    const transport = createHttpTransport({ baseUrl: "https://runtime.test", fetchImpl });
+
+    await expect(transport.request({
+      method: "POST",
+      path: "/tasks",
+      idempotencyKey,
+      retry: retryPolicy,
+    })).rejects.toMatchObject({
+      transport: { retryable: false, status: 503, attempt: 1 },
+    });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(fetchImpl).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ headers: {} }));
   });
 
   it("parses Retry-After HTTP dates using the injected clock", async () => {
