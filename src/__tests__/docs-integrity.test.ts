@@ -13,6 +13,7 @@ const read = (rel: string) => readFileSync(path.join(PACKAGE_ROOT, rel), "utf8")
 const pkg = JSON.parse(read("package.json")) as {
   version: string;
   exports: Record<string, unknown>;
+  files: string[];
   scripts: Record<string, string>;
 };
 const changelog = read("CHANGELOG.md");
@@ -32,6 +33,35 @@ describe("docs integrity", () => {
       version: string;
     };
     expect(manifest.version).toBe("0.11.0");
+  });
+
+  it("publishes an immutable documentation consumer handoff", () => {
+    const consumer = read("docs/api-client/CONSUMER.md");
+
+    for (const contract of [
+      "source: docs/api-client/v0.11.0",
+      "publicBasePath: /docs/api-client/v0.11.0",
+      "stableAlias: /docs/api-client",
+      "entrypoints: manifest.json, navigation.json",
+      "integrity: manifest.package.sha256",
+    ]) {
+      expect(consumer).toContain(contract);
+    }
+    expect(consumer).toContain("must not edit generated pages");
+    expect(consumer).toContain("fail ingestion on a version or digest mismatch");
+
+    expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
+    expect(pkg.files).toContain("docs/api-client/v0.11.0");
+    expect(pkg.files).toContain("!docs/api-client/source");
+    expect(pkg.files).toContain("!docs/api-client/source/**");
+    expect(pkg.files).toContain("!docs/superpowers");
+    expect(pkg.files).toContain("!docs/superpowers/**");
+
+    expect(readme).toContain("pnpm docs:check");
+    expect(readme).toContain("docs/api-client/v0.11.0");
+    expect(api).toContain("pnpm docs:check");
+    expect(api).toContain("docs/api-client/v0.11.0");
+    expect(changelog).toContain("versioned documentation consumer contract");
   });
 
   it("maps the exact stable release manifest to generated reference navigation", () => {

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A versioned documentation consumer contract for the immutable `0.11.0`
+  artifact, including its copy path, public base path, stable alias, navigation
+  entry point, and package-digest ingestion checks.
 - Universal shared transport infrastructure at
   `@cavi-ai/api-client/core/transport`, with `createHttpTransport`,
   `createSseTransport`, `createWebSocketTransport`, and
