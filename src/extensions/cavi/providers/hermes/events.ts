@@ -1,7 +1,7 @@
 import type { RuntimeUsage } from "../../../../core/runtime/usage.js";
 import type { RuntimeControlPlaneEvent, RuntimeEventClient, RuntimeEventSubscription } from "../../../../core/runtime/control-plane/events.js";
 import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
-import { isSensitiveKey, stringifyRedacted } from "../../../../core/http/redaction.js";
+import { isSensitiveKey, REDACTION_PLACEHOLDER, stringifyRedacted } from "../../../../core/http/redaction.js";
 import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
 import type { HermesDashboardEvent, HermesDashboardJsonRpcClient } from "./types.js";
 
@@ -13,7 +13,7 @@ type Subscriber = {
   abort?: () => void;
 };
 
-function metadata(method: string): RuntimeControlPlaneEvent["metadata"] {
+function metadata(method: "run.event" | "gateway.ready"): RuntimeControlPlaneEvent["metadata"] {
   return { provider: "hermes", stability: "experimental", source: { transport: "json-rpc", method } };
 }
 
@@ -22,13 +22,21 @@ function string(value: unknown, label: string): string {
   return value;
 }
 
-const NATIVE_EVENT_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/u;
+const NORMALIZED_EVENT_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/u;
 const USAGE_KEYS = new Set(["input_tokens", "output_tokens", "total_tokens", "cache_read_tokens", "cache_write_tokens"]);
+const NATIVE_TYPES = new Set(["run.event", "gateway.ready", "gateway.closed", "gateway.close", "disconnect"]);
 
-function nativeEventName(value: unknown): string {
+function normalizedEventName(value: unknown): string {
   const name = string(value, "event");
-  if (!NATIVE_EVENT_NAME.test(name) || isSensitiveKey(name)) throw new TypeError("event name is invalid");
+  if (!NORMALIZED_EVENT_NAME.test(name) || isSensitiveKey(name)) throw new TypeError("event name is invalid");
   return name;
+}
+
+function nativeType(value: unknown): "run.event" | "gateway.ready" | "gateway.closed" | "gateway.close" | "disconnect" {
+  if (typeof value !== "string" || value.length > 128 || !NATIVE_TYPES.has(value)) {
+    throw new TypeError("Hermes native event type is invalid");
+  }
+  return value as "run.event" | "gateway.ready" | "gateway.closed" | "gateway.close" | "disconnect";
 }
 
 function usageNumber(record: Record<string, unknown>, key: string): number | undefined {
@@ -64,16 +72,21 @@ function usage(value: unknown): RuntimeUsage {
   };
 }
 
+function boundedRedactedMessage(value: unknown, fallback: string): string {
+  const redacted = stringifyRedacted(value, 256);
+  if (redacted === undefined || redacted.includes(REDACTION_PLACEHOLDER)) return fallback;
+  return redacted.slice(0, 256);
+}
+
 function redactedFailure(value: unknown): { message: string } {
-  return { message: stringifyRedacted(value, 256) ?? "Hermes operation failed" };
+  return { message: boundedRedactedMessage(value, "Hermes operation failed") };
 }
 
 function mapEvent(native: HermesDashboardEvent): RuntimeControlPlaneEvent | undefined {
-  if (native.type === "gateway.ready" || native.type === "gateway.closed" || native.type === "gateway.close" || native.type === "disconnect") return undefined;
   const payload = requireHermesSafeJsonRecord(native.payload, "runtime event");
   const operationId = string(payload.run_id ?? payload.operationId, "operationId");
-  const event = nativeEventName(payload.event ?? native.type);
-  const base = { operationId, metadata: metadata(native.type) };
+  const event = normalizedEventName(payload.event ?? "run.event");
+  const base = { operationId, metadata: metadata("run.event") };
   switch (event) {
     case "operation.started": return { ...base, event };
     case "message.delta": return { ...base, event, delta: string(payload.delta, "delta") };
@@ -102,7 +115,13 @@ function mapEvent(native: HermesDashboardEvent): RuntimeControlPlaneEvent | unde
     case "run.failed": return { ...base, event: "operation.failed", error: redactedFailure(payload.error) };
     case "operation.cancelled":
     case "run.cancelled": return { ...base, event: "operation.cancelled" };
-    case "operation.interrupted": return { ...base, event, ...(typeof payload.reason === "string" ? { reason: payload.reason } : {}) };
+    case "operation.interrupted": return {
+      ...base,
+      event,
+      ...(payload.reason === undefined
+        ? {}
+        : { reason: boundedRedactedMessage(payload.reason, "Hermes operation interrupted") }),
+    };
     default: return { ...base, event: "operation.updated", update: { nativeEvent: event } };
   }
 }
@@ -120,21 +139,24 @@ export function createHermesRuntimeEventClient(rpc: HermesDashboardJsonRpcClient
     try { subscriber.onEvent(event); } catch (error) { report(subscriber, error); }
   };
   const notify = (native: HermesDashboardEvent): void => {
-    if (native.type === "gateway.closed" || native.type === "gateway.close" || native.type === "disconnect") {
+    let type: ReturnType<typeof nativeType>;
+    try { type = nativeType(native.type); }
+    catch (error) { for (const subscriber of [...subscribers]) report(subscriber, error); return; }
+    if (type === "gateway.closed" || type === "gateway.close" || type === "disconnect") {
       if (connected) disconnected = true;
       connected = false;
       return;
     }
-    if (native.type === "gateway.ready") {
+    if (type === "gateway.ready") {
       let payload: Record<string, unknown>;
       try { payload = requireHermesSafeJsonRecord(native.payload, "gateway ready event"); }
       catch (error) { for (const subscriber of [...subscribers]) report(subscriber, error); return; }
       if (disconnected) {
         for (const subscriber of [...subscribers]) {
           if (!subscriber.active) continue;
-          deliver(subscriber, { event: "stream.reconnected", operationId: subscriber.operationId, metadata: metadata(native.type) });
+          deliver(subscriber, { event: "stream.reconnected", operationId: subscriber.operationId, metadata: metadata("gateway.ready") });
           if (payload.resumed !== true && payload.continuity !== true) {
-            deliver(subscriber, { event: "stream.gap", operationId: subscriber.operationId, reason: "Hermes reconnect did not prove event continuity", metadata: metadata(native.type) });
+            deliver(subscriber, { event: "stream.gap", operationId: subscriber.operationId, reason: "Hermes reconnect did not prove event continuity", metadata: metadata("gateway.ready") });
           }
         }
       }

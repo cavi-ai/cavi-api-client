@@ -72,7 +72,7 @@ describe("Hermes runtime events", () => {
 
     const serialized = JSON.stringify(onEvent.mock.calls);
     expect(serialized).not.toMatch(/failure-secret|result-secret|unknown-secret|token_preview|password/i);
-    expect(onEvent.mock.calls[0]?.[0]).toMatchObject({ event: "operation.failed", error: { message: expect.stringContaining("[REDACTED]") } });
+    expect(onEvent.mock.calls[0]?.[0]).toMatchObject({ event: "operation.failed", error: { message: "Hermes operation failed" } });
     expect(onEvent.mock.calls[1]?.[0]).toEqual(expect.objectContaining({ event: "tool.completed", toolCallId: "shell" }));
     expect(onEvent.mock.calls[1]?.[0]).not.toHaveProperty("result");
     expect(onEvent.mock.calls[2]?.[0]).toMatchObject({ event: "operation.updated", update: { nativeEvent: "future.event" } });
@@ -116,5 +116,41 @@ describe("Hermes runtime events", () => {
     expect(live).toHaveBeenCalledTimes(1);
     await subscription.dispose();
     expect(detach).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    "authorization=Bearer native-type-secret",
+    `run.${"x".repeat(256)}native-type-secret`,
+  ])("rejects unsafe native type without publishing or leaking it: %s", async (type) => {
+    const { rpc, emit } = driver();
+    const onEvent = vi.fn();
+    const onError = vi.fn();
+    await createHermesRuntimeEventClient(rpc).subscribe({ operationId: "run-1" }, { onEvent, onError });
+    emit({ type, payload: { event: "operation.completed", run_id: "run-1" } });
+
+    expect(onEvent).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify({ events: onEvent.mock.calls, errors: onError.mock.calls }))
+      .not.toMatch(/native-type-secret|authorization=Bearer/iu);
+  });
+
+  it("bounds and redacts interruption reasons under the same message policy as failures", async () => {
+    const { rpc, emit } = driver();
+    const onEvent = vi.fn();
+    await createHermesRuntimeEventClient(rpc).subscribe({ operationId: "run-1" }, { onEvent });
+    emit({
+      type: "run.event",
+      payload: {
+        event: "operation.interrupted",
+        run_id: "run-1",
+        reason: `authorization=Bearer interruption-secret ${"x".repeat(500)}`,
+      },
+    });
+
+    const event = onEvent.mock.calls[0]?.[0];
+    expect(event).toMatchObject({ event: "operation.interrupted", reason: "Hermes operation interrupted" });
+    expect(event.reason.length).toBeLessThanOrEqual(256);
+    expect(JSON.stringify(event)).not.toContain("interruption-secret");
+    expect(event.metadata.source.method).toBe("run.event");
   });
 });
