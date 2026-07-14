@@ -24,7 +24,7 @@ The companion Postman collection is
 
 ## Versioned Documentation Artifact
 
-The immutable API documentation for package `0.11.0` is published from
+The immutable API documentation for package `0.11.0` is generated and shipped at
 [`docs/api-client/v0.11.0`](docs/api-client/v0.11.0). Consumers begin with
 [`manifest.json`](docs/api-client/v0.11.0/manifest.json) for release integrity
 and [`navigation.json`](docs/api-client/v0.11.0/navigation.json) for navigation.
