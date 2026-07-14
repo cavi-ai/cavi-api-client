@@ -12,7 +12,6 @@ Kind: class
 export declare class ApiClientError extends Error {
     readonly type: ApiClientErrorType | string;
     readonly code: ApiClientErrorCode | string;
-    readonly runtime?: RuntimeErrorMetadata;
     constructor(message: string, options?: ApiClientErrorOptions);
 }
 ```
@@ -42,15 +41,7 @@ export declare enum ApiClientErrorCode {
     EndpointNotFound = "endpoint_not_found",
     ProtocolMismatch = "protocol_mismatch",
     AuthRequired = "auth_required",
-    AuthForbidden = "auth_forbidden",
-    CapabilityUnavailable = "capability_unavailable",
-    PermissionDenied = "permission_denied",
-    InvalidRequest = "invalid_request",
-    Conflict = "conflict",
-    RateLimited = "rate_limited",
-    TransportUnavailable = "transport_unavailable",
-    TransportProtocolError = "transport_protocol_error",
-    ServerOverloaded = "server_overloaded"
+    AuthForbidden = "auth_forbidden"
 }
 ```
 
@@ -65,7 +56,6 @@ export type ApiClientErrorOptions = {
     type?: ApiClientErrorType | string;
     code?: ApiClientErrorCode | string;
     cause?: unknown;
-    runtime?: RuntimeErrorMetadata;
 };
 ```
 
@@ -137,16 +127,6 @@ Kind: function
 export declare function getErrorType(error: unknown): string | undefined;
 ```
 
-<a id="symbol-core-errors-getruntimeerrormetadata"></a>
-
-## getRuntimeErrorMetadata
-
-Kind: function
-
-```ts
-export declare function getRuntimeErrorMetadata(error: unknown): RuntimeErrorMetadata | undefined;
-```
-
 <a id="symbol-core-errors-isaborterror"></a>
 
 ## isAbortError
@@ -186,24 +166,6 @@ Kind: function
  * unsupported (Gemini `getRun`/`cancelRun`, OpenClaw wiki/media).
  */
 export declare function isEndpointNotFoundError(error: unknown): boolean;
-```
-
-<a id="symbol-core-errors-runtimeerrormetadata"></a>
-
-## RuntimeErrorMetadata
-
-Kind: type
-
-```ts
-export type RuntimeErrorMetadata = {
-    provider: string;
-    transport: string;
-    operation: string;
-    retryable: boolean;
-    retryAfterMs?: number;
-    status?: number;
-    providerCode?: string;
-};
 ```
 
 <a id="symbol-core-errors-serializedapiclienterror"></a>

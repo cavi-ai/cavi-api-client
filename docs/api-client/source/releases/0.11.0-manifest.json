@@ -3,7 +3,7 @@
   "version": "0.11.0",
   "tag": "v0.11.0",
   "commit": "48adfa6ba7c3d5e8ffee0a6cf2572574ca630fa0",
-  "sha256": "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
+  "sha256": "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5",
   "exports": [
     {
       "subpath": ".",
@@ -39,11 +39,6 @@
       "subpath": "./core/http",
       "kind": "declaration",
       "types": "./dist/core/http/index.d.ts"
-    },
-    {
-      "subpath": "./core/kanban",
-      "kind": "declaration",
-      "types": "./dist/core/kanban/index.d.ts"
     },
     {
       "subpath": "./core/memory",
@@ -173,19 +168,19 @@
       "subpath": ".",
       "name": "ApiClientError",
       "kind": "class",
-      "signature": "export declare class ApiClientError extends Error {\n    readonly type: ApiClientErrorType | string;\n    readonly code: ApiClientErrorCode | string;\n    readonly runtime?: RuntimeErrorMetadata;\n    constructor(message: string, options?: ApiClientErrorOptions);\n}"
+      "signature": "export declare class ApiClientError extends Error {\n    readonly type: ApiClientErrorType | string;\n    readonly code: ApiClientErrorCode | string;\n    constructor(message: string, options?: ApiClientErrorOptions);\n}"
     },
     {
       "subpath": ".",
       "name": "ApiClientErrorCode",
       "kind": "enum",
-      "signature": "export declare enum ApiClientErrorCode {\n    Unknown = \"unknown\",\n    ValidationFailed = \"validation_failed\",\n    InvalidConfig = \"invalid_config\",\n    InvalidJson = \"invalid_json\",\n    HttpRequestFailed = \"http_request_failed\",\n    GatewayError = \"gateway_error\",\n    RequestFailed = \"request_failed\",\n    Timeout = \"timeout\",\n    Aborted = \"aborted\",\n    SocketError = \"socket_error\",\n    SocketClosed = \"socket_closed\",\n    SocketUnavailable = \"socket_unavailable\",\n    ConnectFailed = \"connect_failed\",\n    BackendUnavailable = \"backend_unavailable\",\n    EndpointNotFound = \"endpoint_not_found\",\n    ProtocolMismatch = \"protocol_mismatch\",\n    AuthRequired = \"auth_required\",\n    AuthForbidden = \"auth_forbidden\",\n    CapabilityUnavailable = \"capability_unavailable\",\n    PermissionDenied = \"permission_denied\",\n    InvalidRequest = \"invalid_request\",\n    Conflict = \"conflict\",\n    RateLimited = \"rate_limited\",\n    TransportUnavailable = \"transport_unavailable\",\n    TransportProtocolError = \"transport_protocol_error\",\n    ServerOverloaded = \"server_overloaded\"\n}"
+      "signature": "export declare enum ApiClientErrorCode {\n    Unknown = \"unknown\",\n    ValidationFailed = \"validation_failed\",\n    InvalidConfig = \"invalid_config\",\n    InvalidJson = \"invalid_json\",\n    HttpRequestFailed = \"http_request_failed\",\n    GatewayError = \"gateway_error\",\n    RequestFailed = \"request_failed\",\n    Timeout = \"timeout\",\n    Aborted = \"aborted\",\n    SocketError = \"socket_error\",\n    SocketClosed = \"socket_closed\",\n    SocketUnavailable = \"socket_unavailable\",\n    ConnectFailed = \"connect_failed\",\n    BackendUnavailable = \"backend_unavailable\",\n    EndpointNotFound = \"endpoint_not_found\",\n    ProtocolMismatch = \"protocol_mismatch\",\n    AuthRequired = \"auth_required\",\n    AuthForbidden = \"auth_forbidden\"\n}"
     },
     {
       "subpath": ".",
       "name": "ApiClientErrorOptions",
       "kind": "type",
-      "signature": "export type ApiClientErrorOptions = {\n    type?: ApiClientErrorType | string;\n    code?: ApiClientErrorCode | string;\n    cause?: unknown;\n    runtime?: RuntimeErrorMetadata;\n};"
+      "signature": "export type ApiClientErrorOptions = {\n    type?: ApiClientErrorType | string;\n    code?: ApiClientErrorCode | string;\n    cause?: unknown;\n};"
     },
     {
       "subpath": ".",
@@ -222,12 +217,6 @@
       "name": "assertSafeRelativePath",
       "kind": "function",
       "signature": "/**\n * Validate and normalize a caller-supplied **relative** path, returning the\n * cleaned `a/b/c` form or throwing on anything unsafe.\n *\n * This is the **opt-in** companion to the manifest workspace whitelist\n * (`resolveTeamWorkspacePath`). The whitelist is the primary, recommended guard:\n * a path the consumer never declared can never be resolved. Reach for this only\n * when a downstream surface must accept a *free-form* relative path — e.g. a raw\n * `?path=` value a consumer wants to hand to a workspace/wiki file endpoint\n * (`GATEWAY_WIKI_API_ENDPOINTS.read`, a manifest action `query`).\n *\n * `appendHttpQuery` does **not** sanitize values — it only URL-encodes them, so\n * `?path=../secret` becomes `?path=..%2Fsecret` and the backend decodes it back.\n * Run untrusted path values through this first, then pass the result as a query\n * value via `appendHttpQuery` (which encodes it).\n *\n * Rejects: empty/whitespace, absolute (`/…`), protocol-relative (`//…`), URL\n * schemes (`file:`, `http:`…), backslashes, and any `.`/`..` segment — including\n * percent-encoded forms such as `%2e%2e`. Interior `./` and duplicate slashes\n * are collapsed. The return value is **not** URL-encoded.\n *\n * This intentionally mirrors the relative-path rules the team manifest enforces\n * internally for workspace whitelist entries (`src/contracts/team-manifest.ts`).\n * Both are guarded by `safe-relative-path.test.ts`; keep them in lockstep.\n */\nexport declare function assertSafeRelativePath(value: string): string;"
-    },
-    {
-      "subpath": ".",
-      "name": "AuthStatusClient",
-      "kind": "interface",
-      "signature": "export interface AuthStatusClient {\n    listAuthStatus(): Promise<readonly RuntimeAuthStatus[]>;\n}"
     },
     {
       "subpath": ".",
@@ -693,18 +682,6 @@
     },
     {
       "subpath": ".",
-      "name": "getRuntimeErrorMetadata",
-      "kind": "function",
-      "signature": "export declare function getRuntimeErrorMetadata(error: unknown): RuntimeErrorMetadata | undefined;"
-    },
-    {
-      "subpath": ".",
-      "name": "getRuntimeProviderCapabilityRow",
-      "kind": "function",
-      "signature": "export declare function getRuntimeProviderCapabilityRow(provider: string): RuntimeProviderCapabilityRow | undefined;"
-    },
-    {
-      "subpath": ".",
       "name": "GLOBAL_REPO_ROOT_KEY",
       "kind": "variable",
       "signature": "export declare const GLOBAL_REPO_ROOT_KEY: \"__CAVI_REPO_ROOT__\";"
@@ -789,12 +766,6 @@
     },
     {
       "subpath": ".",
-      "name": "inspectRuntimeEventSequence",
-      "kind": "function",
-      "signature": "export declare function inspectRuntimeEventSequence(events: readonly RuntimeControlPlaneEvent[]): RuntimeEventSequenceInspection;"
-    },
-    {
-      "subpath": ".",
       "name": "isAbortError",
       "kind": "function",
       "signature": "export declare function isAbortError(error: unknown): boolean;"
@@ -846,12 +817,6 @@
       "name": "ManifestTeam",
       "kind": "type",
       "signature": "export type ManifestTeam = {\n    id: string;\n    identity?: ManifestIdentity | null;\n    members?: readonly ManifestMember[] | null;\n    workspace?: TeamWorkspaceConfig | null;\n    actions?: readonly TeamActionContract[] | null;\n    capabilities?: readonly string[] | null;\n    routes?: readonly ManifestRouteConfig[] | null;\n    metadata?: Record<string, unknown> | null;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "ModelCatalogClient",
-      "kind": "interface",
-      "signature": "export interface ModelCatalogClient {\n    listModels(query?: {\n        cursor?: string;\n        limit?: number;\n    }): Promise<RuntimePage<RuntimeModelDescriptor>>;\n}"
     },
     {
       "subpath": ".",
@@ -1101,33 +1066,9 @@
     },
     {
       "subpath": ".",
-      "name": "RUNTIME_CONTROL_PLANE_EVENT_NAMES",
-      "kind": "variable",
-      "signature": "export declare const RUNTIME_CONTROL_PLANE_EVENT_NAMES: readonly [\n    \"operation.started\",\n    \"operation.updated\",\n    \"message.delta\",\n    \"reasoning.delta\",\n    \"tool.started\",\n    \"tool.progress\",\n    \"tool.completed\",\n    \"approval.requested\",\n    \"approval.resolved\",\n    \"usage.updated\",\n    \"stream.reconnected\",\n    \"stream.gap\",\n    \"operation.completed\",\n    \"operation.failed\",\n    \"operation.cancelled\",\n    \"operation.interrupted\"\n];"
-    },
-    {
-      "subpath": ".",
-      "name": "RUNTIME_PROVIDER_CAPABILITY_MATRIX",
-      "kind": "variable",
-      "signature": "export declare const RUNTIME_PROVIDER_CAPABILITY_MATRIX: Readonly<{\n    claude: Readonly<{\n        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n        transports: Readonly<RuntimeTransportCapabilities>;\n        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n    }>;\n    \"claude-managed-agents\": Readonly<{\n        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n        transports: Readonly<RuntimeTransportCapabilities>;\n        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n    }>;\n    codex: Readonly<{\n        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n        transports: Readonly<RuntimeTransportCapabilities>;\n        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n    }>;\n    gemini: Readonly<{\n        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n        transports: Readonly<RuntimeTransportCapabilities>;\n        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n    }>;\n    hermes: Readonly<{\n        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n        transports: Readonly<RuntimeTransportCapabilities>;\n        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n    }>;\n    openclaw: Readonly<{\n        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n        transports: Readonly<RuntimeTransportCapabilities>;\n        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n    }>;\n}>;"
-    },
-    {
-      "subpath": ".",
       "name": "RUNTIME_SURFACES",
       "kind": "variable",
       "signature": "/** Every surface a provider may declare support for. */\nexport declare const RUNTIME_SURFACES: readonly [\n    \"runs\",\n    \"streaming\",\n    \"media\",\n    \"wiki\",\n    \"agentConfig\",\n    \"teams\",\n    \"kanban\",\n    \"workspace\",\n    \"operator\",\n    \"discourse\",\n    \"batch\"\n];"
-    },
-    {
-      "subpath": ".",
-      "name": "RUNTIME_TRANSPORT_KINDS",
-      "kind": "variable",
-      "signature": "export declare const RUNTIME_TRANSPORT_KINDS: readonly [\n    \"http\",\n    \"sse\",\n    \"websocket\",\n    \"json-rpc\",\n    \"stdio\",\n    \"unix-socket\"\n];"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeAuthStatus",
-      "kind": "interface",
-      "signature": "export interface RuntimeAuthStatus {\n    providerId: string;\n    profileId?: string;\n    status: \"authenticated\" | \"unauthenticated\" | \"expired\" | \"unknown\";\n    expiresAt?: string;\n    sourceCategory?: string;\n    reasonCode?: string;\n    metadata: RuntimeControlPlaneMetadata;\n}"
     },
     {
       "subpath": ".",
@@ -1185,90 +1126,6 @@
     },
     {
       "subpath": ".",
-      "name": "RuntimeControlPlane",
-      "kind": "interface",
-      "signature": "export interface RuntimeControlPlane {\n    transports: RuntimeTransportCapabilities;\n    sessions?: SessionClient;\n    models?: ModelCatalogClient;\n    usage?: UsageClient;\n    tasks?: TaskClient;\n    workspace?: WorkspaceClient;\n    authStatus?: AuthStatusClient;\n    events?: RuntimeEventClient;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeControlPlaneDeclaration",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneDeclaration = {\n    transports?: RuntimeTransportCapabilities;\n    modules?: Partial<Record<\"sessions\" | \"models\" | \"usage\" | \"tasks\" | \"workspace\" | \"authStatus\" | \"events\", true>>;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeControlPlaneEvent",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneEvent = (RuntimeControlPlaneEventBase & {\n    event: \"operation.started\";\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.updated\";\n    update: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"message.delta\";\n    delta: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"reasoning.delta\";\n    delta: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"tool.started\";\n    toolCallId: string;\n    toolName: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"tool.progress\";\n    toolCallId: string;\n    progress: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"tool.completed\";\n    toolCallId: string;\n    result?: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"approval.requested\";\n    approvalId: string;\n    request?: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"approval.resolved\";\n    approvalId: string;\n    approved: boolean;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"usage.updated\";\n    usage: RuntimeUsage;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"stream.reconnected\";\n    cursor?: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"stream.gap\";\n    reason: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.completed\";\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.failed\";\n    error: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.cancelled\";\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.interrupted\";\n    reason?: string;\n});"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeControlPlaneEventName",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneEventName = (typeof RUNTIME_CONTROL_PLANE_EVENT_NAMES)[number];"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeControlPlaneMetadata",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneMetadata = {\n    provider: string;\n    stability: RuntimeProviderStability;\n    source: RuntimeControlPlaneSource;\n    providerData?: unknown;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeControlPlaneSource",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneSource = {\n    transport: \"http\" | \"sse\" | \"websocket\" | \"json-rpc\" | \"stdio\" | \"unix-socket\";\n    method: string;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeErrorMetadata",
-      "kind": "type",
-      "signature": "export type RuntimeErrorMetadata = {\n    provider: string;\n    transport: string;\n    operation: string;\n    retryable: boolean;\n    retryAfterMs?: number;\n    status?: number;\n    providerCode?: string;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeEventClient",
-      "kind": "interface",
-      "signature": "export interface RuntimeEventClient {\n    subscribe(params: {\n        operationId: string;\n        cursor?: string;\n        signal?: AbortSignal;\n    }, handlers: {\n        onEvent(event: RuntimeControlPlaneEvent): void;\n        onError?(error: unknown): void;\n    }): Promise<RuntimeEventSubscription>;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeEventSequenceInspection",
-      "kind": "interface",
-      "signature": "export interface RuntimeEventSequenceInspection {\n    valid: boolean;\n    terminalCount: number;\n    gaps: number;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeEventSubscription",
-      "kind": "interface",
-      "signature": "export interface RuntimeEventSubscription {\n    dispose(): void | Promise<void>;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeModelDescriptor",
-      "kind": "interface",
-      "signature": "export interface RuntimeModelDescriptor {\n    providerId: string;\n    id: string;\n    displayName?: string;\n    availability: \"available\" | \"unavailable\" | \"unknown\";\n    capabilities?: Readonly<Record<string, boolean>>;\n    authenticated?: boolean;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimePage",
-      "kind": "type",
-      "signature": "export type RuntimePage<T> = {\n    data: readonly T[];\n    nextCursor?: string;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeProviderCapabilityMatrixKey",
-      "kind": "type",
-      "signature": "export type RuntimeProviderCapabilityMatrixKey = keyof typeof RUNTIME_PROVIDER_CAPABILITY_MATRIX;"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeProviderCapabilityRow",
-      "kind": "type",
-      "signature": "export type RuntimeProviderCapabilityRow = Readonly<{\n    runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;\n    transports: Readonly<RuntimeTransportCapabilities>;\n    controlPlane: Readonly<RuntimeControlPlaneDeclaration>;\n}>;"
-    },
-    {
-      "subpath": ".",
       "name": "RuntimeProviderModule",
       "kind": "interface",
       "signature": "/** @deprecated Import RuntimeProviderModule from core/runtime. */\nexport interface RuntimeProviderModule extends RuntimeProviderModuleBase {\n}"
@@ -1278,12 +1135,6 @@
       "name": "RuntimeProviderRegistry",
       "kind": "interface",
       "signature": "export interface RuntimeProviderRegistry<M extends RuntimeProviderModule = RuntimeProviderModule> {\n    resolveProvider(provider: string | null | undefined): M | null;\n    listProviders(): readonly M[];\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeProviderStability",
-      "kind": "type",
-      "signature": "export type RuntimeProviderStability = \"stable\" | \"experimental\";"
     },
     {
       "subpath": ".",
@@ -1317,18 +1168,6 @@
     },
     {
       "subpath": ".",
-      "name": "RuntimeSessionState",
-      "kind": "type",
-      "signature": "export type RuntimeSessionState = \"pending\" | \"active\" | \"completed\" | \"cancelled\" | \"failed\" | \"unknown\";"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeSessionSummary",
-      "kind": "interface",
-      "signature": "export interface RuntimeSessionSummary {\n    id: string;\n    providerId: string;\n    title?: string;\n    state: RuntimeSessionState;\n    createdAt?: string;\n    updatedAt?: string;\n    providerKind: string;\n    model?: string;\n    workspaceId?: string;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": ".",
       "name": "runtimeSupports",
       "kind": "function",
       "signature": "export declare function runtimeSupports(capabilities: RuntimeCapabilities, surface: RuntimeSurface): boolean;"
@@ -1341,69 +1180,9 @@
     },
     {
       "subpath": ".",
-      "name": "RuntimeTaskState",
-      "kind": "type",
-      "signature": "export type RuntimeTaskState = \"pending\" | \"running\" | \"completed\" | \"cancelled\" | \"failed\" | \"unknown\";"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeTaskSummary",
-      "kind": "interface",
-      "signature": "export interface RuntimeTaskSummary {\n    id: string;\n    state: RuntimeTaskState;\n    createdAt?: string;\n    updatedAt?: string;\n    runId?: string;\n    sessionId?: string;\n    threadId?: string;\n    cancellable?: boolean;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeTransportCapabilities",
-      "kind": "type",
-      "signature": "export type RuntimeTransportCapabilities = Partial<Record<RuntimeTransportKind, RuntimeTransportCapability>>;"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeTransportCapability",
-      "kind": "type",
-      "signature": "export type RuntimeTransportCapability = {\n    kind: RuntimeTransportKind;\n    stability: RuntimeProviderStability;\n    authenticated: boolean;\n    reconnect?: boolean;\n    replay?: boolean;\n    cancellation?: boolean;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeTransportKind",
-      "kind": "type",
-      "signature": "export type RuntimeTransportKind = (typeof RUNTIME_TRANSPORT_KINDS)[number];"
-    },
-    {
-      "subpath": ".",
-      "name": "runtimeTransportSupports",
-      "kind": "function",
-      "signature": "export declare function runtimeTransportSupports(capabilities: RuntimeTransportCapabilities, kind: RuntimeTransportKind): boolean;"
-    },
-    {
-      "subpath": ".",
       "name": "RuntimeUsage",
       "kind": "type",
       "signature": "/** Canonical, provider-agnostic token usage for a single run. */\nexport type RuntimeUsage = {\n    inputTokens?: number;\n    outputTokens?: number;\n    totalTokens?: number;\n    /** Tokens served from prompt cache. */\n    cacheReadTokens?: number;\n    /** Tokens written to prompt cache (Anthropic \"cache_creation\"). */\n    cacheWriteTokens?: number;\n    /** Lossless provider-native numeric fields, flattened. */\n    raw?: Record<string, number>;\n};"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeUsageCost",
-      "kind": "interface",
-      "signature": "export interface RuntimeUsageCost {\n    availability: \"available\" | \"estimated\" | \"unavailable\";\n    amount?: number;\n    currency?: string;\n    calculationSource?: string;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeUsageQuery",
-      "kind": "interface",
-      "signature": "export interface RuntimeUsageQuery {\n    startTime?: string;\n    endTime?: string;\n    providerId?: string;\n    model?: string;\n    sessionId?: string;\n    agentId?: string;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeUsageSummary",
-      "kind": "interface",
-      "signature": "export interface RuntimeUsageSummary {\n    tokens: RuntimeUsage;\n    cost: RuntimeUsageCost;\n    aggregation?: string;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": ".",
-      "name": "RuntimeWorkspaceDescriptor",
-      "kind": "interface",
-      "signature": "export interface RuntimeWorkspaceDescriptor {\n    id: string;\n    providerId: string;\n    displayName?: string;\n    root?: string;\n    accessMode: \"read-only\" | \"read-write\" | \"unknown\";\n    metadata: RuntimeControlPlaneMetadata;\n}"
     },
     {
       "subpath": ".",
@@ -1416,12 +1195,6 @@
       "name": "serializeError",
       "kind": "function",
       "signature": "export declare function serializeError(error: unknown, fallbackMessage?: string): SerializedApiClientError;"
-    },
-    {
-      "subpath": ".",
-      "name": "SessionClient",
-      "kind": "interface",
-      "signature": "export interface SessionClient {\n    listSessions(query?: {\n        cursor?: string;\n        limit?: number;\n    }): Promise<RuntimePage<RuntimeSessionSummary>>;\n    getSession(id: string): Promise<RuntimeSessionSummary>;\n    cancelSession?(id: string): Promise<RuntimeSessionSummary>;\n}"
     },
     {
       "subpath": ".",
@@ -1452,12 +1225,6 @@
       "name": "SurfacePathResolver",
       "kind": "type",
       "signature": "export type SurfacePathResolver = (key: string, params?: Record<string, string>) => string;"
-    },
-    {
-      "subpath": ".",
-      "name": "TaskClient",
-      "kind": "interface",
-      "signature": "export interface TaskClient {\n    listTasks(query?: {\n        cursor?: string;\n        limit?: number;\n    }): Promise<RuntimePage<RuntimeTaskSummary>>;\n    getTask(id: string): Promise<RuntimeTaskSummary>;\n    cancelTask?(id: string): Promise<RuntimeTaskSummary>;\n}"
     },
     {
       "subpath": ".",
@@ -1635,12 +1402,6 @@
     },
     {
       "subpath": ".",
-      "name": "UsageClient",
-      "kind": "interface",
-      "signature": "export interface UsageClient {\n    getUsage(query?: RuntimeUsageQuery): Promise<RuntimeUsageSummary>;\n}"
-    },
-    {
-      "subpath": ".",
       "name": "withFallback",
       "kind": "function",
       "signature": "export declare function withFallback<TData>(params: {\n    run: () => Promise<TData>;\n    fallback: TData;\n    area: string;\n    expectedContract: string;\n    note: string;\n    /** Optional observability hook: fired when the envelope resolves live or mock (C2). */\n    onResolve?: (info: FallbackResolveInfo) => void;\n}): Promise<DataEnvelope<TData>>;"
@@ -1656,12 +1417,6 @@
       "name": "withRuntimeBasePath",
       "kind": "function",
       "signature": "export declare function withRuntimeBasePath(pathname: string, rawBasePath: string | null | undefined): string;"
-    },
-    {
-      "subpath": ".",
-      "name": "WorkspaceClient",
-      "kind": "interface",
-      "signature": "export interface WorkspaceClient {\n    listWorkspaces(): Promise<readonly RuntimeWorkspaceDescriptor[]>;\n    getWorkspace(id: string): Promise<RuntimeWorkspaceDescriptor>;\n}"
     },
     {
       "subpath": "./contracts",
@@ -2267,19 +2022,19 @@
       "subpath": "./core/errors",
       "name": "ApiClientError",
       "kind": "class",
-      "signature": "export declare class ApiClientError extends Error {\n    readonly type: ApiClientErrorType | string;\n    readonly code: ApiClientErrorCode | string;\n    readonly runtime?: RuntimeErrorMetadata;\n    constructor(message: string, options?: ApiClientErrorOptions);\n}"
+      "signature": "export declare class ApiClientError extends Error {\n    readonly type: ApiClientErrorType | string;\n    readonly code: ApiClientErrorCode | string;\n    constructor(message: string, options?: ApiClientErrorOptions);\n}"
     },
     {
       "subpath": "./core/errors",
       "name": "ApiClientErrorCode",
       "kind": "enum",
-      "signature": "export declare enum ApiClientErrorCode {\n    Unknown = \"unknown\",\n    ValidationFailed = \"validation_failed\",\n    InvalidConfig = \"invalid_config\",\n    InvalidJson = \"invalid_json\",\n    HttpRequestFailed = \"http_request_failed\",\n    GatewayError = \"gateway_error\",\n    RequestFailed = \"request_failed\",\n    Timeout = \"timeout\",\n    Aborted = \"aborted\",\n    SocketError = \"socket_error\",\n    SocketClosed = \"socket_closed\",\n    SocketUnavailable = \"socket_unavailable\",\n    ConnectFailed = \"connect_failed\",\n    BackendUnavailable = \"backend_unavailable\",\n    EndpointNotFound = \"endpoint_not_found\",\n    ProtocolMismatch = \"protocol_mismatch\",\n    AuthRequired = \"auth_required\",\n    AuthForbidden = \"auth_forbidden\",\n    CapabilityUnavailable = \"capability_unavailable\",\n    PermissionDenied = \"permission_denied\",\n    InvalidRequest = \"invalid_request\",\n    Conflict = \"conflict\",\n    RateLimited = \"rate_limited\",\n    TransportUnavailable = \"transport_unavailable\",\n    TransportProtocolError = \"transport_protocol_error\",\n    ServerOverloaded = \"server_overloaded\"\n}"
+      "signature": "export declare enum ApiClientErrorCode {\n    Unknown = \"unknown\",\n    ValidationFailed = \"validation_failed\",\n    InvalidConfig = \"invalid_config\",\n    InvalidJson = \"invalid_json\",\n    HttpRequestFailed = \"http_request_failed\",\n    GatewayError = \"gateway_error\",\n    RequestFailed = \"request_failed\",\n    Timeout = \"timeout\",\n    Aborted = \"aborted\",\n    SocketError = \"socket_error\",\n    SocketClosed = \"socket_closed\",\n    SocketUnavailable = \"socket_unavailable\",\n    ConnectFailed = \"connect_failed\",\n    BackendUnavailable = \"backend_unavailable\",\n    EndpointNotFound = \"endpoint_not_found\",\n    ProtocolMismatch = \"protocol_mismatch\",\n    AuthRequired = \"auth_required\",\n    AuthForbidden = \"auth_forbidden\"\n}"
     },
     {
       "subpath": "./core/errors",
       "name": "ApiClientErrorOptions",
       "kind": "type",
-      "signature": "export type ApiClientErrorOptions = {\n    type?: ApiClientErrorType | string;\n    code?: ApiClientErrorCode | string;\n    cause?: unknown;\n    runtime?: RuntimeErrorMetadata;\n};"
+      "signature": "export type ApiClientErrorOptions = {\n    type?: ApiClientErrorType | string;\n    code?: ApiClientErrorCode | string;\n    cause?: unknown;\n};"
     },
     {
       "subpath": "./core/errors",
@@ -2313,12 +2068,6 @@
     },
     {
       "subpath": "./core/errors",
-      "name": "getRuntimeErrorMetadata",
-      "kind": "function",
-      "signature": "export declare function getRuntimeErrorMetadata(error: unknown): RuntimeErrorMetadata | undefined;"
-    },
-    {
-      "subpath": "./core/errors",
       "name": "isAbortError",
       "kind": "function",
       "signature": "export declare function isAbortError(error: unknown): boolean;"
@@ -2334,12 +2083,6 @@
       "name": "isEndpointNotFoundError",
       "kind": "function",
       "signature": "/**\n * True when an error is a synthesized `EndpointNotFound` failure — the\n * everyday cross-provider branch for a surface a provider declares\n * unsupported (Gemini `getRun`/`cancelRun`, OpenClaw wiki/media).\n */\nexport declare function isEndpointNotFoundError(error: unknown): boolean;"
-    },
-    {
-      "subpath": "./core/errors",
-      "name": "RuntimeErrorMetadata",
-      "kind": "type",
-      "signature": "export type RuntimeErrorMetadata = {\n    provider: string;\n    transport: string;\n    operation: string;\n    retryable: boolean;\n    retryAfterMs?: number;\n    status?: number;\n    providerCode?: string;\n};"
     },
     {
       "subpath": "./core/errors",
@@ -4808,90 +4551,6 @@
       "signature": "export declare function withQuery(path: string, params: Record<string, string | number | undefined>): string;"
     },
     {
-      "subpath": "./core/kanban",
-      "name": "isKanbanPriority",
-      "kind": "function",
-      "signature": "export declare function isKanbanPriority(value: unknown): value is KanbanPriority;"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "isKanbanStatusCategory",
-      "kind": "function",
-      "signature": "export declare function isKanbanStatusCategory(value: unknown): value is KanbanStatusCategory;"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KANBAN_PRIORITIES",
-      "kind": "variable",
-      "signature": "export declare const KANBAN_PRIORITIES: readonly [\n    \"low\",\n    \"normal\",\n    \"high\",\n    \"urgent\"\n];"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KANBAN_STATUS_CATEGORIES",
-      "kind": "variable",
-      "signature": "export declare const KANBAN_STATUS_CATEGORIES: readonly [\n    \"triage\",\n    \"backlog\",\n    \"todo\",\n    \"scheduled\",\n    \"active\",\n    \"review\",\n    \"blocked\",\n    \"done\"\n];"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanBoard",
-      "kind": "interface",
-      "signature": "export interface KanbanBoard {\n    id: string;\n    name?: string;\n    statuses?: readonly KanbanStatusDef[];\n    metadata?: Record<string, unknown>;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanCard",
-      "kind": "interface",
-      "signature": "export interface KanbanCard {\n    id: string;\n    title: string;\n    notes?: string;\n    /** Native backend status, preserved. */\n    status: string;\n    /** Canonical category derived from `status` by the adapter. */\n    category: KanbanStatusCategory;\n    priority: KanbanPriority;\n    labels: string[];\n    agentId?: string;\n    boardId?: string;\n    links?: KanbanCardLinks;\n    position: number;\n    createdAt: number;\n    updatedAt: number;\n    metadata?: Record<string, unknown>;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanCardCreate",
-      "kind": "interface",
-      "signature": "export interface KanbanCardCreate {\n    title: string;\n    notes?: string;\n    /** Native status; when omitted the backend chooses its default column. */\n    status?: string;\n    priority?: KanbanPriority;\n    labels?: string[];\n    agentId?: string;\n    boardId?: string;\n    links?: KanbanCardLinks;\n    metadata?: Record<string, unknown>;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanCardLinks",
-      "kind": "interface",
-      "signature": "/** Generic linkage a card may carry to runtime objects. */\nexport interface KanbanCardLinks {\n    sessionKey?: string;\n    runId?: string;\n    taskId?: string;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanCardPatch",
-      "kind": "interface",
-      "signature": "export interface KanbanCardPatch {\n    title?: string;\n    notes?: string;\n    priority?: KanbanPriority;\n    labels?: string[];\n    agentId?: string;\n    metadata?: Record<string, unknown>;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanClient",
-      "kind": "interface",
-      "signature": "/**\n * Provider-agnostic kanban contract. Every backend (OpenClaw Workboard, CAVI\n * Project Board, gateway REST, and any future one incl. Managed Agents) is an\n * adapter behind this interface. Core methods are mandatory; `extended` is\n * feature-detected.\n */\nexport interface KanbanClient {\n    listBoards(): Promise<KanbanBoard[]>;\n    listCards(params?: {\n        boardId?: string;\n    }): Promise<{\n        cards: KanbanCard[];\n        statuses?: readonly KanbanStatusDef[];\n    }>;\n    createCard(input: KanbanCardCreate): Promise<KanbanCard>;\n    updateCard(id: string, patch: KanbanCardPatch): Promise<KanbanCard>;\n    /** Move a card to a native `status` (and optional position). */\n    moveCard(id: string, status: string, position?: number): Promise<KanbanCard>;\n    deleteCard(id: string): Promise<void>;\n    readonly extended?: KanbanExtended;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanExtended",
-      "kind": "interface",
-      "signature": "/** Optional agent-orchestration surface. Present iff the backend supports it. */\nexport interface KanbanExtended {\n    comment?(cardId: string, body: string): Promise<void>;\n    claim?(cardId: string, agentId: string): Promise<KanbanCard>;\n    release?(cardId: string): Promise<KanbanCard>;\n    complete?(cardId: string): Promise<KanbanCard>;\n    block?(cardId: string, reason?: string): Promise<KanbanCard>;\n    unblock?(cardId: string): Promise<KanbanCard>;\n    dispatch?(params?: Record<string, unknown>): Promise<unknown>;\n}"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanPriority",
-      "kind": "type",
-      "signature": "export type KanbanPriority = (typeof KANBAN_PRIORITIES)[number];"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanStatusCategory",
-      "kind": "type",
-      "signature": "export type KanbanStatusCategory = (typeof KANBAN_STATUS_CATEGORIES)[number];"
-    },
-    {
-      "subpath": "./core/kanban",
-      "name": "KanbanStatusDef",
-      "kind": "interface",
-      "signature": "/** A backend status token plus its canonical category and column order. */\nexport interface KanbanStatusDef {\n    /** The backend's native status token, preserved verbatim. */\n    status: string;\n    category: KanbanStatusCategory;\n    /** Column order for rendering; lower is earlier. */\n    order: number;\n}"
-    },
-    {
       "subpath": "./core/memory",
       "name": "AgentId",
       "kind": "type",
@@ -4938,12 +4597,6 @@
       "name": "assertProtocolVersion",
       "kind": "function",
       "signature": "/** Throw a typed ProtocolMismatch error when the reported version is not `expected`. */\nexport declare function assertProtocolVersion(carrier: ProtocolVersionCarrier, expected: string): void;"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "AuthStatusClient",
-      "kind": "interface",
-      "signature": "export interface AuthStatusClient {\n    listAuthStatus(): Promise<readonly RuntimeAuthStatus[]>;\n}"
     },
     {
       "subpath": "./core/runtime",
@@ -5007,21 +4660,9 @@
     },
     {
       "subpath": "./core/runtime",
-      "name": "inspectRuntimeEventSequence",
-      "kind": "function",
-      "signature": "export declare function inspectRuntimeEventSequence(events: readonly RuntimeControlPlaneEvent[]): RuntimeEventSequenceInspection;"
-    },
-    {
-      "subpath": "./core/runtime",
       "name": "isRuntimeRunStartBody",
       "kind": "function",
       "signature": "export declare function isRuntimeRunStartBody(value: unknown): value is RuntimeRunStartBody;"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "ModelCatalogClient",
-      "kind": "interface",
-      "signature": "export interface ModelCatalogClient {\n    listModels(query?: {\n        cursor?: string;\n        limit?: number;\n    }): Promise<RuntimePage<RuntimeModelDescriptor>>;\n}"
     },
     {
       "subpath": "./core/runtime",
@@ -5157,27 +4798,9 @@
     },
     {
       "subpath": "./core/runtime",
-      "name": "RUNTIME_CONTROL_PLANE_EVENT_NAMES",
-      "kind": "variable",
-      "signature": "export declare const RUNTIME_CONTROL_PLANE_EVENT_NAMES: readonly [\n    \"operation.started\",\n    \"operation.updated\",\n    \"message.delta\",\n    \"reasoning.delta\",\n    \"tool.started\",\n    \"tool.progress\",\n    \"tool.completed\",\n    \"approval.requested\",\n    \"approval.resolved\",\n    \"usage.updated\",\n    \"stream.reconnected\",\n    \"stream.gap\",\n    \"operation.completed\",\n    \"operation.failed\",\n    \"operation.cancelled\",\n    \"operation.interrupted\"\n];"
-    },
-    {
-      "subpath": "./core/runtime",
       "name": "RUNTIME_SURFACES",
       "kind": "variable",
       "signature": "/** Every surface a provider may declare support for. */\nexport declare const RUNTIME_SURFACES: readonly [\n    \"runs\",\n    \"streaming\",\n    \"media\",\n    \"wiki\",\n    \"agentConfig\",\n    \"teams\",\n    \"kanban\",\n    \"workspace\",\n    \"operator\",\n    \"discourse\",\n    \"batch\"\n];"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RUNTIME_TRANSPORT_KINDS",
-      "kind": "variable",
-      "signature": "export declare const RUNTIME_TRANSPORT_KINDS: readonly [\n    \"http\",\n    \"sse\",\n    \"websocket\",\n    \"json-rpc\",\n    \"stdio\",\n    \"unix-socket\"\n];"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeAuthStatus",
-      "kind": "interface",
-      "signature": "export interface RuntimeAuthStatus {\n    providerId: string;\n    profileId?: string;\n    status: \"authenticated\" | \"unauthenticated\" | \"expired\" | \"unknown\";\n    expiresAt?: string;\n    sourceCategory?: string;\n    reasonCode?: string;\n    metadata: RuntimeControlPlaneMetadata;\n}"
     },
     {
       "subpath": "./core/runtime",
@@ -5235,87 +4858,15 @@
     },
     {
       "subpath": "./core/runtime",
-      "name": "RuntimeControlPlane",
-      "kind": "interface",
-      "signature": "export interface RuntimeControlPlane {\n    transports: RuntimeTransportCapabilities;\n    sessions?: SessionClient;\n    models?: ModelCatalogClient;\n    usage?: UsageClient;\n    tasks?: TaskClient;\n    workspace?: WorkspaceClient;\n    authStatus?: AuthStatusClient;\n    events?: RuntimeEventClient;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeControlPlaneDeclaration",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneDeclaration = {\n    transports?: RuntimeTransportCapabilities;\n    modules?: Partial<Record<\"sessions\" | \"models\" | \"usage\" | \"tasks\" | \"workspace\" | \"authStatus\" | \"events\", true>>;\n};"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeControlPlaneEvent",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneEvent = (RuntimeControlPlaneEventBase & {\n    event: \"operation.started\";\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.updated\";\n    update: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"message.delta\";\n    delta: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"reasoning.delta\";\n    delta: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"tool.started\";\n    toolCallId: string;\n    toolName: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"tool.progress\";\n    toolCallId: string;\n    progress: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"tool.completed\";\n    toolCallId: string;\n    result?: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"approval.requested\";\n    approvalId: string;\n    request?: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"approval.resolved\";\n    approvalId: string;\n    approved: boolean;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"usage.updated\";\n    usage: RuntimeUsage;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"stream.reconnected\";\n    cursor?: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"stream.gap\";\n    reason: string;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.completed\";\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.failed\";\n    error: unknown;\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.cancelled\";\n}) | (RuntimeControlPlaneEventBase & {\n    event: \"operation.interrupted\";\n    reason?: string;\n});"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeControlPlaneEventName",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneEventName = (typeof RUNTIME_CONTROL_PLANE_EVENT_NAMES)[number];"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeControlPlaneMetadata",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneMetadata = {\n    provider: string;\n    stability: RuntimeProviderStability;\n    source: RuntimeControlPlaneSource;\n    providerData?: unknown;\n};"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeControlPlaneSource",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneSource = {\n    transport: \"http\" | \"sse\" | \"websocket\" | \"json-rpc\" | \"stdio\" | \"unix-socket\";\n    method: string;\n};"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeEventClient",
-      "kind": "interface",
-      "signature": "export interface RuntimeEventClient {\n    subscribe(params: {\n        operationId: string;\n        cursor?: string;\n        signal?: AbortSignal;\n    }, handlers: {\n        onEvent(event: RuntimeControlPlaneEvent): void;\n        onError?(error: unknown): void;\n    }): Promise<RuntimeEventSubscription>;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeEventSequenceInspection",
-      "kind": "interface",
-      "signature": "export interface RuntimeEventSequenceInspection {\n    valid: boolean;\n    terminalCount: number;\n    gaps: number;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeEventSubscription",
-      "kind": "interface",
-      "signature": "export interface RuntimeEventSubscription {\n    dispose(): void | Promise<void>;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeModelDescriptor",
-      "kind": "interface",
-      "signature": "export interface RuntimeModelDescriptor {\n    providerId: string;\n    id: string;\n    displayName?: string;\n    availability: \"available\" | \"unavailable\" | \"unknown\";\n    capabilities?: Readonly<Record<string, boolean>>;\n    authenticated?: boolean;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimePage",
-      "kind": "type",
-      "signature": "export type RuntimePage<T> = {\n    data: readonly T[];\n    nextCursor?: string;\n};"
-    },
-    {
-      "subpath": "./core/runtime",
       "name": "RuntimeProviderModule",
       "kind": "interface",
-      "signature": "export interface RuntimeProviderModule {\n    kind: string;\n    aliases?: readonly string[];\n    capabilities?: Partial<Record<RuntimeSurface, boolean>>;\n    controlPlane?: RuntimeControlPlaneDeclaration;\n    createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n    createControlPlane?: (clientOptions: RuntimeClientOptions) => RuntimeControlPlane;\n    /** @deprecated Use createClient for new provider modules. */\n    createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n}"
+      "signature": "export interface RuntimeProviderModule {\n    kind: string;\n    aliases?: readonly string[];\n    capabilities?: Partial<Record<RuntimeSurface, boolean>>;\n    createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n    /** @deprecated Use createClient for new provider modules. */\n    createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n}"
     },
     {
       "subpath": "./core/runtime",
       "name": "RuntimeProviderRegistry",
       "kind": "interface",
       "signature": "export interface RuntimeProviderRegistry<M extends RuntimeProviderModule = RuntimeProviderModule> {\n    resolveProvider(provider: string | null | undefined): M | null;\n    listProviders(): readonly M[];\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeProviderStability",
-      "kind": "type",
-      "signature": "export type RuntimeProviderStability = \"stable\" | \"experimental\";"
     },
     {
       "subpath": "./core/runtime",
@@ -5349,18 +4900,6 @@
     },
     {
       "subpath": "./core/runtime",
-      "name": "RuntimeSessionState",
-      "kind": "type",
-      "signature": "export type RuntimeSessionState = \"pending\" | \"active\" | \"completed\" | \"cancelled\" | \"failed\" | \"unknown\";"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeSessionSummary",
-      "kind": "interface",
-      "signature": "export interface RuntimeSessionSummary {\n    id: string;\n    providerId: string;\n    title?: string;\n    state: RuntimeSessionState;\n    createdAt?: string;\n    updatedAt?: string;\n    providerKind: string;\n    model?: string;\n    workspaceId?: string;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
       "name": "runtimeSupports",
       "kind": "function",
       "signature": "export declare function runtimeSupports(capabilities: RuntimeCapabilities, surface: RuntimeSurface): boolean;"
@@ -5373,81 +4912,9 @@
     },
     {
       "subpath": "./core/runtime",
-      "name": "RuntimeTaskState",
-      "kind": "type",
-      "signature": "export type RuntimeTaskState = \"pending\" | \"running\" | \"completed\" | \"cancelled\" | \"failed\" | \"unknown\";"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeTaskSummary",
-      "kind": "interface",
-      "signature": "export interface RuntimeTaskSummary {\n    id: string;\n    state: RuntimeTaskState;\n    createdAt?: string;\n    updatedAt?: string;\n    runId?: string;\n    sessionId?: string;\n    threadId?: string;\n    cancellable?: boolean;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeTransportCapabilities",
-      "kind": "type",
-      "signature": "export type RuntimeTransportCapabilities = Partial<Record<RuntimeTransportKind, RuntimeTransportCapability>>;"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeTransportCapability",
-      "kind": "type",
-      "signature": "export type RuntimeTransportCapability = {\n    kind: RuntimeTransportKind;\n    stability: RuntimeProviderStability;\n    authenticated: boolean;\n    reconnect?: boolean;\n    replay?: boolean;\n    cancellation?: boolean;\n};"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeTransportKind",
-      "kind": "type",
-      "signature": "export type RuntimeTransportKind = (typeof RUNTIME_TRANSPORT_KINDS)[number];"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "runtimeTransportSupports",
-      "kind": "function",
-      "signature": "export declare function runtimeTransportSupports(capabilities: RuntimeTransportCapabilities, kind: RuntimeTransportKind): boolean;"
-    },
-    {
-      "subpath": "./core/runtime",
       "name": "RuntimeUsage",
       "kind": "type",
       "signature": "/** Canonical, provider-agnostic token usage for a single run. */\nexport type RuntimeUsage = {\n    inputTokens?: number;\n    outputTokens?: number;\n    totalTokens?: number;\n    /** Tokens served from prompt cache. */\n    cacheReadTokens?: number;\n    /** Tokens written to prompt cache (Anthropic \"cache_creation\"). */\n    cacheWriteTokens?: number;\n    /** Lossless provider-native numeric fields, flattened. */\n    raw?: Record<string, number>;\n};"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeUsageCost",
-      "kind": "interface",
-      "signature": "export interface RuntimeUsageCost {\n    availability: \"available\" | \"estimated\" | \"unavailable\";\n    amount?: number;\n    currency?: string;\n    calculationSource?: string;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeUsageQuery",
-      "kind": "interface",
-      "signature": "export interface RuntimeUsageQuery {\n    startTime?: string;\n    endTime?: string;\n    providerId?: string;\n    model?: string;\n    sessionId?: string;\n    agentId?: string;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeUsageSummary",
-      "kind": "interface",
-      "signature": "export interface RuntimeUsageSummary {\n    tokens: RuntimeUsage;\n    cost: RuntimeUsageCost;\n    aggregation?: string;\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "RuntimeWorkspaceDescriptor",
-      "kind": "interface",
-      "signature": "export interface RuntimeWorkspaceDescriptor {\n    id: string;\n    providerId: string;\n    displayName?: string;\n    root?: string;\n    accessMode: \"read-only\" | \"read-write\" | \"unknown\";\n    metadata: RuntimeControlPlaneMetadata;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "SessionClient",
-      "kind": "interface",
-      "signature": "export interface SessionClient {\n    listSessions(query?: {\n        cursor?: string;\n        limit?: number;\n    }): Promise<RuntimePage<RuntimeSessionSummary>>;\n    getSession(id: string): Promise<RuntimeSessionSummary>;\n    cancelSession?(id: string): Promise<RuntimeSessionSummary>;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "TaskClient",
-      "kind": "interface",
-      "signature": "export interface TaskClient {\n    listTasks(query?: {\n        cursor?: string;\n        limit?: number;\n    }): Promise<RuntimePage<RuntimeTaskSummary>>;\n    getTask(id: string): Promise<RuntimeTaskSummary>;\n    cancelTask?(id: string): Promise<RuntimeTaskSummary>;\n}"
     },
     {
       "subpath": "./core/runtime",
@@ -5463,21 +4930,9 @@
     },
     {
       "subpath": "./core/runtime",
-      "name": "UsageClient",
-      "kind": "interface",
-      "signature": "export interface UsageClient {\n    getUsage(query?: RuntimeUsageQuery): Promise<RuntimeUsageSummary>;\n}"
-    },
-    {
-      "subpath": "./core/runtime",
       "name": "withRuntimeBasePath",
       "kind": "function",
       "signature": "export declare function withRuntimeBasePath(pathname: string, rawBasePath: string | null | undefined): string;"
-    },
-    {
-      "subpath": "./core/runtime",
-      "name": "WorkspaceClient",
-      "kind": "interface",
-      "signature": "export interface WorkspaceClient {\n    listWorkspaces(): Promise<readonly RuntimeWorkspaceDescriptor[]>;\n    getWorkspace(id: string): Promise<RuntimeWorkspaceDescriptor>;\n}"
     },
     {
       "subpath": "./core/runtime/providers",
@@ -5523,15 +4978,9 @@
     },
     {
       "subpath": "./core/runtime/providers",
-      "name": "RuntimeControlPlaneDeclaration",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneDeclaration = {\n    transports?: RuntimeTransportCapabilities;\n    modules?: Partial<Record<\"sessions\" | \"models\" | \"usage\" | \"tasks\" | \"workspace\" | \"authStatus\" | \"events\", true>>;\n};"
-    },
-    {
-      "subpath": "./core/runtime/providers",
       "name": "RuntimeProviderModule",
       "kind": "interface",
-      "signature": "export interface RuntimeProviderModule {\n    kind: string;\n    aliases?: readonly string[];\n    capabilities?: Partial<Record<RuntimeSurface, boolean>>;\n    controlPlane?: RuntimeControlPlaneDeclaration;\n    createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n    createControlPlane?: (clientOptions: RuntimeClientOptions) => RuntimeControlPlane;\n    /** @deprecated Use createClient for new provider modules. */\n    createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n}"
+      "signature": "export interface RuntimeProviderModule {\n    kind: string;\n    aliases?: readonly string[];\n    capabilities?: Partial<Record<RuntimeSurface, boolean>>;\n    createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n    /** @deprecated Use createClient for new provider modules. */\n    createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;\n}"
     },
     {
       "subpath": "./core/runtime/providers",
@@ -10005,12 +9454,6 @@
     },
     {
       "subpath": "./providers/openclaw",
-      "name": "createOpenClawKanbanClient",
-      "kind": "function",
-      "signature": "/** Adapt an OpenClaw Workboard RPC client to the provider-agnostic KanbanClient. */\nexport declare function createOpenClawKanbanClient(rpc: OpenClawWorkboardRpc): KanbanClient;"
-    },
-    {
-      "subpath": "./providers/openclaw",
       "name": "createOpenClawTeamRegistry",
       "kind": "function",
       "signature": "export declare function createOpenClawTeamRegistry(config?: TeamRegistryConfig): TeamRegistry;"
@@ -10341,51 +9784,9 @@
     },
     {
       "subpath": "./testing",
-      "name": "inspectKanbanConformance",
-      "kind": "function",
-      "signature": "/**\n * Exercise a KanbanClient's core methods and validate the canonical shape.\n *\n * NOTE: this MUTATES the target backend — it creates a card, updates and moves\n * it, then deletes it. Run it against a disposable board, not production data.\n */\nexport declare function inspectKanbanConformance(client: KanbanClient): Promise<KanbanConformanceReport>;"
-    },
-    {
-      "subpath": "./testing",
-      "name": "inspectRuntimeControlPlaneConformance",
-      "kind": "function",
-      "signature": "export declare function inspectRuntimeControlPlaneConformance(fixture: RuntimeControlPlaneConformanceFixture): Promise<RuntimeControlPlaneConformanceReport>;"
-    },
-    {
-      "subpath": "./testing",
       "name": "inspectRuntimeProviderConformance",
       "kind": "function",
       "signature": "export declare function inspectRuntimeProviderConformance(fixture: RuntimeProviderConformanceFixture): Promise<RuntimeProviderConformanceReport>;"
-    },
-    {
-      "subpath": "./testing",
-      "name": "KanbanConformanceCheck",
-      "kind": "interface",
-      "signature": "export interface KanbanConformanceCheck {\n    name: string;\n    ok: boolean;\n    detail?: string;\n}"
-    },
-    {
-      "subpath": "./testing",
-      "name": "KanbanConformanceReport",
-      "kind": "interface",
-      "signature": "export interface KanbanConformanceReport {\n    ok: boolean;\n    checks: KanbanConformanceCheck[];\n}"
-    },
-    {
-      "subpath": "./testing",
-      "name": "RuntimeControlPlaneConformanceCheck",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneConformanceCheck = RuntimeProviderConformanceCheck;"
-    },
-    {
-      "subpath": "./testing",
-      "name": "RuntimeControlPlaneConformanceFixture",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneConformanceFixture = {\n    module: RuntimeProviderModule;\n    clientOptions: RuntimeClientOptions;\n};"
-    },
-    {
-      "subpath": "./testing",
-      "name": "RuntimeControlPlaneConformanceReport",
-      "kind": "type",
-      "signature": "export type RuntimeControlPlaneConformanceReport = {\n    providerKind: string;\n    valid: boolean;\n    checks: readonly RuntimeControlPlaneConformanceCheck[];\n};"
     },
     {
       "subpath": "./testing",
@@ -10404,12 +9805,6 @@
       "name": "RuntimeProviderConformanceReport",
       "kind": "type",
       "signature": "export type RuntimeProviderConformanceReport = {\n    providerKind: string;\n    valid: boolean;\n    checks: readonly RuntimeProviderConformanceCheck[];\n};"
-    },
-    {
-      "subpath": "./testing",
-      "name": "validateKanbanCard",
-      "kind": "function",
-      "signature": "/** Return a list of human-readable errors for a card that violates the contract. */\nexport declare function validateKanbanCard(card: KanbanCard): string[];"
     }
   ]
 }

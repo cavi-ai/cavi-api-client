@@ -161,11 +161,6 @@
       "path": "reference/core-http.md"
     },
     {
-      "subpath": "./core/kanban",
-      "kind": "declaration",
-      "path": "reference/core-kanban.md"
-    },
-    {
       "subpath": "./core/memory",
       "kind": "declaration",
       "path": "reference/core-memory.md"

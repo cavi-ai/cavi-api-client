@@ -55,7 +55,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/cavi-docs-stable"
           npm pack @cavi-ai/api-client@0.11.0 --pack-destination "$RUNNER_TEMP/cavi-docs-stable"
-          echo "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a  $CAVI_API_CLIENT_STABLE_TARBALL" | sha256sum --check --strict
+          echo "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5  $CAVI_API_CLIENT_STABLE_TARBALL" | sha256sum --check --strict
 
       - name: Verify package
         run: pnpm run verify

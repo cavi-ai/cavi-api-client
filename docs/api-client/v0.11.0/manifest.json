@@ -5,8 +5,8 @@
     "tag": "v0.11.0",
     "commit": "48adfa6ba7c3d5e8ffee0a6cf2572574ca630fa0"
   },
-  "sourceTarballSha256": "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
-  "contentSha256": "24db77d1e5cf3230b8be68782e4d38a0b25024fc57aacdf4e3753b3e48eea476",
+  "sourceTarballSha256": "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5",
+  "contentSha256": "306450f08c69a6e068f80490b1f2cc4f0808af0911fdec5b9b145e33a9ba5534",
   "publicExports": [
     {
       "subpath": ".",
@@ -42,11 +42,6 @@
       "subpath": "./core/http",
       "kind": "declaration",
       "types": "./dist/core/http/index.d.ts"
-    },
-    {
-      "subpath": "./core/kanban",
-      "kind": "declaration",
-      "types": "./dist/core/kanban/index.d.ts"
     },
     {
       "subpath": "./core/memory",

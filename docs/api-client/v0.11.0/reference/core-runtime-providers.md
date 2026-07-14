@@ -78,19 +78,6 @@ Kind: type
 export type RuntimeClientOptions = Pick<HttpApiClientOptions, "baseUrl" | "fetchImpl" | "onTrace">;
 ```
 
-<a id="symbol-core-runtime-providers-runtimecontrolplanedeclaration"></a>
-
-## RuntimeControlPlaneDeclaration
-
-Kind: type
-
-```ts
-export type RuntimeControlPlaneDeclaration = {
-    transports?: RuntimeTransportCapabilities;
-    modules?: Partial<Record<"sessions" | "models" | "usage" | "tasks" | "workspace" | "authStatus" | "events", true>>;
-};
-```
-
 <a id="symbol-core-runtime-providers-runtimeprovidermodule"></a>
 
 ## RuntimeProviderModule
@@ -102,9 +89,7 @@ export interface RuntimeProviderModule {
     kind: string;
     aliases?: readonly string[];
     capabilities?: Partial<Record<RuntimeSurface, boolean>>;
-    controlPlane?: RuntimeControlPlaneDeclaration;
     createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;
-    createControlPlane?: (clientOptions: RuntimeClientOptions) => RuntimeControlPlane;
     /** @deprecated Use createClient for new provider modules. */
     createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;
 }

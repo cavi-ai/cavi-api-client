@@ -95,7 +95,7 @@ describe("docs integrity", () => {
     expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
     expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
     expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
-    expect(workflow).toContain("93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a");
+    expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
     expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
       workflow.indexOf("Verify package"),

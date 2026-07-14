@@ -33,7 +33,7 @@ base path.
 The manifest version must equal the documented package version, `0.11.0`.
 `manifest.package` must be `@cavi-ai/api-client`, and
 `manifest.sourceTarballSha256` must equal
-`93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`, the
+`3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5`, the
 SHA-256 digest of the packed `@cavi-ai/api-client@0.11.0` authority artifact.
 Verify `manifest.contentSha256` by hashing every artifact file except
 `manifest.json`, in lexical path order, as `path`, NUL, bytes, NUL. This
