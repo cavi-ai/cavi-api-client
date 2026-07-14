@@ -84,16 +84,48 @@ describe("JSON-RPC transport", () => {
     await rpc.close();
   });
 
-  it("keeps a request pending when an error response is malformed", async () => {
+  it.each([
+    ["both result and error", { result: true, error: { code: -32000, message: "remote-secret" } }],
+    ["neither result nor error", {}],
+    ["a malformed error object", { error: { code: "bad", message: "remote-secret" } }],
+  ])("rejects a matching request for a malformed response with %s", async (_label, body) => {
     const channel = createFakeMessageChannel();
     const onProtocolError = vi.fn();
     const rpc = createJsonRpcTransport({ channel, id: () => 4, onProtocolError });
     const pending = rpc.request("models/list");
-    channel.receive({ jsonrpc: "2.0", id: 4, error: { code: "bad", message: "failure" } });
-    channel.receive({ jsonrpc: "2.0", id: 4, error: { code: -32000, message: 123 } });
-    expect(onProtocolError).toHaveBeenCalledTimes(2);
+    channel.receive({ jsonrpc: "2.0", id: 4, ...body });
+    const error = await pending.catch((reason: unknown) => reason);
+    expect(error).toBe(onProtocolError.mock.calls[0]?.[0]);
+    expect(error).toMatchObject({ transport: { kind: "json-rpc", phase: "decode" } });
+    expect(String(error)).not.toContain("remote-secret");
+    expect(onProtocolError).toHaveBeenCalledTimes(1);
+
+    const next = rpc.request("models/list");
+    channel.receive({ jsonrpc: "2.0", id: 4, result: ["model"] });
+    await expect(next).resolves.toEqual(["model"]);
+  });
+
+  it("reports an unknown response id without settling another pending request", async () => {
+    const channel = createFakeMessageChannel();
+    const onProtocolError = vi.fn();
+    const rpc = createJsonRpcTransport({ channel, id: () => 4, onProtocolError });
+    const pending = rpc.request("models/list");
+    channel.receive({ jsonrpc: "2.0", id: 999, result: ["wrong"] });
+    expect(onProtocolError).toHaveBeenCalledTimes(1);
     channel.receive({ jsonrpc: "2.0", id: 4, result: ["model"] });
     await expect(pending).resolves.toEqual(["model"]);
+  });
+
+  it("settles malformed matching responses when the protocol observer throws", async () => {
+    const channel = createFakeMessageChannel();
+    const rpc = createJsonRpcTransport({
+      channel,
+      id: () => 4,
+      onProtocolError: () => { throw new Error("observer-secret"); },
+    });
+    const pending = rpc.request("models/list");
+    channel.receive({ jsonrpc: "2.0", id: 4 });
+    await expect(pending).rejects.toMatchObject({ transport: { phase: "decode" } });
   });
 
   it("removes aborted requests and ignores their later responses without replay", async () => {

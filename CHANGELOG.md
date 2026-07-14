@@ -56,8 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the CAVI-owned Hermes dashboard standard JSON-RPC driver with bounded,
   abortable requests, validated event notifications, secret-safe remote errors,
-  and explicit injected-channel ownership. It intentionally does not implement
-  OpenClaw gateway framing, handshake, or unobservable reconnect replay claims.
+  explicit injected-channel ownership, remote-close synchronization, and a safe
+  protocol-error observer. Matching malformed responses now reject their shared
+  JSON-RPC request instead of occupying capacity indefinitely. The driver
+  intentionally does not implement OpenClaw gateway framing, handshake, or
+  unobservable reconnect replay claims.
 - Documented every public CAVI extension export in a compiler-checked ownership
   inventory and enforced the core-to-extension dependency direction, the exact
   four released provider forwarding exceptions, and generic transport/snapshot

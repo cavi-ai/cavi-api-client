@@ -65,11 +65,22 @@ export function createHermesDashboardJsonRpcClient(
   const maxPendingRequests = validateMaxPendingRequests(options.maxPendingRequests);
   const rpc = createJsonRpcTransport({
     channel: options.ownsChannel === true ? options.channel : borrowedChannel(options.channel),
+    onProtocolError: options.onProtocolError,
   });
   const listeners = new Set<(event: HermesDashboardEvent) => void>();
   let pendingRequests = 0;
   let disposed = false;
   let disposePromise: Promise<void> | undefined;
+
+  const synchronizeClosedState = (): void => {
+    disposed = true;
+    listeners.clear();
+  };
+  let unsubscribeChannelClose = (): void => {};
+  unsubscribeChannelClose = options.channel.subscribeClose(() => {
+    synchronizeClosedState();
+    unsubscribeChannelClose();
+  });
 
   rpc.onNotification((method, params) => {
     if (method !== "event") return;
@@ -97,8 +108,8 @@ export function createHermesDashboardJsonRpcClient(
     },
     dispose() {
       if (disposePromise) return disposePromise;
-      disposed = true;
-      listeners.clear();
+      synchronizeClosedState();
+      unsubscribeChannelClose();
       disposePromise = rpc.close();
       return disposePromise;
     },
