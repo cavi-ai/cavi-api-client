@@ -9,6 +9,13 @@ import {
   normalizeRuntimeBasePath,
   withRuntimeBasePath as withCoreRuntimeBasePath,
 } from "../../../core/runtime/paths.js";
+import { CAVI_CONTROL_API_ENDPOINTS } from "../contracts/paths.js";
+
+/** Ordered cost-history routes: released plugin route first, current CAVI route second. */
+export const CAVI_COST_HISTORY_API_PATHS = [
+  CAVI_CONTROL_API_ENDPOINTS.costHistory,
+  "/cavi-control/api/cost/history",
+] as const;
 
 type ImportMetaWithOptionalEnv = ImportMeta & {
   env?: {
