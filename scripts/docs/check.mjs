@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
-import { buildDocumentation } from "./build.mjs";
+import { buildDocumentationInTemporaryRoot } from "./build.mjs";
 
 function parseArguments(argv) {
   const allowedOptions = new Set(["package", "out", "source-date-epoch", "root"]);
@@ -72,12 +72,12 @@ export async function checkDocumentation(argv = process.argv.slice(2)) {
   const generated = path.join(temporaryRoot, "generated");
   const committed = path.resolve(options.out);
   try {
-    await buildDocumentation([
+    await buildDocumentationInTemporaryRoot([
       "--package", path.resolve(options.package),
-      "--out", generated,
+      "--out", "generated",
       "--source-date-epoch", options["source-date-epoch"],
       "--root", path.resolve(options.root),
-    ]);
+    ], temporaryRoot);
     const [generatedFiles, committedFiles] = await Promise.all([
       filePaths(generated),
       filePaths(committed),
