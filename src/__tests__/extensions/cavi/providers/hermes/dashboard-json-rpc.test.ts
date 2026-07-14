@@ -13,7 +13,9 @@ function fixture(name: string): unknown {
 function createChannel(): TransportMessageChannel<unknown> & {
   sent: unknown[];
   close: ReturnType<typeof vi.fn<() => Promise<void>>>;
+  readonly closeListenerCount: number;
   receive(message: unknown): void;
+  remoteClose(error?: unknown): void;
 } {
   const listeners = new Set<(message: unknown) => void>();
   const closeListeners = new Set<(error?: unknown) => void>();
@@ -22,11 +24,13 @@ function createChannel(): TransportMessageChannel<unknown> & {
   });
   return {
     sent: [],
+    get closeListenerCount() { return closeListeners.size; },
     send(message) { this.sent.push(message); return Promise.resolve(); },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     subscribeClose(listener) { closeListeners.add(listener); return () => closeListeners.delete(listener); },
     close,
     receive(message) { for (const listener of [...listeners]) listener(message); },
+    remoteClose(error) { for (const listener of [...closeListeners]) listener(error); },
   };
 }
 
@@ -86,6 +90,76 @@ describe("Hermes dashboard JSON-RPC client", () => {
     const id = (channel.sent.at(-1) as { id: string | number }).id;
     channel.receive({ jsonrpc: "2.0", id, result: { total: 0 } });
     await expect(next).resolves.toEqual({ total: 0 });
+  });
+
+  it("forwards redacted protocol errors and releases malformed-response capacity", async () => {
+    const channel = createChannel();
+    const onProtocolError = vi.fn();
+    const client = createHermesDashboardJsonRpcClient({
+      channel,
+      maxPendingRequests: 1,
+      onProtocolError,
+    });
+    const first = client.request("session.list", { token: "request-secret" });
+    const id = (channel.sent[0] as { id: string | number }).id;
+    channel.receive({
+      jsonrpc: "2.0",
+      id,
+      result: { leaked: "result-secret" },
+      error: { code: -32000, message: "remote-secret" },
+    });
+    const error = await first.catch((reason: unknown) => reason);
+    expect(error).toBe(onProtocolError.mock.calls[0]?.[0]);
+    expect(String(error)).not.toMatch(/request-secret|result-secret|remote-secret/u);
+    expect(onProtocolError).toHaveBeenCalledTimes(1);
+
+    const next = client.request("session.usage");
+    const nextId = (channel.sent.at(-1) as { id: string | number }).id;
+    channel.receive({ jsonrpc: "2.0", id: nextId, result: { total: 0 } });
+    await expect(next).resolves.toEqual({ total: 0 });
+  });
+
+  it("releases pending capacity after a send rejection", async () => {
+    const channel = createChannel();
+    const normalSend = channel.send.bind(channel);
+    channel.send = vi.fn()
+      .mockRejectedValueOnce(new Error("send-secret"))
+      .mockImplementation(normalSend);
+    const client = createHermesDashboardJsonRpcClient({ channel, maxPendingRequests: 1 });
+    const error = await client.request("session.list").catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ transport: { kind: "json-rpc", phase: "request" } });
+    expect(String(error)).not.toContain("send-secret");
+
+    const next = client.request("session.usage");
+    const id = (channel.sent.at(-1) as { id: string | number }).id;
+    channel.receive({ jsonrpc: "2.0", id, result: { total: 0 } });
+    await expect(next).resolves.toEqual({ total: 0 });
+  });
+
+  it("synchronizes facade state when a borrowed channel closes remotely", async () => {
+    const channel = createChannel();
+    const client = createHermesDashboardJsonRpcClient({ channel, ownsChannel: false });
+    const listener = vi.fn();
+    client.subscribe(listener);
+    const pending = client.request("session.list");
+    const rejected = expect(pending).rejects.toThrow(/closed/i);
+    channel.remoteClose(new Error("remote-close-secret"));
+    await rejected;
+    expect(channel.closeListenerCount).toBe(0);
+
+    const afterClose = vi.fn();
+    client.subscribe(afterClose);
+    channel.receive({
+      jsonrpc: "2.0",
+      method: "event",
+      params: { type: "gateway.ready", payload: true },
+    });
+    expect(listener).not.toHaveBeenCalled();
+    expect(afterClose).not.toHaveBeenCalled();
+    expect(channel.close).not.toHaveBeenCalled();
+    await client.dispose();
+    await client.dispose();
+    expect(channel.close).not.toHaveBeenCalled();
   });
 
   it("does not close a borrowed channel and disposal is idempotent", async () => {
