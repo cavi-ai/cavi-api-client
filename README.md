@@ -4,6 +4,8 @@
 
 <p align="center">
   <strong>One provider-neutral TypeScript client contract for agent runtimes and gateways.</strong>
+  <br>
+  <a href="https://cavi-ai.xyz/docs/api-client"><strong>Read the online API client wiki →</strong></a>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -67,49 +69,25 @@ vendor SDK.
 
 ## Package model
 
-The package has two universal client tiers:
+`RuntimeClient` is the universal execution contract; `GatewayClient` adds
+gateway resources. Optional behavior is capability-gated, and unsupported
+operations remain explicit.
 
-- `RuntimeClient` covers capabilities, runs, streaming, usage, dry runs, and
-  optional batch operations.
-- `GatewayClient` extends the runtime contract with gateway-owned resources
-  such as teams, workspace data, kanban, media, wiki, and operator surfaces.
-
-Optional behavior is capability-gated. Unsupported operations remain explicit
-instead of being simulated by an unrelated implementation.
-
-Published APIs are additive within the current release line. Import universal
-contracts from the package root and implementation-specific or low-level
-surfaces from documented subpaths.
+See [Imports and exports](docs/api-client/source/pages/guides/imports-and-exports.md)
+for the complete public entry-point map.
 
 ## Documentation
 
-Start with the page that matches the work:
+Use the [online wiki](https://cavi-ai.xyz/docs/api-client) for the navigable
+documentation set. Repository references:
 
-- [Overview](docs/api-client/source/pages/introduction/overview.md)
-- [Installation](docs/api-client/source/pages/introduction/installation.md)
-- [Quickstart](docs/api-client/source/pages/introduction/quickstart.md)
-- [Runtime client](docs/api-client/source/pages/concepts/runtime-client.md)
-- [Providers and transports](docs/api-client/source/pages/concepts/providers-and-transports.md)
-- [Routing and capabilities](docs/api-client/source/pages/concepts/routing-and-capabilities.md)
-- [Compatibility](docs/api-client/source/pages/concepts/compatibility.md)
+- [Concepts and guides](docs/api-client/source/navigation.json)
 - [Imports and exports](docs/api-client/source/pages/guides/imports-and-exports.md)
 - [Provider implementation guides](docs/api-client/source/pages/guides/providers/index.md)
-- [Requests](docs/api-client/source/pages/guides/requests.md)
-- [Streaming](docs/api-client/source/pages/guides/streaming.md)
-- [Files](docs/api-client/source/pages/guides/files.md)
-- [Batching](docs/api-client/source/pages/guides/batching.md)
-- [Manifests](docs/api-client/source/pages/guides/manifests.md)
-- [React](docs/api-client/source/pages/guides/react.md)
-- [Testing](docs/api-client/source/pages/guides/testing.md)
-
-Reference and project documentation:
-
-- [API reference](API.md)
-- [Architecture](ARCHITECTURE.md)
-- [Migration guide](MIGRATION.md)
-- [Changelog](CHANGELOG.md)
-- [Versioned documentation artifact](docs/api-client/v0.11.0)
-- [Documentation consumer contract](docs/api-client/CONSUMER.md)
+- [API reference](API.md) and [architecture](ARCHITECTURE.md)
+- [Migration guide](MIGRATION.md) and [changelog](CHANGELOG.md)
+- [Versioned artifact](docs/api-client/v0.11.0) and
+  [consumer contract](docs/api-client/CONSUMER.md)
 
 The source pages are the editable documentation. The versioned artifact is
 generated and immutable. Verify that they agree with:

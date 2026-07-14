@@ -37,6 +37,8 @@
             { "title": "Hermes", "path": "guides/providers/hermes.md" },
             { "title": "OpenClaw", "path": "guides/providers/openclaw.md" },
             { "title": "Claude", "path": "guides/providers/claude.md" },
+            { "title": "Claude Messages", "path": "guides/providers/claude-messages.md" },
+            { "title": "Claude Managed Agents", "path": "guides/providers/claude-managed-agents.md" },
             { "title": "Codex", "path": "guides/providers/codex.md" },
             { "title": "Gemini", "path": "guides/providers/gemini.md" }
           ]

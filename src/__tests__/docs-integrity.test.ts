@@ -23,6 +23,10 @@ const architecture = read("ARCHITECTURE.md");
 const runtimeClientGuide = read(
   "docs/api-client/source/pages/concepts/runtime-client.md",
 );
+const sourceNavigation = read("docs/api-client/source/navigation.json");
+const claudeGuide = read(
+  "docs/api-client/source/pages/guides/providers/claude.md",
+);
 const importsAndExports = read(
   "docs/api-client/source/pages/guides/imports-and-exports.md",
 );
@@ -203,6 +207,34 @@ describe("docs integrity", () => {
         `README contains provider implementation detail: ${token}`,
       ).not.toContain(token);
     }
+  });
+
+  it("promotes the hosted wiki before local setup details", () => {
+    const hostedWiki = "https://cavi-ai.xyz/docs/api-client";
+
+    expect(readme).toContain(hostedWiki);
+    expect(readme.indexOf(hostedWiki)).toBeLessThan(readme.indexOf("## Install"));
+    expect(readme).toContain(
+      "docs/api-client/source/pages/guides/imports-and-exports.md",
+    );
+  });
+
+  it("publishes separate Claude Messages and Managed Agents guides", () => {
+    for (const page of [
+      "guides/providers/claude-messages.md",
+      "guides/providers/claude-managed-agents.md",
+    ]) {
+      expect(sourceNavigation).toContain(page);
+      expect(
+        existsSync(path.join(PACKAGE_ROOT, "docs/api-client/source/pages", page)),
+        page,
+      ).toBe(true);
+    }
+
+    expect(claudeGuide).toContain("[Messages](claude-messages.md)");
+    expect(claudeGuide).toContain(
+      "[Managed Agents](claude-managed-agents.md)",
+    );
   });
 
   it("API.md documents no private host-deployment surfaces the package doesn't implement", () => {

@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provider setup and implementation details live in focused provider guides.
   This documentation-only change does not alter public exports or runtime
   behavior.
+- Promoted the hosted API client wiki from the README header, collapsed the
+  README package surface to a linked export catalog, and split Claude Messages
+  and Managed Agents into separately navigable implementation guides.
 
 ### Fixed
 
