@@ -1,0 +1,15 @@
+{
+  "name": "@cavi-ai/api-client",
+  "version": "0.11.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core/runtime": {
+      "types": "./dist/core/runtime/index.d.ts",
+      "import": "./dist/core/runtime/index.js"
+    },
+    "./schema.json": "./schema.json"
+  }
+}

@@ -22,6 +22,21 @@ Primary sources:
 The companion Postman collection is
 `docs/postman/cavi-api-client.postman_collection.json`.
 
+## Versioned Documentation Artifact
+
+The immutable API documentation for package `0.11.0` is generated and shipped at
+[`docs/api-client/v0.11.0`](docs/api-client/v0.11.0). Consumers begin with
+[`manifest.json`](docs/api-client/v0.11.0/manifest.json) for release integrity
+and [`navigation.json`](docs/api-client/v0.11.0/navigation.json) for navigation.
+The copy/install and public-path contract is defined in
+[`docs/api-client/CONSUMER.md`](docs/api-client/CONSUMER.md).
+
+Verify the stable artifact before consumption:
+
+```sh
+pnpm docs:check
+```
+
 ## Conventions
 
 - `{{gatewayUrl}}` is the HTTP gateway base URL, for example

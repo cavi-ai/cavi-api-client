@@ -10,13 +10,112 @@ import { describe, expect, it } from "vitest";
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const read = (rel: string) => readFileSync(path.join(PACKAGE_ROOT, rel), "utf8");
 
-const pkg = JSON.parse(read("package.json")) as { version: string };
+const pkg = JSON.parse(read("package.json")) as {
+  version: string;
+  exports: Record<string, unknown>;
+  files: string[];
+  scripts: Record<string, string>;
+};
 const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
 const api = read("API.md");
 const architecture = read("ARCHITECTURE.md");
 
 describe("docs integrity", () => {
+  it("publishes reproducible documentation build and drift-check commands", () => {
+    expect(pkg.scripts["docs:build"]).toBeDefined();
+    expect(pkg.scripts["docs:check"]).toBeDefined();
+    expect(pkg.scripts.verify).toContain("docs:check");
+  });
+
+  it("commits the generated reference artifact for the package version", () => {
+    const manifest = JSON.parse(read("docs/api-client/v0.11.0/manifest.json")) as {
+      version: string;
+    };
+    expect(manifest.version).toBe("0.11.0");
+  });
+
+  it("publishes an immutable documentation consumer handoff", () => {
+    const consumer = read("docs/api-client/CONSUMER.md");
+
+    for (const contract of [
+      "source: docs/api-client/v0.11.0",
+      "publicBasePath: /docs/api-client/v0.11.0",
+      "stableAlias: /docs/api-client",
+      "entrypoints: manifest.json, navigation.json",
+      "identity: manifest.package",
+      "sourceIntegrity: manifest.sourceTarballSha256",
+      "contentIntegrity: manifest.contentSha256",
+    ]) {
+      expect(consumer).toContain(contract);
+    }
+    expect(consumer).toContain("must not edit generated pages");
+    expect(consumer).toContain("fail ingestion on a version or digest mismatch");
+    expect(consumer).toContain("already-published npm package `@cavi-ai/api-client@0.11.0` does not contain");
+
+    expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
+    expect(pkg.files).toContain("docs/api-client/v0.11.0");
+    expect(pkg.files).toContain("!docs/api-client/source");
+    expect(pkg.files).toContain("!docs/api-client/source/**");
+    expect(pkg.files).toContain("!docs/superpowers");
+    expect(pkg.files).toContain("!docs/superpowers/**");
+
+    expect(readme).toContain("pnpm docs:check");
+    expect(readme).toContain("docs/api-client/v0.11.0");
+    expect(api).toContain("pnpm docs:check");
+    expect(api).toContain("docs/api-client/v0.11.0");
+    expect(changelog).toContain("versioned documentation consumer contract");
+  });
+
+  it("maps the exact stable release manifest to generated reference navigation", () => {
+    const stableManifest = JSON.parse(read("docs/api-client/source/releases/0.11.0-manifest.json")) as {
+      exports: Array<{ subpath: string; kind: "declaration" | "asset"; types?: string; target?: string }>;
+    };
+    const navigation = JSON.parse(read("docs/api-client/v0.11.0/navigation.json")) as {
+      reference: Array<{ subpath: string; kind: "declaration" | "asset"; path?: string; target?: string }>;
+    };
+    expect(navigation.reference.map(({ subpath }) => subpath)).toEqual(
+      stableManifest.exports.map(({ subpath }) => subpath).sort(),
+    );
+    for (const entry of navigation.reference) {
+      const stableExport = stableManifest.exports.find(({ subpath }) => subpath === entry.subpath)!;
+      expect(entry.kind).toBe(stableExport.kind);
+      if (entry.kind === "declaration") {
+        expect(entry.path).toMatch(/^reference\/.+\.md$/u);
+        expect(existsSync(path.join(PACKAGE_ROOT, "docs/api-client/v0.11.0", entry.path!))).toBe(true);
+      } else {
+        expect(entry.path).toBeUndefined();
+        expect(entry.target).toBe(stableExport.target);
+      }
+    }
+  });
+
+  it("provisions immutable stable docs inputs before publish verification", () => {
+    const workflow = read(".github/workflows/publish.yml");
+    expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
+    expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
+    expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
+    expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
+    expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow).not.toContain("${{ runner.temp }}");
+    expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
+      workflow.indexOf("Verify package"),
+    );
+  });
+
+  it("provisions immutable stable docs inputs before CI documentation typechecking", () => {
+    const workflow = read(".github/workflows/ci.yml");
+    expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
+    expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
+    expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
+    expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
+    expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow).not.toContain("${{ runner.temp }}");
+    expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
+      workflow.indexOf("Typecheck documentation examples"),
+    );
+  });
+
   it("package.json version has a matching CHANGELOG entry", () => {
     // Before publishing version X.Y.Z, CHANGELOG.md must carry a `## [X.Y.Z]`
     // heading (Keep-a-Changelog). A missing heading means the release notes were

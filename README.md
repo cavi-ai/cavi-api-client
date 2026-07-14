@@ -84,6 +84,7 @@ shape for every provider.
 - [Secure Credential Handling](#secure-credential-handling)
 - [Architecture](#architecture)
 - [Development](#development)
+  - [Versioned API Documentation](#versioned-api-documentation)
 - [Contributing](#contributing)
 - [Code of Conduct](#code-of-conduct)
 - [Security](#security)
@@ -948,6 +949,22 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the layer map, provider boundary,
 route mirror rules, and extension/plugin split.
 
 ## Development
+
+### Versioned API Documentation
+
+The immutable documentation artifact for this release is
+[`docs/api-client/v0.11.0`](docs/api-client/v0.11.0). Its
+[`manifest.json`](docs/api-client/v0.11.0/manifest.json) and
+[`navigation.json`](docs/api-client/v0.11.0/navigation.json) are the consumer
+entry points. Run the stable artifact drift gate before handing documentation
+to a host:
+
+```sh
+pnpm docs:check
+```
+
+Hosts copying the artifact under `/docs/api-client/v0.11.0` must follow the
+[`CONSUMER.md`](docs/api-client/CONSUMER.md) version and integrity contract.
 
 ```sh
 pnpm install
