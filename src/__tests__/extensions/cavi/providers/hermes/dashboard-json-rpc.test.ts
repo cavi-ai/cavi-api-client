@@ -34,6 +34,29 @@ function createChannel(): TransportMessageChannel<unknown> & {
   };
 }
 
+function createAlreadyClosedChannel(): TransportMessageChannel<unknown> & {
+  close: ReturnType<typeof vi.fn<() => Promise<void>>>;
+  closeCleanups: Array<ReturnType<typeof vi.fn<() => void>>>;
+  receive(message: unknown): void;
+} {
+  const listeners = new Set<(message: unknown) => void>();
+  const close = vi.fn(async () => {});
+  const closeCleanups: Array<ReturnType<typeof vi.fn<() => void>>> = [];
+  return {
+    close,
+    closeCleanups,
+    async send() { throw new Error("already closed"); },
+    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+    subscribeClose(listener) {
+      const cleanup = vi.fn();
+      closeCleanups.push(cleanup);
+      listener(new Error("already-closed-secret"));
+      return cleanup;
+    },
+    receive(message) { for (const listener of [...listeners]) listener(message); },
+  };
+}
+
 describe("Hermes dashboard JSON-RPC client", () => {
   it("correlates fixture results and out-of-order responses", async () => {
     const channel = createChannel();
@@ -160,6 +183,28 @@ describe("Hermes dashboard JSON-RPC client", () => {
     await client.dispose();
     await client.dispose();
     expect(channel.close).not.toHaveBeenCalled();
+  });
+
+  it("cleans up synchronous already-closed subscriptions immediately", async () => {
+    const channel = createAlreadyClosedChannel();
+    const client = createHermesDashboardJsonRpcClient({ channel, ownsChannel: false });
+    expect(channel.closeCleanups).toHaveLength(2);
+    expect(channel.closeCleanups[0]).toHaveBeenCalledTimes(1);
+    expect(channel.closeCleanups[1]).toHaveBeenCalledTimes(1);
+
+    const listener = vi.fn();
+    client.subscribe(listener);
+    channel.receive({
+      jsonrpc: "2.0",
+      method: "event",
+      params: { type: "gateway.ready", payload: true },
+    });
+    expect(listener).not.toHaveBeenCalled();
+    await expect(client.request("session.list")).rejects.toThrow(/closed/i);
+    await client.dispose();
+    await client.dispose();
+    expect(channel.close).not.toHaveBeenCalled();
+    expect(channel.closeCleanups.every((cleanup) => cleanup.mock.calls.length === 1)).toBe(true);
   });
 
   it("does not close a borrowed channel and disposal is idempotent", async () => {
