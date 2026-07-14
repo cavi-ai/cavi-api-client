@@ -945,7 +945,8 @@ await control.dispose();
 
 All seven canonical modules are always present. Dashboard REST config enables
 auth status, models, and usage; a dashboard channel enables sessions and events;
-and explicit CAVI plugin config enables tasks and workspace. Other operations
+and explicit CAVI plugin config independently enables tasks and workspace even
+when dashboard REST is absent. Other operations
 reject with method-specific `CapabilityUnavailable` errors. Injected channels
 are borrowed unless `ownsChannel: true` is set.
 

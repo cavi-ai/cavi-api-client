@@ -207,7 +207,8 @@ not retain aliases for the unreleased names.
 - `createHermesRuntimeControlClient(options)` — exported from the CAVI
   extension, composes Hermes dashboard REST/JSON-RPC modules with optional CAVI
   task and workspace adapters. It always returns the complete canonical shape,
-  uses typed unavailable modules for missing configuration, and borrows an
+  installs each independently configured surface, uses typed unavailable
+  modules for missing configuration, and borrows an
   injected channel unless `ownsChannel` is explicitly true. Dashboard-specific
   URLs, credentials, transport ownership, and plugin configuration remain in
   `HermesCaviRuntimeControlOptions`, not the provider-neutral core options.
