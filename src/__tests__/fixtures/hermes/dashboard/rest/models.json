@@ -1,0 +1,17 @@
+{
+  "providers": [
+    {
+      "slug": "fixture-provider",
+      "name": "Fixture Provider",
+      "models": [
+        "fixture-model"
+      ],
+      "total_models": 1,
+      "is_current": true,
+      "is_user_defined": false,
+      "source": "built-in"
+    }
+  ],
+  "model": "fixture-model",
+  "provider": "fixture-provider"
+}

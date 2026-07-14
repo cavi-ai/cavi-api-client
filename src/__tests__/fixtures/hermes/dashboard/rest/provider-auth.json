@@ -1,0 +1,19 @@
+{
+  "providers": [
+    {
+      "id": "fixture-oauth",
+      "name": "Fixture OAuth",
+      "flow": "device_code",
+      "cli_command": "fixture login",
+      "docs_url": "https://example.invalid/auth",
+      "status": {
+        "logged_in": true,
+        "source": "fixture_cli",
+        "source_label": "Fixture CLI",
+        "token_preview": null,
+        "expires_at": "2030-01-01T00:00:00Z",
+        "has_refresh_token": true
+      }
+    }
+  ]
+}

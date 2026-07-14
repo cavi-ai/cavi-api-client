@@ -1,0 +1,7 @@
+{
+  "jsonrpc": "2.0",
+  "id": "rpc-003",
+  "result": {
+    "status": "interrupted"
+  }
+}

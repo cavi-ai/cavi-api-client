@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": "rpc-001",
+  "result": {
+    "sessions": [
+      {
+        "id": "session-fixture-001",
+        "title": "Sanitized fixture session",
+        "preview": "Deterministic fixture preview.",
+        "started_at": 1784044800,
+        "message_count": 2,
+        "source": "tui"
+      }
+    ]
+  }
+}
