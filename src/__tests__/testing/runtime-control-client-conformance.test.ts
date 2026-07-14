@@ -6,6 +6,8 @@ import {
 } from "../../index.js";
 import { CapabilityUnavailable } from "../../core/runtime/control-plane/runtime-control-client.js";
 import { runRuntimeControlClientConformance } from "../../testing/index.js";
+import { createBuiltInRuntimeProviderRegistry } from "../../providers/runtime-provider-registry.js";
+import { withCaviRuntimeControlProviders } from "../../extensions/cavi/providers/runtime-control-registry.js";
 
 const modules = ["authStatus", "sessions", "models", "usage", "tasks", "workspace", "events"];
 
@@ -90,6 +92,37 @@ describe("canonical control-plane conformance", () => {
     },
   );
 
+  it("validates partially configured Hermes without promoting plugin-gated modules", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      const payloads: Record<string, unknown> = {
+        "/api/provider-auth": { providers: [] },
+        "/api/models": { providers: [{ slug: "fixture", name: "Fixture", models: ["model-1"], total_models: 1, is_current: true, is_user_defined: false, source: "built-in" }], model: "model-1", provider: "fixture" },
+        "/api/analytics/usage": {
+          daily: [], by_model: [], period_days: 1,
+          totals: { total_input: 0, total_output: 0, total_cache_read: 0, total_reasoning: 0, total_estimated_cost: 0, total_actual_cost: 0, total_sessions: 0, total_api_calls: 0 },
+          skills: { summary: { total_skill_loads: 0, total_skill_edits: 0, total_skill_actions: 0, distinct_skills_used: 0 }, top_skills: [] },
+        },
+      };
+      return new Response(JSON.stringify(payloads[path]), {
+        status: path in payloads ? 200 : 404,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const registry = withCaviRuntimeControlProviders(createBuiltInRuntimeProviderRegistry(), {
+      hermes: { dashboardBaseUrl: "https://dashboard.test", fetch },
+    });
+    const report = await runRuntimeControlClientConformance({
+      providerId: "hermes",
+      create: () => createRuntimeControlClient("hermes", { registry }),
+    });
+    expect(report, JSON.stringify(report)).toMatchObject({ valid: true, modules });
+    expect(report.supported).toEqual([
+      "authStatus.listAuthStatus", "models.listModels", "usage.getUsage",
+    ]);
+    expect(report.unavailable).toHaveLength(9);
+  });
+
   it("lets one consumer use OpenClaw and unavailable providers without branching", async () => {
     const renderSessions = async (plane: RuntimeControlClient) => {
       try { return (await plane.sessions.listSessions()).data.map((item) => item.id); }
@@ -148,5 +181,56 @@ describe("canonical control-plane conformance", () => {
     expect(report.failures).toContain(
       "sessions.listSessions rejected with capability controlPlane.sessions.get; expected controlPlane.sessions.list",
     );
+  });
+
+  it("rejects unavailable errors whose exact canonical message was changed", async () => {
+    const error = new CapabilityUnavailable("claude", "controlPlane.sessions.list");
+    error.message = "session list failed";
+    const report = await runRuntimeControlClientConformance(unavailableHarness("claude", error));
+    expect(report.valid).toBe(false);
+    expect(report.failures).toContain(
+      "sessions.listSessions rejected with message session list failed; expected controlPlane.sessions.list is unavailable for provider claude",
+    );
+  });
+
+  it("rejects errors that expose configured secret material", async () => {
+    const report = await runRuntimeControlClientConformance({
+      ...unavailableHarness("claude", new Error("request failed with Bearer top-secret") as CapabilityUnavailable),
+      secrets: ["top-secret"],
+    });
+    expect(report.valid).toBe(false);
+    expect(report.failures).toContain("sessions.listSessions exposed configured secret material");
+  });
+
+  it("verifies subscriptions and clients have idempotent disposal", async () => {
+    let subscriptionDisposals = 0;
+    let clientDisposals = 0;
+    const transport = fixtureTransport();
+    const report = await runRuntimeControlClientConformance({
+      providerId: "openclaw",
+      create: async () => {
+        const client = await createRuntimeControlClient("openclaw", { transport });
+        return {
+          ...client,
+          events: {
+            subscribe: async () => ({
+              dispose: async () => {
+                subscriptionDisposals += 1;
+                if (subscriptionDisposals > 1) throw new Error("subscription disposed twice");
+              },
+            }),
+          },
+          dispose: async () => {
+            clientDisposals += 1;
+            if (clientDisposals > 1) throw new Error("client disposed twice");
+          },
+        };
+      },
+    });
+    expect(report.valid).toBe(false);
+    expect(report.failures).toEqual(expect.arrayContaining([
+      "events.subscribe disposal is not idempotent",
+      "dispose is not idempotent",
+    ]));
   });
 });

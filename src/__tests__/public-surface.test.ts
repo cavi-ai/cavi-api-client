@@ -54,7 +54,11 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
 
   it("low-level core primitives resolve on their core subpaths", async () => {
     const http = await import("../core/http/index");
+    const runtime = await import("../core/runtime/index");
+    const runtimeProviders = await import("../core/runtime/providers/index");
     expect(http.BaseHttpApiClient).toBeDefined();
+    expect(runtime.CapabilityUnavailable).toBeTypeOf("function");
+    expect(runtimeProviders.createRuntimeProviderRegistry).toBeTypeOf("function");
   });
 
   it("root keeps the curated stable API", async () => {

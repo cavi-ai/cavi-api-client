@@ -9,15 +9,14 @@ const fixtureRoot = join(
 );
 
 async function fixtureNames(): Promise<string[]> {
-  const directories = [
-    "dashboard/json-rpc",
-    "dashboard/rest",
-    "runtime/events",
-  ];
-  const entries = await Promise.all(
-    directories.map((directory) => readdir(join(fixtureRoot, directory))),
-  );
-  return entries.flat();
+  const inventory = async (directory = ""): Promise<string[]> => {
+    const entries = await readdir(join(fixtureRoot, directory), { withFileTypes: true });
+    return (await Promise.all(entries.map(async (entry) => {
+      const relative = join(directory, entry.name);
+      return entry.isDirectory() ? inventory(relative) : [relative];
+    }))).flat().sort();
+  };
+  return inventory();
 }
 
 async function readFixture(path: string): Promise<string> {
@@ -32,21 +31,21 @@ describe("sanitized Hermes upstream fixtures", () => {
   it("includes every required protocol fixture", async () => {
     await expect(fixtureNames()).resolves.toEqual(
       expect.arrayContaining([
-        "session-list-request.json",
-        "session-list-result.json",
-        "session-usage-result.json",
-        "session-interrupt-result.json",
-        "error-response.json",
-        "event-notification.json",
-        "sessions.json",
-        "session-detail.json",
-        "session-delete.json",
-        "analytics-usage.json",
-        "config.json",
-        "models.json",
-        "provider-auth.json",
-        "malformed.json",
-        "run-events.txt",
+        "dashboard/json-rpc/session-list-request.json",
+        "dashboard/json-rpc/session-list-result.json",
+        "dashboard/json-rpc/session-usage-result.json",
+        "dashboard/json-rpc/session-interrupt-result.json",
+        "dashboard/json-rpc/error-response.json",
+        "dashboard/json-rpc/event-notification.json",
+        "dashboard/rest/sessions.json",
+        "dashboard/rest/session-detail.json",
+        "dashboard/rest/session-delete.json",
+        "dashboard/rest/analytics-usage.json",
+        "dashboard/rest/config.json",
+        "dashboard/rest/models.json",
+        "dashboard/rest/provider-auth.json",
+        "dashboard/rest/malformed.json",
+        "runtime/events/run-events.txt",
       ]),
     );
   });
@@ -179,7 +178,8 @@ describe("sanitized Hermes upstream fixtures", () => {
   it("documents exact upstream source and commit for every fixture", async () => {
     const readme = await readFixture("README.md");
     const names = (await fixtureNames()).filter((name) => name !== "README.md");
-    for (const name of names) {
+    for (const path of names) {
+      const name = path.split("/").at(-1)!;
       expect(readme).toContain(`\`${name}\``);
       const row = readme.split("\n").find((line) => line.includes(`\`${name}\``));
       expect(row).toContain("de1950c24b214d0127dc72eeb73fdcd90d841d14");
@@ -188,22 +188,7 @@ describe("sanitized Hermes upstream fixtures", () => {
   });
 
   it("contains no host paths or credential material", async () => {
-    const paths = [
-      "README.md",
-      "dashboard/json-rpc/session-list-request.json",
-      "dashboard/json-rpc/session-list-result.json",
-      "dashboard/json-rpc/session-usage-result.json",
-      "dashboard/json-rpc/session-interrupt-result.json",
-      "dashboard/json-rpc/error-response.json",
-      "dashboard/json-rpc/event-notification.json",
-      "dashboard/rest/sessions.json",
-      "dashboard/rest/session-detail.json",
-      "dashboard/rest/analytics-usage.json",
-      "dashboard/rest/models.json",
-      "dashboard/rest/provider-auth.json",
-      "dashboard/rest/malformed.json",
-      "runtime/events/run-events.txt",
-    ];
+    const paths = await fixtureNames();
     const corpus = (await Promise.all(paths.map(readFixture))).join("\n");
     expect(corpus).not.toMatch(/\/(?:Users|Volumes|home)\//);
     expect(corpus).not.toMatch(/Bearer\s|token=|api[_-]?key/i);

@@ -22,6 +22,11 @@ const OPERATIONS = [
   ["events", "subscribe", async (plane: RuntimeControlClient) => {
     const subscription = await plane.events.subscribe({ operationId: "operation-1" }, { onEvent: () => undefined });
     await subscription.dispose();
+    try {
+      await subscription.dispose();
+    } catch {
+      throw new Error("events.subscribe disposal is not idempotent");
+    }
     return subscription;
   }, isSubscription],
 ] as const;
@@ -48,6 +53,8 @@ export type RuntimeControlClientConformanceHarness = Readonly<{
   providerId: string;
   /** Creates the control plane to exercise. */
   create: () => RuntimeControlClient | Promise<RuntimeControlClient>;
+  /** Sensitive values that must never appear in provider errors. */
+  secrets?: readonly string[];
 }>;
 
 export type RuntimeControlClientConformanceReport = Readonly<{
@@ -105,6 +112,15 @@ export async function runRuntimeControlClientConformance(
         if (validate(result)) supported.push(operation);
         else failures.push(`${operation} returned a non-canonical result`);
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (harness.secrets?.some((secret) => secret.length > 0 && message.includes(secret))) {
+          failures.push(`${operation} exposed configured secret material`);
+          continue;
+        }
+        if (message === "events.subscribe disposal is not idempotent") {
+          failures.push(message);
+          continue;
+        }
         if (!(error instanceof CapabilityUnavailable)) {
           failures.push(`${operation} rejected without CapabilityUnavailable`);
           continue;
@@ -122,11 +138,25 @@ export async function runRuntimeControlClientConformance(
           );
           continue;
         }
+        const expectedMessage = `${expectedCapability} is unavailable for provider ${harness.providerId}`;
+        if (error.message !== expectedMessage) {
+          failures.push(
+            `${operation} rejected with message ${error.message}; expected ${expectedMessage}`,
+          );
+          continue;
+        }
         unavailable.push(operation);
       }
     }
   } finally {
-    if (canDispose) await plane.dispose();
+    if (canDispose) {
+      try {
+        await plane.dispose();
+        await plane.dispose();
+      } catch {
+        failures.push("dispose is not idempotent");
+      }
+    }
   }
 
   return {
