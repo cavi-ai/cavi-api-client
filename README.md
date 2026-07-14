@@ -964,7 +964,11 @@ const control = await createRuntimeControlClient(providerId, {
 
 The enhancer returns a new registry, preserves provider metadata and aliases,
 and closes over CAVI-only setup. Provider-neutral call options remain on the
-root factory and take precedence where the option surfaces overlap.
+root factory and take precedence where the option surfaces overlap. It fails
+closed if the registry has no single canonical Hermes kind or if the `hermes`
+token is shadowed by another provider alias. Mutable nested CAVI configuration
+is snapshotted per enhanced registry; injected channels, signals, functions,
+fetch implementations, and transport clients intentionally retain identity.
 
 All seven canonical modules are always present. Dashboard REST config enables
 auth status, models, and usage; a dashboard channel enables sessions and events;

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
 import { createUnavailableRuntimeControlClient } from "../../../../core/runtime/control-plane/runtime-control-client.js";
@@ -7,6 +7,7 @@ import type {
   RuntimeControlClientOptions,
   RuntimeProviderModule,
 } from "../../../../core/runtime/providers/types.js";
+import type { TransportMessageChannel } from "../../../../core/transport/channel.js";
 import { createRuntimeControlClient } from "../../../../providers/runtime-control-client-factory.js";
 import { RUNTIME_PROVIDER_CAPABILITY_MATRIX } from "../../../../providers/capability-matrix.js";
 import { withCaviRuntimeControlProviders } from "../../../../extensions/cavi/providers/runtime-control-registry.js";
@@ -143,7 +144,7 @@ describe("withCaviRuntimeControlProviders", () => {
     });
   });
 
-  it("rebuilds duplicate and alias resolution without mutating the base", () => {
+  it("fails closed on alias shadowing and leaves shadow-provider calls untouched", async () => {
     const duplicateAlias = { kind: "other", aliases: ["hermes"], marker: true } as RuntimeProviderModule;
     const base = createRuntimeProviderRegistry({
       modules: [...baseModules(), duplicateAlias],
@@ -151,10 +152,99 @@ describe("withCaviRuntimeControlProviders", () => {
     });
 
     expect(base.resolveProvider("hermes")).toBe(duplicateAlias);
-    const enhanced = withCaviRuntimeControlProviders(base, { hermes: { dashboardBaseUrl: "https://dashboard.test" } });
-    expect(enhanced.resolveProvider("hermes")?.kind).toBe("other");
-    expect(enhanced.resolveProvider("hermes-api-server")?.kind).toBe("hermes");
+    expect(() => withCaviRuntimeControlProviders(base, {
+      hermes: { dashboardBaseUrl: "https://dashboard.test" },
+    })).toThrowError("Invalid CAVI runtime-control registry: Hermes resolution is shadowed");
     expect(base.resolveProvider("hermes")).toBe(duplicateAlias);
+    await expect(listSessions("hermes", base)).rejects.toEqual(
+      new CapabilityUnavailable("other", "controlPlane.sessions.list"),
+    );
+  });
+
+  it("fails closed when the canonical Hermes module is missing or ambiguous", () => {
+    const missing = createRuntimeProviderRegistry({ modules: baseModules().slice(1) });
+    expect(() => withCaviRuntimeControlProviders(missing)).toThrowError(
+      "Invalid CAVI runtime-control registry: expected exactly one canonical Hermes module",
+    );
+
+    const ambiguous = createRuntimeProviderRegistry({
+      modules: [...baseModules(), { kind: " HERMES ", aliases: ["other-hermes"] }],
+      allowOverrides: true,
+    });
+    expect(() => withCaviRuntimeControlProviders(ambiguous)).toThrowError(
+      "Invalid CAVI runtime-control registry: expected exactly one canonical Hermes module",
+    );
+  });
+
+  it("matches defensive registry copies semantically and preserves generic custom fields", () => {
+    type CustomModule = RuntimeProviderModule & { readonly custom: { readonly owner: string } };
+    const source: CustomModule[] = baseModules().map((module) => ({
+      ...module,
+      custom: { owner: module.kind },
+    }));
+    const registry = createRuntimeProviderRegistry<CustomModule>({ modules: source });
+    const defensive = {
+      resolveProvider(provider: string | null | undefined) {
+        const resolved = registry.resolveProvider(provider);
+        return resolved ? { ...resolved } : null;
+      },
+      listProviders() {
+        return registry.listProviders().map((module) => ({ ...module }));
+      },
+    };
+
+    const enhanced = withCaviRuntimeControlProviders(defensive);
+    expectTypeOf(enhanced).toEqualTypeOf<ReturnType<typeof createRuntimeProviderRegistry<CustomModule>>>();
+    expect(enhanced.resolveProvider("hermes")?.custom).toEqual({ owner: "hermes" });
+    expect(enhanced.resolveProvider("openclaw")).toEqual(source[1]);
+  });
+
+  it("snapshots nested extension config while retaining opaque runtime objects", async () => {
+    const channel = {
+      request: vi.fn(), subscribe: vi.fn(), close: vi.fn(),
+    } as unknown as TransportMessageChannel<unknown>;
+    const client = { request: vi.fn(), subscribe: vi.fn(), dispose: vi.fn() };
+    const signal = new AbortController().signal;
+    const fetch = vi.fn();
+    const defaultHeaders = { "x-owner": "first" };
+    const nestedSnapshot = { rows: [{ id: "one" }] };
+    const cavi = {
+      gatewayBaseUrl: "https://gateway.test",
+      authToken: "token",
+      defaultHeaders,
+      client,
+      snapshotFallbacks: { overview: nestedSnapshot },
+    } as never;
+    const setup = {
+      hermes: {
+        dashboardBaseUrl: "https://dashboard.test",
+        channel,
+        signal,
+        fetch: fetch as never,
+        cavi,
+      },
+    };
+    const base = createRuntimeProviderRegistry({ modules: baseModules() });
+    const first = withCaviRuntimeControlProviders(base, setup);
+    const second = withCaviRuntimeControlProviders(base, setup);
+
+    defaultHeaders["x-owner"] = "mutated";
+    nestedSnapshot.rows[0]!.id = "mutated";
+    (setup.hermes.cavi as typeof cavi) = { gatewayBaseUrl: "https://changed.test" } as never;
+    createHermesExtensionClient.mockImplementation(async (received) => {
+      const options = received as typeof setup.hermes;
+      expect(options.channel).toBe(channel);
+      expect(options.signal).toBe(signal);
+      expect(options.fetch).toBe(fetch);
+      expect((options.cavi as { client: unknown }).client).toBe(client);
+      expect((options.cavi as { defaultHeaders: Record<string, string> }).defaultHeaders)
+        .toEqual({ "x-owner": "first" });
+      expect((options.cavi as { snapshotFallbacks: { overview: { rows: Array<{ id: string }> } } })
+        .snapshotFallbacks.overview.rows[0]?.id).toBe("one");
+      return sessionClient("snapshotted");
+    });
+
+    await Promise.all([listSessions("hermes", first), listSessions("hermes", second)]);
   });
 
   it("does not leak extension-only configuration into non-Hermes factories", async () => {
