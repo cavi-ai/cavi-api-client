@@ -19,6 +19,7 @@ import {
 import {
   createOpenClawSessionOperations,
   type GatewaySessionOperations,
+  type GatewaySessionRequestOptions,
 } from "./session-operations.js";
 
 export type SessionHttpRequestJson = <T>(
@@ -254,15 +255,19 @@ export function normalizeSessionsListPayload(
 export type SessionLoaders = {
   loadSessionsListRaw: (
     params: SessionsListRequestParams,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionsListPayloadWithCache>;
   loadSessionsUsageRaw: (
     params: Record<string, unknown>,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionsUsagePayload>;
   loadSessionsPreviewRaw: (
     params: SessionsPreviewRequestParams,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionsPreviewPayload>;
   loadSessionDetailRaw: (
     params: SessionDetailRequestParams,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionDetailPayload>;
   /**
    * Synchronous read of the sessions.list cache for the given param shape. Returns the cached
@@ -276,7 +281,10 @@ export type SessionLoaders = {
    * Mutate per-session settings via `sessions.patch`. Fire-and-forget — caller is expected to
    * invalidate any session detail / list / usage query on resolve. No client-side caching.
    */
-  patchSession: (params: SessionPatchInput) => Promise<void>;
+  patchSession: (
+    params: SessionPatchInput,
+    options?: GatewaySessionRequestOptions,
+  ) => Promise<void>;
 };
 
 /**
@@ -309,9 +317,12 @@ export function createSessionLoaders(
 
   const loadSessionsListRaw: SessionLoaders["loadSessionsListRaw"] = async (
     params,
+    requestOptions,
   ) => {
     if (preserveReleasedRestBehavior) {
-      return normalizeSessionsListPayload(await operations.list(params));
+      return normalizeSessionsListPayload(
+        await operations.list(params, requestOptions),
+      );
     }
 
     const cacheKey = canonicalizeSessionsListParams(params);
@@ -334,7 +345,7 @@ export function createSessionLoaders(
         requestParams.lastHash = cacheEntry.lastHash;
       }
 
-      let response = await operations.list(requestParams);
+      let response = await operations.list(requestParams, requestOptions);
 
       if (isUnchangedSessionsListPayload(response)) {
         if (cacheEntry.payload) {
@@ -353,7 +364,7 @@ export function createSessionLoaders(
           return merged;
         }
 
-        response = await operations.list({ ...params });
+        response = await operations.list({ ...params }, requestOptions);
       }
 
       const normalized = normalizeSessionsListPayload(response);
@@ -372,9 +383,10 @@ export function createSessionLoaders(
 
   const loadSessionsUsageRaw: SessionLoaders["loadSessionsUsageRaw"] = async (
     params,
+    requestOptions,
   ) => {
     if (preserveReleasedRestBehavior) {
-      return await operations.usage(params);
+      return await operations.usage(params, requestOptions);
     }
 
     const cacheKey = canonicalizeSessionsUsageParams(params);
@@ -387,7 +399,7 @@ export function createSessionLoaders(
     }
 
     cacheEntry.inFlight = operations
-      .usage(params)
+      .usage(params, requestOptions)
       .then((payload) => {
         cacheEntry.payload = payload;
         cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -400,9 +412,9 @@ export function createSessionLoaders(
   };
 
   const loadSessionsPreviewRaw: SessionLoaders["loadSessionsPreviewRaw"] =
-    async (params) => {
+    async (params, requestOptions) => {
       if (preserveReleasedRestBehavior) {
-        return await operations.preview(params);
+        return await operations.preview(params, requestOptions);
       }
 
       const cacheKey = canonicalizeSessionsPreviewParams(params);
@@ -418,7 +430,7 @@ export function createSessionLoaders(
       }
 
       cacheEntry.inFlight = operations
-        .preview(params)
+        .preview(params, requestOptions)
         .then((payload) => {
           cacheEntry.payload = payload;
           cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -432,9 +444,10 @@ export function createSessionLoaders(
 
   const loadSessionDetailRaw: SessionLoaders["loadSessionDetailRaw"] = async (
     params,
+    requestOptions,
   ) => {
     if (preserveReleasedRestBehavior) {
-      return await operations.detail(params);
+      return await operations.detail(params, requestOptions);
     }
 
     const cacheKey = canonicalizeSessionDetailParams(params);
@@ -447,7 +460,7 @@ export function createSessionLoaders(
     }
 
     cacheEntry.inFlight = operations
-      .detail(params)
+      .detail(params, requestOptions)
       .then((payload) => {
         cacheEntry.payload = payload;
         cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -466,8 +479,11 @@ export function createSessionLoaders(
     return sessionsListCache.get(cacheKey)?.payload ?? null;
   };
 
-  const patchSession: SessionLoaders["patchSession"] = async (params) => {
-    await operations.patch(params);
+  const patchSession: SessionLoaders["patchSession"] = async (
+    params,
+    requestOptions,
+  ) => {
+    await operations.patch(params, requestOptions);
   };
 
   return {

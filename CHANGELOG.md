@@ -15,7 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extracted the core gateway session loaders behind an injectable,
   provider-neutral `GatewaySessionOperations` port. The default OpenClaw adapter
   preserves the released plural `sessions.*` RPC and REST fallback mappings,
-  payloads, caches, and loader signatures without adding a CAVI copy.
+  payloads, caches, and one-argument loader calls without adding a CAVI copy.
+  Optional request options now propagate through every session operation;
+  already-aborted signals prevent legacy transport dispatch, while in-flight
+  cancellation remains unsupported by those released transports.
 - Directly renamed the unreleased canonical facade, factories, provider hook,
   and conformance kit to the `RuntimeControlClient` vocabulary. This is a
   pre-release rename, not a compatibility removal; the older released

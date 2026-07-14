@@ -381,4 +381,7 @@ implementation filenames.
 detail, and patch operations. `createSessionLoaders` accepts an injected port;
 when none is supplied, `createOpenClawSessionOperations` preserves the released
 plural OpenClaw RPC names and session REST fallbacks. CAVI continues to compose
-the core loader and owns no duplicate session operation implementation.
+the core loader and owns no duplicate session operation implementation. Loader
+request options pass through this seam unchanged. The default adapter rejects
+already-aborted signals before dispatch; its released legacy RPC and REST
+transports do not provide in-flight cancellation.
