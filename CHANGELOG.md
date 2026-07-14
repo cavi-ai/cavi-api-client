@@ -63,6 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added the CAVI-extension Hermes `RuntimeControlClient` composer. It exposes
+  the complete seven-module facade, installs only configured dashboard/CAVI
+  modules, preserves typed unavailable fallbacks, applies explicit dashboard
+  auth precedence, and disposes owned transports idempotently without closing
+  borrowed injected channels.
 - Added the CAVI-owned Hermes dashboard standard JSON-RPC driver with bounded,
   abortable requests, validated event notifications, secret-safe remote errors,
   explicit injected-channel ownership, remote-close synchronization, and a safe

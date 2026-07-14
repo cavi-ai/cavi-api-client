@@ -927,6 +927,28 @@ const adapters = createCaviControlAdapters({
 const overview = await adapters.loadOverview();
 ```
 
+Hermes dashboard and optional CAVI plugin control surfaces can be composed from
+the same extension without adding provider-specific fields to the core factory:
+
+```ts
+import { createHermesRuntimeControlClient } from "@cavi-ai/api-client/extensions/cavi";
+
+const control = await createHermesRuntimeControlClient({
+  dashboardBaseUrl,
+  dashboardWebSocketUrl,
+  dashboardToken,
+  cavi: { gatewayBaseUrl, authToken },
+});
+
+await control.dispose();
+```
+
+All seven canonical modules are always present. Dashboard REST config enables
+auth status, models, and usage; a dashboard channel enables sessions and events;
+and explicit CAVI plugin config enables tasks and workspace. Other operations
+reject with method-specific `CapabilityUnavailable` errors. Injected channels
+are borrowed unless `ownsChannel: true` is set.
+
 ## Secure Credential Handling
 
 The client never persists credentials — applications pass `auth.bearerToken` and
