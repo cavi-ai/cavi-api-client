@@ -7,7 +7,7 @@ import type { CaviControlAdapters } from "../../../../../extensions/cavi/adapter
 import { createHermesCaviTaskClient } from "../../../../../extensions/cavi/providers/hermes/tasks.js";
 import type { OperatorControlSnapshot } from "../../../../../extensions/cavi/domain/operator.js";
 
-function adaptersWithTasks(): { adapters: CaviControlAdapters; loadOperatorControl: ReturnType<typeof vi.fn> } {
+function adaptersWithTasks(createdAt = 1_752_508_800_000): { adapters: CaviControlAdapters; loadOperatorControl: ReturnType<typeof vi.fn> } {
   const tasks = [{
     envelope: {
       task_id: "operator/task-1",
@@ -20,7 +20,7 @@ function adaptersWithTasks(): { adapters: CaviControlAdapters; loadOperatorContr
     },
     receipt: {
       task_id: "operator/task-1", run_id: "run-1", state: "started" as const,
-      attempt: 1, created_at: 1_752_508_800_000, updated_at: 1_752_508_860_000,
+      attempt: 1, created_at: createdAt, updated_at: 1_752_508_860_000,
       artifacts: [],
     },
     events: [], validation: null, outcome: null,
@@ -79,5 +79,24 @@ describe("Hermes CAVI task composition", () => {
     );
     await expect(client.listTasks({ limit: 0 })).rejects.toThrow(/positive integer/i);
     expect(loadOperatorControl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 8_640_000_000_000_001,
+  ])("fails closed with a stable schema error for invalid task timestamp %s", async (value) => {
+    await expect(createHermesCaviTaskClient(adaptersWithTasks(value).adapters).listTasks())
+      .rejects.toThrow(/^Hermes CAVI task response failed schema validation$/u);
+  });
+
+  it("rejects accessor-backed snapshots without invoking getters", async () => {
+    const getter = vi.fn(() => ({ tasks: [] }));
+    const snapshot = {};
+    Object.defineProperty(snapshot, "tasks", { enumerable: true, get: getter });
+    const loadOperatorControl = vi.fn(async () => ({
+      data: snapshot, source: "gateway" as const, fetchedAt: 1, contractGaps: [],
+    }));
+    const client = createHermesCaviTaskClient({ loadOperatorControl } as unknown as CaviControlAdapters);
+    await expect(client.listTasks()).rejects.toThrow(/schema validation/u);
+    expect(getter).not.toHaveBeenCalled();
   });
 });
