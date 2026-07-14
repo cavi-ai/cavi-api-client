@@ -15,6 +15,8 @@ identities. All fixtures were transcribed and sanitized from upstream commit
 | `event-notification.json` | `tui_gateway/entry.py` (gateway-ready write) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Retains public event envelope and stable skin value only. |
 | `sessions.json` | `hermes_cli/web_server.py` (`get_sessions`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced identity, model, timestamps, and counts. |
 | `session-detail.json` | `hermes_cli/web_server.py` (`get_session_detail`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced identity, model, timestamps, usage, and cost. |
+| `session-delete.json` | `hermes_cli/web_server.py` (`delete_session_endpoint`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Retains the exact boolean acknowledgement with no runtime data. |
+| `config.json` | `hermes_cli/web_server.py` (`get_config`, `_normalize_config_for_web`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced model and toolset identities; retained representative nested JSON values. |
 | `analytics-usage.json` | `hermes_cli/web_server.py` (`get_usage_analytics`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced dates, model, usage, costs, and counts. |
 | `models.json` | `hermes_cli/inventory.py` (`build_models_payload`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced provider and model identities. |
 | `provider-auth.json` | `hermes_cli/web_server.py` (`list_oauth_providers`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced provider identity and origin; omitted credential previews. |

@@ -1,0 +1,11 @@
+{
+  "model": "fixture-provider/fixture-model",
+  "model_context_length": 0,
+  "toolsets": [
+    "fixture-toolset"
+  ],
+  "display": {
+    "compact": false,
+    "density": null
+  }
+}

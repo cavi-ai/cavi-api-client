@@ -40,7 +40,9 @@ describe("sanitized Hermes upstream fixtures", () => {
         "event-notification.json",
         "sessions.json",
         "session-detail.json",
+        "session-delete.json",
         "analytics-usage.json",
+        "config.json",
         "models.json",
         "provider-auth.json",
         "malformed.json",
@@ -116,6 +118,13 @@ describe("sanitized Hermes upstream fixtures", () => {
       id: expect.any(String),
       source: expect.any(String),
       model: expect.any(String),
+    });
+
+    await expect(readJson("dashboard/rest/session-delete.json")).resolves.toEqual({ ok: true });
+    await expect(readJson("dashboard/rest/config.json")).resolves.toMatchObject({
+      model: expect.any(String),
+      model_context_length: expect.any(Number),
+      toolsets: expect.any(Array),
     });
 
     const analytics = await readJson("dashboard/rest/analytics-usage.json");
