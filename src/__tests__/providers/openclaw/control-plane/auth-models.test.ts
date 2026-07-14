@@ -5,7 +5,7 @@ import {
   createOpenClawAuthStatusClient,
   createOpenClawModelCatalogClient,
 } from "../../../../providers/openclaw/control-plane/auth-models.js";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory.js";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory.js";
 import type { OpenClawRpc } from "../../../../providers/openclaw/control-plane/rpc.js";
 import { ApiClientErrorCode } from "../../../../core/errors.js";
 
@@ -202,7 +202,7 @@ describe("OpenClaw auth status and model catalog", () => {
 
   it("wires both clients into the internal OpenClaw factory", async () => {
     const rpc = createRpc({ models: [] });
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
 
     await expect(plane.models.listModels()).resolves.toEqual({ data: [] });
     vi.mocked(rpc.request).mockResolvedValueOnce({ ts: 0, providers: [] });

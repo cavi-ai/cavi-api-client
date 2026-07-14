@@ -98,22 +98,27 @@ clients—sessions, models, usage, tasks, workspace, and read-only authenticatio
 status—alongside normalized control-plane events and independently declared
 transport capabilities.
 
-`CanonicalRuntimeControlPlane` is an additive, required-shape facade over those
+`RuntimeControlClient` is an additive, required-shape facade over those
 seven modules: authentication status, sessions, models, usage, tasks, workspace,
 and events. It also owns an idempotent `dispose()` lifecycle method. When an
-adapter is unavailable, `createUnavailableCanonicalControlPlane` preserves the
+adapter is unavailable, `createUnavailableRuntimeControlClient` preserves the
 shape while rejecting every module operation with a fresh
 `CapabilityUnavailable` that identifies the provider and capability; disposal
 remains side-effect free. The existing optional `RuntimeControlPlane` is
 preserved for declaration-driven providers.
 
+This vocabulary is a pre-release direct rename of the unreleased facade and
+factory architecture, not a compatibility removal. The unreleased names have no
+aliases; the older released `RuntimeControlPlane` declaration architecture stays
+intact.
+
 The provider registry is also the boundary for canonical construction. Core
 remains registry-driven and never imports provider implementations. The
-package-root `createRuntimeControlPlane(provider, options)` supplies a fresh
+package-root `createRuntimeControlClient(provider, options)` supplies a fresh
 registry composed at the provider layer from the shipped Hermes and OpenClaw
 modules unless the caller supplies `options.registry`. It uses the registry's
 existing kind/alias normalization and delegates to an optional provider
-`createCanonicalControlPlane` hook, and falls back to the required unavailable
+`createRuntimeControlClient` hook, and falls back to the required unavailable
 facade. Its configuration remains provider-neutral (`baseUrl`, `webSocketUrl`,
 `token`, `resolveAuth`, `signal`, `trace`, `transport`, and `registry`), so adding
 the facade does not couple core to a provider. OpenClaw registers that hook at

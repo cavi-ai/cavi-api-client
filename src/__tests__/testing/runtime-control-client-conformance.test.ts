@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  createRuntimeControlPlane,
-  type CanonicalRuntimeControlPlane,
+  createRuntimeControlClient,
+  type RuntimeControlClient,
 } from "../../index.js";
-import { CapabilityUnavailable } from "../../core/runtime/control-plane/canonical.js";
-import { runCanonicalControlPlaneConformance } from "../../testing/index.js";
+import { CapabilityUnavailable } from "../../core/runtime/control-plane/runtime-control-client.js";
+import { runRuntimeControlClientConformance } from "../../testing/index.js";
 
 const modules = ["authStatus", "sessions", "models", "usage", "tasks", "workspace", "events"];
 
@@ -16,7 +16,7 @@ function unavailableHarness(
   return {
     providerId,
     create: async () => {
-      const plane = await createRuntimeControlPlane(providerId);
+      const plane = await createRuntimeControlClient(providerId);
       return {
         ...plane,
         sessions: {
@@ -52,9 +52,9 @@ function fixtureTransport() {
 describe("canonical control-plane conformance", () => {
   it("uses the public factory, built-in OpenClaw registration, and provider-neutral transport seam", async () => {
     const transport = fixtureTransport();
-    const report = await runCanonicalControlPlaneConformance({
+    const report = await runRuntimeControlClientConformance({
       providerId: "openclaw",
-      create: () => createRuntimeControlPlane("open-claw", { transport }),
+      create: () => createRuntimeControlClient("open-claw", { transport }),
     });
 
     expect(report, JSON.stringify(report)).toMatchObject({ valid: true, modules });
@@ -70,14 +70,14 @@ describe("canonical control-plane conformance", () => {
   it.each(["claude", "codex", "gemini", "unknown"])(
     "validates the shipped/default unavailable path for %s",
     async (providerId) => {
-      const report = await runCanonicalControlPlaneConformance({
+      const report = await runRuntimeControlClientConformance({
         providerId,
-        create: () => createRuntimeControlPlane(providerId),
+        create: () => createRuntimeControlClient(providerId),
       });
       expect(report).toMatchObject({ valid: true, modules, supported: [] });
       expect(report.unavailable).toHaveLength(12);
 
-      const plane = await createRuntimeControlPlane(providerId);
+      const plane = await createRuntimeControlClient(providerId);
       try {
         await expect(plane.sessions.listSessions()).rejects.toMatchObject<CapabilityUnavailable>({
           name: "CapabilityUnavailable",
@@ -91,27 +91,27 @@ describe("canonical control-plane conformance", () => {
   );
 
   it("lets one consumer use OpenClaw and unavailable providers without branching", async () => {
-    const renderSessions = async (plane: CanonicalRuntimeControlPlane) => {
+    const renderSessions = async (plane: RuntimeControlClient) => {
       try { return (await plane.sessions.listSessions()).data.map((item) => item.id); }
       catch (error) { return error instanceof CapabilityUnavailable ? ["unavailable"] : Promise.reject(error); }
       finally { await plane.dispose(); }
     };
 
-    await expect(renderSessions(await createRuntimeControlPlane("openclaw", { transport: fixtureTransport() })))
+    await expect(renderSessions(await createRuntimeControlClient("openclaw", { transport: fixtureTransport() })))
       .resolves.toEqual(["session-1"]);
     for (const provider of ["claude", "codex", "gemini", "unknown"]) {
-      await expect(renderSessions(await createRuntimeControlPlane(provider))).resolves.toEqual(["unavailable"]);
+      await expect(renderSessions(await createRuntimeControlClient(provider))).resolves.toEqual(["unavailable"]);
     }
   });
 
   it("rejects empty modules and non-function methods", async () => {
     const empty = Object.fromEntries(modules.map((name) => [name, {}]));
-    const report = await runCanonicalControlPlaneConformance({
+    const report = await runRuntimeControlClientConformance({
       providerId: "fixture",
       create: async () => ({
         ...empty,
         dispose: async () => undefined,
-      } as unknown as CanonicalRuntimeControlPlane),
+      } as unknown as RuntimeControlClient),
     });
     expect(report.valid).toBe(false);
     expect(report.failures).toEqual(expect.arrayContaining([
@@ -121,7 +121,7 @@ describe("canonical control-plane conformance", () => {
   });
 
   it("rejects CapabilityUnavailable from the wrong provider", async () => {
-    const report = await runCanonicalControlPlaneConformance(
+    const report = await runRuntimeControlClientConformance(
       unavailableHarness(
         "claude",
         new CapabilityUnavailable("codex", "controlPlane.sessions.list"),
@@ -136,7 +136,7 @@ describe("canonical control-plane conformance", () => {
   });
 
   it("rejects CapabilityUnavailable with the wrong operation capability", async () => {
-    const report = await runCanonicalControlPlaneConformance(
+    const report = await runRuntimeControlClientConformance(
       unavailableHarness(
         "claude",
         new CapabilityUnavailable("claude", "controlPlane.sessions.get"),

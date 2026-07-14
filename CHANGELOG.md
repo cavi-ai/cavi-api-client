@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Directly renamed the unreleased canonical facade, factories, provider hook,
+  and conformance kit to the `RuntimeControlClient` vocabulary. This is a
+  pre-release rename, not a compatibility removal; the older released
+  `RuntimeControlPlane` declaration API remains intact.
+
 ### Fixed
 
 - Hardened the OpenClaw canonical adapter so factory-owned WebSockets resolve
@@ -35,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Published the provider-neutral `createRuntimeControlPlane` facade and root
+- Published the provider-neutral `createRuntimeControlClient` facade and root
   `CapabilityUnavailable` error for the exact `authStatus`, `sessions`,
   `models`, `usage`, `tasks`, `workspace`, and `events` contract. Documented the
   verified OpenClaw method subset, typed unavailable native cursor resume,
@@ -55,12 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and idempotent disposal without changing the authenticated gateway wire
   handshake. The internal OpenClaw control-plane factory owns clients it
   creates and leaves injected RPC seams caller-owned by default.
-- Provider-neutral `createRuntimeControlPlane(provider, options)` construction,
+- Provider-neutral `createRuntimeControlClient(provider, options)` construction,
   with alias-aware registry lookup, optional provider canonical factories, and
   a complete typed unavailable facade when a registered adapter is absent.
   Factory options cover URLs, token/auth resolution, cancellation, tracing, and
   injected transport without adding a built-in provider adapter.
-- Required `CanonicalRuntimeControlPlane` facade with authentication status,
+- Required `RuntimeControlClient` facade with authentication status,
   sessions, models, usage, tasks, workspace, and events modules, plus idempotent
   disposal and `CapabilityUnavailable`-based unavailable-provider scaffolding.
   The existing optional `RuntimeControlPlane` contract remains supported.

@@ -132,12 +132,12 @@ const APPROVED_ROOT_TRANSPORT_ADDITIONS = [
   "TransportLifecycleEvent",
   "getTransportErrorMetadata",
 ] as const;
-const APPROVED_ROOT_CANONICAL_CONTROL_PLANE_ADDITIONS = [
-  "CanonicalControlPlaneFactory",
-  "CanonicalControlPlaneFactoryOptions",
-  "CanonicalRuntimeControlPlane",
+const APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS = [
+  "RuntimeControlClient",
+  "RuntimeControlClientFactory",
+  "RuntimeControlClientOptions",
   "CapabilityUnavailable",
-  "createRuntimeControlPlane",
+  "createRuntimeControlClient",
 ] as const;
 
 const FORBIDDEN_PACKAGES = [
@@ -1105,7 +1105,7 @@ describe("package hardening", () => {
     const expectedRootExports = [
       ...originMainBaseline,
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
-      ...APPROVED_ROOT_CANONICAL_CONTROL_PLANE_ADDITIONS,
+      ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
     ].sort();
 
     expect(rootExportNames(path.join(SRC_ROOT, "index.ts"))).toEqual(expectedRootExports);

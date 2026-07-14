@@ -1,9 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { CapabilityUnavailable, createRuntimeControlPlane } from "../index.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import {
+  CapabilityUnavailable,
+  createRuntimeControlClient,
+  type RuntimeControlClient,
+  type RuntimeControlClientOptions,
+} from "../index.js";
 
 describe("public surface — dropped symbols still reachable via subpaths", () => {
   it("exports the canonical control-plane factory and unavailable error", () => {
-    expect(createRuntimeControlPlane).toBeTypeOf("function");
+    expect(createRuntimeControlClient).toBeTypeOf("function");
+    expectTypeOf<RuntimeControlClient>().toBeObject();
+    expectTypeOf<RuntimeControlClientOptions>().toBeObject();
     expect(CapabilityUnavailable).toBeTypeOf("function");
   });
 
@@ -52,7 +59,12 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
   it("root keeps the curated stable API", async () => {
     const root = await import("../index");
     expect(root.GatewayApiClient).toBeDefined();
-    expect(root.createRuntimeControlPlane).toBeDefined();
+    expect(root.createRuntimeControlClient).toBeTypeOf("function");
+    const oldFactoryName = ["createRuntime", "ControlPlane"].join("");
+    const oldFacadeName = ["CanonicalRuntime", "ControlPlane"].join("");
+    expect((root as Record<string, unknown>)[oldFactoryName]).toBeUndefined();
+    expect(oldFacadeName in root).toBe(false);
+    expect("RuntimeControlClient" in root).toBe(false);
     expect(root.createRuntimeProviderRegistry).toBeDefined();
     expect(root.normalizeTeamManifest).toBeDefined();
     expect(root.apiKeyCredentials).toBeDefined();

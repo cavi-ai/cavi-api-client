@@ -346,21 +346,26 @@ tokens, API keys, passwords, cookies, or authorization headers.
 This foundation is additive. Existing `RuntimeClient` and `GatewayClient`
 consumers do not need to change, and the optional `RuntimeControlPlane` contract
 remains supported. For consumers that need one predictable control-plane shape,
-`CanonicalRuntimeControlPlane` requires all seven modules: `authStatus`,
+`RuntimeControlClient` requires all seven modules: `authStatus`,
 `sessions`, `models`, `usage`, `tasks`, `workspace`, and `events`, plus an
-idempotent `dispose()`. `createUnavailableCanonicalControlPlane(providerId,
+idempotent `dispose()`. `createUnavailableRuntimeControlClient(providerId,
 capabilities)` supplies that complete shape when no adapter is available; every
 module method rejects with a fresh `CapabilityUnavailable` containing the
 provider ID and method-specific capability. Adopt `createControlPlane` only
 after a provider truthfully declares the optional modules it returns. See the
 compile-checked [custom runtime provider example](docs/examples/custom-runtime-provider.ts).
 
-`createRuntimeControlPlane(provider, options)` is the provider-neutral canonical
+The `RuntimeControlClient` vocabulary is a direct rename of the unreleased
+facade and factory surface, not a compatibility removal. No aliases for the
+unreleased names are retained; the older released `RuntimeControlPlane`
+declaration API is unchanged.
+
+`createRuntimeControlClient(provider, options)` is the provider-neutral canonical
 entry point. The package root resolves kinds and aliases through a fresh
 registry composed from the shipped Hermes and OpenClaw provider modules, while
 an explicit `options.registry` replaces that default. The core/providers
 subpath remains registry-driven and provider-agnostic. A resolved module's
-`createCanonicalControlPlane` factory is called when present; otherwise the
+`createRuntimeControlClient` factory is called when present; otherwise the
 complete unavailable facade is returned.
 Options are provider-neutral: `baseUrl`, `webSocketUrl`, `token`, `resolveAuth`,
 `signal`, `trace`, `transport`, and `registry`. Registry membership alone does
@@ -371,9 +376,9 @@ OpenClaw consumes it internally without adding a provider-specific package-root
 option.
 
 ```ts
-import { createRuntimeControlPlane } from "@cavi-ai/api-client";
+import { createRuntimeControlClient } from "@cavi-ai/api-client";
 
-const controlPlane = await createRuntimeControlPlane(config.provider, {
+const controlPlane = await createRuntimeControlClient(config.provider, {
   baseUrl: config.baseUrl,
   webSocketUrl: config.webSocketUrl,
   resolveAuth: () => authStore.resolve(config.provider),
@@ -398,7 +403,7 @@ unsafe native events fail with sanitized, non-retryable protocol errors. Native
 event names are bounded and secret-safe before mapping or metadata; safe unknown
 names remain available as `operation.updated` provider data.
 
-The public `runCanonicalControlPlaneConformance({ providerId, create })` helper from
+The public `runRuntimeControlClientConformance({ providerId, create })` helper from
 `@cavi-ai/api-client/testing` verifies the exact required methods, exercises
 representative operations, accepts canonical results or typed unavailable
 rejections, and always disposes the facade. The harness `providerId` is the exact

@@ -283,7 +283,7 @@ describe("docs integrity", () => {
       ["API.md", api],
     ] as const) {
       expect(document, `${name} is missing the provider-neutral factory example`).toContain(
-        "createRuntimeControlPlane(config.provider, {",
+        "createRuntimeControlClient(config.provider, {",
       );
       expect(document).toContain("controlPlane.sessions.listSessions({ limit: 50 })");
       expect(document).not.toContain(".sessions.list(");

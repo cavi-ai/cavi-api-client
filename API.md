@@ -176,28 +176,34 @@ modules as unsupported instead of assuming a fallback exists.
 - `RuntimeControlPlane` — aggregates declared transports and optional focused
   clients for sessions, models, usage, tasks, workspaces, authentication status,
   and events.
-- `CanonicalRuntimeControlPlane` — a required facade containing all seven
+- `RuntimeControlClient` — a required facade containing all seven
   focused modules (`authStatus`, `sessions`, `models`, `usage`, `tasks`,
   `workspace`, and `events`) and `dispose()`. Disposal is idempotent.
 - `CapabilityUnavailable` — typed error carrying the `providerId` and
   method-specific `capability` that is unavailable.
-- `createUnavailableCanonicalControlPlane(providerId, capabilities)` — creates
+- `createUnavailableRuntimeControlClient(providerId, capabilities)` — creates
   the complete canonical shape for an unavailable adapter. Each module method
   rejects with a fresh `CapabilityUnavailable`; `dispose()` is side-effect free
   and may be called repeatedly.
-- `createRuntimeControlPlane(provider, options)` — at the package root, resolves
+
+The `RuntimeControlClient` names directly replace an unreleased facade, factory,
+provider hook, and conformance surface. This pre-release rename does not remove
+or alter the older released `RuntimeControlPlane` declaration API, and it does
+not retain aliases for the unreleased names.
+
+- `createRuntimeControlClient(provider, options)` — at the package root, resolves
   a provider kind or alias through a fresh registry of shipped provider modules;
   `options.registry` replaces that default. The core/providers export remains
   registry-driven. The factory invokes a resolved module's optional canonical
-  hook or returns the complete unavailable facade. `CanonicalControlPlaneFactoryOptions`
+  hook or returns the complete unavailable facade. `RuntimeControlClientOptions`
   contains only provider-neutral URL, token/auth resolver, abort signal, trace,
   transport, and registry inputs. Registry membership alone does not imply a
   built-in canonical adapter. OpenClaw recognizes a structurally compatible RPC
   fixture supplied through `transport`, which keeps deterministic construction
   tests on the same provider-neutral factory path without exposing an
   OpenClaw-specific option at the package root.
-- `CanonicalControlPlaneFactory` — asynchronous provider-module hook that
-  produces the required `CanonicalRuntimeControlPlane` shape.
+- `RuntimeControlClientFactory` — asynchronous provider-module hook that
+  produces the required `RuntimeControlClient` shape.
 - `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
   implemented control-plane transports and focused modules; declarations do not
   add those methods to `RuntimeClient`.
@@ -209,7 +215,7 @@ modules as unsupported instead of assuming a fallback exists.
   the other provider rows retain empty control-plane declarations. Prefer the
   narrower control-plane contracts above when a consumer does not need
   cross-provider matrix discovery.
-- `runCanonicalControlPlaneConformance({ providerId, create })` — exported from
+- `runRuntimeControlClientConformance({ providerId, create })` — exported from
   `@cavi-ai/api-client/testing`; constructs and disposes a canonical facade,
   verifies every required method on all seven modules, invokes representative
   operations, validates canonical result shapes or typed
@@ -234,15 +240,15 @@ presented as one adapter.
 
 Existing consumers require no migration: `RuntimeClient`, `GatewayClient`, and
 all established imports retain their behavior, and `RuntimeControlPlane` remains
-the optional declaration-driven contract. Use `CanonicalRuntimeControlPlane`
+the optional declaration-driven contract. Use `RuntimeControlClient`
 when the consumer requires a uniform seven-module facade. Adopt a provider's
 implemented control plane only when its module truthfully declares and returns
 the required optional modules.
 
 ```ts
-import { createRuntimeControlPlane } from "@cavi-ai/api-client";
+import { createRuntimeControlClient } from "@cavi-ai/api-client";
 
-const controlPlane = await createRuntimeControlPlane(config.provider, {
+const controlPlane = await createRuntimeControlClient(config.provider, {
   baseUrl: config.baseUrl,
   webSocketUrl: config.webSocketUrl,
   resolveAuth: () => authStore.resolve(config.provider),

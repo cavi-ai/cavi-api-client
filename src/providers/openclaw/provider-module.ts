@@ -5,7 +5,7 @@ import { OpenClawMediaApiClient } from "./media.js";
 import { OpenClawSseRunEventProvider } from "./sse-run-event-provider.js";
 import { OpenClawWebSocketClient } from "./websocket.js";
 import { OpenClawWikiApiClient } from "./wiki.js";
-import { createOpenClawControlPlane } from "./control-plane/factory.js";
+import { createOpenClawRuntimeControlClient } from "./control-plane/factory.js";
 
 // The OpenClaw provider module supplies one concrete implementation per
 // unified capability interface (GatewayApiClient, GatewayMediaClient,
@@ -31,7 +31,7 @@ export const OPENCLAW_PROVIDER_MODULE: GatewayProviderModule = {
       workspace: true, authStatus: true, events: true,
     },
   },
-  createCanonicalControlPlane: createOpenClawControlPlane,
+  createRuntimeControlClient: createOpenClawRuntimeControlClient,
   createApiClient: (clientOptions) => new OpenClawApiClient(clientOptions),
   createWebSocketClient: (wsUrl, authToken, clientOptions) =>
     new OpenClawWebSocketClient(wsUrl, authToken, clientOptions),

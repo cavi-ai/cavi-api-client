@@ -104,7 +104,7 @@ export {
   inspectRuntimeEventSequence,
   runtimeTransportSupports,
   type AuthStatusClient,
-  type CanonicalRuntimeControlPlane,
+  type RuntimeControlClient,
   type ModelCatalogClient,
   type RuntimeAuthStatus,
   type RuntimeControlPlane,
@@ -137,14 +137,14 @@ export {
 export {
   createRuntimeClient,
   normalizeRuntimeProviderToken,
-  type CanonicalControlPlaneFactory,
-  type CanonicalControlPlaneFactoryOptions,
+  type RuntimeControlClientFactory,
+  type RuntimeControlClientOptions,
   type CreateRuntimeClientOptions,
   type RuntimeControlPlaneDeclaration,
   type RuntimeClientOptions,
   type RuntimeProviderRegistry,
 } from "./core/runtime/providers/index.js";
-export { createRuntimeControlPlane } from "./providers/control-plane-factory.js";
+export { createRuntimeControlClient } from "./providers/runtime-control-client-factory.js";
 export {
   RUNTIME_PROVIDER_CAPABILITY_MATRIX,
   getRuntimeProviderCapabilityRow,

@@ -1,32 +1,32 @@
 import {
   CapabilityUnavailable,
-  type CanonicalRuntimeControlPlane,
-} from "../core/runtime/control-plane/canonical.js";
+  type RuntimeControlClient,
+} from "../core/runtime/control-plane/runtime-control-client.js";
 
-export const CANONICAL_CONTROL_PLANE_MODULES = [
+export const RUNTIME_CONTROL_CLIENT_MODULES = [
   "authStatus", "sessions", "models", "usage", "tasks", "workspace", "events",
 ] as const;
 
 const OPERATIONS = [
-  ["authStatus", "listAuthStatus", (plane: CanonicalRuntimeControlPlane) => plane.authStatus.listAuthStatus(), Array.isArray],
-  ["sessions", "listSessions", (plane: CanonicalRuntimeControlPlane) => plane.sessions.listSessions(), isPage],
-  ["sessions", "getSession", (plane: CanonicalRuntimeControlPlane) => plane.sessions.getSession("session-1"), isEntity],
-  ["sessions", "cancelSession", (plane: CanonicalRuntimeControlPlane) => plane.sessions.cancelSession!("session-1"), isEntity],
-  ["models", "listModels", (plane: CanonicalRuntimeControlPlane) => plane.models.listModels(), isPage],
-  ["usage", "getUsage", (plane: CanonicalRuntimeControlPlane) => plane.usage.getUsage(), isUsage],
-  ["tasks", "listTasks", (plane: CanonicalRuntimeControlPlane) => plane.tasks.listTasks(), isPage],
-  ["tasks", "getTask", (plane: CanonicalRuntimeControlPlane) => plane.tasks.getTask("task-1"), isEntity],
-  ["tasks", "cancelTask", (plane: CanonicalRuntimeControlPlane) => plane.tasks.cancelTask!("task-1"), isEntity],
-  ["workspace", "listWorkspaces", (plane: CanonicalRuntimeControlPlane) => plane.workspace.listWorkspaces(), Array.isArray],
-  ["workspace", "getWorkspace", (plane: CanonicalRuntimeControlPlane) => plane.workspace.getWorkspace("workspace-1"), isEntity],
-  ["events", "subscribe", async (plane: CanonicalRuntimeControlPlane) => {
+  ["authStatus", "listAuthStatus", (plane: RuntimeControlClient) => plane.authStatus.listAuthStatus(), Array.isArray],
+  ["sessions", "listSessions", (plane: RuntimeControlClient) => plane.sessions.listSessions(), isPage],
+  ["sessions", "getSession", (plane: RuntimeControlClient) => plane.sessions.getSession("session-1"), isEntity],
+  ["sessions", "cancelSession", (plane: RuntimeControlClient) => plane.sessions.cancelSession!("session-1"), isEntity],
+  ["models", "listModels", (plane: RuntimeControlClient) => plane.models.listModels(), isPage],
+  ["usage", "getUsage", (plane: RuntimeControlClient) => plane.usage.getUsage(), isUsage],
+  ["tasks", "listTasks", (plane: RuntimeControlClient) => plane.tasks.listTasks(), isPage],
+  ["tasks", "getTask", (plane: RuntimeControlClient) => plane.tasks.getTask("task-1"), isEntity],
+  ["tasks", "cancelTask", (plane: RuntimeControlClient) => plane.tasks.cancelTask!("task-1"), isEntity],
+  ["workspace", "listWorkspaces", (plane: RuntimeControlClient) => plane.workspace.listWorkspaces(), Array.isArray],
+  ["workspace", "getWorkspace", (plane: RuntimeControlClient) => plane.workspace.getWorkspace("workspace-1"), isEntity],
+  ["events", "subscribe", async (plane: RuntimeControlClient) => {
     const subscription = await plane.events.subscribe({ operationId: "operation-1" }, { onEvent: () => undefined });
     await subscription.dispose();
     return subscription;
   }, isSubscription],
 ] as const;
 
-export const CANONICAL_CONTROL_PLANE_OPERATION_CAPABILITIES = {
+export const RUNTIME_CONTROL_CLIENT_OPERATION_CAPABILITIES = {
   "authStatus.listAuthStatus": "controlPlane.authStatus.list",
   "sessions.listSessions": "controlPlane.sessions.list",
   "sessions.getSession": "controlPlane.sessions.get",
@@ -41,20 +41,20 @@ export const CANONICAL_CONTROL_PLANE_OPERATION_CAPABILITIES = {
   "events.subscribe": "controlPlane.events.subscribe",
 } as const;
 
-export type CanonicalControlPlaneOperation = keyof typeof CANONICAL_CONTROL_PLANE_OPERATION_CAPABILITIES;
+export type RuntimeControlClientOperation = keyof typeof RUNTIME_CONTROL_CLIENT_OPERATION_CAPABILITIES;
 
-export type CanonicalControlPlaneConformanceHarness = Readonly<{
+export type RuntimeControlClientConformanceHarness = Readonly<{
   /** Provider id every CapabilityUnavailable rejection must identify. */
   providerId: string;
   /** Creates the control plane to exercise. */
-  create: () => CanonicalRuntimeControlPlane | Promise<CanonicalRuntimeControlPlane>;
+  create: () => RuntimeControlClient | Promise<RuntimeControlClient>;
 }>;
 
-export type CanonicalControlPlaneConformanceReport = Readonly<{
+export type RuntimeControlClientConformanceReport = Readonly<{
   valid: boolean;
-  modules: readonly (typeof CANONICAL_CONTROL_PLANE_MODULES)[number][];
-  supported: readonly CanonicalControlPlaneOperation[];
-  unavailable: readonly CanonicalControlPlaneOperation[];
+  modules: readonly (typeof RUNTIME_CONTROL_CLIENT_MODULES)[number][];
+  supported: readonly RuntimeControlClientOperation[];
+  unavailable: readonly RuntimeControlClientOperation[];
   failures: readonly string[];
 }>;
 
@@ -79,22 +79,22 @@ function isSubscription(value: unknown): boolean {
   return object(value) && typeof value.dispose === "function";
 }
 
-export async function runCanonicalControlPlaneConformance(
-  harness: CanonicalControlPlaneConformanceHarness,
-): Promise<CanonicalControlPlaneConformanceReport> {
+export async function runRuntimeControlClientConformance(
+  harness: RuntimeControlClientConformanceHarness,
+): Promise<RuntimeControlClientConformanceReport> {
   const plane = await harness.create();
-  const modules = CANONICAL_CONTROL_PLANE_MODULES.filter(
+  const modules = RUNTIME_CONTROL_CLIENT_MODULES.filter(
     (moduleName) => object(plane[moduleName]),
   );
-  const supported: CanonicalControlPlaneOperation[] = [];
-  const unavailable: CanonicalControlPlaneOperation[] = [];
+  const supported: RuntimeControlClientOperation[] = [];
+  const unavailable: RuntimeControlClientOperation[] = [];
   const failures: string[] = [];
   const canDispose = typeof plane.dispose === "function";
   if (!canDispose) failures.push("dispose must be a function");
 
   try {
     for (const [moduleName, methodName, invoke, validate] of OPERATIONS) {
-      const operation = `${moduleName}.${methodName}` as CanonicalControlPlaneOperation;
+      const operation = `${moduleName}.${methodName}` as RuntimeControlClientOperation;
       const module = plane[moduleName] as unknown as Record<string, unknown>;
       if (!object(module) || typeof module[methodName] !== "function") {
         failures.push(`${operation} must be a function`);
@@ -115,7 +115,7 @@ export async function runCanonicalControlPlaneConformance(
           );
           continue;
         }
-        const expectedCapability = CANONICAL_CONTROL_PLANE_OPERATION_CAPABILITIES[operation];
+        const expectedCapability = RUNTIME_CONTROL_CLIENT_OPERATION_CAPABILITIES[operation];
         if (error.capability !== expectedCapability) {
           failures.push(
             `${operation} rejected with capability ${error.capability}; expected ${expectedCapability}`,
@@ -130,7 +130,7 @@ export async function runCanonicalControlPlaneConformance(
   }
 
   return {
-    valid: modules.length === CANONICAL_CONTROL_PLANE_MODULES.length && failures.length === 0,
+    valid: modules.length === RUNTIME_CONTROL_CLIENT_MODULES.length && failures.length === 0,
     modules,
     supported,
     unavailable,
