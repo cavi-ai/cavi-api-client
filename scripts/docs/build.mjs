@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadContracts } from "./contracts.mjs";
 import { inspectRelease } from "./inspect-release.mjs";
 import { renderDocumentation } from "./render.mjs";
+import { containedPath } from "./paths.mjs";
 
 /** @param {string[]} argv */
 function parseArguments(argv) {
@@ -32,7 +33,7 @@ export async function buildDocumentation(argv) {
   const options = parseArguments(argv);
   const root = path.resolve(options.root ?? ".");
   const outputDirectory = path.resolve(options.output);
-  const manifest = await inspectRelease(path.resolve(options.tarball));
+  const manifest = await inspectRelease(path.resolve(options.tarball), options["expected-sha256"] ? { expectedSha256: options["expected-sha256"] } : undefined);
   const contracts = await loadContracts(root, manifest);
   const navigation = JSON.parse(
     await readFile(path.join(root, "docs/api-client/source/navigation.json"), "utf8"),
@@ -44,10 +45,15 @@ export async function buildDocumentation(argv) {
     curatedRoot: path.join(root, "docs/api-client/source"),
     sourceDateEpoch: options["source-date-epoch"],
   });
+  await mkdir(outputDirectory, { recursive: true });
+  const resolvedOutputDirectory = await realpath(outputDirectory);
   for (const [relativePath, contents] of rendered) {
-    const destination = path.join(outputDirectory, relativePath);
+    const destination = containedPath(resolvedOutputDirectory, relativePath, "generated output path");
     await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, contents, "utf8");
+    const resolvedParent = await realpath(path.dirname(destination));
+    const relativeParent = path.relative(resolvedOutputDirectory, resolvedParent);
+    if (relativeParent.startsWith("..") || path.isAbsolute(relativeParent)) throw new Error(`generated output path: resolved destination escapes output root: ${relativePath}`);
+    await writeFile(path.join(resolvedParent, path.basename(destination)), contents, "utf8");
   }
   return rendered;
 }

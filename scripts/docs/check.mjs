@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 import { buildDocumentation } from "./build.mjs";
 
@@ -52,6 +53,16 @@ async function validateRelativeMarkdownLinks(directory, files) {
   }
 }
 
+async function validateContentIntegrity(directory, files) {
+  const manifest = JSON.parse(await readFile(path.join(directory, "manifest.json"), "utf8"));
+  const hash = createHash("sha256");
+  for (const relativePath of files.filter((file) => file !== "manifest.json").sort()) {
+    hash.update(relativePath).update("\0").update(await readFile(path.join(directory, relativePath))).update("\0");
+  }
+  const observed = hash.digest("hex");
+  if (manifest.contentSha256 !== observed) throw new Error(`generated content integrity mismatch: expected ${manifest.contentSha256}, observed ${observed}`);
+}
+
 export async function checkDocumentation(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   const temporaryRoot = await mkdtemp(path.join(tmpdir(), "cavi-docs-check-"));
@@ -63,6 +74,7 @@ export async function checkDocumentation(argv = process.argv.slice(2)) {
       "--out", generated,
       "--source-date-epoch", options["source-date-epoch"],
       "--root", path.resolve(options.root),
+      ...(options["expected-sha256"] ? ["--expected-sha256", options["expected-sha256"]] : []),
     ]);
     const [generatedFiles, committedFiles] = await Promise.all([
       filePaths(generated),
@@ -80,6 +92,7 @@ export async function checkDocumentation(argv = process.argv.slice(2)) {
       if (!actual.equals(expected)) throw new Error(`generated documentation drift: ${relativePath}`);
     }
     await validateRelativeMarkdownLinks(committed, committedFiles);
+    await validateContentIntegrity(committed, committedFiles);
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

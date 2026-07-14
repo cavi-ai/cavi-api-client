@@ -1,11 +1,25 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { normalizedRelativePath, safeSlug } from "./paths.mjs";
+
+function readContainedFile(root, relativePath, label) {
+  normalizedRelativePath(relativePath, label);
+  const resolvedRoot = realpathSync(root);
+  const candidate = path.join(resolvedRoot, relativePath);
+  const resolved = realpathSync(candidate);
+  const relative = path.relative(resolvedRoot, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error(`${label}: resolved target escapes root: ${relativePath}`);
+  return readFileSync(resolved, "utf8");
+}
 
 /** @typedef {import("./types.mjs").ReleaseManifest} ReleaseManifest */
 
 /** @param {string} subpath */
 export function subpathSlug(subpath) {
-  return subpath === "." ? "index" : subpath.slice(2).replaceAll("/", "-");
+  if (subpath === ".") return "index";
+  if (typeof subpath !== "string" || !subpath.startsWith("./")) throw new Error(`subpath: invalid public subpath ${String(subpath)}`);
+  return safeSlug(subpath.slice(2).replaceAll("/", "-"), "subpath slug");
 }
 
 /** @param {string} subpath @param {string} name */
@@ -46,7 +60,8 @@ function renderReferencePage(manifest, subpath) {
 /** @param {import("./contracts.mjs").ContractRecord} contract */
 function renderContractPage(contract) {
   const symbols = contract.symbols.map(({ subpath, name }) => `- \`${subpath}:${name}\``).join("\n");
-  const evidence = contract.evidence.map((item) => `- \`${item}\``).join("\n");
+  const evidence = contract.evidence.map((item) => `- ${item.type}: \`${item.path}\``).join("\n");
+  const signatures = contract.symbols.map(({ subpath, name, signature }) => `### ${name}\n\n\`\`\`ts\n${signature}\n\`\`\``).join("\n\n");
   return [
     `# ${contract.title}`,
     "",
@@ -57,6 +72,15 @@ function renderContractPage(contract) {
     `Capability: ${contract.capability}`,
     "",
     contract.summary,
+    "",
+    "## Purpose and lifecycle", "", contract.purpose, "", contract.lifecycle,
+    "", "## Packed declaration signatures", "", signatures,
+    "", "## Field constraints", "", contract.fieldConstraints.map((item) => `- **${item.field}**: ${item.constraint}`).join("\n"),
+    "", "## Behavior", "", `Errors: ${contract.behavior.errors}`, `Retry: ${contract.behavior.retry}`, `Cancellation: ${contract.behavior.cancellation}`, `Streaming: ${contract.behavior.streaming}`,
+    "", "## Dependencies", "", `Capabilities: ${contract.dependencies.capabilities.join(", ")}`, `Transports: ${contract.dependencies.transports.join(", ")}`,
+    "", "## Valid example", "", "```json", JSON.stringify(contract.examples.valid.value, null, 2), "```", "", contract.examples.valid.expected,
+    "", "## Invalid example", "", "```json", JSON.stringify(contract.examples.invalid.value, null, 2), "```", "", `Expected failure: ${contract.examples.invalid.expectedFailure}`,
+    "", "## Compatibility notes", "", contract.compatibilityNotes,
     "",
     "## Public symbols",
     "",
@@ -85,15 +109,6 @@ export function renderDocumentation(input) {
 
   /** @type {Map<string, string>} */
   const output = new Map();
-  output.set("manifest.json", `${JSON.stringify({
-    package: input.manifest.package,
-    version: input.manifest.version,
-    tag: `v${input.manifest.version}`,
-    sha256: input.manifest.sha256,
-    tarballDigest: `sha256:${input.manifest.sha256}`,
-    schemaVersion: 1,
-    generatedAt: generatedAt.toISOString(),
-  }, null, 2)}\n`);
   const navigation = structuredClone(input.navigation);
   if (navigation && typeof navigation === "object" && !Array.isArray(navigation)) {
     navigation.reference = [...input.manifest.exports]
@@ -120,12 +135,14 @@ export function renderDocumentation(input) {
     );
   }
   for (const contract of [...input.contracts].sort((a, b) => a.id.localeCompare(b.id))) {
+    safeSlug(contract.id, "contract id");
     output.set(`contracts/${contract.id}.md`, renderContractPage(contract));
   }
 
   for (const pagePath of navigationPaths(input.navigation)) {
+    normalizedRelativePath(pagePath, "navigation path");
     if (!pagePath.startsWith("reference/") && !pagePath.startsWith("contracts/")) {
-      output.set(pagePath, readFileSync(path.join(input.curatedRoot, "pages", pagePath), "utf8"));
+      output.set(pagePath, readContainedFile(path.join(input.curatedRoot, "pages"), pagePath, "curated page path"));
     }
   }
 
@@ -133,12 +150,26 @@ export function renderDocumentation(input) {
   if (existsSync(examplesRoot)) {
     for (const entry of readdirSync(examplesRoot, { withFileTypes: true })) {
       if (entry.isFile() && /\.tsx?$/u.test(entry.name)) {
-        output.set(`examples/${entry.name}`, readFileSync(path.join(examplesRoot, entry.name), "utf8"));
+        output.set(`examples/${entry.name}`, readContainedFile(examplesRoot, entry.name, "example path"));
       }
     }
   }
 
   validateRenderedDocumentation(output, input.manifest);
+  const contentSha256 = createHash("sha256");
+  for (const [filePath, contents] of [...output].sort(([a], [b]) => a.localeCompare(b))) {
+    contentSha256.update(filePath).update("\0").update(contents).update("\0");
+  }
+  output.set("manifest.json", `${JSON.stringify({
+    package: input.manifest.package,
+    version: input.manifest.version,
+    release: { tag: input.manifest.tag ?? `v${input.manifest.version}`, ...(input.manifest.commit ? { commit: input.manifest.commit } : {}) },
+    sourceTarballSha256: input.manifest.sha256,
+    contentSha256: contentSha256.digest("hex"),
+    publicExports: [...input.manifest.exports].sort((a, b) => a.subpath.localeCompare(b.subpath)),
+    schemaVersion: 2,
+    generatedAt: generatedAt.toISOString(),
+  }, null, 2)}\n`);
   return new Map([...output].sort(([left], [right]) => left.localeCompare(right)));
 }
 

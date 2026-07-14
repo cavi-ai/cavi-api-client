@@ -79,7 +79,49 @@
     },
     {
       "title": "Contracts",
-      "path": "contracts/runtime-request.md"
+      "pages": [
+        {
+          "title": "Runtime request",
+          "path": "contracts/runtime-request.md"
+        },
+        {
+          "title": "Runtime response",
+          "path": "contracts/runtime-response.md"
+        },
+        {
+          "title": "Stream event",
+          "path": "contracts/stream-event.md"
+        },
+        {
+          "title": "Runtime error",
+          "path": "contracts/runtime-error.md"
+        },
+        {
+          "title": "Routes",
+          "path": "contracts/routes.md"
+        },
+        {
+          "title": "Capabilities",
+          "path": "contracts/capabilities.md"
+        }
+      ]
+    },
+    {
+      "title": "Release information",
+      "pages": [
+        {
+          "title": "Changelog",
+          "path": "release/changelog.md"
+        },
+        {
+          "title": "Migration and version support",
+          "path": "release/migration-and-support.md"
+        },
+        {
+          "title": "MIT license",
+          "path": "release/license.md"
+        }
+      ]
     }
   ],
   "reference": [

@@ -27,6 +27,7 @@
 
 export const DOCUMENTED_PACKAGE = "@cavi-ai/api-client";
 export const DOCUMENTED_VERSION = "0.11.0";
+export const APPROVED_RELEASE_SHA256 = "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a";
 export const CAPABILITY_STATES = Object.freeze([
   "supported",
   "unsupported",
