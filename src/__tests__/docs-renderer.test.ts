@@ -5,7 +5,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { buildDocumentation } from "../../scripts/docs/build.mjs";
+import {
+  buildDocumentation,
+  buildDocumentationInTemporaryRoot,
+  resolvePublicDocumentationOutput,
+} from "../../scripts/docs/build.mjs";
 import { loadContracts } from "../../scripts/docs/contracts.mjs";
 import {
   renderDocumentation,
@@ -96,6 +100,45 @@ describe("renderDocumentation", () => {
       "--output", root,
       "--source-date-epoch", "1700000000",
     ])).rejects.toThrow(/unsafe documentation output directory/u);
+  });
+
+  it.each([
+    ["repository root", root],
+    ["repository ancestor", path.dirname(root)],
+    ["source tree", path.join(root, "src")],
+    ["curated documentation source", path.join(root, "docs/api-client/source")],
+    ["parent traversal", "docs/api-client/../source"],
+    ["arbitrary absolute path", path.join(tmpdir(), "cavi-docs-arbitrary-output")],
+  ])("rejects %s as a public documentation output", (_label, output) => {
+    expect(() => resolvePublicDocumentationOutput(root, output)).toThrow(
+      /unsafe documentation output directory/u,
+    );
+  });
+
+  it("accepts only the canonical versioned public documentation output", () => {
+    expect(resolvePublicDocumentationOutput(root, "docs/api-client/v0.11.0")).toBe(
+      path.join(root, "docs/api-client/v0.11.0"),
+    );
+  });
+
+  it("rejects an arbitrary public repository root", async () => {
+    await expect(buildDocumentation([
+      "--tarball", "/tmp/release.tgz",
+      "--output", "docs/api-client/v0.11.0",
+      "--source-date-epoch", "1700000000",
+      "--root", tmpdir(),
+    ])).rejects.toThrow(/unsafe documentation repository root/u);
+  });
+
+  it("fixes internal generated output beneath an already-created temporary root", async () => {
+    const temporaryRoot = await mkdtemp(path.join(tmpdir(), "cavi-docs-contained-output-"));
+    temporaryDirectories.push(temporaryRoot);
+
+    await expect(buildDocumentationInTemporaryRoot([
+      "--tarball", "/tmp/release.tgz",
+      "--output", "../escape",
+      "--source-date-epoch", "1700000000",
+    ], temporaryRoot)).rejects.toThrow(/unsafe temporary documentation output/u);
   });
 
   it("covers every stable subpath and symbol exactly once", () => {

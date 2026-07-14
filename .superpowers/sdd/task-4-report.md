@@ -9,7 +9,8 @@ Status: DONE
 - Added renderer coverage for navigation resolution, `documentedVersion: 0.11.0`, and the required mirror-not-canonical notice.
 - Reworked the Node example into one complete Codex request and added a stable contracts narrow import.
 - Replaced development-only standalone transport examples with explicit v0.11.0 unavailability markers.
-- Added digest-locked artifact extraction and a stable declaration TypeScript configuration. `CAVI_API_CLIENT_STABLE_TARBALL` may relocate the artifact, but the typecheck rejects any digest other than `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`.
+- Added digest-locked artifact extraction and a stable declaration TypeScript configuration. `CAVI_API_CLIENT_STABLE_TARBALL` may relocate the artifact, but the typecheck rejects any digest other than `3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5`.
+- The npm authority artifact contains 29 packed exports and 1,609 inspected symbols.
 
 ## TDD evidence
 
@@ -18,7 +19,7 @@ Status: DONE
 
 ## Verification
 
-- Locked artifact: `shasum -a 256 .../cavi-ai-api-client-0.11.0.tgz` returned the required `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`.
+- Locked artifact: `shasum -a 256 .../cavi-ai-api-client-0.11.0.tgz` returned the required `3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5`.
 - Required content gate: `pnpm vitest run src/__tests__/docs-renderer.test.ts src/__tests__/docs-integrity.test.ts` passed 2 files and 18 tests.
 - Full tests: `pnpm test` passed 158 files and 849 tests.
 - Stable docs typecheck: `pnpm run typecheck:docs` passed against declarations freshly extracted from the digest-locked tarball.
@@ -40,6 +41,6 @@ The stable tarball is intentionally not copied into the repository. Every enviro
 ### Review verification
 
 - Focused content gate: 2 files passed, 22 tests passed.
-- Exact stable typecheck: `CAVI_API_CLIENT_STABLE_TARBALL=.../cavi-ai-api-client-0.11.0.tgz pnpm run typecheck:docs` exited 0 after verifying digest `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`.
+- Exact stable typecheck: `CAVI_API_CLIENT_STABLE_TARBALL=.../cavi-ai-api-client-0.11.0.tgz pnpm run typecheck:docs` exited 0 after verifying digest `3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5`.
 - Full `pnpm run verify`: 158 test files passed, 852 tests passed; stable docs typecheck, build, Markdown lint (0 errors), and package dry-run all passed.
 - `git diff --check` exited 0.

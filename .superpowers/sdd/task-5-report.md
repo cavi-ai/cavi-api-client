@@ -8,8 +8,8 @@ links, and runs the drift check from `verify`.
 
 ## Immutable inputs
 
-- Stable tarball: `/Volumes/MIRZA/workspace/CAVI/packages/cavi-api-client/cavi-ai-api-client-0.11.0.tgz`
-- Verified SHA-256: `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`
+- Stable tarball: npm authority artifact for `@cavi-ai/api-client@0.11.0`
+- Verified SHA-256: `3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5`
 - Release tag commit: `48adfa6ba7c3d5e8ffee0a6cf2572574ca630fa0`
 - `SOURCE_DATE_EPOCH`: `1783740944`, derived from the immutable `v0.11.0`
   release commit timestamp (not wall clock)
@@ -47,15 +47,16 @@ release state were changed.
 Stable artifact truth now exclusively owns the generated reference surface.
 `inspect-release.mjs` records every packed export as either a `declaration` or
 an `asset`; `build.mjs` no longer reads or unions the current checkout's
-`package.json` exports. The generated navigation contains exactly the 30 packed
-v0.11.0 exports, gives every declaration a validated reference page, and types
+`package.json` exports. The generated navigation contains exactly the 29 packed
+v0.11.0 exports and 1,609 inspected symbols, gives every declaration a validated
+reference page, and types
 `./extensions/cavi/library-clip-contract.json` as an asset with its packed
 target. The current-only `./core/transport` and `./core/transport/node` exports
 are absent.
 
 The publish workflow now provisions the immutable npm artifact
 `@cavi-ai/api-client@0.11.0` in an isolated runner-temp directory, verifies
-SHA-256 `93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a`,
+SHA-256 `3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5`,
 and supplies both tarball environment variables plus
 `SOURCE_DATE_EPOCH=1783740944` before verification. Fetching the already packed
 npm artifact avoids invoking this checkout's `prepack` or build hooks.
