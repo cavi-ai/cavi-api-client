@@ -31,7 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   snapshots fail closed on malformed nested schemas, and task/workspace metadata
   reports the adapter's actual WebSocket or HTTP transport without labeling
   local fallback data as wire traffic. Blank resolved authorization values use
-  the generic bearer token, and session cursors stop at the 200-row bound. The
+  the generic bearer token, session cursors stop at the 200-row bound and do not
+  repeat when REST fallback cannot advance, and partial operator-section
+  fallbacks retain non-wire provenance. The
   immutable generated `v0.11.0` documentation remains historically accurate
   and intentionally excludes these unreleased APIs.
 

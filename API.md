@@ -320,7 +320,9 @@ not SSE. SSE remains an independent core transport used only by upstream
 surfaces that expose SSE.
 Session-list pagination preserves a validated upstream `total`; when JSON-RPC
 omits it, an exact-limit page emits one bounded optimistic cursor, while a short
-page terminates pagination and the 200-session window remains enforced.
+page terminates pagination and the 200-session window remains enforced. A REST
+fallback that cannot advance beyond its returned prefix terminates without
+repeating the same cursor.
 
 An explicit `dashboardToken` suppresses `resolveAuth` and wins over the
 provider-neutral `token`. Without `dashboardToken`, a resolver-provided
@@ -338,7 +340,8 @@ typed unavailable capability. Its workspace surface requires an explicit
 workspace identity from project-board or operator-registry data. Agent IDs are
 metadata, not workspace identity. Operator-backed metadata reports the actual
 WebSocket or HTTP section transport; local fallback records retain explicit
-non-wire provenance and are not normalized into runtime-control results. Cost is canonical only when the upstream data
+non-wire provenance and are not normalized into runtime-control results. This is
+applied per operator section, including partial task or registry outages. Cost is canonical only when the upstream data
 supports its currency semantics; uncertain or currency-less totals remain
 provider data with canonical cost availability `unavailable`.
 

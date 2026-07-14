@@ -476,7 +476,10 @@ export async function loadOperatorControlLive(
       },
     },
     source: "gateway",
-    transports: { tasks: taskTransport, registryDetail: registryTransport },
+    transports: {
+      tasks: tasksResult.status.available ? taskTransport : "fallback",
+      registryDetail: registryResult.status.available ? registryTransport : "fallback",
+    },
     fetchedAt: Date.now(),
     contractGaps,
   };

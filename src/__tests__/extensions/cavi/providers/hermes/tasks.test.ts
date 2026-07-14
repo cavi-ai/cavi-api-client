@@ -72,6 +72,20 @@ describe("Hermes CAVI task composition", () => {
       .rejects.toThrow(/^Hermes CAVI task response failed schema validation$/u);
   });
 
+  it("checks fallback provenance before both matching and absent task lookup", async () => {
+    for (const id of ["operator/task-1", "absent"]) {
+      const { adapters } = adaptersWithTasks();
+      const loadOperatorControl = vi.mocked(adapters.loadOperatorControl);
+      const envelope = await loadOperatorControl();
+      loadOperatorControl.mockResolvedValueOnce({
+        ...envelope, source: "gateway",
+        transports: { tasks: "fallback", registryDetail: "websocket" },
+      } as never);
+      await expect(createHermesCaviTaskClient(adapters).getTask(id))
+        .rejects.toThrow(/^Hermes CAVI task response failed schema validation$/u);
+    }
+  });
+
   it("reports cancellation as unavailable instead of inventing a CAVI mutation", async () => {
     const { adapters, loadOperatorControl } = adaptersWithTasks();
     await expect(createHermesCaviTaskClient(adapters).cancelTask!("operator/task-1"))
