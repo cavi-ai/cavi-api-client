@@ -33,6 +33,17 @@ const MEDIA_FILE = path.join(
 );
 
 describe("OpenClaw manifest conformance", () => {
+  it("marks only fixture-verified canonical operations as shape verified", () => {
+    const verified = Object.values(OPENCLAW_MANIFEST.rpc)
+      .filter((entry) => entry.status === "shape-verified")
+      .map((entry) => entry.method)
+      .sort();
+    expect(verified).toEqual([
+      "agents.list", "models.authStatus", "models.list", "sessions.abort",
+      "sessions.describe", "sessions.list", "tasks.cancel", "tasks.get",
+      "tasks.list", "usage.cost", "usage.status",
+    ]);
+  });
   it("derives OPENCLAW_RPC_METHODS one-to-one from manifest entries", () => {
     const manifestPairs = Object.entries(OPENCLAW_MANIFEST.rpc).map(
       ([camelKey, entry]) => [camelKey, entry.method] as const,

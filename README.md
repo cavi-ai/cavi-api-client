@@ -336,17 +336,75 @@ read-only authentication status, plus normalized events and declared transport
 capabilities. A provider must omit a module it does not implement; consumers
 should rely on stable declarations and never infer support from provider identity.
 
-The package currently ships the contracts, capability matrix, and conformance
-inspection—not built-in control-plane adapters. Every shipped provider's
-control-plane module declaration is therefore empty. Hosted Codex/OpenAI
+The package ships the contracts, capability matrix, conformance inspection, and
+an OpenClaw canonical adapter. OpenClaw registers all seven canonical modules;
+other providers retain the complete shape with typed unavailable operations. Hosted Codex/OpenAI
 Responses remains distinct from the future `codex-app-server` JSON-RPC adapter.
 Authentication status is observational only and cannot contain secrets such as
 tokens, API keys, passwords, cookies, or authorization headers.
 
 This foundation is additive. Existing `RuntimeClient` and `GatewayClient`
-consumers do not need to change; adopt `createControlPlane` only after a provider
-truthfully declares the optional modules it returns. See the compile-checked
-[custom runtime provider example](docs/examples/custom-runtime-provider.ts).
+consumers do not need to change, and the optional `RuntimeControlPlane` contract
+remains supported. For consumers that need one predictable control-plane shape,
+`CanonicalRuntimeControlPlane` requires all seven modules: `authStatus`,
+`sessions`, `models`, `usage`, `tasks`, `workspace`, and `events`, plus an
+idempotent `dispose()`. `createUnavailableCanonicalControlPlane(providerId,
+capabilities)` supplies that complete shape when no adapter is available; every
+module method rejects with a fresh `CapabilityUnavailable` containing the
+provider ID and method-specific capability. Adopt `createControlPlane` only
+after a provider truthfully declares the optional modules it returns. See the
+compile-checked [custom runtime provider example](docs/examples/custom-runtime-provider.ts).
+
+`createRuntimeControlPlane(provider, options)` is the provider-neutral canonical
+entry point. The package root resolves kinds and aliases through a fresh
+registry composed from the shipped Hermes and OpenClaw provider modules, while
+an explicit `options.registry` replaces that default. The core/providers
+subpath remains registry-driven and provider-agnostic. A resolved module's
+`createCanonicalControlPlane` factory is called when present; otherwise the
+complete unavailable facade is returned.
+Options are provider-neutral: `baseUrl`, `webSocketUrl`, `token`, `resolveAuth`,
+`signal`, `trace`, `transport`, and `registry`. Registry membership alone does
+not advertise an adapter: only OpenClaw currently registers the canonical hook;
+other shipped providers produce the unavailable facade. A structurally
+compatible deterministic transport fixture can be passed through `transport`;
+OpenClaw consumes it internally without adding a provider-specific package-root
+option.
+
+```ts
+import { createRuntimeControlPlane } from "@cavi-ai/api-client";
+
+const controlPlane = await createRuntimeControlPlane(config.provider, {
+  baseUrl: config.baseUrl,
+  webSocketUrl: config.webSocketUrl,
+  resolveAuth: () => authStore.resolve(config.provider),
+});
+
+const sessions = await controlPlane.sessions.listSessions({ limit: 50 });
+```
+
+The package contract is canonical for its consumers; upstream wire APIs remain
+provider-owned and mirrored. OpenClaw native event cursor resume is unsupported:
+supplying a cursor rejects with `CapabilityUnavailable("openclaw",
+"controlPlane.events.cursor")`. On reconnect, the adapter emits
+`stream.reconnected` followed by `stream.gap` when continuity cannot be proven;
+it does not claim replay. The factory disposes a WebSocket client it creates,
+while an injected transport remains caller-owned. Factory-owned connections
+resolve `resolveAuth` before opening the socket; a resolver-provided bearer
+authorization overrides the static token case-insensitively, with duplicate
+semantic headers collapsed deterministically. OpenClaw workspace results require
+an explicit upstream workspace descriptor, and currency-less upstream cost is
+reported as canonically unavailable. Malformed control-plane payloads and
+unsafe native events fail with sanitized, non-retryable protocol errors. Native
+event names are bounded and secret-safe before mapping or metadata; safe unknown
+names remain available as `operation.updated` provider data.
+
+The public `runCanonicalControlPlaneConformance({ providerId, create })` helper from
+`@cavi-ai/api-client/testing` verifies the exact required methods, exercises
+representative operations, accepts canonical results or typed unavailable
+rejections, and always disposes the facade. The harness `providerId` is the exact
+provider every unavailable error must identify; each error must also name the
+operation's exact canonical capability. Its report separates `supported`,
+`unavailable`, and `failures`; empty module objects fail conformance.
 
 ### One Client Shape
 

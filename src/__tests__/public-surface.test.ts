@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { CapabilityUnavailable, createRuntimeControlPlane } from "../index.js";
 
 describe("public surface — dropped symbols still reachable via subpaths", () => {
+  it("exports the canonical control-plane factory and unavailable error", () => {
+    expect(createRuntimeControlPlane).toBeTypeOf("function");
+    expect(CapabilityUnavailable).toBeTypeOf("function");
+  });
+
   it("provider clients/modules resolve on ./providers/*", async () => {
     const hermes = await import("../providers/hermes/index");
     const openclaw = await import("../providers/openclaw/index");
@@ -46,6 +52,7 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
   it("root keeps the curated stable API", async () => {
     const root = await import("../index");
     expect(root.GatewayApiClient).toBeDefined();
+    expect(root.createRuntimeControlPlane).toBeDefined();
     expect(root.createRuntimeProviderRegistry).toBeDefined();
     expect(root.normalizeTeamManifest).toBeDefined();
     expect(root.apiKeyCredentials).toBeDefined();

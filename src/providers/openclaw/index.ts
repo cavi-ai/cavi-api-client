@@ -1,5 +1,6 @@
 export * from "./agent-config.js";
 export * from "./client.js";
+export * from "./control-plane/factory.js";
 export * from "./kanban.js";
 export * from "./manifest.js";
 export * from "./manifest.derive.js";
