@@ -6,6 +6,10 @@ import type {
   GatewayPreauthHandshakeEnv,
   GatewayPreauthHandshakeEnvKeys,
 } from "../../core/gateway/rpc/index.js";
+import type {
+  OpenClawRpc,
+  OpenClawRpcEvent,
+} from "./control-plane/rpc.js";
 
 export type OpenClawWebSocketClientOptions = GatewayWebSocketClientOptions;
 
@@ -49,12 +53,50 @@ function withOpenClawDefaults(
   };
 }
 
-export class OpenClawWebSocketClient extends GatewayWebSocketClient {
+function abortError(): Error {
+  const error = new Error("The operation was aborted");
+  error.name = "AbortError";
+  return error;
+}
+
+function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(abortError());
+
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(abortError());
+    signal.addEventListener("abort", abort, { once: true });
+    void promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", abort);
+    });
+  });
+}
+
+export class OpenClawWebSocketClient
+  extends GatewayWebSocketClient
+  implements OpenClawRpc
+{
   constructor(
     wsUrl: string,
     authToken: string | null,
     options: OpenClawWebSocketClientOptions = {},
   ) {
     super(wsUrl, authToken, withOpenClawDefaults(options));
+  }
+
+  override request<TPayload>(
+    method: string,
+    params: Record<string, unknown> = {},
+    options?: { signal?: AbortSignal },
+  ): Promise<TPayload> {
+    return withAbort(super.request<TPayload>(method, params), options?.signal);
+  }
+
+  subscribe(listener: (event: OpenClawRpcEvent) => void): () => void {
+    return this.onEvent(listener);
+  }
+
+  dispose(): Promise<void> {
+    return this.close();
   }
 }

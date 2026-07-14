@@ -10,8 +10,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Hardened the OpenClaw canonical adapter so factory-owned WebSockets resolve
+  fresh bearer authentication case-insensitively before connecting, without
+  duplicate semantic headers. Native event names and payloads are bounded and
+  secret-safe before delivery; malformed wire responses become sanitized
+  `TransportProtocolError` failures, workspace identity comes only from explicit
+  workspace descriptors, and currency-less upstream cost totals stay canonically
+  unavailable while their validated amount remains provider data.
+
+- Expanded canonical control-plane conformance from object-presence checks to
+  exact method and behavioral validation, guaranteed facade disposal, and real
+  package-factory coverage through the provider-neutral injected transport
+  seam. Empty module objects and unavailable errors with a mismatched provider
+  or operation capability no longer pass conformance.
+- Corrected API documentation that simultaneously advertised OpenClaw's adapter
+  and described the package as shipping no built-in adapter.
+- OpenClaw's internal control-plane factory now supplies a stable provider
+  client identity when it creates the authenticated WebSocket connection.
+- Made the package-root canonical control-plane factory resolve shipped
+  provider modules through a provider-layer registry while preserving explicit
+  registry overrides and the provider-neutral core dependency boundary.
+
 ### Added
 
+- Published the provider-neutral `createRuntimeControlPlane` facade and root
+  `CapabilityUnavailable` error for the exact `authStatus`, `sessions`,
+  `models`, `usage`, `tasks`, `workspace`, and `events` contract. Documented the
+  verified OpenClaw method subset, typed unavailable native cursor resume,
+  `stream.reconnected` plus `stream.gap` behavior without replay, and
+  client-owned versus caller-owned disposal without changing existing root
+  exports, provider subpaths, or execution-plane behavior.
+
+- Registered OpenClaw's canonical seven-module control-plane factory and marked
+  only fixture-verified agent, model/auth, usage, session, and task RPC shapes.
+  Other providers keep the same facade shape with typed unavailable errors.
+- Added OpenClaw capability-matrix detail and documented native reconnect,
+  typed unavailable cursor resume, and explicit stream-gap semantics without
+  changing existing rows, aliases, routes, or subpath exports.
+
+- Added provider-specific lifecycle helpers to `OpenClawWebSocketClient` for a
+  narrow control-plane RPC seam: event subscription, abortable caller waits,
+  and idempotent disposal without changing the authenticated gateway wire
+  handshake. The internal OpenClaw control-plane factory owns clients it
+  creates and leaves injected RPC seams caller-owned by default.
+- Provider-neutral `createRuntimeControlPlane(provider, options)` construction,
+  with alias-aware registry lookup, optional provider canonical factories, and
+  a complete typed unavailable facade when a registered adapter is absent.
+  Factory options cover URLs, token/auth resolution, cancellation, tracing, and
+  injected transport without adding a built-in provider adapter.
+- Required `CanonicalRuntimeControlPlane` facade with authentication status,
+  sessions, models, usage, tasks, workspace, and events modules, plus idempotent
+  disposal and `CapabilityUnavailable`-based unavailable-provider scaffolding.
+  The existing optional `RuntimeControlPlane` contract remains supported.
 - A versioned documentation consumer contract for the immutable `0.11.0`
   artifact, including its copy path, public base path, stable alias, navigation
   entry point, source-package and generated-content integrity checks, complete

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -130,6 +131,13 @@ const APPROVED_ROOT_TRANSPORT_ADDITIONS = [
   "TransportKind",
   "TransportLifecycleEvent",
   "getTransportErrorMetadata",
+] as const;
+const APPROVED_ROOT_CANONICAL_CONTROL_PLANE_ADDITIONS = [
+  "CanonicalControlPlaneFactory",
+  "CanonicalControlPlaneFactoryOptions",
+  "CanonicalRuntimeControlPlane",
+  "CapabilityUnavailable",
+  "createRuntimeControlPlane",
 ] as const;
 
 const FORBIDDEN_PACKAGES = [
@@ -561,6 +569,20 @@ describe("package hardening", () => {
       .filter((relative) => relative.startsWith("src/compat/legacy/"));
 
     expect(offenders).toEqual([]);
+  });
+
+  it("keeps private Superpowers artifacts out of version control", () => {
+    const gitignore = read(path.join(PACKAGE_ROOT, ".gitignore"));
+    expect(gitignore.split(/\r?\n/u)).toEqual(
+      expect.arrayContaining([".superpowers/", "docs/superpowers/"]),
+    );
+
+    const tracked = execFileSync(
+      "git",
+      ["ls-files", ".superpowers/**", "docs/superpowers/**"],
+      { cwd: PACKAGE_ROOT, encoding: "utf8" },
+    ).trim();
+    expect(tracked).toBe("");
   });
 
   it("removes legacy package subpath exports", () => {
@@ -1077,12 +1099,13 @@ describe("package hardening", () => {
     expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
   });
 
-  it("curates transport contracts and guards at root without exporting factories", () => {
+  it("curates approved root additions without exporting transport factories", () => {
     const rootIndex = read(path.join(SRC_ROOT, "index.ts"));
     const originMainBaseline = JSON.parse(read(ROOT_EXPORT_BASELINE)) as string[];
     const expectedRootExports = [
       ...originMainBaseline,
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
+      ...APPROVED_ROOT_CANONICAL_CONTROL_PLANE_ADDITIONS,
     ].sort();
 
     expect(rootExportNames(path.join(SRC_ROOT, "index.ts"))).toEqual(expectedRootExports);

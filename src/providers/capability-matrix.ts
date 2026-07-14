@@ -33,11 +33,12 @@ const experimentalWebsocket = Object.freeze({
 function row(
   runtime: Partial<Record<RuntimeSurface, boolean>>,
   transports: RuntimeTransportCapabilities,
+  controlPlane: RuntimeControlPlaneDeclaration = {},
 ): RuntimeProviderCapabilityRow {
   return Object.freeze({
     runtime: Object.freeze(runtime),
     transports: Object.freeze(transports),
-    controlPlane: Object.freeze({}),
+    controlPlane: Object.freeze(controlPlane),
   });
 }
 
@@ -64,6 +65,12 @@ export const RUNTIME_PROVIDER_CAPABILITY_MATRIX = Object.freeze({
     http,
     sse,
     websocket,
+  }, {
+    transports: Object.freeze({ websocket }),
+    modules: Object.freeze({
+      sessions: true, models: true, usage: true, tasks: true,
+      workspace: true, authStatus: true, events: true,
+    }),
   }),
 });
 

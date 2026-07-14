@@ -23,6 +23,12 @@ import type {
   ProviderRpcMethod,
 } from "../../core/gateway/providers/manifest.types.js";
 
+const SHAPE_VERIFIED_METHODS = new Set([
+  "agents.list", "models.list", "models.authStatus", "usage.status", "usage.cost",
+  "sessions.list", "sessions.describe", "sessions.abort",
+  "tasks.list", "tasks.get", "tasks.cancel",
+]);
+
 const SYSTEM = "System / identity / status";
 const DOCTOR = "Doctor / memory";
 const CHANNELS = "Channels / login / push / wake-word";
@@ -52,7 +58,7 @@ function m(
     category,
     scope,
     advertised,
-    status: "doc-only",
+    status: SHAPE_VERIFIED_METHODS.has(method) ? "shape-verified" : "doc-only",
     docSection,
   };
   if (note) entry.note = note;

@@ -81,4 +81,21 @@ describe("transport errors", () => {
     expect(headers).toEqual({ Accept: "auth", "X-App": "cavi", Authorization: "Bearer secret" });
     expect(headers).not.toBe(resolverHeaders);
   });
+
+  it("merges headers case-insensitively with resolver values taking precedence", async () => {
+    const headers = await resolveTransportHeaders(
+      { Authorization: "Bearer stale", ACCEPT: "default", "X-App": "cavi" },
+      async () => ({
+        headers: {
+          authorization: "Bearer fresh-first",
+          AUTHORIZATION: "Bearer fresh-last",
+          Accept: "auth",
+        },
+      }),
+    );
+
+    expect(headers).toEqual({ AUTHORIZATION: "Bearer fresh-last", Accept: "auth", "X-App": "cavi" });
+    expect(Object.keys(headers).filter((name) => name.toLowerCase() === "authorization")).toHaveLength(1);
+    expect(Object.keys(headers).filter((name) => name.toLowerCase() === "accept")).toHaveLength(1);
+  });
 });
