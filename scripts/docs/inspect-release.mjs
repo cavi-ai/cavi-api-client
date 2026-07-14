@@ -6,7 +6,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 import ts from "typescript";
 
-import { APPROVED_RELEASE_SHA256, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+import {
+  APPROVED_RELEASE_SHA256,
+  DOCUMENTED_COMMIT,
+  DOCUMENTED_PACKAGE,
+  DOCUMENTED_TAG,
+  DOCUMENTED_VERSION,
+} from "./types.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -255,6 +261,8 @@ export async function inspectRelease(tgzPath, options = {}) {
     return {
       package: pkg.name,
       version: pkg.version,
+      tag: DOCUMENTED_TAG,
+      commit: DOCUMENTED_COMMIT,
       sha256,
       exports: releaseExports,
       symbols: symbols.sort(compareSymbols),
