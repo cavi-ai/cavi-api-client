@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GatewayWebSocketClient } from "../../../../core/ws";
 import { createGatewayWsLoaders } from "../../../../../extensions/cavi/adapters/cavi-control-adapters/gateway-ws-loaders";
 import type { JsonHttpRequest } from "../../../../core/http/json-client";
+import { GatewayHttpError } from "../../../../../core/http/gateway-error";
 
 function createMockGatewayClient(
   handler: (method: string, params: Record<string, unknown>) => Promise<unknown>,
@@ -18,6 +19,79 @@ function createUnusedRequestJson(): JsonHttpRequest {
 }
 
 describe("createGatewayWsLoaders", () => {
+  it("keeps the released cost-history route primary", async () => {
+    const snapshot = {
+      range: "24h" as const,
+      resolution: "1h" as const,
+      generatedAt: 1,
+      buckets: [],
+      totals: { totalTokens: 2, estimatedCostUsd: 0.01, totalErrors: 0 },
+    };
+    const requestJson = vi.fn<JsonHttpRequest>().mockResolvedValue(snapshot);
+    const loaders = createGatewayWsLoaders({
+      client: null,
+      requestJson,
+      snapshotOptions: { fallbackMode: "none" },
+    });
+
+    await expect(loaders.loadCostHistory("24h")).resolves.toEqual(
+      expect.objectContaining({ data: snapshot, source: "gateway" }),
+    );
+    expect(requestJson).toHaveBeenCalledOnce();
+    expect(requestJson).toHaveBeenCalledWith(
+      "/api/plugins/cavi-control/cost/history?range=24h",
+    );
+  });
+
+  it.each([404, 405])(
+    "tries the current CAVI cost-history alias after a %i primary response",
+    async (status) => {
+      const snapshot = {
+        range: "7d" as const,
+        resolution: "1h" as const,
+        generatedAt: 1,
+        buckets: [],
+        totals: { totalTokens: 2, estimatedCostUsd: 0.01, totalErrors: 0 },
+      };
+      const requestJson = vi.fn<JsonHttpRequest>()
+        .mockRejectedValueOnce(new GatewayHttpError("route unavailable", status))
+        .mockResolvedValueOnce(snapshot);
+      const loaders = createGatewayWsLoaders({
+        client: null,
+        requestJson,
+        snapshotOptions: { fallbackMode: "none" },
+      });
+
+      await expect(loaders.loadCostHistory("7d")).resolves.toEqual(
+        expect.objectContaining({ data: snapshot, source: "gateway" }),
+      );
+      expect(requestJson.mock.calls.map(([path]) => path)).toEqual([
+        "/api/plugins/cavi-control/cost/history?range=7d",
+        "/cavi-control/api/cost/history?range=7d",
+      ]);
+    },
+  );
+
+  it.each([
+    ["authentication", new GatewayHttpError("unauthorized", 401)],
+    ["server", new GatewayHttpError("server error", 500)],
+    ["schema", new Error("invalid cost-history response")],
+    ["abort", new DOMException("aborted", "AbortError")],
+  ])("fails closed on %s errors without trying the cost-history alias", async (_label, error) => {
+    const requestJson = vi.fn<JsonHttpRequest>().mockRejectedValue(error);
+    const loaders = createGatewayWsLoaders({
+      client: null,
+      requestJson,
+      snapshotOptions: { fallbackMode: "none" },
+    });
+
+    await expect(loaders.loadCostHistory("24h")).rejects.toBe(error);
+    expect(requestJson).toHaveBeenCalledTimes(1);
+    expect(requestJson).toHaveBeenCalledWith(
+      "/api/plugins/cavi-control/cost/history?range=24h",
+    );
+  });
+
   it("uses the shared sessions.list cache for unchanged gateway payloads", async () => {
     const request = vi.fn(async (method: string, params: Record<string, unknown>) => {
       if (method !== "sessions.list") {

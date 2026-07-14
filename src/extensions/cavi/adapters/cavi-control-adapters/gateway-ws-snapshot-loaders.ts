@@ -15,7 +15,9 @@ import {
   withQuery,
 } from "../../../../core/http/json-client.js";
 import { describeHttpContract } from "../../../../core/http/contracts.js";
+import { GatewayHttpError } from "../../../../core/http/gateway-error.js";
 import { CAVI_CONTROL_API_ENDPOINTS } from "../../contracts/paths.js";
+import { CAVI_COST_HISTORY_API_PATHS } from "../../runtime/paths.js";
 import { createCaviSnapshotFallbackProvider } from "../../fallbacks/provider.js";
 import type {
   GatewaySessionRunDetailSnapshot,
@@ -84,6 +86,21 @@ function gatewayEnvelope<TData>(data: TData): DataEnvelope<TData> {
   };
 }
 
+async function requestCostHistory(
+  requestJson: JsonHttpRequest,
+  range: CostHistoryRange,
+): Promise<CostHistorySnapshot> {
+  const [primaryPath, aliasPath] = CAVI_COST_HISTORY_API_PATHS;
+  try {
+    return await requestJson<CostHistorySnapshot>(withQuery(primaryPath, { range }));
+  } catch (error) {
+    if (!(error instanceof GatewayHttpError) || (error.status !== 404 && error.status !== 405)) {
+      throw error;
+    }
+    return await requestJson<CostHistorySnapshot>(withQuery(aliasPath, { range }));
+  }
+}
+
 export function createGatewayWsSnapshotLoaders(deps: {
   sessionLoaders: SessionLoaders;
   systemLoaders: GatewaySystemLoaders;
@@ -113,9 +130,7 @@ export function createGatewayWsSnapshotLoaders(deps: {
     ): Promise<DataEnvelope<CostHistorySnapshot>> =>
       deps.options?.fallbackMode === "none"
         ? gatewayEnvelope(
-            await requestJson<CostHistorySnapshot>(
-              withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
-            ),
+            await requestCostHistory(requestJson, range),
           )
         : await withFallback({
             area: "cost-history",
@@ -141,9 +156,7 @@ export function createGatewayWsSnapshotLoaders(deps: {
                     totalErrors: 0,
                   },
                 },
-            run: async () => await requestJson<CostHistorySnapshot>(
-              withQuery(CAVI_CONTROL_API_ENDPOINTS.costHistory, { range }),
-            ),
+            run: async () => await requestCostHistory(requestJson, range),
           }),
   };
 }

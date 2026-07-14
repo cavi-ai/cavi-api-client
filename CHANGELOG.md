@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Added the current `/cavi-control/api/cost/history` route as a fail-closed
+  fallback for 404/405 responses from the released plugin cost-history route.
+  The existing adapter, response handling, fallback behavior, and in-flight
+  cache remain shared; authentication, server, schema, and abort failures do
+  not try the alias.
 - Strengthened the CAVI ownership guard to validate complete classification
   metadata and resolve static, dynamic, TypeScript import-equals, CommonJS, and
   relative barrel dependencies across core, contracts, providers, and extension

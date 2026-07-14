@@ -423,7 +423,7 @@ not have fixture-proven cancellation semantics leave the operation absent.
 | `sessions.detail` | POST | `/api/sessions/detail` | Fetch detail for one session key. |
 | `sessions.patch` | PATCH | `/api/sessions/patch` | Mutate per-session operator settings such as label or thinking level. |
 | `gateway.overview` | WS | `sessions.list + sessions.usage + health/log RPC` | Composite overview snapshot assembled by the client loaders. |
-| `gateway.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range` | Optional CAVI cost-history fallback used by snapshot loaders. |
+| `gateway.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range`, then `/cavi-control/api/cost/history?range=:range` | Optional CAVI cost-history fallback used by snapshot loaders. The released plugin route remains primary; only 404/405 responses try the current CAVI alias. |
 
 ## Agent Config And Profiles
 
@@ -487,7 +487,7 @@ The plugin alias paths mirror the operator paths under
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |
-| `cavi.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range` | CAVI cost history endpoint. |
+| `cavi.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range`, then `/cavi-control/api/cost/history?range=:range` | CAVI cost history endpoints in request order. The alias is tried only when the primary route returns 404/405. |
 | `cavi.scoringModel` | GET | `/api/plugins/cavi-control/scoring/model` | CAVI scoring model endpoint. |
 | `cavi.projectBoard.root` | GET | `/api/plugins/cavi-control/kanban` | Project Board compatibility aggregate; native Workboard data may be projected from RPC. |
 | `cavi.projectBoard.profile` | GET | `/api/plugins/cavi-control/kanban/profile` | Project Board compatibility profile slice. |
