@@ -27,7 +27,9 @@ The inventory is derived with the TypeScript module checker from
 `src/extensions/cavi/index.ts`. The checker follows every `export *` and named
 re-export barrel, resolves aliases to their declaration files, and produces the
 same symbol set the compiler exposes to consumers. The architecture test compares
-this table to that live set exactly, so missing and duplicate rows fail.
+this table to that live set exactly. It also validates all five columns, the
+classification vocabulary, owner/classification consistency, nonempty evidence
+and action, and symbol uniqueness.
 
 | Symbol | Current owner | Classification | Evidence | Action |
 | --- | --- | --- | --- | --- |
@@ -360,8 +362,12 @@ they do not transfer implementation ownership to a provider.
 ## Dependency direction
 
 `core` and `contracts` cannot import the CAVI extension. Providers cannot import
-it except through the four forwarding files above. A production source file also
-cannot import both a core implementation and a CAVI implementation with the same
-module concern. Extension code must reuse canonical transport and gateway snapshot
-owners rather than introduce duplicate `transport` or `snapshot` implementation
-filenames.
+it except through the four forwarding files above. The guard parses static imports
+and re-exports, dynamic `import()`, TypeScript `import = require()`, and
+JavaScript `require()`, then resolves their actual modules with TypeScript.
+A production source file also cannot import both a core implementation and a CAVI
+implementation for the same resolved owner-relative concern; transport and
+snapshot implementation filenames are normalized explicitly, including through
+relative alias barrels. Extension code must reuse canonical transport and gateway
+snapshot owners rather than introduce duplicate `transport` or `snapshot`
+implementation filenames.

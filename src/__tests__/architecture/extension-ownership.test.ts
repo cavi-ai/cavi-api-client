@@ -8,12 +8,28 @@ const packageRoot = path.resolve(fileURLToPath(new URL("../../..", import.meta.u
 const srcRoot = path.join(packageRoot, "src");
 const caviEntry = path.join(srcRoot, "extensions", "cavi", "index.ts");
 const ownershipDoc = path.join(packageRoot, "docs", "extension-ownership.md");
+const dependencyFormsFixture = path.join(
+  srcRoot,
+  "__tests__",
+  "fixtures",
+  "extension-ownership",
+  "dependency-forms.ts.fixture",
+);
+const mixedAliasesFixture = path.join(
+  srcRoot,
+  "__tests__",
+  "fixtures",
+  "extension-ownership",
+  "mixed-aliases.ts.fixture",
+);
 const providerExtensionImportAllowlist = new Set([
   "src/providers/hermes/team-registry.ts",
   "src/providers/hermes/team-registry-config.ts",
   "src/providers/openclaw/team-registry.ts",
   "src/providers/openclaw/team-registry-config.ts",
 ]);
+const tsConfig = ts.readConfigFile(path.join(packageRoot, "tsconfig.json"), ts.sys.readFile);
+const parsedTsConfig = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, packageRoot);
 
 function walk(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -33,19 +49,91 @@ function sourceImports(filePath: string): string[] {
     ts.ScriptTarget.Latest,
     true,
   );
-  return source.statements.flatMap((statement) => {
-    if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
-      && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
-      return [statement.moduleSpecifier.text];
+  const imports: string[] = [];
+  function visit(node: ts.Node): void {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      imports.push(node.moduleSpecifier.text);
+    } else if (ts.isImportEqualsDeclaration(node)
+      && ts.isExternalModuleReference(node.moduleReference)
+      && node.moduleReference.expression
+      && ts.isStringLiteral(node.moduleReference.expression)) {
+      imports.push(node.moduleReference.expression.text);
+    } else if (ts.isCallExpression(node)
+      && node.arguments.length === 1
+      && ts.isStringLiteral(node.arguments[0])
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword
+        || (ts.isIdentifier(node.expression) && node.expression.text === "require"))) {
+      imports.push(node.arguments[0].text);
     }
-    return [];
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return imports;
+}
+
+function resolveDependency(containingFile: string, specifier: string): string | undefined {
+  return ts.resolveModuleName(
+    specifier,
+    containingFile,
+    parsedTsConfig.options,
+    ts.sys,
+  ).resolvedModule?.resolvedFileName;
+}
+
+type ImplementationOwner = "core" | "cavi";
+
+function implementationOwner(filePath: string): ImplementationOwner | undefined {
+  const relativePath = relative(filePath);
+  if (relativePath.startsWith("src/core/") || relativePath.startsWith("src/contracts/")) {
+    return "core";
+  }
+  return relativePath.startsWith("src/extensions/cavi/") ? "cavi" : undefined;
+}
+
+function implementationConcern(filePath: string, owner: ImplementationOwner): string {
+  const relativePath = relative(filePath);
+  if (/\/transports?\.tsx?$/u.test(relativePath)) return "transport";
+  if (/\/snapshots?\.tsx?$/u.test(relativePath)) return "snapshot";
+  const ownerRelative = owner === "core"
+    ? relativePath.replace(/^src\/(?:core|contracts)\//u, "")
+    : relativePath.replace(/^src\/extensions\/cavi\//u, "");
+  return ownerRelative.replace(/\.(?:d\.)?[cm]?[jt]sx?$/u, "");
+}
+
+function resolvedOwnerTargets(
+  containingFile: string,
+  visited = new Set<string>(),
+): Array<{ concern: string; owner: ImplementationOwner }> {
+  if (visited.has(containingFile)) return [];
+  visited.add(containingFile);
+  return sourceImports(containingFile).flatMap((specifier) => {
+    const resolved = resolveDependency(containingFile, specifier);
+    if (!resolved || !resolved.startsWith(srcRoot)) return [];
+    const owner = implementationOwner(resolved);
+    if (owner) {
+      return [{
+        concern: implementationConcern(resolved, owner),
+        owner,
+      }];
+    }
+    return resolvedOwnerTargets(resolved, visited);
   });
 }
 
+function hasMixedCoreCaviConcern(filePath: string): boolean {
+  const ownersByConcern = new Map<string, Set<ImplementationOwner>>();
+  for (const target of resolvedOwnerTargets(filePath)) {
+    const owners = ownersByConcern.get(target.concern) ?? new Set<ImplementationOwner>();
+    owners.add(target.owner);
+    ownersByConcern.set(target.concern, owners);
+  }
+  return [...ownersByConcern.values()].some((owners) =>
+    owners.has("core") && owners.has("cavi"));
+}
+
 function publicCaviExports(): string[] {
-  const config = ts.readConfigFile(path.join(packageRoot, "tsconfig.json"), ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, packageRoot);
-  const program = ts.createProgram(parsed.fileNames, parsed.options);
+  const program = ts.createProgram(parsedTsConfig.fileNames, parsedTsConfig.options);
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(caviEntry);
   if (!source) throw new Error("CAVI public entry was not included in the TypeScript program");
@@ -54,15 +142,57 @@ function publicCaviExports(): string[] {
   return checker.getExportsOfModule(module).map((symbol) => symbol.name).sort();
 }
 
-function classifiedSymbols(): string[] {
-  if (!existsSync(ownershipDoc)) return [];
-  return readFileSync(ownershipDoc, "utf8")
+function classifiedSymbols(markdown = existsSync(ownershipDoc)
+  ? readFileSync(ownershipDoc, "utf8")
+  : ""): string[] {
+  const allowedClassifications = new Set([
+    "keep",
+    "already-core",
+    "promote-now",
+    "compatibility-exception",
+    "retire-later",
+  ]);
+  const expectedOwners = new Map([
+    ["keep", "CAVI extension"],
+    ["already-core", "core/contracts"],
+    ["promote-now", "core/contracts"],
+    ["compatibility-exception", "Provider compatibility facade"],
+    ["retire-later", "CAVI extension"],
+  ]);
+  const rows = markdown
     .split("## Provider forwarding compatibility exceptions")[0]
     .split("\n")
     .filter((line) => /^\| `[^`]+` \|/u.test(line))
-    .map((line) => line.split("|")[1]?.trim().replaceAll("`", "") ?? "")
-    .filter(Boolean)
-    .sort();
+    .map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
+  const valid = rows.every((cells) => {
+    if (cells.length !== 5) return false;
+    const [symbol, owner, classification, evidence, action] = cells;
+    if (!/^`[^`]+`$/u.test(symbol) || !owner || !evidence || !action) return false;
+    if (!allowedClassifications.has(classification)) return false;
+    const expectedOwner = expectedOwners.get(classification);
+    return !expectedOwner || owner === expectedOwner;
+  });
+  const symbols = rows.map(([symbol]) => symbol.replaceAll("`", ""));
+  if (!valid || new Set(symbols).size !== symbols.length) return [];
+  return symbols.sort();
+}
+
+function compatibilityExceptionModules(markdown = readFileSync(ownershipDoc, "utf8")): string[] {
+  const rows = markdown
+    .split("## Provider forwarding compatibility exceptions")[1]
+    ?.split("## Dependency direction")[0]
+    .split("\n")
+    .filter((line) => /^\| `src\/providers\/[^`]+` \|/u.test(line))
+    .map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim())) ?? [];
+  const valid = rows.every((cells) => cells.length === 5
+    && /^`src\/providers\/[^`]+`$/u.test(cells[0])
+    && cells[1] === "Provider compatibility facade"
+    && cells[2] === "compatibility-exception"
+    && Boolean(cells[3])
+    && Boolean(cells[4]));
+  const modules = rows.map(([module]) => module.replaceAll("`", ""));
+  if (!valid || new Set(modules).size !== modules.length) return [];
+  return modules.sort();
 }
 
 describe("CAVI extension ownership", () => {
@@ -70,20 +200,68 @@ describe("CAVI extension ownership", () => {
     expect(classifiedSymbols()).toEqual(publicCaviExports());
   });
 
+  it("rejects classification rows with invalid or incomplete metadata", () => {
+    const markdown = readFileSync(ownershipDoc, "utf8");
+    const malformed = [
+      markdown.replace("| CAVI extension | keep |", "| CAVI extension | invented |"),
+      markdown.replace("| CAVI extension | keep |", "| core/contracts | keep |"),
+      markdown.replace("| CAVI extension | keep |", "| keep |"),
+      markdown.replace(/\| Declared by [^|]+ \| Keep implementation/u, "|  | Keep implementation"),
+      markdown.replace(/\| Keep implementation and evolution under the CAVI extension\. \|/u, "|  |"),
+    ];
+
+    for (const candidate of malformed) {
+      expect(classifiedSymbols(candidate)).not.toEqual(publicCaviExports());
+    }
+  });
+
+  it("validates every compatibility-exception column and the exact allowlist", () => {
+    const markdown = readFileSync(ownershipDoc, "utf8");
+    expect(compatibilityExceptionModules(markdown)).toEqual(
+      [...providerExtensionImportAllowlist].sort(),
+    );
+    const malformed = markdown.replace(
+      "| Provider compatibility facade | compatibility-exception |",
+      "| Provider compatibility facade | invented |",
+    );
+    expect(compatibilityExceptionModules(malformed)).toEqual([]);
+  });
+
+  it("discovers every supported TypeScript and JavaScript dependency form", () => {
+    expect(sourceImports(dependencyFormsFixture)).toEqual([
+      "../../../core/http/index.js",
+      "../../../extensions/cavi/index.js",
+      "../../../extensions/cavi/client.js",
+      "../../../core/runtime/control-plane/contracts.js",
+      "../../../extensions/cavi/discourse/contracts.js",
+    ]);
+  });
+
+  it("resolves barrel aliases before comparing core and CAVI concerns", () => {
+    expect(hasMixedCoreCaviConcern(mixedAliasesFixture)).toBe(true);
+  });
+
   it("keeps core below extensions and limits provider compatibility imports", () => {
     const productionFiles = walk(srcRoot)
-      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) => /\.[cm]?[jt]sx?$/u.test(filePath))
       .filter((filePath) => !relative(filePath).includes("/__tests__/"))
       .filter((filePath) => !statSync(filePath).isDirectory());
     const providerExtensionImports = productionFiles
       .filter((filePath) => relative(filePath).startsWith("src/providers/"))
-      .filter((filePath) => sourceImports(filePath).some((specifier) => specifier.includes("extensions/cavi")))
+      .filter((filePath) => sourceImports(filePath).some((specifier) => {
+        const resolved = resolveDependency(filePath, specifier);
+        return resolved ? implementationOwner(resolved) === "cavi" : false;
+      }))
       .map(relative);
     const unapprovedProviderExtensionImports = providerExtensionImports
       .filter((filePath) => !providerExtensionImportAllowlist.has(filePath));
     const coreExtensionImports = productionFiles
-      .filter((filePath) => relative(filePath).startsWith("src/core/"))
-      .filter((filePath) => sourceImports(filePath).some((specifier) => specifier.includes("extensions/cavi")))
+      .filter((filePath) => relative(filePath).startsWith("src/core/")
+        || relative(filePath).startsWith("src/contracts/"))
+      .filter((filePath) => sourceImports(filePath).some((specifier) => {
+        const resolved = resolveDependency(filePath, specifier);
+        return resolved ? implementationOwner(resolved) === "cavi" : false;
+      }))
       .map(relative);
 
     expect(unapprovedProviderExtensionImports).toEqual([]);
@@ -92,17 +270,9 @@ describe("CAVI extension ownership", () => {
 
   it("does not mix core and CAVI implementations for the same concern", () => {
     const offenders = walk(srcRoot)
-      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) => /\.[cm]?[jt]sx?$/u.test(filePath))
       .filter((filePath) => !relative(filePath).includes("/__tests__/"))
-      .filter((filePath) => {
-        const imports = sourceImports(filePath);
-        const coreConcerns = new Set(imports
-          .filter((specifier) => specifier.includes("/core/"))
-          .map((specifier) => path.basename(specifier).replace(/\.(?:js|ts)$/u, "")));
-        return imports
-          .filter((specifier) => specifier.includes("extensions/cavi"))
-          .some((specifier) => coreConcerns.has(path.basename(specifier).replace(/\.(?:js|ts)$/u, "")));
-      })
+      .filter(hasMixedCoreCaviConcern)
       .map(relative);
 
     expect(offenders).toEqual([]);
