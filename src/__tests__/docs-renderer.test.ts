@@ -83,6 +83,21 @@ describe("renderDocumentation", () => {
     );
   });
 
+  it("excludes examples that require unreleased declarations", () => {
+    const output = render();
+
+    expect(output.has("examples/custom-runtime-provider.ts")).toBe(false);
+    expect(output.has("examples/runtime-node.ts")).toBe(true);
+  });
+
+  it("rejects destructive output roots", async () => {
+    await expect(buildDocumentation([
+      "--tarball", "/tmp/release.tgz",
+      "--output", root,
+      "--source-date-epoch", "1700000000",
+    ])).rejects.toThrow(/unsafe documentation output directory/u);
+  });
+
   it("covers every stable subpath and symbol exactly once", () => {
     const output = render();
 

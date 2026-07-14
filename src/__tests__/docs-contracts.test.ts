@@ -65,7 +65,7 @@ describe("loadContracts", () => {
       "stream-event",
     ]);
     expect(manifest.sha256).toBe(
-      "93b1abc345e42de4e3e4a8744b2dc72d5ed850952ff9176bb179382f79ffc13a",
+      "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5",
     );
     expect(manifest.symbols).toEqual(expect.arrayContaining([
       expect.objectContaining({

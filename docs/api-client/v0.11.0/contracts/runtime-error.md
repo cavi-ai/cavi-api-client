@@ -24,7 +24,6 @@ Created when validation, transport, or upstream execution fails and propagated t
 export declare class ApiClientError extends Error {
     readonly type: ApiClientErrorType | string;
     readonly code: ApiClientErrorCode | string;
-    readonly runtime?: RuntimeErrorMetadata;
     constructor(message: string, options?: ApiClientErrorOptions);
 }
 ```

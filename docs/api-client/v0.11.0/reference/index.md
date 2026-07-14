@@ -60,7 +60,6 @@ Kind: class
 export declare class ApiClientError extends Error {
     readonly type: ApiClientErrorType | string;
     readonly code: ApiClientErrorCode | string;
-    readonly runtime?: RuntimeErrorMetadata;
     constructor(message: string, options?: ApiClientErrorOptions);
 }
 ```
@@ -90,15 +89,7 @@ export declare enum ApiClientErrorCode {
     EndpointNotFound = "endpoint_not_found",
     ProtocolMismatch = "protocol_mismatch",
     AuthRequired = "auth_required",
-    AuthForbidden = "auth_forbidden",
-    CapabilityUnavailable = "capability_unavailable",
-    PermissionDenied = "permission_denied",
-    InvalidRequest = "invalid_request",
-    Conflict = "conflict",
-    RateLimited = "rate_limited",
-    TransportUnavailable = "transport_unavailable",
-    TransportProtocolError = "transport_protocol_error",
-    ServerOverloaded = "server_overloaded"
+    AuthForbidden = "auth_forbidden"
 }
 ```
 
@@ -113,7 +104,6 @@ export type ApiClientErrorOptions = {
     type?: ApiClientErrorType | string;
     code?: ApiClientErrorCode | string;
     cause?: unknown;
-    runtime?: RuntimeErrorMetadata;
 };
 ```
 
@@ -219,18 +209,6 @@ Kind: function
  * Both are guarded by `safe-relative-path.test.ts`; keep them in lockstep.
  */
 export declare function assertSafeRelativePath(value: string): string;
-```
-
-<a id="symbol-root-authstatusclient"></a>
-
-## AuthStatusClient
-
-Kind: interface
-
-```ts
-export interface AuthStatusClient {
-    listAuthStatus(): Promise<readonly RuntimeAuthStatus[]>;
-}
 ```
 
 <a id="symbol-root-bearercredentials"></a>
@@ -1283,26 +1261,6 @@ Kind: function
 export declare function getErrorType(error: unknown): string | undefined;
 ```
 
-<a id="symbol-root-getruntimeerrormetadata"></a>
-
-## getRuntimeErrorMetadata
-
-Kind: function
-
-```ts
-export declare function getRuntimeErrorMetadata(error: unknown): RuntimeErrorMetadata | undefined;
-```
-
-<a id="symbol-root-getruntimeprovidercapabilityrow"></a>
-
-## getRuntimeProviderCapabilityRow
-
-Kind: function
-
-```ts
-export declare function getRuntimeProviderCapabilityRow(provider: string): RuntimeProviderCapabilityRow | undefined;
-```
-
 <a id="symbol-root-global-repo-root-key"></a>
 
 ## GLOBAL_REPO_ROOT_KEY
@@ -1540,16 +1498,6 @@ Kind: variable
 export declare const IDEMPOTENCY_KEY_HEADER: "Idempotency-Key";
 ```
 
-<a id="symbol-root-inspectruntimeeventsequence"></a>
-
-## inspectRuntimeEventSequence
-
-Kind: function
-
-```ts
-export declare function inspectRuntimeEventSequence(events: readonly RuntimeControlPlaneEvent[]): RuntimeEventSequenceInspection;
-```
-
 <a id="symbol-root-isaborterror"></a>
 
 ## isAbortError
@@ -1676,21 +1624,6 @@ export type ManifestTeam = {
     routes?: readonly ManifestRouteConfig[] | null;
     metadata?: Record<string, unknown> | null;
 };
-```
-
-<a id="symbol-root-modelcatalogclient"></a>
-
-## ModelCatalogClient
-
-Kind: interface
-
-```ts
-export interface ModelCatalogClient {
-    listModels(query?: {
-        cursor?: string;
-        limit?: number;
-    }): Promise<RuntimePage<RuntimeModelDescriptor>>;
-}
 ```
 
 <a id="symbol-root-mutationresult"></a>
@@ -2218,74 +2151,6 @@ Kind: type
 export type RunStreamEventName = (typeof RUN_STREAM_EVENT_NAMES)[keyof typeof RUN_STREAM_EVENT_NAMES];
 ```
 
-<a id="symbol-root-runtime-control-plane-event-names"></a>
-
-## RUNTIME_CONTROL_PLANE_EVENT_NAMES
-
-Kind: variable
-
-```ts
-export declare const RUNTIME_CONTROL_PLANE_EVENT_NAMES: readonly [
-    "operation.started",
-    "operation.updated",
-    "message.delta",
-    "reasoning.delta",
-    "tool.started",
-    "tool.progress",
-    "tool.completed",
-    "approval.requested",
-    "approval.resolved",
-    "usage.updated",
-    "stream.reconnected",
-    "stream.gap",
-    "operation.completed",
-    "operation.failed",
-    "operation.cancelled",
-    "operation.interrupted"
-];
-```
-
-<a id="symbol-root-runtime-provider-capability-matrix"></a>
-
-## RUNTIME_PROVIDER_CAPABILITY_MATRIX
-
-Kind: variable
-
-```ts
-export declare const RUNTIME_PROVIDER_CAPABILITY_MATRIX: Readonly<{
-    claude: Readonly<{
-        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-        transports: Readonly<RuntimeTransportCapabilities>;
-        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-    }>;
-    "claude-managed-agents": Readonly<{
-        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-        transports: Readonly<RuntimeTransportCapabilities>;
-        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-    }>;
-    codex: Readonly<{
-        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-        transports: Readonly<RuntimeTransportCapabilities>;
-        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-    }>;
-    gemini: Readonly<{
-        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-        transports: Readonly<RuntimeTransportCapabilities>;
-        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-    }>;
-    hermes: Readonly<{
-        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-        transports: Readonly<RuntimeTransportCapabilities>;
-        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-    }>;
-    openclaw: Readonly<{
-        runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-        transports: Readonly<RuntimeTransportCapabilities>;
-        controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-    }>;
-}>;
-```
-
 <a id="symbol-root-runtime-surfaces"></a>
 
 ## RUNTIME_SURFACES
@@ -2307,41 +2172,6 @@ export declare const RUNTIME_SURFACES: readonly [
     "discourse",
     "batch"
 ];
-```
-
-<a id="symbol-root-runtime-transport-kinds"></a>
-
-## RUNTIME_TRANSPORT_KINDS
-
-Kind: variable
-
-```ts
-export declare const RUNTIME_TRANSPORT_KINDS: readonly [
-    "http",
-    "sse",
-    "websocket",
-    "json-rpc",
-    "stdio",
-    "unix-socket"
-];
-```
-
-<a id="symbol-root-runtimeauthstatus"></a>
-
-## RuntimeAuthStatus
-
-Kind: interface
-
-```ts
-export interface RuntimeAuthStatus {
-    providerId: string;
-    profileId?: string;
-    status: "authenticated" | "unauthenticated" | "expired" | "unknown";
-    expiresAt?: string;
-    sourceCategory?: string;
-    reasonCode?: string;
-    metadata: RuntimeControlPlaneMetadata;
-}
 ```
 
 <a id="symbol-root-runtimebatchcounts"></a>
@@ -2508,254 +2338,6 @@ Kind: type
 export type RuntimeClientOptions = Pick<HttpApiClientOptions, "baseUrl" | "fetchImpl" | "onTrace">;
 ```
 
-<a id="symbol-root-runtimecontrolplane"></a>
-
-## RuntimeControlPlane
-
-Kind: interface
-
-```ts
-export interface RuntimeControlPlane {
-    transports: RuntimeTransportCapabilities;
-    sessions?: SessionClient;
-    models?: ModelCatalogClient;
-    usage?: UsageClient;
-    tasks?: TaskClient;
-    workspace?: WorkspaceClient;
-    authStatus?: AuthStatusClient;
-    events?: RuntimeEventClient;
-}
-```
-
-<a id="symbol-root-runtimecontrolplanedeclaration"></a>
-
-## RuntimeControlPlaneDeclaration
-
-Kind: type
-
-```ts
-export type RuntimeControlPlaneDeclaration = {
-    transports?: RuntimeTransportCapabilities;
-    modules?: Partial<Record<"sessions" | "models" | "usage" | "tasks" | "workspace" | "authStatus" | "events", true>>;
-};
-```
-
-<a id="symbol-root-runtimecontrolplaneevent"></a>
-
-## RuntimeControlPlaneEvent
-
-Kind: type
-
-```ts
-export type RuntimeControlPlaneEvent = (RuntimeControlPlaneEventBase & {
-    event: "operation.started";
-}) | (RuntimeControlPlaneEventBase & {
-    event: "operation.updated";
-    update: unknown;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "message.delta";
-    delta: string;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "reasoning.delta";
-    delta: string;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "tool.started";
-    toolCallId: string;
-    toolName: string;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "tool.progress";
-    toolCallId: string;
-    progress: unknown;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "tool.completed";
-    toolCallId: string;
-    result?: unknown;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "approval.requested";
-    approvalId: string;
-    request?: unknown;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "approval.resolved";
-    approvalId: string;
-    approved: boolean;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "usage.updated";
-    usage: RuntimeUsage;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "stream.reconnected";
-    cursor?: string;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "stream.gap";
-    reason: string;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "operation.completed";
-}) | (RuntimeControlPlaneEventBase & {
-    event: "operation.failed";
-    error: unknown;
-}) | (RuntimeControlPlaneEventBase & {
-    event: "operation.cancelled";
-}) | (RuntimeControlPlaneEventBase & {
-    event: "operation.interrupted";
-    reason?: string;
-});
-```
-
-<a id="symbol-root-runtimecontrolplaneeventname"></a>
-
-## RuntimeControlPlaneEventName
-
-Kind: type
-
-```ts
-export type RuntimeControlPlaneEventName = (typeof RUNTIME_CONTROL_PLANE_EVENT_NAMES)[number];
-```
-
-<a id="symbol-root-runtimecontrolplanemetadata"></a>
-
-## RuntimeControlPlaneMetadata
-
-Kind: type
-
-```ts
-export type RuntimeControlPlaneMetadata = {
-    provider: string;
-    stability: RuntimeProviderStability;
-    source: RuntimeControlPlaneSource;
-    providerData?: unknown;
-};
-```
-
-<a id="symbol-root-runtimecontrolplanesource"></a>
-
-## RuntimeControlPlaneSource
-
-Kind: type
-
-```ts
-export type RuntimeControlPlaneSource = {
-    transport: "http" | "sse" | "websocket" | "json-rpc" | "stdio" | "unix-socket";
-    method: string;
-};
-```
-
-<a id="symbol-root-runtimeerrormetadata"></a>
-
-## RuntimeErrorMetadata
-
-Kind: type
-
-```ts
-export type RuntimeErrorMetadata = {
-    provider: string;
-    transport: string;
-    operation: string;
-    retryable: boolean;
-    retryAfterMs?: number;
-    status?: number;
-    providerCode?: string;
-};
-```
-
-<a id="symbol-root-runtimeeventclient"></a>
-
-## RuntimeEventClient
-
-Kind: interface
-
-```ts
-export interface RuntimeEventClient {
-    subscribe(params: {
-        operationId: string;
-        cursor?: string;
-        signal?: AbortSignal;
-    }, handlers: {
-        onEvent(event: RuntimeControlPlaneEvent): void;
-        onError?(error: unknown): void;
-    }): Promise<RuntimeEventSubscription>;
-}
-```
-
-<a id="symbol-root-runtimeeventsequenceinspection"></a>
-
-## RuntimeEventSequenceInspection
-
-Kind: interface
-
-```ts
-export interface RuntimeEventSequenceInspection {
-    valid: boolean;
-    terminalCount: number;
-    gaps: number;
-}
-```
-
-<a id="symbol-root-runtimeeventsubscription"></a>
-
-## RuntimeEventSubscription
-
-Kind: interface
-
-```ts
-export interface RuntimeEventSubscription {
-    dispose(): void | Promise<void>;
-}
-```
-
-<a id="symbol-root-runtimemodeldescriptor"></a>
-
-## RuntimeModelDescriptor
-
-Kind: interface
-
-```ts
-export interface RuntimeModelDescriptor {
-    providerId: string;
-    id: string;
-    displayName?: string;
-    availability: "available" | "unavailable" | "unknown";
-    capabilities?: Readonly<Record<string, boolean>>;
-    authenticated?: boolean;
-    metadata: RuntimeControlPlaneMetadata;
-}
-```
-
-<a id="symbol-root-runtimepage"></a>
-
-## RuntimePage
-
-Kind: type
-
-```ts
-export type RuntimePage<T> = {
-    data: readonly T[];
-    nextCursor?: string;
-};
-```
-
-<a id="symbol-root-runtimeprovidercapabilitymatrixkey"></a>
-
-## RuntimeProviderCapabilityMatrixKey
-
-Kind: type
-
-```ts
-export type RuntimeProviderCapabilityMatrixKey = keyof typeof RUNTIME_PROVIDER_CAPABILITY_MATRIX;
-```
-
-<a id="symbol-root-runtimeprovidercapabilityrow"></a>
-
-## RuntimeProviderCapabilityRow
-
-Kind: type
-
-```ts
-export type RuntimeProviderCapabilityRow = Readonly<{
-    runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
-    transports: Readonly<RuntimeTransportCapabilities>;
-    controlPlane: Readonly<RuntimeControlPlaneDeclaration>;
-}>;
-```
-
 <a id="symbol-root-runtimeprovidermodule"></a>
 
 ## RuntimeProviderModule
@@ -2779,16 +2361,6 @@ export interface RuntimeProviderRegistry<M extends RuntimeProviderModule = Runti
     resolveProvider(provider: string | null | undefined): M | null;
     listProviders(): readonly M[];
 }
-```
-
-<a id="symbol-root-runtimeproviderstability"></a>
-
-## RuntimeProviderStability
-
-Kind: type
-
-```ts
-export type RuntimeProviderStability = "stable" | "experimental";
 ```
 
 <a id="symbol-root-runtimeruninput"></a>
@@ -2874,37 +2446,6 @@ export type RuntimeRunStatus = {
 };
 ```
 
-<a id="symbol-root-runtimesessionstate"></a>
-
-## RuntimeSessionState
-
-Kind: type
-
-```ts
-export type RuntimeSessionState = "pending" | "active" | "completed" | "cancelled" | "failed" | "unknown";
-```
-
-<a id="symbol-root-runtimesessionsummary"></a>
-
-## RuntimeSessionSummary
-
-Kind: interface
-
-```ts
-export interface RuntimeSessionSummary {
-    id: string;
-    providerId: string;
-    title?: string;
-    state: RuntimeSessionState;
-    createdAt?: string;
-    updatedAt?: string;
-    providerKind: string;
-    model?: string;
-    workspaceId?: string;
-    metadata: RuntimeControlPlaneMetadata;
-}
-```
-
 <a id="symbol-root-runtimesupports"></a>
 
 ## runtimeSupports
@@ -2923,83 +2464,6 @@ Kind: type
 
 ```ts
 export type RuntimeSurface = (typeof RUNTIME_SURFACES)[number];
-```
-
-<a id="symbol-root-runtimetaskstate"></a>
-
-## RuntimeTaskState
-
-Kind: type
-
-```ts
-export type RuntimeTaskState = "pending" | "running" | "completed" | "cancelled" | "failed" | "unknown";
-```
-
-<a id="symbol-root-runtimetasksummary"></a>
-
-## RuntimeTaskSummary
-
-Kind: interface
-
-```ts
-export interface RuntimeTaskSummary {
-    id: string;
-    state: RuntimeTaskState;
-    createdAt?: string;
-    updatedAt?: string;
-    runId?: string;
-    sessionId?: string;
-    threadId?: string;
-    cancellable?: boolean;
-    metadata: RuntimeControlPlaneMetadata;
-}
-```
-
-<a id="symbol-root-runtimetransportcapabilities"></a>
-
-## RuntimeTransportCapabilities
-
-Kind: type
-
-```ts
-export type RuntimeTransportCapabilities = Partial<Record<RuntimeTransportKind, RuntimeTransportCapability>>;
-```
-
-<a id="symbol-root-runtimetransportcapability"></a>
-
-## RuntimeTransportCapability
-
-Kind: type
-
-```ts
-export type RuntimeTransportCapability = {
-    kind: RuntimeTransportKind;
-    stability: RuntimeProviderStability;
-    authenticated: boolean;
-    reconnect?: boolean;
-    replay?: boolean;
-    cancellation?: boolean;
-};
-```
-
-<a id="symbol-root-runtimetransportkind"></a>
-
-## RuntimeTransportKind
-
-Kind: type
-
-```ts
-export type RuntimeTransportKind = (typeof RUNTIME_TRANSPORT_KINDS)[number];
-```
-
-<a id="symbol-root-runtimetransportsupports"></a>
-
-## runtimeTransportSupports
-
-Kind: function
-
-```ts
-export declare function runtimeTransportSupports(capabilities: RuntimeTransportCapabilities, kind: RuntimeTransportKind): boolean;
 ```
 
 <a id="symbol-root-runtimeusage"></a>
@@ -3021,70 +2485,6 @@ export type RuntimeUsage = {
     /** Lossless provider-native numeric fields, flattened. */
     raw?: Record<string, number>;
 };
-```
-
-<a id="symbol-root-runtimeusagecost"></a>
-
-## RuntimeUsageCost
-
-Kind: interface
-
-```ts
-export interface RuntimeUsageCost {
-    availability: "available" | "estimated" | "unavailable";
-    amount?: number;
-    currency?: string;
-    calculationSource?: string;
-}
-```
-
-<a id="symbol-root-runtimeusagequery"></a>
-
-## RuntimeUsageQuery
-
-Kind: interface
-
-```ts
-export interface RuntimeUsageQuery {
-    startTime?: string;
-    endTime?: string;
-    providerId?: string;
-    model?: string;
-    sessionId?: string;
-    agentId?: string;
-}
-```
-
-<a id="symbol-root-runtimeusagesummary"></a>
-
-## RuntimeUsageSummary
-
-Kind: interface
-
-```ts
-export interface RuntimeUsageSummary {
-    tokens: RuntimeUsage;
-    cost: RuntimeUsageCost;
-    aggregation?: string;
-    metadata: RuntimeControlPlaneMetadata;
-}
-```
-
-<a id="symbol-root-runtimeworkspacedescriptor"></a>
-
-## RuntimeWorkspaceDescriptor
-
-Kind: interface
-
-```ts
-export interface RuntimeWorkspaceDescriptor {
-    id: string;
-    providerId: string;
-    displayName?: string;
-    root?: string;
-    accessMode: "read-only" | "read-write" | "unknown";
-    metadata: RuntimeControlPlaneMetadata;
-}
 ```
 
 <a id="symbol-root-serializedapiclienterror"></a>
@@ -3110,23 +2510,6 @@ Kind: function
 
 ```ts
 export declare function serializeError(error: unknown, fallbackMessage?: string): SerializedApiClientError;
-```
-
-<a id="symbol-root-sessionclient"></a>
-
-## SessionClient
-
-Kind: interface
-
-```ts
-export interface SessionClient {
-    listSessions(query?: {
-        cursor?: string;
-        limit?: number;
-    }): Promise<RuntimePage<RuntimeSessionSummary>>;
-    getSession(id: string): Promise<RuntimeSessionSummary>;
-    cancelSession?(id: string): Promise<RuntimeSessionSummary>;
-}
 ```
 
 <a id="symbol-root-stringifyunknownerror"></a>
@@ -3184,23 +2567,6 @@ Kind: type
 
 ```ts
 export type SurfacePathResolver = (key: string, params?: Record<string, string>) => string;
-```
-
-<a id="symbol-root-taskclient"></a>
-
-## TaskClient
-
-Kind: interface
-
-```ts
-export interface TaskClient {
-    listTasks(query?: {
-        cursor?: string;
-        limit?: number;
-    }): Promise<RuntimePage<RuntimeTaskSummary>>;
-    getTask(id: string): Promise<RuntimeTaskSummary>;
-    cancelTask?(id: string): Promise<RuntimeTaskSummary>;
-}
 ```
 
 <a id="symbol-root-team-action-input-modes"></a>
@@ -3602,18 +2968,6 @@ Kind: function
 export declare function unsupportedRuntimeSurface(providerKind: string, surface: RuntimeSurface): never;
 ```
 
-<a id="symbol-root-usageclient"></a>
-
-## UsageClient
-
-Kind: interface
-
-```ts
-export interface UsageClient {
-    getUsage(query?: RuntimeUsageQuery): Promise<RuntimeUsageSummary>;
-}
-```
-
 <a id="symbol-root-withfallback"></a>
 
 ## withFallback
@@ -3656,17 +3010,4 @@ Kind: function
 
 ```ts
 export declare function withRuntimeBasePath(pathname: string, rawBasePath: string | null | undefined): string;
-```
-
-<a id="symbol-root-workspaceclient"></a>
-
-## WorkspaceClient
-
-Kind: interface
-
-```ts
-export interface WorkspaceClient {
-    listWorkspaces(): Promise<readonly RuntimeWorkspaceDescriptor[]>;
-    getWorkspace(id: string): Promise<RuntimeWorkspaceDescriptor>;
-}
 ```

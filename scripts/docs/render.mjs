@@ -150,9 +150,10 @@ export function renderDocumentation(input) {
   }
 
   const examplesRoot = path.join(input.curatedRoot, "..", "..", "examples");
+  const excludedStableExamples = new Set(["custom-runtime-provider.ts"]);
   if (existsSync(examplesRoot)) {
     for (const entry of readdirSync(examplesRoot, { withFileTypes: true })) {
-      if (entry.isFile() && /\.tsx?$/u.test(entry.name)) {
+      if (entry.isFile() && /\.tsx?$/u.test(entry.name) && !excludedStableExamples.has(entry.name)) {
         output.set(`examples/${entry.name}`, readContainedFile(examplesRoot, entry.name, "example path"));
       }
     }

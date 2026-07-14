@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,6 +36,9 @@ export async function buildDocumentation(argv) {
   const options = parseArguments(argv);
   const root = path.resolve(options.root ?? ".");
   const outputDirectory = path.resolve(options.output);
+  if (outputDirectory === path.parse(outputDirectory).root || outputDirectory === root) {
+    throw new Error(`unsafe documentation output directory: ${outputDirectory}`);
+  }
   const manifest = await inspectRelease(path.resolve(options.tarball));
   const contracts = await loadContracts(root, manifest);
   const navigation = JSON.parse(
@@ -48,6 +51,7 @@ export async function buildDocumentation(argv) {
     curatedRoot: path.join(root, "docs/api-client/source"),
     sourceDateEpoch: options["source-date-epoch"],
   });
+  await rm(outputDirectory, { recursive: true, force: true });
   await mkdir(outputDirectory, { recursive: true });
   const resolvedOutputDirectory = await realpath(outputDirectory);
   for (const [relativePath, contents] of rendered) {

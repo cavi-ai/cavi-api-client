@@ -2,17 +2,6 @@
 
 Package subpath: ./providers/openclaw
 
-<a id="symbol-providers-openclaw-createopenclawkanbanclient"></a>
-
-## createOpenClawKanbanClient
-
-Kind: function
-
-```ts
-/** Adapt an OpenClaw Workboard RPC client to the provider-agnostic KanbanClient. */
-export declare function createOpenClawKanbanClient(rpc: OpenClawWorkboardRpc): KanbanClient;
-```
-
 <a id="symbol-providers-openclaw-createopenclawteamregistry"></a>
 
 ## createOpenClawTeamRegistry
