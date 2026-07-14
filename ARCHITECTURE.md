@@ -31,7 +31,9 @@ src/index.ts
   error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
   fallback snapshots, and DTO shaping. It composes the generic core instead of
-  changing the provider interface.
+  changing the provider interface. The complete, compiler-checked ownership
+  inventory and the four released provider forwarding exceptions are recorded
+  in [CAVI Extension Ownership](docs/extension-ownership.md).
 - `frameworks/react/` contains optional React bindings. React is an optional peer
   dependency and is never imported by the root entry.
 
