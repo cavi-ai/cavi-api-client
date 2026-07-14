@@ -20,6 +20,12 @@ const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
 const api = read("API.md");
 const architecture = read("ARCHITECTURE.md");
+const runtimeClientGuide = read(
+  "docs/api-client/source/pages/concepts/runtime-client.md",
+);
+const importsAndExports = read(
+  "docs/api-client/source/pages/guides/imports-and-exports.md",
+);
 
 describe("docs integrity", () => {
   it("publishes reproducible documentation build and drift-check commands", () => {
@@ -145,11 +151,11 @@ describe("docs integrity", () => {
     }
   });
 
-  it("README documents the published subpath exports", () => {
-    // The README's import examples must reference subpaths that the package
+  it("the import guide documents only published subpath exports", () => {
+    // The import guide's examples must reference subpaths that the package
     // actually exports. Guards against documenting a removed or renamed entry.
     const documentedSubpaths = Array.from(
-      readme.matchAll(/@cavi-ai\/api-client(\/[a-z0-9/-]+)/g),
+      importsAndExports.matchAll(/@cavi-ai\/api-client(\/[a-z0-9./-]+)/g),
       (m) => m[1],
     );
     const exportedSubpaths = new Set(
@@ -158,28 +164,44 @@ describe("docs integrity", () => {
     for (const subpath of new Set(documentedSubpaths)) {
       expect(
         exportedSubpaths.has(`.${subpath}`),
-        `README documents "@cavi-ai/api-client${subpath}" but package.json does not export "${subpath}"`,
+        `Import guide documents "@cavi-ai/api-client${subpath}" but package.json does not export "${subpath}"`,
       ).toBe(true);
     }
   });
 
-  it("documents every published subpath export in the README", () => {
-    // Reverse of the check above: every package.json export key (other than
-    // the root ".") must be mentioned in README.md at least once, so a new
-    // export can't ship undocumented. Matches on the export key's path
-    // portion (the key minus its leading ".") rather than requiring the
-    // literal "@cavi-ai/api-client" prefix, since some exports — e.g. the
-    // clip-contract JSON asset — are documented by their relative export
-    // path instead of a package-specifier import path.
+  it("documents every published subpath export in the import guide", () => {
+    // Reverse of the check above: every package.json export key must be
+    // documented without forcing the concise README to become an API catalog.
     const exportedKeys = Object.keys(
       (JSON.parse(read("package.json")) as { exports: Record<string, unknown> }).exports,
     ).filter((key) => key !== ".");
     for (const key of exportedKeys) {
       const pathPortion = key.slice(1);
       expect(
-        readme.includes(pathPortion),
-        `package.json exports "${key}" but README.md never mentions it`,
+        importsAndExports.includes(pathPortion),
+        `package.json exports "${key}" but the import guide never mentions it`,
       ).toBe(true);
+    }
+  });
+
+  it("keeps README as a provider-neutral documentation index", () => {
+    expect(readme.split("\n").length).toBeLessThan(300);
+    expect(readme).toContain(
+      "docs/api-client/source/pages/guides/imports-and-exports.md",
+    );
+    for (const token of [
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "GEMINI_API_KEY",
+      "Claude Managed Agents",
+      "gpt-5-codex",
+      "claude-opus",
+      "gemini-",
+    ]) {
+      expect(
+        readme,
+        `README contains provider implementation detail: ${token}`,
+      ).not.toContain(token);
     }
   });
 
@@ -275,11 +297,11 @@ describe("docs integrity", () => {
   });
 
   it("documents the canonical control-plane facade without provider drift", () => {
-    const publicDocs = [readme, api, architecture, changelog];
+    const publicDocs = [runtimeClientGuide, api, architecture, changelog];
     const modules = ["authStatus", "sessions", "models", "usage", "tasks", "workspace", "events"];
 
     for (const [name, document] of [
-      ["README.md", readme],
+      ["runtime client guide", runtimeClientGuide],
       ["API.md", api],
     ] as const) {
       expect(document, `${name} is missing the provider-neutral factory example`).toContain(
