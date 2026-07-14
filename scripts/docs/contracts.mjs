@@ -122,6 +122,22 @@ export async function loadContracts(root, manifest) {
         diagnostics.push({ contractId: id, requirement: `evidence file ${evidenceValue} to exist`, observed: "missing", action: "add the evidence file or correct its path" });
       }
     }
+    if (Array.isArray(record.evidence) && Array.isArray(record.symbols)) {
+      for (const fixture of record.evidence.filter((item) => item?.type === "fixture")) {
+        const fixturePath = typeof fixture.path === "string" ? repositoryPath(root, fixture.path) : undefined;
+        if (!fixturePath) continue;
+        try {
+          const fixtureContent = await readFile(fixturePath, "utf8");
+          for (const symbol of record.symbols) {
+            if (nonEmptyString(symbol?.name) && !new RegExp(`\\b${symbol.name}\\b`, "u").test(fixtureContent)) {
+              diagnostics.push({ contractId: id, requirement: `fixture evidence ${fixture.path} to reference declared symbol ${symbol.name}`, observed: "symbol absent", action: `import or use ${symbol.name} in the focused fixture` });
+            }
+          }
+        } catch {
+          // Missing and invalid fixture paths are diagnosed by the evidence checks above.
+        }
+      }
+    }
     if (Array.isArray(record.evidence)) {
       const evidenceTypes = new Set(record.evidence.map((item) => item?.type));
       for (const requiredType of REQUIRED_EVIDENCE_TYPES) {

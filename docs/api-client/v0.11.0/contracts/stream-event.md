@@ -72,5 +72,5 @@ Event ordering and resumability beyond the normalized union remain upstream-owne
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
-- fixture: `docs/examples/custom-runtime-provider.ts`
+- fixture: `docs/examples/contracts/stream-event.ts`
 - conformance-test: `src/__tests__/core/runtime/stream-run-contract.test.ts`

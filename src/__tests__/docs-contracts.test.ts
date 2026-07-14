@@ -35,6 +35,9 @@ async function mutableRegistry(): Promise<string> {
     recursive: true,
   });
   await cp(path.join(root, "docs/api-client/source/releases"), path.join(directory, "docs/api-client/source/releases"), { recursive: true });
+  await cp(path.join(root, "docs/examples"), path.join(directory, "docs/examples"), {
+    recursive: true,
+  });
   return directory;
 }
 
@@ -110,6 +113,18 @@ describe("loadContracts", () => {
 
     await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
       /runtime-request: expected evidence file .*run-types\.test\.ts to exist; observed missing; fix:/u,
+    );
+  });
+
+  it("rejects fixture evidence that does not reference the declared contract symbol", async () => {
+    const registryRoot = await mutableRegistry();
+    await writeFile(
+      path.join(registryRoot, "docs/examples/contracts/runtime-error.ts"),
+      'export const unrelatedFixture = "present but semantically unrelated";\n',
+    );
+
+    await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
+      /runtime-error: expected fixture evidence .* to reference declared symbol ApiClientError; observed symbol absent; fix:/u,
     );
   });
 

@@ -83,5 +83,5 @@ Provider-specific metadata remains owned by the upstream runtime.
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
-- fixture: `docs/examples/runtime-browser.ts`
+- fixture: `docs/examples/contracts/runtime-request.ts`
 - conformance-test: `src/__tests__/core/runtime/run-types.test.ts`

@@ -71,5 +71,5 @@ Actual endpoint behavior remains owned by the compatible gateway.
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
-- fixture: `docs/examples/runtime-registry.ts`
+- fixture: `docs/examples/contracts/routes.ts`
 - conformance-test: `src/__tests__/contracts/route-resolver.test.ts`
