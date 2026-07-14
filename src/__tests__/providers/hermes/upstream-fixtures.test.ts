@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { isSensitiveKey } from "../../../core/http/redaction.js";
 
 const fixtureRoot = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -27,7 +28,61 @@ async function readJson(path: string): Promise<Record<string, unknown>> {
   return JSON.parse(await readFixture(path)) as Record<string, unknown>;
 }
 
+const credentialTextPatterns = [
+  ["authorization", /\bauthorization\s*[:=]\s*(?:bearer\s+)?[A-Za-z0-9._~+/=-]{8,}/iu],
+  ["password", /\b(?:password|passwd|pwd)\s*[:=]\s*[^\s"']{6,}/iu],
+  ["client_secret", /\bclient[_-]?secret\s*[:=]\s*[^\s"']{6,}/iu],
+  ["cookie", /\b(?:set-cookie|cookie)\s*[:=]\s*[^\s"']{6,}/iu],
+  ["api-key", /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*[^\s"']{6,}/iu],
+  ["private-key", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/u],
+  ["provider-key", /\bsk-[A-Za-z0-9_-]{16,}\b/u],
+  ["jwt", /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/u],
+] as const;
+
+function credentialLeakPaths(path: string, text: string): string[] {
+  const leaks: string[] = [];
+  if (path.endsWith(".json")) {
+    const visit = (value: unknown, location = ""): void => {
+      if (Array.isArray(value)) {
+        value.forEach((entry, index) => visit(entry, `${location}[${index}]`));
+        return;
+      }
+      if (value === null || typeof value !== "object") return;
+      for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+        const child = location.length === 0 ? key : `${location}.${key}`;
+        const schemaOnly = /^(?:has[_-]|is[_-])|(?:[_-](?:scheme|policy|count|present))$/iu.test(key);
+        if (isSensitiveKey(key) && !schemaOnly && typeof entry === "string"
+          && entry.length > 0 && entry !== "[REDACTED]") leaks.push(child);
+        visit(entry, child);
+      }
+    };
+    visit(JSON.parse(text) as unknown);
+  }
+  for (const [label, pattern] of credentialTextPatterns) {
+    if (pattern.test(text)) leaks.push(`text:${label}`);
+  }
+  return [...new Set(leaks)];
+}
+
 describe("sanitized Hermes upstream fixtures", () => {
+  it("detects structured and textual credentials without flagging schema vocabulary", () => {
+    expect(credentialLeakPaths("fixture.json", JSON.stringify({
+      auth: { client_secret: "hunter2", nested: [{ session_token: "opaque" }] },
+    }))).toEqual(["auth.client_secret", "auth.nested[0].session_token"]);
+    expect(credentialLeakPaths("fixture.txt", [
+      "Authorization: Bearer abc.def.ghi",
+      "password=hunter2",
+      "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature",
+    ].join("\n"))).toEqual(expect.arrayContaining(["text:authorization", "text:password", "text:jwt"]));
+    expect(credentialLeakPaths("schema.json", JSON.stringify({
+      session: { id: "session-1" },
+      total_tokens: 150,
+      has_refresh_token: false,
+      authorization_scheme: "Bearer",
+      cookie_policy: "same-site",
+    }))).toEqual([]);
+  });
+
   it("includes every required protocol fixture", async () => {
     await expect(fixtureNames()).resolves.toEqual(
       expect.arrayContaining([
@@ -189,9 +244,9 @@ describe("sanitized Hermes upstream fixtures", () => {
 
   it("contains no host paths or credential material", async () => {
     const paths = await fixtureNames();
-    const corpus = (await Promise.all(paths.map(readFixture))).join("\n");
+    const contents = await Promise.all(paths.map(async (path) => [path, await readFixture(path)] as const));
+    const corpus = contents.map(([, content]) => content).join("\n");
     expect(corpus).not.toMatch(/\/(?:Users|Volumes|home)\//);
-    expect(corpus).not.toMatch(/Bearer\s|token=|api[_-]?key/i);
-    expect(corpus).not.toMatch(/sk-[A-Za-z0-9_-]{16,}/);
+    expect(contents.flatMap(([path, content]) => credentialLeakPaths(path, content))).toEqual([]);
   });
 });

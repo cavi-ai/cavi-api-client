@@ -246,6 +246,7 @@
     "prepare": "husky",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
+    "test:packed-consumer": "node scripts/test-packed-consumer.mjs",
     "lint:md": "markdownlint-cli2",
     "typecheck": "tsc --noEmit",
     "typecheck:gate": "tsc --noEmit -p tsconfig.gate.json",

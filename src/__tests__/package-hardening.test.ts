@@ -647,6 +647,20 @@ describe("package hardening", () => {
         default: `./dist/${target}.js`,
       });
     }
+    const packageJsonWithScripts = packageJson as typeof packageJson & { scripts?: Record<string, string> };
+    expect(packageJsonWithScripts.scripts?.["test:packed-consumer"]).toBe(
+      "node scripts/test-packed-consumer.mjs",
+    );
+    const packedConsumerScript = read(path.join(PACKAGE_ROOT, "scripts/test-packed-consumer.mjs"));
+    for (const specifier of [
+      "@cavi-ai/api-client",
+      "@cavi-ai/api-client/core/runtime",
+      "@cavi-ai/api-client/core/runtime/providers",
+      "@cavi-ai/api-client/providers/hermes",
+      "@cavi-ai/api-client/extensions/cavi",
+    ]) expect(packedConsumerScript).toContain(specifier);
+    expect(packedConsumerScript).toContain('"moduleResolution": "NodeNext"');
+    expect(packedConsumerScript).toContain("--ignore-scripts");
   });
 
   it("keeps dist free of stale compiled modules", () => {

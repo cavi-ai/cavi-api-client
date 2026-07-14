@@ -54,9 +54,37 @@ function fixtureTransport() {
 describe("canonical control-plane conformance", () => {
   it("uses the public factory, built-in OpenClaw registration, and provider-neutral transport seam", async () => {
     const transport = fixtureTransport();
+    const abortReason = new Error("stop OpenClaw request");
     const report = await runRuntimeControlClientConformance({
       providerId: "openclaw",
       create: () => createRuntimeControlClient("open-claw", { transport }),
+      lifecycle: {
+        abortReason,
+        inFlightAbort: async (signal) => {
+          const abortingTransport = {
+            ...fixtureTransport(),
+            request: vi.fn((_method: string, _params: unknown, options?: { signal?: AbortSignal }) =>
+              new Promise((_resolve, reject) => options?.signal?.addEventListener(
+                "abort", () => reject(options.signal?.reason), { once: true },
+              ))),
+          };
+          const client = await createRuntimeControlClient("openclaw", { transport: abortingTransport });
+          return { operation: client.sessions.listSessions({ signal }), cleanup: () => client.dispose() };
+        },
+        ownership: {
+          borrowed: async () => {
+            const rpc = fixtureTransport();
+            const client = await createRuntimeControlClient("openclaw", { transport: rpc });
+            return { dispose: () => client.dispose(), releases: () => rpc.dispose.mock.calls.length };
+          },
+          owned: async () => {
+            const rpc = fixtureTransport();
+            const options = { transport: rpc, takeRpcOwnership: true };
+            const client = await createRuntimeControlClient("openclaw", options);
+            return { dispose: () => client.dispose(), releases: () => rpc.dispose.mock.calls.length };
+          },
+        },
+      },
     });
 
     expect(report, JSON.stringify(report)).toMatchObject({ valid: true, modules });
@@ -93,6 +121,7 @@ describe("canonical control-plane conformance", () => {
   );
 
   it("validates partially configured Hermes without promoting plugin-gated modules", async () => {
+    const abortReason = new Error("stop Hermes construction");
     const fetch = vi.fn(async (input: string | URL | Request) => {
       const path = new URL(String(input)).pathname;
       const payloads: Record<string, unknown> = {
@@ -115,6 +144,15 @@ describe("canonical control-plane conformance", () => {
     const report = await runRuntimeControlClientConformance({
       providerId: "hermes",
       create: () => createRuntimeControlClient("hermes", { registry }),
+      lifecycle: {
+        abortReason: abortReason,
+        preAbort: async (signal) => {
+          const abortRegistry = withCaviRuntimeControlProviders(createBuiltInRuntimeProviderRegistry(), {
+            hermes: { dashboardBaseUrl: "https://dashboard.test", fetch },
+          });
+          return createRuntimeControlClient("hermes", { registry: abortRegistry, signal });
+        },
+      },
     });
     expect(report, JSON.stringify(report)).toMatchObject({ valid: true, modules });
     expect(report.supported).toEqual([
@@ -232,5 +270,58 @@ describe("canonical control-plane conformance", () => {
       "events.subscribe disposal is not idempotent",
       "dispose is not idempotent",
     ]));
+  });
+
+  it("rejects abort probes that do not preserve the exact abort reason and always cleans up", async () => {
+    const reason = new Error("abort-fixture");
+    const cleanup = vi.fn(async () => undefined);
+    const report = await runRuntimeControlClientConformance({
+      providerId: "openclaw",
+      create: () => createRuntimeControlClient("openclaw", { transport: fixtureTransport() }),
+      lifecycle: {
+        abortReason: reason,
+        preAbort: async () => Promise.reject(new Error("wrong abort")),
+        inFlightAbort: async () => ({ operation: Promise.reject(new Error("wrong abort")), cleanup }),
+      },
+    });
+    expect(report.valid).toBe(false);
+    expect(report.failures).toEqual(expect.arrayContaining([
+      "pre-aborted construction did not reject with the abort reason",
+      "in-flight operation did not reject with the abort reason",
+    ]));
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("rejects ownership probes that release borrowed resources or leak owned resources", async () => {
+    const borrowed = { releases: 0 };
+    const owned = { releases: 0 };
+    const report = await runRuntimeControlClientConformance({
+      providerId: "claude",
+      create: () => createRuntimeControlClient("claude"),
+      lifecycle: {
+        ownership: {
+          borrowed: async () => ({ dispose: async () => { borrowed.releases += 1; }, releases: () => borrowed.releases }),
+          owned: async () => ({ dispose: async () => undefined, releases: () => owned.releases }),
+        },
+      },
+    });
+    expect(report.valid).toBe(false);
+    expect(report.failures).toEqual(expect.arrayContaining([
+      "borrowed resource was released by client disposal",
+      "owned resource was not released exactly once",
+    ]));
+  });
+
+  it("disposes a client unexpectedly returned by a pre-abort probe", async () => {
+    const returned = await createRuntimeControlClient("claude");
+    const dispose = vi.spyOn(returned, "dispose");
+    const report = await runRuntimeControlClientConformance({
+      providerId: "claude",
+      create: () => createRuntimeControlClient("claude"),
+      lifecycle: { preAbort: async () => returned },
+    });
+    expect(report.valid).toBe(false);
+    expect(report.failures).toContain("pre-aborted construction did not reject with the abort reason");
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });
