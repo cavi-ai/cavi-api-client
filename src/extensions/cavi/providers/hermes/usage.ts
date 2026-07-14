@@ -18,6 +18,15 @@ function explicit(value: string): boolean {
   return value.trim().length > 0;
 }
 
+function rangeDays(range: CostHistoryRange): number {
+  switch (range) {
+    case "1h": return 1 / 24;
+    case "6h": return 1 / 4;
+    case "24h": return 1;
+    case "7d": return 7;
+  }
+}
+
 export function createHermesUsageClient(options: HermesUsageClientOptions): UsageClient {
   return {
     async getUsage(): Promise<RuntimeUsageSummary> {
@@ -38,10 +47,13 @@ export function createHermesUsageClient(options: HermesUsageClientOptions): Usag
       };
       let cost: RuntimeUsageSummary["cost"] = { availability: "unavailable" };
       const source = options.caviCostHistory;
-      if (source && explicit(source.currency) && explicit(source.accountingAuthority)) {
+      if (source
+        && source.currency === "USD"
+        && explicit(source.accountingAuthority)
+        && rangeDays(source.range) === payload.period_days) {
         const snapshot = await source.getCostHistory(source.range);
         const amount = snapshot.totals.estimatedCostUsd;
-        if (Number.isFinite(amount) && amount >= 0) {
+        if (snapshot.range === source.range && Number.isFinite(amount) && amount >= 0) {
           cost = {
             availability: "estimated",
             amount,

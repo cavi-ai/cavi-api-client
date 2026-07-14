@@ -5,7 +5,6 @@ type ModelProvider = {
   slug: string;
   name: string;
   models: readonly string[];
-  is_current: boolean;
   is_user_defined: boolean;
   source: string;
 };
@@ -16,26 +15,30 @@ export function createHermesModelCatalogClient(rest: HermesDashboardRestClient):
       const payload = await rest.getModels();
       const currentProvider = typeof payload.provider === "string" ? payload.provider : "";
       const currentModel = typeof payload.model === "string" ? payload.model : "";
-      const data = (payload.providers as readonly ModelProvider[]).flatMap((provider) =>
-        provider.models.map((model): RuntimeModelDescriptor => ({
-          providerId: provider.slug,
-          id: model,
-          displayName: model,
-          availability: "available",
-          authenticated: provider.is_current,
-          capabilities: {
-            selected: provider.slug === currentProvider && model === currentModel,
-            userDefined: provider.is_user_defined,
-          },
-          metadata: {
-            provider: "hermes",
-            stability: "experimental",
-            source: { transport: "http", method: "models" },
-            providerData: { providerDisplayName: provider.name, source: provider.source },
-          },
-        })),
-      );
-      return { data };
+      const unique = new Map<string, RuntimeModelDescriptor>();
+      for (const provider of payload.providers as readonly ModelProvider[]) {
+        for (const model of provider.models) {
+          const key = `${provider.slug}\u0000${model}`;
+          if (unique.has(key)) continue;
+          unique.set(key, {
+            providerId: provider.slug,
+            id: model,
+            displayName: model,
+            availability: "available",
+            capabilities: {
+              selected: provider.slug === currentProvider && model === currentModel,
+              userDefined: provider.is_user_defined,
+            },
+            metadata: {
+              provider: "hermes",
+              stability: "experimental",
+              source: { transport: "http", method: "models" },
+              providerData: { providerDisplayName: provider.name, source: provider.source },
+            },
+          });
+        }
+      }
+      return { data: [...unique.values()] };
     },
   };
 }

@@ -43,4 +43,22 @@ describe("Hermes auth status", () => {
       { providerId: "indeterminate", status: "unknown" },
     ]);
   });
+
+  it("fails closed on malformed expiry evidence and treats an empty error as no error", async () => {
+    const payload = structuredClone(fixture) as { providers: Array<Record<string, unknown>> };
+    const first = payload.providers[0] as Record<string, unknown>;
+    payload.providers = [
+      { ...first, id: "invalid", status: { logged_in: true, expires_at: "not-a-date", error: "" } },
+      { ...first, id: "empty", status: { logged_in: true, expires_at: "", error: "" } },
+      { ...first, id: "valid", status: { logged_in: true, expires_at: "2030-01-01T00:00:00Z", error: "" } },
+    ];
+    const rest = { getProviderAuth: vi.fn(async () => payload) } as unknown as HermesDashboardRestClient;
+    const statuses = await createHermesAuthStatusClient(rest).listAuthStatus();
+
+    expect(statuses.map(({ providerId, status, expiresAt }) => ({ providerId, status, expiresAt }))).toEqual([
+      { providerId: "invalid", status: "unknown", expiresAt: undefined },
+      { providerId: "empty", status: "unknown", expiresAt: undefined },
+      { providerId: "valid", status: "authenticated", expiresAt: "2030-01-01T00:00:00Z" },
+    ]);
+  });
 });

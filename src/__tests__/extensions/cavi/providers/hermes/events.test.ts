@@ -61,4 +61,60 @@ describe("Hermes runtime events", () => {
     await subscription.dispose();
     expect(detach).toHaveBeenCalledTimes(1);
   });
+
+  it("redacts failures and never forwards tool results or unknown native payloads", async () => {
+    const { rpc, emit } = driver();
+    const onEvent = vi.fn();
+    await createHermesRuntimeEventClient(rpc).subscribe({ operationId: "run-1" }, { onEvent });
+    emit({ type: "run.event", payload: { event: "run.failed", run_id: "run-1", error: { authorization: "Bearer failure-secret" } } });
+    emit({ type: "run.event", payload: { event: "tool.completed", run_id: "run-1", tool: "shell", result: { password: "result-secret" } } });
+    emit({ type: "run.event", payload: { event: "future.event", run_id: "run-1", token_preview: "unknown-secret", detail: "private" } });
+
+    const serialized = JSON.stringify(onEvent.mock.calls);
+    expect(serialized).not.toMatch(/failure-secret|result-secret|unknown-secret|token_preview|password/i);
+    expect(onEvent.mock.calls[0]?.[0]).toMatchObject({ event: "operation.failed", error: { message: expect.stringContaining("[REDACTED]") } });
+    expect(onEvent.mock.calls[1]?.[0]).toEqual(expect.objectContaining({ event: "tool.completed", toolCallId: "shell" }));
+    expect(onEvent.mock.calls[1]?.[0]).not.toHaveProperty("result");
+    expect(onEvent.mock.calls[2]?.[0]).toMatchObject({ event: "operation.updated", update: { nativeEvent: "future.event" } });
+    expect(onEvent.mock.calls[2]?.[0].update).not.toHaveProperty("payload");
+  });
+
+  it.each([
+    { input_tokens: -1 },
+    { input_tokens: 1.5 },
+    { input_tokens: 1, output_tokens: 2, total_tokens: 99 },
+    { input_tokens: 1, token_preview: "usage-secret" },
+    { input_tokens: "1" },
+  ])("rejects malformed usage without delivery or leakage %#", async (usage) => {
+    const { rpc, emit } = driver();
+    const onEvent = vi.fn();
+    const onError = vi.fn();
+    await createHermesRuntimeEventClient(rpc).subscribe({ operationId: "run-1" }, { onEvent, onError });
+    emit({ type: "run.event", payload: { event: "usage.updated", run_id: "run-1", usage } });
+    expect(onEvent).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(onError.mock.calls)).not.toContain("usage-secret");
+  });
+
+  it("rolls back a synchronous native attach failure without a ghost subscriber", async () => {
+    let listener: ((event: HermesDashboardEvent) => void) | undefined;
+    const detach = vi.fn();
+    const rpc: HermesDashboardJsonRpcClient = {
+      request: vi.fn(),
+      subscribe: vi.fn()
+        .mockImplementationOnce(() => { throw new Error("attach failed"); })
+        .mockImplementationOnce((next) => { listener = next; return detach; }),
+      dispose: vi.fn(async () => undefined),
+    };
+    const client = createHermesRuntimeEventClient(rpc);
+    const ghost = vi.fn();
+    await expect(client.subscribe({ operationId: "run-1" }, { onEvent: ghost })).rejects.toThrow("attach failed");
+    const live = vi.fn();
+    const subscription = await client.subscribe({ operationId: "run-1" }, { onEvent: live });
+    listener?.({ type: "run.event", payload: { event: "operation.completed", run_id: "run-1" } });
+    expect(ghost).not.toHaveBeenCalled();
+    expect(live).toHaveBeenCalledTimes(1);
+    await subscription.dispose();
+    expect(detach).toHaveBeenCalledTimes(1);
+  });
 });
