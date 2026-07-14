@@ -37,6 +37,10 @@ src/index.ts
   Its runtime-control registry enhancer clones an application registry and
   installs only the resolved Hermes CAVI factory; it does not mutate the base
   registry, root capability matrix, provider-neutral factory, or other modules.
+  Canonical normalized-kind cardinality and semantic kind/alias resolution are
+  validated before composition, so missing, ambiguous, and alias-shadowed
+  registries fail closed. Mutable extension configuration is snapshotted per
+  registry while opaque runtime resources retain caller-owned identity.
 - `frameworks/react/` contains optional React bindings. React is an optional peer
   dependency and is never imported by the root entry.
 

@@ -15,7 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the CAVI-only `withCaviRuntimeControlProviders` registry enhancer. It
   immutably installs the resolved Hermes runtime-control factory while
   preserving base modules, aliases, capabilities, resolution order, the root
-  capability matrix, and provider-neutral package-factory options.
+  capability matrix, and provider-neutral package-factory options. Canonical
+  Hermes identity now fails closed for missing, ambiguous, or alias-shadowed
+  registries; generic module types and defensive-copy registries are preserved,
+  and mutable extension setup is snapshotted without cloning opaque runtime
+  resources.
 
 ### Changed
 

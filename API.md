@@ -215,8 +215,13 @@ not retain aliases for the unreleased names.
 - `withCaviRuntimeControlProviders(base, options)` — exported only from the
   CAVI extension, returns a new registry that preserves the base module list,
   aliases, capabilities, and resolution order while replacing the resolved
-  Hermes runtime-control factory. CAVI-only Hermes configuration is captured at
-  setup; provider-neutral call options override overlapping setup fields.
+  Hermes runtime-control factory. It requires exactly one canonical normalized
+  Hermes kind and rejects missing, ambiguous, or alias-shadowed registries
+  without installing a factory on another provider. The generic return retains
+  custom provider-module types. CAVI-only mutable configuration is snapshotted
+  at setup while channels, signals, functions, fetch implementations, and
+  transport clients remain opaque references; provider-neutral call options
+  override overlapping setup fields.
 - `CaviRuntimeControlProviderOptions` — CAVI-extension setup type whose optional
   `hermes` field owns `HermesCaviRuntimeControlOptions` without widening the
   package-root `RuntimeControlClientOptions` contract.
