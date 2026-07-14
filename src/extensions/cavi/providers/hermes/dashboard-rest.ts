@@ -93,13 +93,20 @@ function isSafeJsonValue(value: unknown, seen = new WeakSet<object>()): boolean 
   if (Array.isArray(value)) {
     if (Object.getPrototypeOf(value) !== Array.prototype) return false;
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    for (let index = 0; index < value.length; index += 1) {
-      const descriptor = descriptors[String(index)];
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (!lengthDescriptor || !("value" in lengthDescriptor)
+      || typeof lengthDescriptor.value !== "number"
+      || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0) return false;
+    const length = lengthDescriptor.value;
+    const allowedKeys = new Set<string | symbol>(["length"]);
+    for (let index = 0; index < length; index += 1) {
+      const key = String(index);
+      allowedKeys.add(key);
+      const descriptor = descriptors[key];
       if (!descriptor || !("value" in descriptor) || !descriptor.enumerable
         || !isSafeJsonValue(descriptor.value, seen)) return false;
     }
-    return Reflect.ownKeys(descriptors).every((key) => key === "length"
-      || (typeof key === "string" && /^(0|[1-9][0-9]*)$/u.test(key)));
+    return Reflect.ownKeys(descriptors).every((key) => allowedKeys.has(key));
   }
   const descriptors = plainRecordDescriptors(value);
   if (!descriptors) return false;
