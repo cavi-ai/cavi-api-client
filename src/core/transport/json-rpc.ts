@@ -53,9 +53,16 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
   let closed = false;
   let closePromise: Promise<void> | undefined;
 
-  const reportProtocolError = (message: string) => {
+  const protocolError = (message: string): TransportError =>
+    rpcError(message, "decode");
+
+  const reportProtocolError = (error: TransportError): void => {
+    try { options.onProtocolError?.(error); } catch { /* Protocol observers are isolated. */ }
+  };
+
+  const reportProtocolErrorMessage = (message: string): void => {
     const error = rpcError(message, "decode");
-    options.onProtocolError?.(error);
+    reportProtocolError(error);
   };
 
   let unsubscribeMessages = () => {};
@@ -77,7 +84,7 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
 
   unsubscribeMessages = options.channel.subscribe((message) => {
     if (!isRecord(message) || message.jsonrpc !== "2.0") {
-      reportProtocolError("Received an invalid JSON-RPC message");
+      reportProtocolErrorMessage("Received an invalid JSON-RPC message");
       return;
     }
     if (typeof message.method === "string" && message.id === undefined) {
@@ -85,12 +92,12 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
       return;
     }
     if (!isId(message.id)) {
-      reportProtocolError("Received an invalid JSON-RPC response");
+      reportProtocolErrorMessage("Received an invalid JSON-RPC response");
       return;
     }
     const request = pending.get(message.id);
     if (!request) {
-      reportProtocolError("Received a JSON-RPC response with an unknown id");
+      reportProtocolErrorMessage("Received a JSON-RPC response with an unknown id");
       return;
     }
     const hasResult = Object.prototype.hasOwnProperty.call(message, "result");
@@ -99,7 +106,11 @@ export function createJsonRpcTransport(options: CreateJsonRpcTransportOptions): 
       typeof message.error.code === "number" && Number.isFinite(message.error.code) &&
       typeof message.error.message === "string";
     if (hasResult === hasError || (hasError && !validError)) {
-      reportProtocolError("Received a malformed JSON-RPC response");
+      const error = protocolError("Received a malformed JSON-RPC response");
+      pending.delete(message.id);
+      request.removeAbortListener();
+      request.reject(error);
+      reportProtocolError(error);
       return;
     }
     pending.delete(message.id);

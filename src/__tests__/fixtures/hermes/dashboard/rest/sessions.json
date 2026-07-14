@@ -1,0 +1,19 @@
+{
+  "sessions": [
+    {
+      "id": "session-fixture-001",
+      "title": "Sanitized fixture session",
+      "source": "api_server",
+      "model": "fixture-provider/fixture-model",
+      "started_at": 1784044800,
+      "last_active": 1784044860,
+      "ended_at": null,
+      "is_active": true,
+      "message_count": 2,
+      "preview": null
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}

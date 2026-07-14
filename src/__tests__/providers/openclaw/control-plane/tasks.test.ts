@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiClientError } from "../../../../core/errors.js";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory.js";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory.js";
 import type { OpenClawRpc } from "../../../../providers/openclaw/control-plane/rpc.js";
 import { createOpenClawTaskClient } from "../../../../providers/openclaw/control-plane/tasks.js";
 import { ApiClientErrorCode } from "../../../../core/errors.js";
@@ -101,7 +101,7 @@ describe("OpenClaw task control plane", () => {
 
   it("is wired by the internal factory without capability promotion", async () => {
     const rpc = createRpc({ "tasks.get": { task: { id: "task-1", status: "running" } } });
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
 
     await expect(plane.tasks.getTask("task-1")).resolves.toMatchObject({ id: "task-1" });
   });

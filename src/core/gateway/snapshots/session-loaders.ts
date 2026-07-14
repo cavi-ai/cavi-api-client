@@ -11,13 +11,16 @@ import type {
   SessionsPreviewPayload,
   SessionsUsagePayload,
 } from "./transforms.js";
-import { GATEWAY_SESSION_API_PATHS } from "../../../contracts/paths.js";
-
 import type { GatewayRpcClient } from "../rpc/client.js";
 import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
 } from "./cache.js";
+import {
+  createOpenClawSessionOperations,
+  type GatewaySessionOperations,
+  type GatewaySessionRequestOptions,
+} from "./session-operations.js";
 
 export type SessionHttpRequestJson = <T>(
   path: string,
@@ -31,6 +34,8 @@ export type SessionHttpRequestJson = <T>(
 export type CreateSessionLoadersOptions = {
   /** REST fallback used when the dashboard JSON-RPC websocket is unavailable. */
   requestJson?: SessionHttpRequestJson | null;
+  /** Provider-neutral operation seam. Defaults to the released OpenClaw RPC/REST mapping. */
+  operations?: GatewaySessionOperations;
 };
 
 /** Filters accepted by the gateway's `sessions.list` RPC. Mirrors the web's contract. */
@@ -247,36 +252,22 @@ export function normalizeSessionsListPayload(
   };
 }
 
-function withQuery(path: string, params: Record<string, unknown>): string {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null) continue;
-    if (Array.isArray(value)) {
-      for (const entry of value) {
-        if (entry !== undefined && entry !== null) {
-          query.append(key, String(entry));
-        }
-      }
-      continue;
-    }
-    query.set(key, String(value));
-  }
-  const encoded = query.toString();
-  return encoded ? `${path}?${encoded}` : path;
-}
-
 export type SessionLoaders = {
   loadSessionsListRaw: (
     params: SessionsListRequestParams,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionsListPayloadWithCache>;
   loadSessionsUsageRaw: (
     params: Record<string, unknown>,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionsUsagePayload>;
   loadSessionsPreviewRaw: (
     params: SessionsPreviewRequestParams,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionsPreviewPayload>;
   loadSessionDetailRaw: (
     params: SessionDetailRequestParams,
+    options?: GatewaySessionRequestOptions,
   ) => Promise<SessionDetailPayload>;
   /**
    * Synchronous read of the sessions.list cache for the given param shape. Returns the cached
@@ -290,7 +281,10 @@ export type SessionLoaders = {
    * Mutate per-session settings via `sessions.patch`. Fire-and-forget — caller is expected to
    * invalidate any session detail / list / usage query on resolve. No client-side caching.
    */
-  patchSession: (params: SessionPatchInput) => Promise<void>;
+  patchSession: (
+    params: SessionPatchInput,
+    options?: GatewaySessionRequestOptions,
+  ) => Promise<void>;
 };
 
 /**
@@ -303,6 +297,10 @@ export function createSessionLoaders(
   options: CreateSessionLoadersOptions = {},
 ): SessionLoaders {
   const requestJson = options.requestJson ?? null;
+  const operations =
+    options.operations ?? createOpenClawSessionOperations(client, requestJson);
+  const preserveReleasedRestBehavior =
+    !options.operations && !client && Boolean(requestJson);
   const sessionsListCache = new Map<string, SessionsListCacheEntry>();
   const sessionsUsageCache = new Map<
     string,
@@ -319,16 +317,12 @@ export function createSessionLoaders(
 
   const loadSessionsListRaw: SessionLoaders["loadSessionsListRaw"] = async (
     params,
+    requestOptions,
   ) => {
-    const c = client;
-    if (!c) {
-      if (requestJson) {
-        const payload = await requestJson<SessionsListRpcPayload>(
-          withQuery(GATEWAY_SESSION_API_PATHS.list, params),
-        );
-        return normalizeSessionsListPayload(payload);
-      }
-      throw new Error("Gateway client not connected");
+    if (preserveReleasedRestBehavior) {
+      return normalizeSessionsListPayload(
+        await operations.list(params, requestOptions),
+      );
     }
 
     const cacheKey = canonicalizeSessionsListParams(params);
@@ -351,10 +345,7 @@ export function createSessionLoaders(
         requestParams.lastHash = cacheEntry.lastHash;
       }
 
-      let response = await c.request<SessionsListRpcPayload>(
-        "sessions.list",
-        requestParams,
-      );
+      let response = await operations.list(requestParams, requestOptions);
 
       if (isUnchangedSessionsListPayload(response)) {
         if (cacheEntry.payload) {
@@ -373,9 +364,7 @@ export function createSessionLoaders(
           return merged;
         }
 
-        response = await c.request<SessionsListRpcPayload>("sessions.list", {
-          ...params,
-        });
+        response = await operations.list({ ...params }, requestOptions);
       }
 
       const normalized = normalizeSessionsListPayload(response);
@@ -394,15 +383,10 @@ export function createSessionLoaders(
 
   const loadSessionsUsageRaw: SessionLoaders["loadSessionsUsageRaw"] = async (
     params,
+    requestOptions,
   ) => {
-    const c = client;
-    if (!c) {
-      if (requestJson) {
-        return await requestJson<SessionsUsagePayload>(
-          withQuery(GATEWAY_SESSION_API_PATHS.usage, params),
-        );
-      }
-      throw new Error("Gateway client not connected");
+    if (preserveReleasedRestBehavior) {
+      return await operations.usage(params, requestOptions);
     }
 
     const cacheKey = canonicalizeSessionsUsageParams(params);
@@ -414,8 +398,8 @@ export function createSessionLoaders(
       return await cacheEntry.inFlight;
     }
 
-    cacheEntry.inFlight = c
-      .request<SessionsUsagePayload>("sessions.usage", params)
+    cacheEntry.inFlight = operations
+      .usage(params, requestOptions)
       .then((payload) => {
         cacheEntry.payload = payload;
         cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -428,16 +412,9 @@ export function createSessionLoaders(
   };
 
   const loadSessionsPreviewRaw: SessionLoaders["loadSessionsPreviewRaw"] =
-    async (params) => {
-      const c = client;
-      if (!c) {
-        if (requestJson) {
-          return await requestJson<SessionsPreviewPayload>(
-            GATEWAY_SESSION_API_PATHS.preview,
-            { method: "POST", body: params },
-          );
-        }
-        throw new Error("Gateway client not connected");
+    async (params, requestOptions) => {
+      if (preserveReleasedRestBehavior) {
+        return await operations.preview(params, requestOptions);
       }
 
       const cacheKey = canonicalizeSessionsPreviewParams(params);
@@ -452,8 +429,8 @@ export function createSessionLoaders(
         return await cacheEntry.inFlight;
       }
 
-      cacheEntry.inFlight = c
-        .request<SessionsPreviewPayload>("sessions.preview", params)
+      cacheEntry.inFlight = operations
+        .preview(params, requestOptions)
         .then((payload) => {
           cacheEntry.payload = payload;
           cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -467,16 +444,10 @@ export function createSessionLoaders(
 
   const loadSessionDetailRaw: SessionLoaders["loadSessionDetailRaw"] = async (
     params,
+    requestOptions,
   ) => {
-    const c = client;
-    if (!c) {
-      if (requestJson) {
-        return await requestJson<SessionDetailPayload>(
-          GATEWAY_SESSION_API_PATHS.detail,
-          { method: "POST", body: params },
-        );
-      }
-      throw new Error("Gateway client not connected");
+    if (preserveReleasedRestBehavior) {
+      return await operations.detail(params, requestOptions);
     }
 
     const cacheKey = canonicalizeSessionDetailParams(params);
@@ -488,8 +459,8 @@ export function createSessionLoaders(
       return await cacheEntry.inFlight;
     }
 
-    cacheEntry.inFlight = c
-      .request<SessionDetailPayload>("sessions.detail", params)
+    cacheEntry.inFlight = operations
+      .detail(params, requestOptions)
       .then((payload) => {
         cacheEntry.payload = payload;
         cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -508,19 +479,11 @@ export function createSessionLoaders(
     return sessionsListCache.get(cacheKey)?.payload ?? null;
   };
 
-  const patchSession: SessionLoaders["patchSession"] = async (params) => {
-    const c = client;
-    if (!c) {
-      if (requestJson) {
-        await requestJson<unknown>(GATEWAY_SESSION_API_PATHS.patch, {
-          method: "PATCH",
-          body: params,
-        });
-        return;
-      }
-      throw new Error("Gateway client not connected");
-    }
-    await c.request<unknown>("sessions.patch", params);
+  const patchSession: SessionLoaders["patchSession"] = async (
+    params,
+    requestOptions,
+  ) => {
+    await operations.patch(params, requestOptions);
   };
 
   return {

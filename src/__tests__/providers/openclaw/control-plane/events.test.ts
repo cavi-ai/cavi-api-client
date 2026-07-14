@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiClientErrorCode } from "../../../../core/errors";
-import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/canonical";
+import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client";
 import type { RuntimeControlPlaneEvent } from "../../../../core/runtime/control-plane/events";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory";
 import { createOpenClawRuntimeEventClient } from "../../../../providers/openclaw/control-plane/events";
 import type {
   OpenClawRpc,
@@ -289,7 +289,7 @@ describe("OpenClaw native control-plane events", () => {
 
   it("wires events through the OpenClaw control-plane factory", async () => {
     const rpc = new EventRpc();
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
     const received: RuntimeControlPlaneEvent[] = [];
     await plane.events.subscribe({ operationId: "run-1" }, { onEvent: (event) => received.push(event) });
     rpc.emit("task.cancelled", { operationId: "run-1" });

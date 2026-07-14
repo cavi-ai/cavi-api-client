@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory.js";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory.js";
 import type { OpenClawRpc } from "../../../../providers/openclaw/control-plane/rpc.js";
 import { createOpenClawWorkspaceClient } from "../../../../providers/openclaw/control-plane/workspace.js";
 
@@ -96,7 +96,7 @@ describe("OpenClaw workspace control plane", () => {
 
   it("is wired by the internal factory without capability promotion", async () => {
     const rpc = createRpc(agents);
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
 
     await expect(plane.workspace.getWorkspace("openclaw-workspace:%2Fworkspace%2Fmain")).resolves.toMatchObject({ root: "/workspace/main" });
   });

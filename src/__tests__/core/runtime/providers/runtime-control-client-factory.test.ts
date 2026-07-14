@@ -1,40 +1,40 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import {
   CapabilityUnavailable,
-  createUnavailableCanonicalControlPlane,
-} from "../../../../core/runtime/control-plane/canonical";
+  createUnavailableRuntimeControlClient,
+} from "../../../../core/runtime/control-plane/runtime-control-client";
 import {
-  createRuntimeControlPlane,
+  createRuntimeControlClient,
   createRuntimeProviderRegistry,
-  type CanonicalControlPlaneFactoryOptions,
+  type RuntimeControlClientOptions,
   type RuntimeProviderModule,
 } from "../../../../core/runtime/providers/index";
 
-describe("createRuntimeControlPlane", () => {
+describe("createRuntimeControlClient", () => {
   it("uses a registered provider canonical factory", async () => {
-    const fixturePlane = createUnavailableCanonicalControlPlane("fixture", new Set());
-    const createCanonicalControlPlane = vi.fn(async () => fixturePlane);
+    const fixturePlane = createUnavailableRuntimeControlClient("fixture", new Set());
+    const createFixtureRuntimeControlClient = vi.fn(async () => fixturePlane);
     const fixture: RuntimeProviderModule = {
       kind: "fixture",
       createClient: vi.fn(),
-      createCanonicalControlPlane,
+      createRuntimeControlClient: createFixtureRuntimeControlClient,
     };
     const registry = createRuntimeProviderRegistry({ modules: [fixture] });
 
-    await expect(createRuntimeControlPlane("fixture", { registry })).resolves.toBe(fixturePlane);
-    expect(createCanonicalControlPlane).toHaveBeenCalledWith({ registry });
+    await expect(createRuntimeControlClient("fixture", { registry })).resolves.toBe(fixturePlane);
+    expect(createFixtureRuntimeControlClient).toHaveBeenCalledWith({ registry });
   });
 
   it("normalizes provider aliases through the registry", async () => {
-    const fixturePlane = createUnavailableCanonicalControlPlane("fixture", new Set());
+    const fixturePlane = createUnavailableRuntimeControlClient("fixture", new Set());
     const fixture: RuntimeProviderModule = {
       kind: "fixture",
       aliases: ["fixture-runtime"],
-      createCanonicalControlPlane: async () => fixturePlane,
+      createRuntimeControlClient: async () => fixturePlane,
     };
     const registry = createRuntimeProviderRegistry({ modules: [fixture] });
 
-    await expect(createRuntimeControlPlane(" FIXTURE-RUNTIME ", { registry })).resolves.toBe(
+    await expect(createRuntimeControlClient(" FIXTURE-RUNTIME ", { registry })).resolves.toBe(
       fixturePlane,
     );
   });
@@ -43,7 +43,7 @@ describe("createRuntimeControlPlane", () => {
     const fixture: RuntimeProviderModule = { kind: "fixture" };
     const registry = createRuntimeProviderRegistry({ modules: [fixture] });
 
-    const plane = await createRuntimeControlPlane(" GEMINI ", { registry });
+    const plane = await createRuntimeControlClient(" GEMINI ", { registry });
 
     expect(plane).toMatchObject({
       authStatus: expect.any(Object),
@@ -64,7 +64,7 @@ describe("createRuntimeControlPlane", () => {
   });
 
   it("keeps factory options provider-neutral", () => {
-    expectTypeOf<keyof CanonicalControlPlaneFactoryOptions>().toEqualTypeOf<
+    expectTypeOf<keyof RuntimeControlClientOptions>().toEqualTypeOf<
       | "baseUrl"
       | "webSocketUrl"
       | "token"
@@ -75,7 +75,7 @@ describe("createRuntimeControlPlane", () => {
       | "registry"
     >();
 
-    const options: CanonicalControlPlaneFactoryOptions = {
+    const options: RuntimeControlClientOptions = {
       baseUrl: "https://runtime.example",
       webSocketUrl: "wss://runtime.example",
       token: "token",

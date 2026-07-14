@@ -13,6 +13,7 @@ import {
   resolvePortalApiPath,
 } from "../../../extensions/cavi/contracts/paths";
 import { describeHttpContract } from "../../../core/http/contracts";
+import { CAVI_COST_HISTORY_API_PATHS } from "../../../extensions/cavi/runtime/paths";
 
 const projectBoard = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
 const operator = CAVI_CONTROL_OPERATOR_API;
@@ -49,6 +50,10 @@ describe("api-paths", () => {
     expect(CAVI_CONTROL_API_ENDPOINTS.scoringModel).toBe(
       "/api/plugins/cavi-control/scoring/model",
     );
+    expect(CAVI_COST_HISTORY_API_PATHS).toEqual([
+      CAVI_CONTROL_API_ENDPOINTS.costHistory,
+      "/cavi-control/api/cost/history",
+    ]);
   });
 
   it("projectBoardBacklogItemPath encodes item ids", () => {
