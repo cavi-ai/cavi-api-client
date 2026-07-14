@@ -295,6 +295,29 @@ describe("Hermes dashboard REST client", () => {
       });
       return payload;
     }],
+    ["numeric non-index array accessor", () => {
+      const payload = structuredClone(fixture("sessions")) as { sessions: unknown[] };
+      Object.defineProperty(payload.sessions, "4294967295", {
+        enumerable: true,
+        get() { throw new Error("unsafe numeric array getter was invoked"); },
+      });
+      return payload;
+    }],
+    ["numeric non-index array class", () => {
+      class NumericMetadata { value = "unsafe"; }
+      const payload = structuredClone(fixture("sessions")) as { sessions: unknown[] };
+      Object.defineProperty(payload.sessions, "4294967295", {
+        value: new NumericMetadata(), enumerable: true,
+      });
+      return payload;
+    }],
+    ["larger numeric non-index array cycle", () => {
+      const payload = structuredClone(fixture("sessions")) as { sessions: unknown[] };
+      const cycle: Record<string, unknown> = {};
+      cycle.self = cycle;
+      Object.defineProperty(payload.sessions, "4294967296", { value: cycle, enumerable: true });
+      return payload;
+    }],
     ["array cycle", () => {
       const cycle: unknown[] = [];
       cycle.push(cycle);
