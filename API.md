@@ -401,6 +401,11 @@ Gateway aliases:
 ## Sessions And Snapshots
 
 The session REST paths are HTTP fallbacks for the websocket RPC session methods.
+Core snapshot loaders accept a provider-neutral `GatewaySessionOperations` port
+covering list, usage, preview, detail, and patch. The default
+`createOpenClawSessionOperations` adapter retains the plural `sessions.*` RPC
+names and the REST mappings below; injecting the port does not change loader
+payloads, cache behavior, or released loader method names.
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |
