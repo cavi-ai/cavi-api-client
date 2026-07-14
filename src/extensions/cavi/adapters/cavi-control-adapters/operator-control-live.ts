@@ -33,11 +33,15 @@ import {
 import { loadOperatorControlSection } from "../../operator-control/load-section.js";
 
 const OPERATOR_FULL_FALLBACK_BACKOFF_MS = 15_000;
+type OperatorTransport = "websocket" | "http" | "fallback";
+type OperatorControlEnvelope = DataEnvelope<OperatorControlSnapshot> & {
+  transports: { tasks: OperatorTransport; registryDetail: OperatorTransport };
+};
 const fullFallbackByRequestJson = new WeakMap<
   JsonHttpRequest,
   {
     expiresAt: number;
-    envelope: DataEnvelope<OperatorControlSnapshot>;
+    envelope: OperatorControlEnvelope;
   }
 >();
 
@@ -150,7 +154,7 @@ function resolveOperatorControlFallback(
 async function requestOperatorSnapshot(params: {
   client: GatewayWebSocketClient | null | undefined;
   requestJson: JsonHttpRequest;
-}): Promise<OperatorControlSnapshot> {
+}): Promise<{ data: OperatorControlSnapshot; transport: "websocket" | "http" }> {
   const snapshotParams = {
     taskLimit: OPERATOR_TASK_SAMPLE_LIMIT,
     memoryLimit: OPERATOR_MEMORY_SAMPLE_LIMIT,
@@ -160,20 +164,20 @@ async function requestOperatorSnapshot(params: {
   const httpAliasPath = withQuery(OPERATOR_API_PLUGIN_ALIAS.snapshot, snapshotParams);
   if (params.client) {
     try {
-      return await params.client.request<OperatorControlSnapshot>(
+      return { data: await params.client.request<OperatorControlSnapshot>(
         CAVI_CONTROL_OPERATOR_RPC_METHODS.snapshot,
         snapshotParams,
-      );
+      ), transport: "websocket" };
     } catch {
       // Ignore WS aggregate failures and continue with the HTTP aggregate endpoint.
     }
   }
 
-  return await requestJsonWithAlias<OperatorControlSnapshot>(
+  return { data: await requestJsonWithAlias<OperatorControlSnapshot>(
     params.requestJson,
     httpPath,
     httpAliasPath,
-  );
+  ), transport: "http" };
 }
 
 async function requestOperatorSection<TData>(params: {
@@ -183,27 +187,32 @@ async function requestOperatorSection<TData>(params: {
   wsParams?: Record<string, unknown>;
   httpPath: string;
   httpAliasPath?: string | null;
+  onTransport?: (transport: "websocket" | "http") => void;
 }): Promise<TData> {
   if (params.client) {
     try {
-      return await params.client.request<TData>(params.wsMethod, params.wsParams ?? {});
+      const data = await params.client.request<TData>(params.wsMethod, params.wsParams ?? {});
+      params.onTransport?.("websocket");
+      return data;
     } catch {
       // Ignore WS failures and continue with the HTTP operator endpoint.
     }
   }
 
-  return await requestJsonWithAlias<TData>(
+  const data = await requestJsonWithAlias<TData>(
     params.requestJson,
     params.httpPath,
     params.httpAliasPath,
   );
+  params.onTransport?.("http");
+  return data;
 }
 
 export async function loadOperatorControlLive(
   requestJson: JsonHttpRequest,
   client: GatewayWebSocketClient | null | undefined,
   fallback?: OperatorControlFallback | null,
-): Promise<DataEnvelope<OperatorControlSnapshot>> {
+): Promise<OperatorControlEnvelope> {
   const cachedFullFallback = fullFallbackByRequestJson.get(requestJson);
   if (cachedFullFallback && cachedFullFallback.expiresAt > Date.now()) {
     return {
@@ -217,9 +226,9 @@ export async function loadOperatorControlLive(
     fullFallbackByRequestJson.delete(requestJson);
     return {
       data: {
-        ...aggregate,
+        ...aggregate.data,
         sectionStatus:
-          aggregate.sectionStatus ??
+          aggregate.data.sectionStatus ??
           buildAvailableSectionStatus({
             tasksLimit: OPERATOR_TASK_SAMPLE_LIMIT,
             memoryLimit: OPERATOR_MEMORY_SAMPLE_LIMIT,
@@ -227,6 +236,7 @@ export async function loadOperatorControlLive(
           }),
       },
       source: "gateway",
+      transports: { tasks: aggregate.transport, registryDetail: aggregate.transport },
       fetchedAt: Date.now(),
       contractGaps: [],
     };
@@ -234,6 +244,8 @@ export async function loadOperatorControlLive(
     // Fall back to section-by-section reads for older gateways or partial outages.
   }
 
+  let taskTransport: "websocket" | "http" = "http";
+  let registryTransport: "websocket" | "http" = "http";
   const [
     statusResult,
     registryResult,
@@ -270,6 +282,7 @@ export async function loadOperatorControlLive(
           wsMethod: CAVI_CONTROL_OPERATOR_RPC_METHODS.registry,
           httpPath: OPERATOR_API.registry,
           httpAliasPath: OPERATOR_API_PLUGIN_ALIAS.registry,
+          onTransport: (transport) => { registryTransport = transport; },
         }),
       fallback: createEmptyOperatorRegistry,
       authoritative: true,
@@ -294,6 +307,7 @@ export async function loadOperatorControlLive(
           httpAliasPath: withQuery(OPERATOR_API_PLUGIN_ALIAS.tasks, {
             limit: OPERATOR_TASK_SAMPLE_LIMIT,
           }),
+          onTransport: (transport) => { taskTransport = transport; },
         }),
       fallback: createEmptyOperatorTasks,
       authoritative: false,
@@ -396,6 +410,7 @@ export async function loadOperatorControlLive(
     const envelope = {
       data: resolveOperatorControlFallback(fallback),
       source: "mock",
+      transports: { tasks: "fallback", registryDetail: "fallback" },
       fetchedAt: Date.now(),
       contractGaps: [
         fallbackGap(
@@ -408,7 +423,7 @@ export async function loadOperatorControlLive(
           primaryGap?.httpStatus,
         ),
       ],
-    } satisfies DataEnvelope<OperatorControlSnapshot>;
+    } satisfies OperatorControlEnvelope;
     fullFallbackByRequestJson.set(requestJson, {
       expiresAt: Date.now() + OPERATOR_FULL_FALLBACK_BACKOFF_MS,
       envelope,
@@ -461,6 +476,10 @@ export async function loadOperatorControlLive(
       },
     },
     source: "gateway",
+    transports: {
+      tasks: tasksResult.status.available ? taskTransport : "fallback",
+      registryDetail: registryResult.status.available ? registryTransport : "fallback",
+    },
     fetchedAt: Date.now(),
     contractGaps,
   };

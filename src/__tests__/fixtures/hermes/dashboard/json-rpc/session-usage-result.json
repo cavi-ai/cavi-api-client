@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": "rpc-002",
+  "result": {
+    "calls": 2,
+    "input": 120,
+    "output": 30,
+    "total": 150
+  }
+}

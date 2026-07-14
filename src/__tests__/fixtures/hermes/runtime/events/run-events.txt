@@ -1,0 +1,9 @@
+data: {"event":"message.delta","run_id":"run_fixture_001","timestamp":1784044800.1,"delta":"Fixture response."}
+
+data: {"event":"tool.started","run_id":"run_fixture_001","timestamp":1784044800.2,"tool":"fixture_tool","preview":"Sanitized operation"}
+
+data: {"event":"tool.completed","run_id":"run_fixture_001","timestamp":1784044800.3,"tool":"fixture_tool","duration":0.125,"error":false}
+
+data: {"event":"run.completed","run_id":"run_fixture_001","timestamp":1784044800.4,"output":"Fixture complete.","usage":{"input_tokens":120,"output_tokens":30,"total_tokens":150}}
+
+: stream closed

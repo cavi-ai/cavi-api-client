@@ -10,8 +10,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the CAVI-only `withCaviRuntimeControlProviders` registry enhancer. It
+  immutably installs the resolved Hermes runtime-control factory while
+  preserving base modules, aliases, capabilities, resolution order, the root
+  capability matrix, and provider-neutral package-factory options. Canonical
+  Hermes identity now fails closed for missing, ambiguous, or alias-shadowed
+  registries; generic module types and defensive-copy registries are preserved,
+  and mutable extension setup is snapshotted without cloning opaque runtime
+  resources.
+- Documented branch-free `RuntimeControlClient` consumption and the exact
+  Hermes/OpenClaw transport, REST fallback, event, authentication, lifecycle,
+  task, workspace, cost, and upstream protocol-ownership boundaries. The
+  Hermes session module requires both dashboard REST and a channel. An explicit
+  dashboard token suppresses authentication resolution and wins over the generic
+  token; otherwise a resolved authorization header wins, with the generic token
+  supplying bearer authorization when resolved headers contain no authentication.
+  Hermes session pagination preserves validated upstream totals, CAVI task
+  snapshots fail closed on malformed nested schemas, and task/workspace metadata
+  reports the adapter's actual WebSocket or HTTP transport without labeling
+  local fallback data as wire traffic. Blank resolved authorization values use
+  the generic bearer token, session cursors stop at the 200-row bound and do not
+  repeat when REST fallback cannot advance, and partial operator-section
+  fallbacks retain non-wire provenance. The
+  immutable generated `v0.11.0` documentation remains historically accurate
+  and intentionally excludes these unreleased APIs.
+
+### Changed
+
+- Extracted the core gateway session loaders behind an injectable,
+  provider-neutral `GatewaySessionOperations` port. The default OpenClaw adapter
+  preserves the released plural `sessions.*` RPC and REST fallback mappings,
+  payloads, caches, and one-argument loader calls without adding a CAVI copy.
+  Optional request options now propagate through every session operation;
+  already-aborted signals prevent legacy transport dispatch, while in-flight
+  cancellation remains unsupported by those released transports.
+- Extended the additive gateway session operation seam with optional typed
+  cancellation and provider-neutral raw creation/update/state fields. Canonical
+  session methods now share abortable request option types; providers without
+  proven cancellation semantics keep the optional operation absent.
+- Directly renamed the unreleased canonical facade, factories, provider hook,
+  and conformance kit to the `RuntimeControlClient` vocabulary. This is a
+  pre-release rename, not a compatibility removal; the older released
+  `RuntimeControlPlane` declaration API remains intact.
+
 ### Fixed
 
+- Made Hermes runtime-control composition independent per configured surface:
+  CAVI task/workspace adapters now install without dashboard REST, while absent
+  dashboard modules remain exact unavailable facades. Construction now unwinds
+  owned channels and RPC resources in reverse order, including readiness,
+  synchronous subscription, and post-construction abort failures, without
+  closing borrowed channels or replacing the primary error.
+- Added the current `/cavi-control/api/cost/history` route as a fail-closed
+  fallback for 404/405 responses from the released plugin cost-history route.
+  The existing adapter, response handling, fallback behavior, and in-flight
+  cache remain shared; authentication, server, schema, and abort failures do
+  not try the alias.
+- Strengthened the CAVI ownership guard to validate complete classification
+  metadata and resolve static, dynamic, TypeScript import-equals, CommonJS, and
+  relative barrel dependencies across core, contracts, providers, and extension
+  implementations. Inventory owners and classification families now also match
+  each compiler-resolved export declaration rather than trusting table text.
 - Hardened the OpenClaw canonical adapter so factory-owned WebSockets resolve
   fresh bearer authentication case-insensitively before connecting, without
   duplicate semantic headers. Native event names and payloads are bounded and
@@ -35,7 +96,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Published the provider-neutral `createRuntimeControlPlane` facade and root
+- Added the CAVI-extension Hermes `RuntimeControlClient` composer. It exposes
+  the complete seven-module facade, installs only configured dashboard/CAVI
+  modules, preserves typed unavailable fallbacks, applies explicit dashboard
+  auth precedence, and disposes owned transports idempotently without closing
+  borrowed injected channels.
+- Added the CAVI-owned Hermes dashboard standard JSON-RPC driver with bounded,
+  abortable requests, validated event notifications, secret-safe remote errors,
+  explicit injected-channel ownership, remote-close synchronization, and a safe
+  protocol-error observer. Matching malformed responses now reject their shared
+  JSON-RPC request instead of occupying capacity indefinitely. The driver
+  intentionally does not implement OpenClaw gateway framing, handshake, or
+  unobservable reconnect replay claims.
+- Documented every public CAVI extension export in a compiler-checked ownership
+  inventory and enforced the core-to-extension dependency direction, the exact
+  four released provider forwarding exceptions, and generic transport/snapshot
+  implementation ownership without changing any public export.
+- Published the provider-neutral `createRuntimeControlClient` facade and root
   `CapabilityUnavailable` error for the exact `authStatus`, `sessions`,
   `models`, `usage`, `tasks`, `workspace`, and `events` contract. Documented the
   verified OpenClaw method subset, typed unavailable native cursor resume,
@@ -55,12 +132,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and idempotent disposal without changing the authenticated gateway wire
   handshake. The internal OpenClaw control-plane factory owns clients it
   creates and leaves injected RPC seams caller-owned by default.
-- Provider-neutral `createRuntimeControlPlane(provider, options)` construction,
+- Provider-neutral `createRuntimeControlClient(provider, options)` construction,
   with alias-aware registry lookup, optional provider canonical factories, and
   a complete typed unavailable facade when a registered adapter is absent.
   Factory options cover URLs, token/auth resolution, cancellation, tracing, and
   injected transport without adding a built-in provider adapter.
-- Required `CanonicalRuntimeControlPlane` facade with authentication status,
+- Required `RuntimeControlClient` facade with authentication status,
   sessions, models, usage, tasks, workspace, and events modules, plus idempotent
   disposal and `CapabilityUnavailable`-based unavailable-provider scaffolding.
   The existing optional `RuntimeControlPlane` contract remains supported.

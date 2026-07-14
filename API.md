@@ -176,28 +176,55 @@ modules as unsupported instead of assuming a fallback exists.
 - `RuntimeControlPlane` — aggregates declared transports and optional focused
   clients for sessions, models, usage, tasks, workspaces, authentication status,
   and events.
-- `CanonicalRuntimeControlPlane` — a required facade containing all seven
+- `RuntimeControlClient` — a required facade containing all seven
   focused modules (`authStatus`, `sessions`, `models`, `usage`, `tasks`,
   `workspace`, and `events`) and `dispose()`. Disposal is idempotent.
 - `CapabilityUnavailable` — typed error carrying the `providerId` and
   method-specific `capability` that is unavailable.
-- `createUnavailableCanonicalControlPlane(providerId, capabilities)` — creates
+- `createUnavailableRuntimeControlClient(providerId, capabilities)` — creates
   the complete canonical shape for an unavailable adapter. Each module method
   rejects with a fresh `CapabilityUnavailable`; `dispose()` is side-effect free
   and may be called repeatedly.
-- `createRuntimeControlPlane(provider, options)` — at the package root, resolves
+
+The `RuntimeControlClient` names directly replace an unreleased facade, factory,
+provider hook, and conformance surface. This pre-release rename does not remove
+or alter the older released `RuntimeControlPlane` declaration API, and it does
+not retain aliases for the unreleased names.
+
+- `createRuntimeControlClient(provider, options)` — at the package root, resolves
   a provider kind or alias through a fresh registry of shipped provider modules;
   `options.registry` replaces that default. The core/providers export remains
   registry-driven. The factory invokes a resolved module's optional canonical
-  hook or returns the complete unavailable facade. `CanonicalControlPlaneFactoryOptions`
+  hook or returns the complete unavailable facade. `RuntimeControlClientOptions`
   contains only provider-neutral URL, token/auth resolver, abort signal, trace,
   transport, and registry inputs. Registry membership alone does not imply a
   built-in canonical adapter. OpenClaw recognizes a structurally compatible RPC
   fixture supplied through `transport`, which keeps deterministic construction
   tests on the same provider-neutral factory path without exposing an
   OpenClaw-specific option at the package root.
-- `CanonicalControlPlaneFactory` — asynchronous provider-module hook that
-  produces the required `CanonicalRuntimeControlPlane` shape.
+- `RuntimeControlClientFactory` — asynchronous provider-module hook that
+  produces the required `RuntimeControlClient` shape.
+- `createHermesRuntimeControlClient(options)` — exported from the CAVI
+  extension, composes Hermes dashboard REST/JSON-RPC modules with optional CAVI
+  task and workspace adapters. It always returns the complete canonical shape,
+  installs each independently configured surface, uses typed unavailable
+  modules for missing configuration, and borrows an
+  injected channel unless `ownsChannel` is explicitly true. Dashboard-specific
+  URLs, credentials, transport ownership, and plugin configuration remain in
+  `HermesCaviRuntimeControlOptions`, not the provider-neutral core options.
+- `withCaviRuntimeControlProviders(base, options)` — exported only from the
+  CAVI extension, returns a new registry that preserves the base module list,
+  aliases, capabilities, and resolution order while replacing the resolved
+  Hermes runtime-control factory. It requires exactly one canonical normalized
+  Hermes kind and rejects missing, ambiguous, or alias-shadowed registries
+  without installing a factory on another provider. The generic return retains
+  custom provider-module types. CAVI-only mutable configuration is snapshotted
+  at setup while channels, signals, functions, fetch implementations, and
+  transport clients remain opaque references; provider-neutral call options
+  override overlapping setup fields.
+- `CaviRuntimeControlProviderOptions` — CAVI-extension setup type whose optional
+  `hermes` field owns `HermesCaviRuntimeControlOptions` without widening the
+  package-root `RuntimeControlClientOptions` contract.
 - `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
   implemented control-plane transports and focused modules; declarations do not
   add those methods to `RuntimeClient`.
@@ -209,7 +236,7 @@ modules as unsupported instead of assuming a fallback exists.
   the other provider rows retain empty control-plane declarations. Prefer the
   narrower control-plane contracts above when a consumer does not need
   cross-provider matrix discovery.
-- `runCanonicalControlPlaneConformance({ providerId, create })` — exported from
+- `runRuntimeControlClientConformance({ providerId, create })` — exported from
   `@cavi-ai/api-client/testing`; constructs and disposes a canonical facade,
   verifies every required method on all seven modules, invokes representative
   operations, validates canonical result shapes or typed
@@ -234,15 +261,15 @@ presented as one adapter.
 
 Existing consumers require no migration: `RuntimeClient`, `GatewayClient`, and
 all established imports retain their behavior, and `RuntimeControlPlane` remains
-the optional declaration-driven contract. Use `CanonicalRuntimeControlPlane`
+the optional declaration-driven contract. Use `RuntimeControlClient`
 when the consumer requires a uniform seven-module facade. Adopt a provider's
 implemented control plane only when its module truthfully declares and returns
 the required optional modules.
 
 ```ts
-import { createRuntimeControlPlane } from "@cavi-ai/api-client";
+import { createRuntimeControlClient } from "@cavi-ai/api-client";
 
-const controlPlane = await createRuntimeControlPlane(config.provider, {
+const controlPlane = await createRuntimeControlClient(config.provider, {
   baseUrl: config.baseUrl,
   webSocketUrl: config.webSocketUrl,
   resolveAuth: () => authStore.resolve(config.provider),
@@ -280,6 +307,48 @@ native-event validation failures surface as sanitized, non-retryable
 `TransportProtocolError` values with exact operation metadata. Native event
 names must use a bounded, secret-safe vocabulary before they can reach mapping,
 metadata, or public errors; safe unknown names map to `operation.updated`.
+
+Hermes and OpenClaw do not share a wire protocol. The Hermes extension uses
+standard JSON-RPC 2.0 over a `TransportMessageChannel`; it neither performs the
+OpenClaw gateway handshake nor implements OpenClaw's custom WebSocket RPC
+framing. Sessions are installed only when both dashboard REST and a channel are
+configured. In that configuration, Hermes `session.list` and `session.usage`
+prefer JSON-RPC and use dashboard REST only for channel connect/close
+unavailability, while session detail is REST-only. Hermes runtime-control events
+require only the channel and are JSON-RPC notifications,
+not SSE. SSE remains an independent core transport used only by upstream
+surfaces that expose SSE.
+Session-list pagination preserves a validated upstream `total`; when JSON-RPC
+omits it, an exact-limit page emits one bounded optimistic cursor, while a short
+page terminates pagination and the 200-session window remains enforced. A REST
+fallback that cannot advance beyond its returned prefix terminates without
+repeating the same cursor.
+
+An explicit `dashboardToken` suppresses `resolveAuth` and wins over the
+provider-neutral `token`. Without `dashboardToken`, a resolver-provided
+nonblank authorization header wins. If resolved headers contain no authorization
+or only a blank value, the
+generic `token` supplies bearer authorization while unrelated resolved headers
+are preserved. Factory-created channels are
+owned and disposed by the facade, injected channels are borrowed unless
+`ownsChannel: true`, and partial construction unwinds owned resources in reverse
+order without replacing the primary error.
+
+The CAVI-backed Hermes `tasks` surface maps operator task-lifecycle records; it
+does not expose cron schedules or scheduled deployments, and cancellation is a
+typed unavailable capability. Its workspace surface requires an explicit
+workspace identity from project-board or operator-registry data. Agent IDs are
+metadata, not workspace identity. Operator-backed metadata reports the actual
+WebSocket or HTTP section transport; local fallback records retain explicit
+non-wire provenance and are not normalized into runtime-control results. This is
+applied per operator section, including partial task or registry outages. Cost is canonical only when the upstream data
+supports its currency semantics; uncertain or currency-less totals remain
+provider data with canonical cost availability `unavailable`.
+
+Protocol ownership remains upstream. Hermes, OpenClaw, Caviclaw, gateway, and
+plugin runtimes define their wire behavior; `@cavi-ai/api-client` follows those
+contracts and provides a provider-neutral mirror for consumers. It is not the
+canonical runtime contract owner.
 
 ## Runtime Providers
 
@@ -395,6 +464,19 @@ Gateway aliases:
 ## Sessions And Snapshots
 
 The session REST paths are HTTP fallbacks for the websocket RPC session methods.
+Core snapshot loaders accept a provider-neutral `GatewaySessionOperations` port
+covering list, usage, preview, detail, patch, and optional provider-neutral
+cancel. The default
+`createOpenClawSessionOperations` adapter retains the plural `sessions.*` RPC
+names and the REST mappings below; injecting the port does not change loader
+payloads, cache behavior, or released loader method names. Session loader
+methods accept optional `GatewaySessionRequestOptions`; an already-aborted
+signal prevents default-adapter dispatch, but the released legacy RPC and REST
+transports cannot cancel an operation after dispatch.
+The shared raw session row carries optional provider-neutral `createdAt`,
+`updatedAt`, and `state` fields. Canonical `SessionClient` list, get, and cancel
+methods accept optional abortable session request options. Providers that do
+not have fixture-proven cancellation semantics leave the operation absent.
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |
@@ -404,7 +486,7 @@ The session REST paths are HTTP fallbacks for the websocket RPC session methods.
 | `sessions.detail` | POST | `/api/sessions/detail` | Fetch detail for one session key. |
 | `sessions.patch` | PATCH | `/api/sessions/patch` | Mutate per-session operator settings such as label or thinking level. |
 | `gateway.overview` | WS | `sessions.list + sessions.usage + health/log RPC` | Composite overview snapshot assembled by the client loaders. |
-| `gateway.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range` | Optional CAVI cost-history fallback used by snapshot loaders. |
+| `gateway.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range`, then `/cavi-control/api/cost/history?range=:range` | Optional CAVI cost-history fallback used by snapshot loaders. The released plugin route remains primary; only 404/405 responses try the current CAVI alias. |
 
 ## Agent Config And Profiles
 
@@ -468,7 +550,7 @@ The plugin alias paths mirror the operator paths under
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |
-| `cavi.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range` | CAVI cost history endpoint. |
+| `cavi.costHistory` | GET | `/api/plugins/cavi-control/cost/history?range=:range`, then `/cavi-control/api/cost/history?range=:range` | CAVI cost history endpoints in request order. The alias is tried only when the primary route returns 404/405. |
 | `cavi.scoringModel` | GET | `/api/plugins/cavi-control/scoring/model` | CAVI scoring model endpoint. |
 | `cavi.projectBoard.root` | GET | `/api/plugins/cavi-control/kanban` | Project Board compatibility aggregate; native Workboard data may be projected from RPC. |
 | `cavi.projectBoard.profile` | GET | `/api/plugins/cavi-control/kanban/profile` | Project Board compatibility profile slice. |

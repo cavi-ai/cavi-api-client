@@ -346,21 +346,26 @@ tokens, API keys, passwords, cookies, or authorization headers.
 This foundation is additive. Existing `RuntimeClient` and `GatewayClient`
 consumers do not need to change, and the optional `RuntimeControlPlane` contract
 remains supported. For consumers that need one predictable control-plane shape,
-`CanonicalRuntimeControlPlane` requires all seven modules: `authStatus`,
+`RuntimeControlClient` requires all seven modules: `authStatus`,
 `sessions`, `models`, `usage`, `tasks`, `workspace`, and `events`, plus an
-idempotent `dispose()`. `createUnavailableCanonicalControlPlane(providerId,
+idempotent `dispose()`. `createUnavailableRuntimeControlClient(providerId,
 capabilities)` supplies that complete shape when no adapter is available; every
 module method rejects with a fresh `CapabilityUnavailable` containing the
 provider ID and method-specific capability. Adopt `createControlPlane` only
 after a provider truthfully declares the optional modules it returns. See the
 compile-checked [custom runtime provider example](docs/examples/custom-runtime-provider.ts).
 
-`createRuntimeControlPlane(provider, options)` is the provider-neutral canonical
+The `RuntimeControlClient` vocabulary is a direct rename of the unreleased
+facade and factory surface, not a compatibility removal. No aliases for the
+unreleased names are retained; the older released `RuntimeControlPlane`
+declaration API is unchanged.
+
+`createRuntimeControlClient(provider, options)` is the provider-neutral canonical
 entry point. The package root resolves kinds and aliases through a fresh
 registry composed from the shipped Hermes and OpenClaw provider modules, while
 an explicit `options.registry` replaces that default. The core/providers
 subpath remains registry-driven and provider-agnostic. A resolved module's
-`createCanonicalControlPlane` factory is called when present; otherwise the
+`createRuntimeControlClient` factory is called when present; otherwise the
 complete unavailable facade is returned.
 Options are provider-neutral: `baseUrl`, `webSocketUrl`, `token`, `resolveAuth`,
 `signal`, `trace`, `transport`, and `registry`. Registry membership alone does
@@ -371,15 +376,30 @@ OpenClaw consumes it internally without adding a provider-specific package-root
 option.
 
 ```ts
-import { createRuntimeControlPlane } from "@cavi-ai/api-client";
+import { createRuntimeControlClient } from "@cavi-ai/api-client";
 
-const controlPlane = await createRuntimeControlPlane(config.provider, {
+const controlPlane = await createRuntimeControlClient(config.provider, {
   baseUrl: config.baseUrl,
   webSocketUrl: config.webSocketUrl,
   resolveAuth: () => authStore.resolve(config.provider),
 });
 
 const sessions = await controlPlane.sessions.listSessions({ limit: 50 });
+```
+
+Keep provider selection in setup and pass only the required facade to consumer
+code. The consumer stays branch-free even when a method is unavailable:
+
+```ts
+import type { RuntimeControlClient } from "@cavi-ai/api-client";
+
+export async function loadRuntimeOverview(control: RuntimeControlClient) {
+  const [sessions, workspaces] = await Promise.all([
+    control.sessions.listSessions({ limit: 20 }),
+    control.workspace.listWorkspaces(),
+  ]);
+  return { sessions: sessions.data, workspaces };
+}
 ```
 
 The package contract is canonical for its consumers; upstream wire APIs remain
@@ -398,7 +418,7 @@ unsafe native events fail with sanitized, non-retryable protocol errors. Native
 event names are bounded and secret-safe before mapping or metadata; safe unknown
 names remain available as `operation.updated` provider data.
 
-The public `runCanonicalControlPlaneConformance({ providerId, create })` helper from
+The public `runRuntimeControlClientConformance({ providerId, create })` helper from
 `@cavi-ai/api-client/testing` verifies the exact required methods, exercises
 representative operations, accepts canonical results or typed unavailable
 rejections, and always disposes the facade. The harness `providerId` is the exact
@@ -921,6 +941,76 @@ const adapters = createCaviControlAdapters({
 
 const overview = await adapters.loadOverview();
 ```
+
+Hermes dashboard and optional CAVI plugin control surfaces can be composed from
+the same extension without adding provider-specific fields to the core factory:
+
+```ts
+import { createHermesRuntimeControlClient } from "@cavi-ai/api-client/extensions/cavi";
+
+const control = await createHermesRuntimeControlClient({
+  dashboardBaseUrl,
+  dashboardWebSocketUrl,
+  dashboardToken,
+  cavi: { gatewayBaseUrl, authToken },
+});
+
+await control.dispose();
+```
+
+Applications that select providers dynamically can install the same Hermes
+composition into an existing registry without branching at the call site:
+
+```ts
+import { createRuntimeControlClient } from "@cavi-ai/api-client";
+import {
+  withCaviRuntimeControlProviders,
+} from "@cavi-ai/api-client/extensions/cavi";
+
+const registry = withCaviRuntimeControlProviders(baseRegistry, {
+  hermes: { dashboardBaseUrl, dashboardToken, cavi: caviOptions },
+});
+const control = await createRuntimeControlClient(providerId, {
+  registry,
+  baseUrl,
+  token,
+});
+```
+
+The enhancer returns a new registry, preserves provider metadata and aliases,
+and closes over CAVI-only setup. Provider-neutral call options remain on the
+root factory and take precedence where the option surfaces overlap. It fails
+closed if the registry has no single canonical Hermes kind or if the `hermes`
+token is shadowed by another provider alias. Mutable nested CAVI configuration
+is snapshotted per enhanced registry; injected channels, signals, functions,
+fetch implementations, and transport clients intentionally retain identity.
+
+All seven canonical modules are always present. Dashboard REST config enables
+auth status, models, and usage; a dashboard channel enables events; sessions
+require both dashboard REST and a channel. Explicit CAVI plugin config
+independently enables tasks and workspace even when dashboard REST is absent.
+Other operations
+reject with method-specific `CapabilityUnavailable` errors. Injected channels
+are borrowed unless `ownsChannel: true` is set.
+
+Hermes dashboard traffic uses standard JSON-RPC 2.0 over its message channel;
+it does not speak OpenClaw's authenticated gateway handshake or custom
+WebSocket RPC framing. When both dashboard REST and a channel are configured,
+Hermes session list and usage calls prefer JSON-RPC and fall back to dashboard
+REST only when that channel is unavailable; session detail remains REST. Its
+normalized events come from JSON-RPC notifications,
+not SSE. SSE remains a separate shared transport for upstream APIs that expose
+an SSE endpoint. OpenClaw instead uses its native gateway WebSocket protocol and
+native gateway event subscription.
+
+The Hermes CAVI `tasks` module reports operator task-lifecycle records, not cron
+or scheduled-deployment definitions, and does not claim cancellation. Workspace
+descriptors are emitted only from explicit project-board or operator-registry
+workspace identity; agent identity is never substituted. Monetary totals remain
+unavailable unless the upstream value includes enough currency evidence to make
+the canonical amount meaningful. Upstream Hermes, OpenClaw, Caviclaw, gateway,
+and plugin runtimes own their wire protocols; this package is a follower that
+mirrors and normalizes only fixture-proven behavior.
 
 ## Secure Credential Handling
 

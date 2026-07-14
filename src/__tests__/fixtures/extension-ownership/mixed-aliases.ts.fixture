@@ -1,0 +1,2 @@
+import "./core-contracts-alias.js";
+import "./cavi-contracts-alias.js";

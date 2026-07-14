@@ -194,7 +194,9 @@ export type RawSessionRow = {
   derivedTitle?: string;
   agentId?: string;
   channel?: string;
+  createdAt?: number | null;
   updatedAt?: number | null;
+  state?: "pending" | "active" | "completed" | "cancelled" | "failed" | "unknown";
   abortedLastRun?: boolean;
   totalTokens?: number;
   origin?: {

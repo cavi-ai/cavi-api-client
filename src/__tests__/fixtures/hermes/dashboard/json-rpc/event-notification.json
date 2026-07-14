@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "method": "event",
+  "params": {
+    "type": "gateway.ready",
+    "payload": {
+      "skin": "hermes"
+    }
+  }
+}

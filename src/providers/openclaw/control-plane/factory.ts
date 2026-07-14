@@ -1,8 +1,8 @@
 import {
-  createUnavailableCanonicalControlPlane,
-  type CanonicalRuntimeControlPlane,
-} from "../../../core/runtime/control-plane/canonical.js";
-import type { CanonicalControlPlaneFactoryOptions } from "../../../core/runtime/providers/types.js";
+  createUnavailableRuntimeControlClient,
+  type RuntimeControlClient,
+} from "../../../core/runtime/control-plane/runtime-control-client.js";
+import type { RuntimeControlClientOptions } from "../../../core/runtime/providers/types.js";
 import { OpenClawWebSocketClient } from "../websocket.js";
 import {
   createOpenClawAuthStatusClient,
@@ -21,7 +21,7 @@ import { createOpenClawWorkspaceClient } from "./workspace.js";
 
 const OPENCLAW_CONTROL_PLANE_CLIENT_ID = "openclaw-control";
 
-export type OpenClawControlPlaneOptions = CanonicalControlPlaneFactoryOptions & {
+export type OpenClawRuntimeControlClientOptions = RuntimeControlClientOptions & {
   rpc?: OpenClawRpc;
   takeRpcOwnership?: boolean;
 };
@@ -34,7 +34,7 @@ function isOpenClawRpc(value: unknown): value is OpenClawRpc {
     && typeof candidate.dispose === "function";
 }
 
-function resolveWebSocketUrl(options: OpenClawControlPlaneOptions): string {
+function resolveWebSocketUrl(options: OpenClawRuntimeControlClientOptions): string {
   if (options.webSocketUrl) return options.webSocketUrl;
   if (!options.baseUrl) {
     throw new TypeError("OpenClaw control plane requires webSocketUrl or baseUrl");
@@ -52,9 +52,9 @@ function bearerToken(headers: Readonly<Record<string, string>>): string | undefi
   return match?.[1];
 }
 
-export async function createOpenClawControlPlane(
-  options: OpenClawControlPlaneOptions = {},
-): Promise<CanonicalRuntimeControlPlane> {
+export async function createOpenClawRuntimeControlClient(
+  options: OpenClawRuntimeControlClientOptions = {},
+): Promise<RuntimeControlClient> {
   const injectedTransport = isOpenClawRpc(options.transport) ? options.transport : undefined;
   const injectedRpc = options.rpc ?? injectedTransport;
   const createdRpc = injectedRpc === undefined;
@@ -95,7 +95,7 @@ export async function createOpenClawControlPlane(
     await ownedClient.connect();
   }
 
-  const plane = createUnavailableCanonicalControlPlane(
+  const plane = createUnavailableRuntimeControlClient(
     "openclaw",
     new Set<string>(),
   );

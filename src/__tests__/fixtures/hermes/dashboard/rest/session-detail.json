@@ -1,0 +1,12 @@
+{
+  "id": "session-fixture-001",
+  "title": "Sanitized fixture session",
+  "source": "api_server",
+  "model": "fixture-provider/fixture-model",
+  "started_at": 1784044800,
+  "ended_at": 1784044920,
+  "input_tokens": 120,
+  "output_tokens": 30,
+  "estimated_cost_usd": 0.0015,
+  "message_count": 2
+}

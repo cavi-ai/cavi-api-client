@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiClientError } from "../../../../core/errors.js";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory.js";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory.js";
 import type { OpenClawRpc } from "../../../../providers/openclaw/control-plane/rpc.js";
 import { createOpenClawSessionClient } from "../../../../providers/openclaw/control-plane/sessions.js";
 import { ApiClientErrorCode } from "../../../../core/errors.js";
@@ -174,7 +174,7 @@ describe("OpenClaw session control plane", () => {
 
   it("wires sessions into the internal factory without capability promotion", async () => {
     const rpc = createRpc({ session: { key: "session:1" } });
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
 
     await expect(plane.sessions.getSession("session:1")).resolves.toMatchObject({ id: "session:1" });
     expect(rpc.request).toHaveBeenCalledWith("sessions.describe", { key: "session:1" }, { signal: undefined });

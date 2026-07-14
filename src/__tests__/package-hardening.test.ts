@@ -109,6 +109,15 @@ const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "client", "fet
 const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshots", "loaders.ts");
 const REACT_GATEWAY_PROVIDER = path.join(SRC_ROOT, "frameworks", "react", "gateway-provider.tsx");
 const HARDENING_TEST_PATH = "src/__tests__/package-hardening.test.ts";
+const PROVIDER_EXTENSION_IMPORT_ALLOWLIST = new Set<string>([
+  "src/providers/hermes/team-registry.ts",
+  "src/providers/hermes/team-registry-config.ts",
+  "src/providers/openclaw/team-registry.ts",
+  "src/providers/openclaw/team-registry-config.ts",
+]);
+const CAVI_GENERIC_IMPLEMENTATION_FILENAME_ALLOWLIST = new Set<string>([
+  "src/extensions/cavi/fallbacks/snapshots/operator-control/snapshot.ts",
+]);
 // Frozen with TypeScript's module checker from origin/main at
 // 0a8864a216ba68f1fabec537ca02951ee305b475. Additions require an explicit
 // allowlist entry below; never regenerate this from the working tree.
@@ -132,12 +141,12 @@ const APPROVED_ROOT_TRANSPORT_ADDITIONS = [
   "TransportLifecycleEvent",
   "getTransportErrorMetadata",
 ] as const;
-const APPROVED_ROOT_CANONICAL_CONTROL_PLANE_ADDITIONS = [
-  "CanonicalControlPlaneFactory",
-  "CanonicalControlPlaneFactoryOptions",
-  "CanonicalRuntimeControlPlane",
+const APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS = [
+  "RuntimeControlClient",
+  "RuntimeControlClientFactory",
+  "RuntimeControlClientOptions",
   "CapabilityUnavailable",
-  "createRuntimeControlPlane",
+  "createRuntimeControlClient",
 ] as const;
 
 const FORBIDDEN_PACKAGES = [
@@ -621,6 +630,39 @@ describe("package hardening", () => {
     );
   });
 
+  it("packs every runtime-control consumer entry with ESM and NodeNext declarations", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, { types?: string; import?: string; default?: string }>;
+    };
+    for (const [subpath, target] of [
+      [".", "index"],
+      ["./core/runtime", "core/runtime/index"],
+      ["./core/runtime/providers", "core/runtime/providers/index"],
+      ["./providers/hermes", "providers/hermes/index"],
+      ["./extensions/cavi", "extensions/cavi/index"],
+    ] as const) {
+      expect(packageJson.exports[subpath]).toEqual({
+        types: `./dist/${target}.d.ts`,
+        import: `./dist/${target}.js`,
+        default: `./dist/${target}.js`,
+      });
+    }
+    const packageJsonWithScripts = packageJson as typeof packageJson & { scripts?: Record<string, string> };
+    expect(packageJsonWithScripts.scripts?.["test:packed-consumer"]).toBe(
+      "node scripts/test-packed-consumer.mjs",
+    );
+    const packedConsumerScript = read(path.join(PACKAGE_ROOT, "scripts/test-packed-consumer.mjs"));
+    for (const specifier of [
+      "@cavi-ai/api-client",
+      "@cavi-ai/api-client/core/runtime",
+      "@cavi-ai/api-client/core/runtime/providers",
+      "@cavi-ai/api-client/providers/hermes",
+      "@cavi-ai/api-client/extensions/cavi",
+    ]) expect(packedConsumerScript).toContain(specifier);
+    expect(packedConsumerScript).toContain('"moduleResolution": "NodeNext"');
+    expect(packedConsumerScript).toContain("--ignore-scripts");
+  });
+
   it("keeps dist free of stale compiled modules", () => {
     const offenders = walkFilesIfExists(DIST_ROOT)
       .filter((filePath) => /\.(?:js|d\.ts)$/u.test(filePath))
@@ -739,17 +781,21 @@ describe("package hardening", () => {
     // providers/* and extensions/cavi are siblings over core+contracts; a provider
     // must not import extensions/cavi. The only sanctioned exception is the thin
     // team-registry wrapper set (documented in CLAUDE.md).
-    const PROVIDER_EXTENSION_IMPORT_ALLOWLIST = new Set<string>([
-      "src/providers/hermes/team-registry.ts",
-      "src/providers/hermes/team-registry-config.ts",
-      "src/providers/openclaw/team-registry.ts",
-      "src/providers/openclaw/team-registry-config.ts",
-    ]);
     const offenders = walkFiles(path.join(SRC_ROOT, "providers"))
       .filter((filePath) => /\.tsx?$/u.test(filePath) && !/\.test\.tsx?$/u.test(filePath))
       .filter((filePath) => !PROVIDER_EXTENSION_IMPORT_ALLOWLIST.has(rel(filePath)))
       .filter((filePath) => /from\s+["'][^"']*extensions\/cavi/u.test(read(filePath)))
       .map(rel);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps generic transport and snapshot implementations in core", () => {
+    const offenders = productionSourceFiles()
+      .filter((filePath) => rel(filePath).startsWith("src/extensions/cavi/"))
+      .filter((filePath) => /^(?:transport|snapshot)\.ts$/u.test(path.basename(filePath)))
+      .map(rel)
+      .filter((relative) => !CAVI_GENERIC_IMPLEMENTATION_FILENAME_ALLOWLIST.has(relative));
 
     expect(offenders).toEqual([]);
   });
@@ -1105,7 +1151,7 @@ describe("package hardening", () => {
     const expectedRootExports = [
       ...originMainBaseline,
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
-      ...APPROVED_ROOT_CANONICAL_CONTROL_PLANE_ADDITIONS,
+      ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
     ].sort();
 
     expect(rootExportNames(path.join(SRC_ROOT, "index.ts"))).toEqual(expectedRootExports);

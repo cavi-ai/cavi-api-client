@@ -12,9 +12,8 @@ export * from "./run-stream.js";
 export * from "./dry-run.js";
 export {
   CapabilityUnavailable,
-  createUnavailableCanonicalControlPlane,
-  type CanonicalControlPlaneOptions,
-  type CanonicalRuntimeControlPlane,
-} from "./control-plane/canonical.js";
+  createUnavailableRuntimeControlClient,
+  type RuntimeControlClient,
+} from "./control-plane/runtime-control-client.js";
 export * from "./control-plane/index.js";
 export * from "./providers/index.js";

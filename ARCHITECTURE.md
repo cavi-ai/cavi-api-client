@@ -31,7 +31,16 @@ src/index.ts
   error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
   fallback snapshots, and DTO shaping. It composes the generic core instead of
-  changing the provider interface.
+  changing the provider interface. The complete, compiler-checked ownership
+  inventory and the four released provider forwarding exceptions are recorded
+  in [CAVI Extension Ownership](docs/extension-ownership.md).
+  Its runtime-control registry enhancer clones an application registry and
+  installs only the resolved Hermes CAVI factory; it does not mutate the base
+  registry, root capability matrix, provider-neutral factory, or other modules.
+  Canonical normalized-kind cardinality and semantic kind/alias resolution are
+  validated before composition, so missing, ambiguous, and alias-shadowed
+  registries fail closed. Mutable extension configuration is snapshotted per
+  registry while opaque runtime resources retain caller-owned identity.
 - `frameworks/react/` contains optional React bindings. React is an optional peer
   dependency and is never imported by the root entry.
 
@@ -98,22 +107,27 @@ clients—sessions, models, usage, tasks, workspace, and read-only authenticatio
 status—alongside normalized control-plane events and independently declared
 transport capabilities.
 
-`CanonicalRuntimeControlPlane` is an additive, required-shape facade over those
+`RuntimeControlClient` is an additive, required-shape facade over those
 seven modules: authentication status, sessions, models, usage, tasks, workspace,
 and events. It also owns an idempotent `dispose()` lifecycle method. When an
-adapter is unavailable, `createUnavailableCanonicalControlPlane` preserves the
+adapter is unavailable, `createUnavailableRuntimeControlClient` preserves the
 shape while rejecting every module operation with a fresh
 `CapabilityUnavailable` that identifies the provider and capability; disposal
 remains side-effect free. The existing optional `RuntimeControlPlane` is
 preserved for declaration-driven providers.
 
+This vocabulary is a pre-release direct rename of the unreleased facade and
+factory architecture, not a compatibility removal. The unreleased names have no
+aliases; the older released `RuntimeControlPlane` declaration architecture stays
+intact.
+
 The provider registry is also the boundary for canonical construction. Core
 remains registry-driven and never imports provider implementations. The
-package-root `createRuntimeControlPlane(provider, options)` supplies a fresh
+package-root `createRuntimeControlClient(provider, options)` supplies a fresh
 registry composed at the provider layer from the shipped Hermes and OpenClaw
 modules unless the caller supplies `options.registry`. It uses the registry's
 existing kind/alias normalization and delegates to an optional provider
-`createCanonicalControlPlane` hook, and falls back to the required unavailable
+`createRuntimeControlClient` hook, and falls back to the required unavailable
 facade. Its configuration remains provider-neutral (`baseUrl`, `webSocketUrl`,
 `token`, `resolveAuth`, `signal`, `trace`, `transport`, and `registry`), so adding
 the facade does not couple core to a provider. OpenClaw registers that hook at
@@ -147,6 +161,32 @@ unsupported: supplying any cursor rejects with
 `CapabilityUnavailable("openclaw", "controlPlane.events.cursor")`. On reconnect,
 the adapter emits `stream.reconnected` followed by `stream.gap` when continuity
 cannot be proven; it does not claim replay.
+
+The CAVI extension composes Hermes without changing that provider boundary.
+Hermes dashboard calls use standard JSON-RPC 2.0 over a shared message-channel
+contract, whereas OpenClaw uses its authenticated gateway handshake and custom
+WebSocket RPC framing. The session module requires both dashboard REST and a
+channel; only then can list and usage fall back from JSON-RPC to dashboard REST
+for channel unavailability, while detail remains REST. Hermes events require
+only the channel and are JSON-RPC notifications. SSE is a separate core
+transport and is not implied by either runtime-control adapter.
+
+An explicit Hermes dashboard token suppresses authentication resolution and
+wins over the generic token. Without a dashboard token, a resolved
+nonblank authorization header wins; when resolved headers contain no authorization
+or only a blank value, the
+generic token supplies bearer authorization and unrelated headers remain. Owned
+channels are closed on disposal and reverse-order construction unwind; borrowed
+channels retain caller ownership unless explicitly transferred. CAVI plugin
+task and workspace modules are independently installable from the dashboard
+modules. Tasks model operator task lifecycle rather than cron schedules, and
+workspace output requires explicit upstream workspace identity. Operator-backed
+results report the actual wire transport; local fallback records remain non-wire
+and are not normalized as runtime-control task or workspace results. Provenance
+is section-specific so partial task or registry outages cannot inherit another
+section's successful wire transport. Uncertain cost
+or cost without validated currency stays provider data instead of becoming a
+canonical monetary amount.
 
 The package contract is canonical for its consumers while upstream wire APIs
 remain provider-owned and mirrored. The seven facade modules are `authStatus`,

@@ -1,4 +1,4 @@
-import { CapabilityUnavailable } from "../../../core/runtime/control-plane/canonical.js";
+import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import type {
   RuntimeControlPlaneEvent,
   RuntimeEventClient,

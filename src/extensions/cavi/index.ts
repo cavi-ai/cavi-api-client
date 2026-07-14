@@ -54,3 +54,7 @@ export * from "./domain/index.js";
 export * from "./registry/team-registry.js";
 export * from "./registry/team-registry-config.js";
 export * from "./providers/index.js";
+export {
+  withCaviRuntimeControlProviders,
+  type CaviRuntimeControlProviderOptions,
+} from "./providers/runtime-control-registry.js";
