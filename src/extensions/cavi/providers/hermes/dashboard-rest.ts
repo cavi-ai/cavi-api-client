@@ -116,6 +116,10 @@ function requireRecord(value: unknown, label: string): JsonRecord {
   return value as JsonRecord;
 }
 
+function requireSafePayload(value: unknown, label: string): void {
+  if (!isSafeJsonValue(value)) throw schemaError(label, value);
+}
+
 function own(record: JsonRecord, key: string, label: string, root: unknown): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(record, key);
   if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) throw schemaError(label, root);
@@ -179,6 +183,7 @@ function requireSessionRow(value: unknown, root: unknown): void {
 }
 
 function parseSessions(value: unknown): HermesDashboardSessions {
+  requireSafePayload(value, "sessions");
   const record = requireRecord(value, "sessions");
   const sessions = requireArray(own(record, "sessions", "sessions", value), "sessions", value);
   for (const session of sessions) requireSessionRow(session, value);
@@ -189,6 +194,7 @@ function parseSessions(value: unknown): HermesDashboardSessions {
 }
 
 function parseSession(value: unknown): HermesDashboardSession {
+  requireSafePayload(value, "session detail");
   const record = requireRecord(value, "session detail");
   requireString(own(record, "id", "session detail id", value), "session detail id", value);
   requireNullableString(own(record, "source", "session detail source", value), "session detail source", value);
@@ -204,6 +210,7 @@ function parseSession(value: unknown): HermesDashboardSession {
 }
 
 function parseUsage(value: unknown): HermesDashboardUsage {
+  requireSafePayload(value, "usage");
   const record = requireRecord(value, "usage");
   const daily = requireArray(own(record, "daily", "usage daily", value), "usage daily", value);
   for (const entry of daily) {
@@ -254,6 +261,7 @@ function parseUsage(value: unknown): HermesDashboardUsage {
 }
 
 function parseModels(value: unknown): HermesDashboardModels {
+  requireSafePayload(value, "models");
   const record = requireRecord(value, "models");
   const providers = requireArray(own(record, "providers", "models providers", value), "models providers", value);
   requireString(own(record, "model", "models current model", value), "models current model", value, true);
@@ -271,6 +279,7 @@ function parseModels(value: unknown): HermesDashboardModels {
 }
 
 function parseProviderAuth(value: unknown): HermesDashboardProviderAuth {
+  requireSafePayload(value, "provider auth");
   const record = requireRecord(value, "provider auth");
   const providers = requireArray(own(record, "providers", "provider auth providers", value), "provider auth providers", value);
   for (const entry of providers) {
@@ -306,6 +315,7 @@ function parseSafeJsonObject(value: unknown, label: string): HermesDashboardObje
 }
 
 function parseDelete(value: unknown): HermesDashboardDeleteResult {
+  requireSafePayload(value, "session deletion");
   const record = requireRecord(value, "session deletion");
   if (own(record, "ok", "session deletion ok", value) !== true
     || Reflect.ownKeys(Object.getOwnPropertyDescriptors(record)).length !== 1) {
