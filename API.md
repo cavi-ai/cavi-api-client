@@ -311,16 +311,18 @@ metadata, or public errors; safe unknown names map to `operation.updated`.
 Hermes and OpenClaw do not share a wire protocol. The Hermes extension uses
 standard JSON-RPC 2.0 over a `TransportMessageChannel`; it neither performs the
 OpenClaw gateway handshake nor implements OpenClaw's custom WebSocket RPC
-framing. Hermes `session.list` and `session.usage` prefer JSON-RPC and use
-dashboard REST only for channel connect/close unavailability, while session
-detail is REST-only. Hermes runtime-control events are JSON-RPC notifications,
+framing. Sessions are installed only when both dashboard REST and a channel are
+configured. In that configuration, Hermes `session.list` and `session.usage`
+prefer JSON-RPC and use dashboard REST only for channel connect/close
+unavailability, while session detail is REST-only. Hermes runtime-control events
+require only the channel and are JSON-RPC notifications,
 not SSE. SSE remains an independent core transport used only by upstream
 surfaces that expose SSE.
 
-Hermes dashboard authentication resolves once before REST construction when no
-explicit `dashboardToken` is present. Resolver headers take precedence over
-`dashboardToken` and the provider-neutral `token`; otherwise
-`dashboardToken` takes precedence over `token`. Factory-created channels are
+An explicit `dashboardToken` suppresses `resolveAuth` and wins over the
+provider-neutral `token`. Without `dashboardToken`, resolved headers are used
+when present; if the resolver is absent or returns no headers, the generic
+`token` is used. Factory-created channels are
 owned and disposed by the facade, injected channels are borrowed unless
 `ownsChannel: true`, and partial construction unwinds owned resources in reverse
 order without replacing the primary error.

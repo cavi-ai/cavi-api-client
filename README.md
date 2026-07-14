@@ -986,17 +986,19 @@ is snapshotted per enhanced registry; injected channels, signals, functions,
 fetch implementations, and transport clients intentionally retain identity.
 
 All seven canonical modules are always present. Dashboard REST config enables
-auth status, models, and usage; a dashboard channel enables sessions and events;
-and explicit CAVI plugin config independently enables tasks and workspace even
-when dashboard REST is absent. Other operations
+auth status, models, and usage; a dashboard channel enables events; sessions
+require both dashboard REST and a channel. Explicit CAVI plugin config
+independently enables tasks and workspace even when dashboard REST is absent.
+Other operations
 reject with method-specific `CapabilityUnavailable` errors. Injected channels
 are borrowed unless `ownsChannel: true` is set.
 
 Hermes dashboard traffic uses standard JSON-RPC 2.0 over its message channel;
 it does not speak OpenClaw's authenticated gateway handshake or custom
-WebSocket RPC framing. Hermes session list and usage calls prefer JSON-RPC and
-fall back to dashboard REST only when that channel is unavailable; session
-detail remains REST. Its normalized events come from JSON-RPC notifications,
+WebSocket RPC framing. When both dashboard REST and a channel are configured,
+Hermes session list and usage calls prefer JSON-RPC and fall back to dashboard
+REST only when that channel is unavailable; session detail remains REST. Its
+normalized events come from JSON-RPC notifications,
 not SSE. SSE remains a separate shared transport for upstream APIs that expose
 an SSE endpoint. OpenClaw instead uses its native gateway WebSocket protocol and
 native gateway event subscription.

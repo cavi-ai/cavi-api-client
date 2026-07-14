@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented branch-free `RuntimeControlClient` consumption and the exact
   Hermes/OpenClaw transport, REST fallback, event, authentication, lifecycle,
   task, workspace, cost, and upstream protocol-ownership boundaries. The
+  Hermes session module requires both dashboard REST and a channel. An explicit
+  dashboard token suppresses authentication resolution and wins over the generic
+  token; otherwise resolved headers win when present, with the generic token as
+  fallback. The
   immutable generated `v0.11.0` documentation remains historically accurate
   and intentionally excludes these unreleased APIs.
 
