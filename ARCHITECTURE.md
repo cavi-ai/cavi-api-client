@@ -173,13 +173,16 @@ transport and is not implied by either runtime-control adapter.
 
 An explicit Hermes dashboard token suppresses authentication resolution and
 wins over the generic token. Without a dashboard token, a resolved
-authorization header wins; when resolved headers contain no authorization, the
+nonblank authorization header wins; when resolved headers contain no authorization
+or only a blank value, the
 generic token supplies bearer authorization and unrelated headers remain. Owned
 channels are closed on disposal and reverse-order construction unwind; borrowed
 channels retain caller ownership unless explicitly transferred. CAVI plugin
 task and workspace modules are independently installable from the dashboard
 modules. Tasks model operator task lifecycle rather than cron schedules, and
-workspace output requires explicit upstream workspace identity. Uncertain cost
+workspace output requires explicit upstream workspace identity. Operator-backed
+results report the actual wire transport; local fallback records remain non-wire
+and are not normalized as runtime-control task or workspace results. Uncertain cost
 or cost without validated currency stays provider data instead of becoming a
 canonical monetary amount.
 

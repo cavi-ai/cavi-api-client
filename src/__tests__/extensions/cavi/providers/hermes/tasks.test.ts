@@ -61,6 +61,17 @@ describe("Hermes CAVI task composition", () => {
     });
   });
 
+  it("does not assign wire provenance to local fallback task data", async () => {
+    const { adapters } = adaptersWithTasks();
+    const loadOperatorControl = vi.mocked(adapters.loadOperatorControl);
+    const envelope = await loadOperatorControl();
+    loadOperatorControl.mockResolvedValueOnce({
+      ...envelope, source: "mock", transports: { tasks: "fallback", registryDetail: "fallback" },
+    } as never);
+    await expect(createHermesCaviTaskClient(adapters).listTasks())
+      .rejects.toThrow(/^Hermes CAVI task response failed schema validation$/u);
+  });
+
   it("reports cancellation as unavailable instead of inventing a CAVI mutation", async () => {
     const { adapters, loadOperatorControl } = adaptersWithTasks();
     await expect(createHermesCaviTaskClient(adapters).cancelTask!("operator/task-1"))

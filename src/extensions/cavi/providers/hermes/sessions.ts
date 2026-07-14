@@ -89,7 +89,7 @@ export function createHermesSessionClient(operations: GatewaySessionOperations):
       const data = payload.sessions.slice(offset, offset + limit).map((row) => mapRow(row, "session.list"));
       const total = typeof payload.count === "number" ? payload.count : payload.sessions.length;
       const nextOffset = offset + data.length;
-      return { data, ...(nextOffset < total ? { nextCursor: encodeCursor(nextOffset) } : {}) };
+      return { data, ...(nextOffset < total && nextOffset < MAX_HERMES_SESSION_PAGE_SIZE ? { nextCursor: encodeCursor(nextOffset) } : {}) };
     },
     async getSession(id: string, requestOptions: SessionRequestOptions = {}) {
       const payload = await operations.detail({ key: id }, requestOptions);

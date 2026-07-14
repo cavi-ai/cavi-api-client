@@ -95,4 +95,12 @@ describe("loadOperatorControlLive", () => {
       OPERATOR_API_PLUGIN_ALIAS.snapshot,
     );
   });
+
+  it("marks local fallback data as non-wire provenance", async () => {
+    const requestJson = vi.fn(async () => { throw new Error("http unavailable"); }) as JsonHttpRequest;
+    const client = createMockGatewayClient(async () => { throw new Error("ws unavailable"); });
+    const envelope = await loadOperatorControlLive(requestJson, client, operatorSnapshot as never);
+    expect(envelope.source).toBe("mock");
+    expect(envelope.transports).toEqual({ tasks: "fallback", registryDetail: "fallback" });
+  });
 });

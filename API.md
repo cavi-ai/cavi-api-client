@@ -324,7 +324,8 @@ page terminates pagination and the 200-session window remains enforced.
 
 An explicit `dashboardToken` suppresses `resolveAuth` and wins over the
 provider-neutral `token`. Without `dashboardToken`, a resolver-provided
-authorization header wins. If resolved headers contain no authorization, the
+nonblank authorization header wins. If resolved headers contain no authorization
+or only a blank value, the
 generic `token` supplies bearer authorization while unrelated resolved headers
 are preserved. Factory-created channels are
 owned and disposed by the facade, injected channels are borrowed unless
@@ -335,7 +336,9 @@ The CAVI-backed Hermes `tasks` surface maps operator task-lifecycle records; it
 does not expose cron schedules or scheduled deployments, and cancellation is a
 typed unavailable capability. Its workspace surface requires an explicit
 workspace identity from project-board or operator-registry data. Agent IDs are
-metadata, not workspace identity. Cost is canonical only when the upstream data
+metadata, not workspace identity. Operator-backed metadata reports the actual
+WebSocket or HTTP section transport; local fallback records retain explicit
+non-wire provenance and are not normalized into runtime-control results. Cost is canonical only when the upstream data
 supports its currency semantics; uncertain or currency-less totals remain
 provider data with canonical cost availability `unavailable`.
 
