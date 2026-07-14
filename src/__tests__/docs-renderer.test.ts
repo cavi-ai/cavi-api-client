@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { createHash } from "node:crypto";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { buildDocumentation } from "../../scripts/docs/build.mjs";
@@ -131,6 +132,10 @@ describe("renderDocumentation", () => {
     expect(curatedNavigationPaths).toEqual(curatedPaths);
   });
 
+  it.each(["../escape.md", "/absolute.md", "concepts/./escape.md"])("rejects unsafe navigation path %s", (unsafePath) => {
+    expect(() => renderDocumentation({ manifest, contracts, navigation: { path: unsafePath }, curatedRoot: path.join(root, "docs/api-client/source"), sourceDateEpoch: 1_700_000_000 })).toThrow(/navigation path|curated page path/u);
+  });
+
   it("keeps every rendered relative Markdown link inside the artifact", () => {
     const output = render();
     for (const [pagePath, contents] of output) {
@@ -165,9 +170,11 @@ describe("renderDocumentation", () => {
     expect(metadata).toMatchObject({
       package: "@cavi-ai/api-client",
       version: "0.11.0",
-      tag: "v0.11.0",
-      sha256: manifest.sha256,
-      schemaVersion: 1,
+      release: { tag: "v0.11.0" },
+      sourceTarballSha256: manifest.sha256,
+      contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/u),
+      publicExports: manifest.exports,
+      schemaVersion: 2,
       generatedAt: "2023-11-14T22:13:20.000Z",
     });
   });
@@ -238,6 +245,7 @@ describe("renderDocumentation", () => {
       "--source-date-epoch", "1700000000",
       "--root", fixtureRoot,
       "--tarball", tarball,
+      "--expected-sha256", createHash("sha256").update(await readFile(tarball)).digest("hex"),
       "--output", output,
     ]);
 
@@ -267,6 +275,7 @@ describe("renderDocumentation", () => {
       "--source-date-epoch", "1700000000",
       "--root", fixtureRoot,
       "--tarball", tarball,
+      "--expected-sha256", createHash("sha256").update(await readFile(tarball)).digest("hex"),
       "--output", committed,
     ]);
     await writeFile(path.join(committed, "reference/index.md"), "drift\n");
@@ -277,6 +286,7 @@ describe("renderDocumentation", () => {
       "--out", committed,
       "--source-date-epoch", "1700000000",
       "--root", fixtureRoot,
+      "--expected-sha256", createHash("sha256").update(await readFile(tarball)).digest("hex"),
     ])).rejects.toMatchObject({
       stderr: expect.stringContaining("generated documentation drift: reference/index.md"),
     });

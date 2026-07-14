@@ -44,12 +44,14 @@ describe("docs integrity", () => {
       "stableAlias: /docs/api-client",
       "entrypoints: manifest.json, navigation.json",
       "identity: manifest.package",
-      "integrity: manifest.sha256",
+      "sourceIntegrity: manifest.sourceTarballSha256",
+      "contentIntegrity: manifest.contentSha256",
     ]) {
       expect(consumer).toContain(contract);
     }
     expect(consumer).toContain("must not edit generated pages");
     expect(consumer).toContain("fail ingestion on a version or digest mismatch");
+    expect(consumer).toContain("already-published npm package `@cavi-ai/api-client@0.11.0` does not contain");
 
     expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
     expect(pkg.files).toContain("docs/api-client/v0.11.0");

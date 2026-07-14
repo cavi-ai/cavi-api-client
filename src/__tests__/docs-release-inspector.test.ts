@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { inspectRelease } from "../../scripts/docs/inspect-release.mjs";
@@ -18,6 +19,10 @@ import { inspectRelease } from "../../scripts/docs/inspect-release.mjs";
 const execFileAsync = promisify(execFile);
 const fixture = path.resolve("src/__tests__/fixtures/docs-release/package");
 const temporaryDirectories: string[] = [];
+async function inspectFixture(tarball: string) {
+  const expectedSha256 = createHash("sha256").update(await readFile(tarball)).digest("hex");
+  return inspectRelease(tarball, { expectedSha256 });
+}
 
 async function packFixture(
   mutate?: (packageDirectory: string) => Promise<void>,
@@ -41,8 +46,15 @@ afterEach(async () => {
 });
 
 describe("inspectRelease", () => {
+  it("rejects a wrong digest before attempting tar extraction", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "cavi-docs-release-test-"));
+    temporaryDirectories.push(directory);
+    const invalidArchive = path.join(directory, "not-a-tarball.tgz");
+    await writeFile(invalidArchive, "wrong artifact");
+    await expect(inspectRelease(invalidArchive)).rejects.toThrow("stable artifact digest mismatch");
+  });
   it("inspects public type exports in a stable release tarball", async () => {
-    const manifest = await inspectRelease(await packFixture());
+    const manifest = await inspectFixture(await packFixture());
 
     expect(manifest.package).toBe("@cavi-ai/api-client");
     expect(manifest.version).toBe("0.11.0");
@@ -100,7 +112,7 @@ describe("inspectRelease", () => {
       await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
     });
 
-    await expect(inspectRelease(tarball)).rejects.toThrow(
+    await expect(inspectFixture(tarball)).rejects.toThrow(
       "release mismatch: expected @cavi-ai/api-client@0.11.0, observed @cavi-ai/api-client@0.11.1",
     );
   });
@@ -110,7 +122,7 @@ describe("inspectRelease", () => {
       await unlink(path.join(packageDirectory, "dist/core/runtime/index.d.ts"));
     });
 
-    await expect(inspectRelease(tarball)).rejects.toThrow(
+    await expect(inspectFixture(tarball)).rejects.toThrow(
       /missing declaration.*\.\/dist\/core\/runtime\/index\.d\.ts/u,
     );
   });
@@ -126,7 +138,7 @@ describe("inspectRelease", () => {
       await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
     });
 
-    const manifest = await inspectRelease(tarball);
+    const manifest = await inspectFixture(tarball);
 
     expect(manifest.exports).toEqual([
       { subpath: ".", kind: "declaration", types: "./dist/index.d.ts" },
@@ -158,7 +170,7 @@ describe("inspectRelease", () => {
       await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
     });
 
-    const manifest = await inspectRelease(tarball);
+    const manifest = await inspectFixture(tarball);
 
     expect(manifest.exports).toEqual([
       { subpath: ".", kind: "declaration", types: "./dist/index.d.ts" },
@@ -182,7 +194,7 @@ describe("inspectRelease", () => {
       await symlink(externalDeclaration, declarationPath);
     });
 
-    await expect(inspectRelease(tarball)).rejects.toThrow(
+    await expect(inspectFixture(tarball)).rejects.toThrow(
       /declaration target escapes package.*\.\/dist\/index\.d\.ts/u,
     );
   });

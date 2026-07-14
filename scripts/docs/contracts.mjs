@@ -2,13 +2,14 @@ import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { CAPABILITY_STATES, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+import { normalizedRelativePath, safeSlug } from "./paths.mjs";
 
 const CONTRACTS_DIRECTORY = "docs/api-client/source/contracts";
-const REQUIRED_KEYS = ["id", "title", "version", "stability", "sourceOfTruth", "symbols", "capability", "evidence", "summary"];
+const REQUIRED_KEYS = ["id", "title", "version", "stability", "sourceOfTruth", "symbols", "capability", "evidence", "summary", "purpose", "lifecycle", "fieldConstraints", "behavior", "dependencies", "examples", "compatibilityNotes"];
 const SOURCE_OF_TRUTH = "upstream-compatible-mirror";
 
 /** @typedef {{subpath: string, name: string}} ContractSymbol */
-/** @typedef {{id: string, title: string, version: string, stability: "stable", sourceOfTruth: "upstream-compatible-mirror", symbols: ContractSymbol[], capability: import("./types.mjs").CapabilityState, evidence: string[], summary: string}} ContractRecord */
+/** @typedef {{id: string, title: string, version: string, stability: "stable", sourceOfTruth: "upstream-compatible-mirror", symbols: Array<ContractSymbol & {signature:string}>, capability: import("./types.mjs").CapabilityState, evidence: Array<{type:string,path:string}>, summary: string, purpose:string, lifecycle:string, fieldConstraints:Array<{field:string,constraint:string}>, behavior:{errors:string,retry:string,cancellation:string,streaming:string}, dependencies:{capabilities:string[],transports:string[]}, examples:{valid:{value:unknown,expected:string},invalid:{value:unknown,expectedFailure:string}}, compatibilityNotes:string}} ContractRecord */
 /** @typedef {{contractId: string, requirement: string, observed: string, action: string}} ContractDiagnostic */
 
 /** @param {ContractDiagnostic} diagnostic */
@@ -30,7 +31,7 @@ function nonEmptyString(value) {
 
 /** @param {string} root @param {string} relativePath */
 function repositoryPath(root, relativePath) {
-  if (!nonEmptyString(relativePath) || path.isAbsolute(relativePath)) return undefined;
+  try { normalizedRelativePath(relativePath, "evidence path"); } catch { return undefined; }
   const resolvedRoot = path.resolve(root);
   const resolved = path.resolve(resolvedRoot, relativePath);
   const relative = path.relative(resolvedRoot, resolved);
@@ -62,11 +63,14 @@ export async function loadContracts(root, manifest) {
     }
     const record = candidate && typeof candidate === "object" && !Array.isArray(candidate) ? /** @type {Record<string, unknown>} */ (candidate) : {};
     const id = nonEmptyString(record.id) ? /** @type {string} */ (record.id) : fallbackId;
+    try { safeSlug(id, "contract id"); } catch (error) {
+      diagnostics.push({ contractId: id, requirement: "id to be a safe lowercase slug", observed: shown(record.id), action: "use lowercase letters, digits, and single hyphens" });
+    }
 
     for (const key of REQUIRED_KEYS) {
       if (!(key in record)) diagnostics.push({ contractId: id, requirement: `required key ${key}`, observed: "missing", action: `add ${key} to ${filename}` });
     }
-    for (const key of ["id", "title", "summary"]) {
+    for (const key of ["id", "title", "summary", "purpose", "lifecycle", "compatibilityNotes"]) {
       if (!nonEmptyString(record[key])) diagnostics.push({ contractId: id, requirement: `${key} to be a non-empty string`, observed: shown(record[key]), action: `provide a non-empty ${key}` });
     }
     if (record.version !== DOCUMENTED_VERSION || record.version !== manifest.version) diagnostics.push({ contractId: id, requirement: `version to equal ${DOCUMENTED_VERSION}`, observed: shown(record.version), action: `document only ${DOCUMENTED_VERSION} release contracts` });
@@ -86,26 +90,38 @@ export async function loadContracts(root, manifest) {
       }
     }
 
+    if (!Array.isArray(record.fieldConstraints) || record.fieldConstraints.length === 0 || record.fieldConstraints.some((item) => !item || !nonEmptyString(item.field) || !nonEmptyString(item.constraint))) diagnostics.push({ contractId: id, requirement: "fieldConstraints to contain structured non-empty entries", observed: shown(record.fieldConstraints), action: "describe each public field constraint" });
+    for (const [section, keys] of [["behavior", ["errors", "retry", "cancellation", "streaming"]], ["dependencies", ["capabilities", "transports"]]]) {
+      const value = record[section];
+      if (!value || typeof value !== "object" || keys.some((key) => section === "dependencies" ? !Array.isArray(value[key]) || value[key].length === 0 || value[key].some((item) => !nonEmptyString(item)) : !nonEmptyString(value[key]))) diagnostics.push({ contractId: id, requirement: `${section} to be complete and structured`, observed: shown(value), action: `provide all ${section} fields` });
+    }
+    const examples = record.examples;
+    if (!examples || typeof examples !== "object" || !examples.valid || !nonEmptyString(examples.valid.expected) || !("value" in examples.valid) || !examples.invalid || !nonEmptyString(examples.invalid.expectedFailure) || !("value" in examples.invalid)) diagnostics.push({ contractId: id, requirement: "valid and invalid examples with expected outcomes", observed: shown(examples), action: "provide structured valid and invalid examples" });
+
     if (!Array.isArray(record.evidence) || record.evidence.length === 0) {
       diagnostics.push({ contractId: id, requirement: "evidence to be a non-empty array", observed: shown(record.evidence), action: "reference at least one repository evidence file" });
     } else for (const evidence of record.evidence) {
-      const evidencePath = typeof evidence === "string" ? repositoryPath(root, evidence) : undefined;
+      const evidenceType = evidence && typeof evidence === "object" ? evidence.type : undefined;
+      const evidenceValue = evidence && typeof evidence === "object" ? evidence.path : undefined;
+      if (!["declaration", "fixture", "conformance-test"].includes(evidenceType)) diagnostics.push({ contractId: id, requirement: "evidence type to be declaration, fixture, or conformance-test", observed: shown(evidenceType), action: "type every evidence record" });
+      const evidencePath = typeof evidenceValue === "string" ? repositoryPath(root, evidenceValue) : undefined;
       if (!evidencePath) {
-        diagnostics.push({ contractId: id, requirement: "evidence path to be repository-relative", observed: shown(evidence), action: "use a path contained by the repository root" });
+        diagnostics.push({ contractId: id, requirement: "evidence path to be repository-relative", observed: shown(evidenceValue), action: "use a path contained by the repository root" });
         continue;
       }
       try {
         const resolvedEvidencePath = await realpath(evidencePath);
         const relativeEvidencePath = path.relative(resolvedRoot, resolvedEvidencePath);
         if (relativeEvidencePath.startsWith("..") || path.isAbsolute(relativeEvidencePath)) {
-          diagnostics.push({ contractId: id, requirement: "evidence path to be contained by the repository root", observed: evidence, action: "use a file whose resolved target is inside the repository" });
+          diagnostics.push({ contractId: id, requirement: "evidence path to be contained by the repository root", observed: evidenceValue, action: "use a file whose resolved target is inside the repository" });
           continue;
         }
         if (!(await lstat(resolvedEvidencePath)).isFile()) throw new Error("not a file");
       } catch {
-        diagnostics.push({ contractId: id, requirement: `evidence file ${evidence} to exist`, observed: "missing", action: "add the evidence file or correct its path" });
+        diagnostics.push({ contractId: id, requirement: `evidence file ${evidenceValue} to exist`, observed: "missing", action: "add the evidence file or correct its path" });
       }
     }
+    if (Array.isArray(record.symbols)) record.symbols = record.symbols.map((symbol) => ({ ...symbol, signature: manifest.symbols.find((item) => item.subpath === symbol.subpath && item.name === symbol.name)?.signature ?? "" }));
     records.push(/** @type {ContractRecord} */ (record));
   }
 

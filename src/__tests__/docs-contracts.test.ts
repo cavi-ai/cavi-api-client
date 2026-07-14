@@ -34,6 +34,7 @@ async function mutableRegistry(): Promise<string> {
   await cp(path.join(root, "src/__tests__"), path.join(directory, "src/__tests__"), {
     recursive: true,
   });
+  await cp(path.join(root, "docs/api-client/source/releases"), path.join(directory, "docs/api-client/source/releases"), { recursive: true });
   return directory;
 }
 
@@ -134,10 +135,20 @@ describe("loadContracts", () => {
     );
   });
 
+  it("rejects traversal-like contract identifiers", async () => {
+    const registryRoot = await mutableRegistry();
+    await mutateRecord(registryRoot, "runtime-error.json", (record) => { record.id = "../runtime-error"; });
+    await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(/id to be a safe lowercase slug/u);
+  });
+
   it.each([
     ["version", "0.11.1", /version to equal 0\.11\.0/u],
     ["stability", "experimental", /stability to equal stable/u],
     ["summary", "   ", /summary to be a non-empty string/u],
+    ["purpose", "", /purpose to be a non-empty string/u],
+    ["fieldConstraints", [], /fieldConstraints to contain structured non-empty entries/u],
+    ["behavior", {}, /behavior to be complete and structured/u],
+    ["examples", {}, /valid and invalid examples with expected outcomes/u],
     ["symbols", [{ subpath: "", name: "ApiClientError" }], /each symbol to contain non-empty subpath and name/u],
     ["symbols", "not-an-array", /symbols to be a non-empty array/u],
     ["evidence", [42], /evidence path to be repository-relative/u],
@@ -162,7 +173,7 @@ describe("loadContracts", () => {
     const linkPath = path.join(registryRoot, "escaped-evidence.test.ts");
     await symlink(externalEvidence, linkPath);
     await mutateRecord(registryRoot, "runtime-error.json", (record) => {
-      record.evidence = ["escaped-evidence.test.ts"];
+      record.evidence = [{ type: "fixture", path: "escaped-evidence.test.ts" }];
     });
 
     await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
@@ -177,7 +188,7 @@ describe("loadContracts", () => {
     await writeFile(path.join(externalDirectory, "evidence.test.ts"), "// external\n");
     await symlink(externalDirectory, path.join(registryRoot, "linked-directory"));
     await mutateRecord(registryRoot, "runtime-error.json", (record) => {
-      record.evidence = ["linked-directory/evidence.test.ts"];
+      record.evidence = [{ type: "fixture", path: "linked-directory/evidence.test.ts" }];
     });
 
     await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(

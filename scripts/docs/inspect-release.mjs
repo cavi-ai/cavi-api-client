@@ -6,7 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import ts from "typescript";
 
-import { DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+import { APPROVED_RELEASE_SHA256, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -127,9 +127,20 @@ function normalizePublicExports(exportsField) {
  * @param {string} tgzPath
  * @returns {Promise<import("./types.mjs").ReleaseManifest>}
  */
-export async function inspectRelease(tgzPath) {
+export async function inspectRelease(tgzPath, options = {}) {
   const archive = await readFile(tgzPath);
   const sha256 = createHash("sha256").update(archive).digest("hex");
+  const expectedSha256 = options.expectedSha256 ?? APPROVED_RELEASE_SHA256;
+  if (sha256 !== expectedSha256) {
+    throw new Error(`stable artifact digest mismatch: expected sha256:${expectedSha256}, observed sha256:${sha256}`);
+  }
+  const { stdout: archiveListing } = await execFileAsync("tar", ["-tzf", tgzPath]);
+  for (const rawEntry of archiveListing.split("\n").filter(Boolean)) {
+    const entry = rawEntry.endsWith("/") ? rawEntry.slice(0, -1) : rawEntry;
+    if (path.posix.isAbsolute(entry) || entry.split("/").some((segment) => segment === "." || segment === "..") || (entry !== "package" && !entry.startsWith("package/"))) {
+      throw new Error(`archive entry escapes package root: ${rawEntry}`);
+    }
+  }
   const temporaryDirectory = await mkdtemp(
     path.join(tmpdir(), "cavi-docs-release-inspector-"),
   );
