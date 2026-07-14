@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Optional request options now propagate through every session operation;
   already-aborted signals prevent legacy transport dispatch, while in-flight
   cancellation remains unsupported by those released transports.
+- Extended the additive gateway session operation seam with optional typed
+  cancellation and provider-neutral raw creation/update/state fields. Canonical
+  session methods now share abortable request option types; providers without
+  proven cancellation semantics keep the optional operation absent.
 - Directly renamed the unreleased canonical facade, factories, provider hook,
   and conformance kit to the `RuntimeControlClient` vocabulary. This is a
   pre-release rename, not a compatibility removal; the older released

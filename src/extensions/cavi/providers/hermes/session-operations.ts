@@ -1,8 +1,12 @@
 import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import { normalizeTransportAbort } from "../../../../core/transport/backoff.js";
+import { getTransportErrorMetadata } from "../../../../core/transport/error.js";
 import type {
+  GatewaySessionCancelResult,
   GatewaySessionOperations,
   GatewaySessionRequestOptions,
 } from "../../../../core/gateway/snapshots/session-operations.js";
+import type { RawSessionRow } from "../../../../core/gateway/snapshots/contracts.js";
 import type {
   SessionDetailPayload,
   SessionsListRpcPayload,
@@ -12,20 +16,12 @@ import type {
   HermesDashboardRestClient,
   HermesDashboardSession,
   HermesDashboardSessions,
-  HermesDashboardUsage,
 } from "./dashboard-rest.js";
+import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
 import type { HermesDashboardJsonRpcClient } from "./types.js";
 
-export type HermesInterruptResult = Readonly<{ status: "interrupted" }>;
-export type HermesSessionOperations = GatewaySessionOperations & {
-  interrupt(id: string, options?: GatewaySessionRequestOptions): Promise<HermesInterruptResult>;
-};
-
 function record(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`Hermes ${label} response failed schema validation`);
-  }
-  return value as Record<string, unknown>;
+  return requireHermesSafeJsonRecord(value, label);
 }
 
 function finite(value: unknown, label: string): number {
@@ -41,7 +37,7 @@ function optionalText(value: unknown, label: string): string | undefined {
   return value;
 }
 
-function sessionRow(value: unknown): Record<string, unknown> {
+function sessionRow(value: unknown): RawSessionRow {
   const row = record(value, "session row");
   if (typeof row.id !== "string" || row.id.length === 0) throw new Error("Hermes session row response failed schema validation");
   const startedAt = finite(row.started_at, "session started_at");
@@ -61,10 +57,13 @@ function sessionRow(value: unknown): Record<string, unknown> {
 
 function throwIfAborted(options?: GatewaySessionRequestOptions): void {
   if (!options?.signal?.aborted) return;
-  if (options.signal.reason instanceof Error) throw options.signal.reason;
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  throw error;
+  throw normalizeTransportAbort(options.signal);
+}
+
+function isTransportUnavailable(error: unknown): boolean {
+  const metadata = getTransportErrorMetadata(error);
+  return metadata?.kind === "json-rpc"
+    && (metadata.phase === "connect" || metadata.phase === "close");
 }
 
 function parseRpcList(value: unknown): SessionsListRpcPayload {
@@ -101,10 +100,11 @@ function detail(value: HermesDashboardSession): SessionDetailPayload {
   const output = finite(value.output_tokens, "session detail output_tokens");
   const messages = finite(value.message_count, "session detail message_count");
   const cost = finite(value.estimated_cost_usd, "session detail estimated_cost_usd");
-  const row = sessionRow({ ...value, last_active: value.ended_at ?? value.started_at });
+  const safe = record(value, "session detail");
+  const row = sessionRow({ ...safe, last_active: value.ended_at ?? value.started_at });
   return {
     key: value.id,
-    row: { ...row, createdAt: startedAt, updatedAt: startedAt, totalTokens: input + output },
+    row: { ...row, createdAt: startedAt, totalTokens: input + output },
     usageSession: {
       key: value.id,
       ...(value.source === null ? {} : { channel: value.source }),
@@ -114,26 +114,27 @@ function detail(value: HermesDashboardSession): SessionDetailPayload {
   };
 }
 
-function parseInterrupt(value: unknown): HermesInterruptResult {
+function parseInterrupt(id: string, value: unknown): GatewaySessionCancelResult {
   const payload = record(value, "session.interrupt");
   if (payload.status !== "interrupted" || Object.keys(payload).length !== 1) {
     throw new Error("Hermes session.interrupt response failed schema validation");
   }
-  return { status: "interrupted" };
+  return { id, status: "cancelled", providerData: { status: "interrupted" } };
 }
 
 export function createHermesSessionOperations(options: {
   rpc: HermesDashboardJsonRpcClient;
   rest: HermesDashboardRestClient;
 }): GatewaySessionOperations {
-  const operations: HermesSessionOperations = {
+  const operations: GatewaySessionOperations = {
     async list(input, requestOptions) {
       throwIfAborted(requestOptions);
       try {
         const value = await options.rpc.request<unknown>("session.list", input, requestOptions);
         return parseRpcList(value);
       } catch (error) {
-        if (requestOptions?.signal?.aborted || (error instanceof Error && /schema validation/u.test(error.message))) throw error;
+        if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
+        if (!isTransportUnavailable(error)) throw error;
         return parseRestList(await options.rest.listSessions(requestOptions));
       }
     },
@@ -143,27 +144,31 @@ export function createHermesSessionOperations(options: {
         const value = await options.rpc.request<unknown>("session.usage", input, requestOptions);
         return parseUsage(value);
       } catch (error) {
-        if (requestOptions?.signal?.aborted || (error instanceof Error && /schema validation/u.test(error.message))) throw error;
-        return parseUsage(await options.rest.getUsage(requestOptions) as HermesDashboardUsage);
+        if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
+        if (!isTransportUnavailable(error)) throw error;
+        return parseUsage(await options.rest.getUsage(requestOptions));
       }
     },
     preview: () => Promise.reject(new CapabilityUnavailable("hermes", "controlPlane.sessions.preview")),
     async detail(input, requestOptions) {
       throwIfAborted(requestOptions);
-      return detail(await options.rest.getSession(input.key, requestOptions));
+      try {
+        return detail(await options.rest.getSession(input.key, requestOptions));
+      } catch (error) {
+        if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
+        throw error;
+      }
     },
     patch: () => Promise.reject(new CapabilityUnavailable("hermes", "controlPlane.sessions.patch")),
-    async interrupt(id, requestOptions) {
+    async cancel(id, requestOptions) {
       throwIfAborted(requestOptions);
-      return parseInterrupt(await options.rpc.request<unknown>("session.interrupt", { session_id: id }, requestOptions));
+      try {
+        return parseInterrupt(id, await options.rpc.request<unknown>("session.interrupt", { session_id: id }, requestOptions));
+      } catch (error) {
+        if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
+        throw error;
+      }
     },
   };
   return operations;
-}
-
-export function getHermesInterruptOperation(
-  operations: GatewaySessionOperations,
-): HermesSessionOperations["interrupt"] | undefined {
-  const candidate = operations as Partial<HermesSessionOperations>;
-  return typeof candidate.interrupt === "function" ? candidate.interrupt.bind(operations) : undefined;
 }

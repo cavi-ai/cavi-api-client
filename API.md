@@ -402,13 +402,18 @@ Gateway aliases:
 
 The session REST paths are HTTP fallbacks for the websocket RPC session methods.
 Core snapshot loaders accept a provider-neutral `GatewaySessionOperations` port
-covering list, usage, preview, detail, and patch. The default
+covering list, usage, preview, detail, patch, and optional provider-neutral
+cancel. The default
 `createOpenClawSessionOperations` adapter retains the plural `sessions.*` RPC
 names and the REST mappings below; injecting the port does not change loader
 payloads, cache behavior, or released loader method names. Session loader
 methods accept optional `GatewaySessionRequestOptions`; an already-aborted
 signal prevents default-adapter dispatch, but the released legacy RPC and REST
 transports cannot cancel an operation after dispatch.
+The shared raw session row carries optional provider-neutral `createdAt`,
+`updatedAt`, and `state` fields. Canonical `SessionClient` list, get, and cancel
+methods accept optional abortable session request options. Providers that do
+not have fixture-proven cancellation semantics leave the operation absent.
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |

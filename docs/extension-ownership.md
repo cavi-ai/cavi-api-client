@@ -383,10 +383,15 @@ implementation filenames.
 ## Provider-neutral gateway session operations
 
 `GatewaySessionOperations` is the core-owned seam for list, usage, preview,
-detail, and patch operations. `createSessionLoaders` accepts an injected port;
+detail, patch, and optional provider-neutral cancel operations.
+`createSessionLoaders` accepts an injected port;
 when none is supplied, `createOpenClawSessionOperations` preserves the released
 plural OpenClaw RPC names and session REST fallbacks. CAVI continues to compose
 the core loader and owns no duplicate session operation implementation. Loader
 request options pass through this seam unchanged. The default adapter rejects
 already-aborted signals before dispatch; its released legacy RPC and REST
 transports do not provide in-flight cancellation.
+Raw session rows type optional provider-neutral creation/update timestamps and
+state. Canonical session methods use the shared abortable request options; a
+provider leaves cancel absent unless its native operation has matching,
+fixture-proven semantics.

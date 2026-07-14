@@ -15,8 +15,11 @@ export interface RuntimeSessionSummary {
   metadata: RuntimeControlPlaneMetadata;
 }
 
+export type SessionRequestOptions = { signal?: AbortSignal };
+export type ListSessionsOptions = SessionRequestOptions & { cursor?: string; limit?: number };
+
 export interface SessionClient {
-  listSessions(query?: { cursor?: string; limit?: number }): Promise<RuntimePage<RuntimeSessionSummary>>;
-  getSession(id: string): Promise<RuntimeSessionSummary>;
-  cancelSession?(id: string): Promise<RuntimeSessionSummary>;
+  listSessions(query?: ListSessionsOptions): Promise<RuntimePage<RuntimeSessionSummary>>;
+  getSession(id: string, options?: SessionRequestOptions): Promise<RuntimeSessionSummary>;
+  cancelSession?(id: string, options?: SessionRequestOptions): Promise<RuntimeSessionSummary>;
 }

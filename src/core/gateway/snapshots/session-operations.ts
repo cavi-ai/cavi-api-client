@@ -23,6 +23,12 @@ export type GatewaySessionRequestOptions = {
   signal?: AbortSignal;
 };
 
+export type GatewaySessionCancelResult = {
+  id: string;
+  status: "cancelled";
+  providerData?: Record<string, unknown>;
+};
+
 export interface GatewaySessionOperations {
   list(
     input: SessionsListRequestParams,
@@ -44,6 +50,11 @@ export interface GatewaySessionOperations {
     input: SessionPatchInput,
     options?: GatewaySessionRequestOptions,
   ): Promise<void>;
+  /** Optional provider-neutral cancellation seam. Provider adapters own wire method names. */
+  cancel?(
+    id: string,
+    options?: GatewaySessionRequestOptions,
+  ): Promise<GatewaySessionCancelResult>;
 }
 
 function withQuery(path: string, params: Record<string, unknown>): string {

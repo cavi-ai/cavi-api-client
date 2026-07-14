@@ -62,11 +62,30 @@ describe("Hermes canonical session client", () => {
     });
   });
 
+  it("bounds page prefixes and rejects overflow cursors before dispatch", async () => {
+    const { rpc, operations } = setup([]);
+    const client = createHermesSessionClient(operations);
+    const cursor = Buffer.from(JSON.stringify({ v: 1, offset: 199 })).toString("base64url");
+    await expect(client.listSessions({ cursor, limit: Number.MAX_SAFE_INTEGER })).rejects.toThrow(/page window/i);
+    const overflow = Buffer.from(JSON.stringify({ v: 1, offset: 200 })).toString("base64url");
+    await expect(client.listSessions({ cursor: overflow })).rejects.toThrow("Invalid Hermes session cursor");
+    expect(rpc.request).not.toHaveBeenCalled();
+  });
+
+  it("accepts the conservative maximum page size without unsafe arithmetic", async () => {
+    const payload = result("session-list-result");
+    const { rpc, operations } = setup([payload]);
+    await expect(createHermesSessionClient(operations).listSessions({
+      limit: Number.MAX_SAFE_INTEGER,
+    })).resolves.toMatchObject({ data: [{ id: "session-fixture-001" }] });
+    expect(rpc.request).toHaveBeenCalledWith("session.list", { limit: 200 }, { signal: undefined });
+  });
+
   it("gets REST-backed detail and rejects unsupported preview and patch exactly", async () => {
     const { operations } = setup([]);
     await expect(createHermesSessionClient(operations).getSession("session-fixture-001")).resolves.toEqual({
       id: "session-fixture-001", providerId: "session-fixture-001", title: "Sanitized fixture session",
-      state: "unknown", createdAt: "2026-07-14T16:00:00.000Z", updatedAt: "2026-07-14T16:00:00.000Z",
+      state: "unknown", createdAt: "2026-07-14T16:00:00.000Z", updatedAt: "2026-07-14T16:02:00.000Z",
       providerKind: "hermes", metadata: { provider: "hermes", stability: "experimental", source: { transport: "http", method: "session.detail" } },
     });
     await expect(operations.preview({ keys: ["s"] })).rejects.toEqual(new CapabilityUnavailable("hermes", "controlPlane.sessions.preview"));
