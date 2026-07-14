@@ -1,0 +1,9 @@
+import "../../../core/http/index.js";
+export * from "../../../extensions/cavi/index.js";
+void import("../../../extensions/cavi/client.js");
+import coreContracts = require("../../../core/runtime/control-plane/contracts.js");
+const caviContracts = require("../../../extensions/cavi/discourse/contracts.js");
+const ignored = "require('../../../extensions/cavi/client.js')";
+void coreContracts;
+void caviContracts;
+void ignored;
