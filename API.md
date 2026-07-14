@@ -176,6 +176,28 @@ modules as unsupported instead of assuming a fallback exists.
 - `RuntimeControlPlane` — aggregates declared transports and optional focused
   clients for sessions, models, usage, tasks, workspaces, authentication status,
   and events.
+- `CanonicalRuntimeControlPlane` — a required facade containing all seven
+  focused modules (`authStatus`, `sessions`, `models`, `usage`, `tasks`,
+  `workspace`, and `events`) and `dispose()`. Disposal is idempotent.
+- `CapabilityUnavailable` — typed error carrying the `providerId` and
+  method-specific `capability` that is unavailable.
+- `createUnavailableCanonicalControlPlane(providerId, capabilities)` — creates
+  the complete canonical shape for an unavailable adapter. Each module method
+  rejects with a fresh `CapabilityUnavailable`; `dispose()` is side-effect free
+  and may be called repeatedly.
+- `createRuntimeControlPlane(provider, options)` — at the package root, resolves
+  a provider kind or alias through a fresh registry of shipped provider modules;
+  `options.registry` replaces that default. The core/providers export remains
+  registry-driven. The factory invokes a resolved module's optional canonical
+  hook or returns the complete unavailable facade. `CanonicalControlPlaneFactoryOptions`
+  contains only provider-neutral URL, token/auth resolver, abort signal, trace,
+  transport, and registry inputs. Registry membership alone does not imply a
+  built-in canonical adapter. OpenClaw recognizes a structurally compatible RPC
+  fixture supplied through `transport`, which keeps deterministic construction
+  tests on the same provider-neutral factory path without exposing an
+  OpenClaw-specific option at the package root.
+- `CanonicalControlPlaneFactory` — asynchronous provider-module hook that
+  produces the required `CanonicalRuntimeControlPlane` shape.
 - `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
   implemented control-plane transports and focused modules; declarations do not
   add those methods to `RuntimeClient`.
@@ -183,27 +205,81 @@ modules as unsupported instead of assuming a fallback exists.
   `getRuntimeProviderCapabilityRow(provider)` — supported root exports providing
   frozen, provider-by-provider
   records of existing runtime surfaces, implemented transports, and separately
-  declared control-plane modules. The foundation matrix intentionally declares
-  no control-plane modules until provider adapters exist. Prefer the narrower
-  control-plane contracts above when a consumer does not need cross-provider
-  matrix discovery.
+  declared control-plane modules. OpenClaw declares the seven canonical modules;
+  the other provider rows retain empty control-plane declarations. Prefer the
+  narrower control-plane contracts above when a consumer does not need
+  cross-provider matrix discovery.
+- `runCanonicalControlPlaneConformance({ providerId, create })` — exported from
+  `@cavi-ai/api-client/testing`; constructs and disposes a canonical facade,
+  verifies every required method on all seven modules, invokes representative
+  operations, validates canonical result shapes or typed
+  `CapabilityUnavailable` rejections, and reports supported, unavailable, and
+  failed operations. The declared `providerId` must exactly match unavailable
+  error metadata, as must the canonical capability assigned to each operation.
+  Empty module objects are invalid.
 - `inspectRuntimeControlPlaneConformance(fixture)` — exported from
   `@cavi-ai/api-client/testing`; validates that a provider's control-plane
   factory, declared transports, and declared focused modules match its exposed
   runner-neutral control-plane object, and rejects undeclared exposed modules.
 
-All provider control-plane module declarations are initially empty until provider adapter plans land.
+OpenClaw declares all seven canonical modules and its stable WebSocket transport;
+unregistered providers retain the required shape and typed unavailable errors.
 The six focused clients are sessions, models, usage, tasks, workspace, and
 authentication status; `RuntimeEventClient` is the event subscription contract,
 and `RuntimeTransportCapabilities` declares the available transports separately.
-The contract foundation is shipped, but no built-in provider control-plane adapter
-is advertised yet. In particular, hosted Codex over OpenAI Responses and a future
+The OpenClaw adapter is built in; providers without a registered adapter use the
+typed unavailable facade. Hosted Codex over OpenAI Responses and a future
 `codex-app-server` JSON-RPC provider are distinct identities and must not be
 presented as one adapter.
 
 Existing consumers require no migration: `RuntimeClient`, `GatewayClient`, and
-all established imports retain their behavior. Adopt the control plane only when
-a provider module truthfully declares and returns the required optional modules.
+all established imports retain their behavior, and `RuntimeControlPlane` remains
+the optional declaration-driven contract. Use `CanonicalRuntimeControlPlane`
+when the consumer requires a uniform seven-module facade. Adopt a provider's
+implemented control plane only when its module truthfully declares and returns
+the required optional modules.
+
+```ts
+import { createRuntimeControlPlane } from "@cavi-ai/api-client";
+
+const controlPlane = await createRuntimeControlPlane(config.provider, {
+  baseUrl: config.baseUrl,
+  webSocketUrl: config.webSocketUrl,
+  resolveAuth: () => authStore.resolve(config.provider),
+});
+
+const sessions = await controlPlane.sessions.listSessions({ limit: 50 });
+```
+
+The package contract is canonical for its consumers; upstream wire APIs remain
+provider-owned and mirrored. OpenClaw's verified canonical adapter operations
+are deliberately narrower than the complete gateway RPC catalog:
+
+| Canonical module | Verified OpenClaw methods |
+| --- | --- |
+| `workspace` | `agents.list` |
+| `models`, `authStatus` | `models.list`, `models.authStatus` |
+| `usage` | `usage.status`, `usage.cost` |
+| `sessions` | `sessions.list`, `sessions.describe`, `sessions.abort` |
+| `tasks` | `tasks.list`, `tasks.get`, `tasks.cancel` |
+| `events` | Native gateway subscription; no additional request method claimed |
+
+OpenClaw native event cursor resume is unsupported. Supplying any cursor rejects
+with `CapabilityUnavailable("openclaw", "controlPlane.events.cursor")`. On
+reconnect, the adapter emits `stream.reconnected` followed by `stream.gap` when
+continuity cannot be proven; it does not claim replay. Factory-created WebSocket
+clients are client-owned and closed by `dispose()`. Injected transports are
+caller-owned and remain open unless the caller closes them. Before an owned
+socket connects, `resolveAuth` is called and a returned bearer authorization
+overrides `token` regardless of header-name casing; duplicate semantic headers
+are collapsed deterministically. Workspace descriptors are emitted only for explicit
+`agents.list` workspace values; agent IDs remain provider metadata. Because the
+current `usage.cost` wire has no validated currency field, its amount remains
+provider data and canonical cost availability is `unavailable`. Parser and
+native-event validation failures surface as sanitized, non-retryable
+`TransportProtocolError` values with exact operation metadata. Native event
+names must use a bounded, secret-safe vocabulary before they can reach mapping,
+metadata, or public errors; safe unknown names map to `operation.updated`.
 
 ## Runtime Providers
 
@@ -453,6 +529,13 @@ several library routes under `/api/plugins/library`.
 Postman can open the transport URL, but websocket JSON-RPC calls are runtime
 protocol messages rather than ordinary HTTP requests. Use `{{gatewayWsUrl}}/api/ws`
 for the transport.
+
+`OpenClawWebSocketClient` retains the existing authenticated OpenClaw gateway
+handshake and also exposes provider-specific lifecycle helpers used by the
+control-plane adapter: `subscribe(listener)` delegates to native gateway event
+delivery, `request(method, params, { signal })` lets one caller stop waiting
+without closing the shared connection, and `dispose()` closes the client-owned
+connection. Cancelling one request does not unsubscribe other listeners.
 
 ### Gateway RPC: OpenClaw Workboard
 

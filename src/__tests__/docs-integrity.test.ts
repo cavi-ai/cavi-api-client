@@ -221,7 +221,7 @@ describe("docs integrity", () => {
     ).toEqual([]);
   });
 
-  it("API.md documents the runtime control-plane foundation without advertising adapters", () => {
+  it("API.md truthfully documents the registered OpenClaw adapter", () => {
     const apiMd = read("API.md");
 
     for (const publicContract of [
@@ -233,7 +233,7 @@ describe("docs integrity", () => {
       expect(apiMd, `API.md is missing ${publicContract}`).toContain(publicContract);
     }
     expect(apiMd).toContain(
-      "All provider control-plane module declarations are initially empty until provider adapter plans land.",
+      "OpenClaw declares all seven canonical modules and its stable WebSocket transport",
     );
   });
 
@@ -272,5 +272,56 @@ describe("docs integrity", () => {
     expect(publicDocs).toMatch(/(?:no|never)[ -](?:write )?replay/iu);
     expect(publicDocs).toMatch(/Node(?:-only| isolation| built-ins)/u);
     expect(publicDocs).toMatch(/not (?:a )?provider adapter/iu);
+  });
+
+  it("documents the canonical control-plane facade without provider drift", () => {
+    const publicDocs = [readme, api, architecture, changelog];
+    const modules = ["authStatus", "sessions", "models", "usage", "tasks", "workspace", "events"];
+
+    for (const [name, document] of [
+      ["README.md", readme],
+      ["API.md", api],
+    ] as const) {
+      expect(document, `${name} is missing the provider-neutral factory example`).toContain(
+        "createRuntimeControlPlane(config.provider, {",
+      );
+      expect(document).toContain("controlPlane.sessions.listSessions({ limit: 50 })");
+      expect(document).not.toContain(".sessions.list(");
+    }
+
+    for (const module of modules) {
+      expect(
+        publicDocs.every((document) => document.includes(module)),
+        `${module} is not synchronized`,
+      ).toBe(true);
+    }
+    for (const method of [
+      "agents.list",
+      "models.list",
+      "models.authStatus",
+      "usage.status",
+      "usage.cost",
+      "sessions.list",
+      "sessions.describe",
+      "sessions.abort",
+      "tasks.list",
+      "tasks.get",
+      "tasks.cancel",
+    ]) {
+      expect(api, `API.md is missing verified OpenClaw method ${method}`).toContain(`\`${method}\``);
+    }
+
+    expect(publicDocs.every((document) => document.includes("CapabilityUnavailable"))).toBe(true);
+    expect(`${readme}\n${api}`).toMatch(/upstream wire APIs remain\s+provider-owned and mirrored/iu);
+    const eventContinuityDocs = `${readme}\n${api}\n${architecture}\n${changelog}`;
+    expect(eventContinuityDocs).toContain(
+      'CapabilityUnavailable("openclaw", "controlPlane.events.cursor")',
+    );
+    expect(eventContinuityDocs).toContain("stream.reconnected");
+    expect(eventContinuityDocs).toContain("stream.gap");
+    expect(eventContinuityDocs).toMatch(/cursor resume is unsupported/iu);
+    expect(eventContinuityDocs).toMatch(/does not claim replay/iu);
+    expect(`${api}\n${architecture}`).toMatch(/caller-owned/iu);
+    expect(`${api}\n${architecture}`).toMatch(/client-owned/iu);
   });
 });

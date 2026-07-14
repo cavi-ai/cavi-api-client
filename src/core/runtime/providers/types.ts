@@ -2,7 +2,9 @@ import type { HttpApiClientOptions } from "../../http/types.js";
 import type { RuntimeSurface } from "../capabilities.js";
 import type { RuntimeClient } from "../client.js";
 import type { RuntimeControlPlane } from "../control-plane/control-plane.js";
+import type { CanonicalRuntimeControlPlane } from "../control-plane/canonical.js";
 import type { RuntimeTransportCapabilities } from "../control-plane/transports.js";
+import type { TransportAuthResolver, TransportLifecycleEvent } from "../../transport/types.js";
 
 export type RuntimeClientOptions = Pick<
   HttpApiClientOptions,
@@ -26,9 +28,25 @@ export interface RuntimeProviderModule {
   controlPlane?: RuntimeControlPlaneDeclaration;
   createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;
   createControlPlane?: (clientOptions: RuntimeClientOptions) => RuntimeControlPlane;
+  createCanonicalControlPlane?: CanonicalControlPlaneFactory;
   /** @deprecated Use createClient for new provider modules. */
   createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;
 }
+
+export type CanonicalControlPlaneFactoryOptions = {
+  baseUrl?: string;
+  webSocketUrl?: string;
+  token?: string;
+  resolveAuth?: TransportAuthResolver;
+  signal?: AbortSignal;
+  trace?: (event: TransportLifecycleEvent) => void;
+  transport?: unknown;
+  registry?: RuntimeProviderRegistry;
+};
+
+export type CanonicalControlPlaneFactory = (
+  options: CanonicalControlPlaneFactoryOptions,
+) => Promise<CanonicalRuntimeControlPlane>;
 
 export interface RuntimeProviderRegistry<M extends RuntimeProviderModule = RuntimeProviderModule> {
   resolveProvider(provider: string | null | undefined): M | null;
