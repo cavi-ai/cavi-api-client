@@ -405,7 +405,10 @@ Core snapshot loaders accept a provider-neutral `GatewaySessionOperations` port
 covering list, usage, preview, detail, and patch. The default
 `createOpenClawSessionOperations` adapter retains the plural `sessions.*` RPC
 names and the REST mappings below; injecting the port does not change loader
-payloads, cache behavior, or released loader method names.
+payloads, cache behavior, or released loader method names. Session loader
+methods accept optional `GatewaySessionRequestOptions`; an already-aborted
+signal prevents default-adapter dispatch, but the released legacy RPC and REST
+transports cannot cancel an operation after dispatch.
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |

@@ -16,6 +16,10 @@ import type {
 } from "./transforms.js";
 
 export type GatewaySessionRequestOptions = {
+  /**
+   * Prevents dispatch when already aborted. The released legacy RPC and REST
+   * transports cannot cancel a request after it has been dispatched.
+   */
   signal?: AbortSignal;
 };
 
@@ -69,12 +73,26 @@ function requireTransport(
   }
 }
 
+function throwIfAborted(options?: GatewaySessionRequestOptions): void {
+  const signal = options?.signal;
+  if (!signal?.aborted) {
+    return;
+  }
+  if (signal.reason instanceof Error) {
+    throw signal.reason;
+  }
+  const error = new Error("The operation was aborted");
+  error.name = "AbortError";
+  throw error;
+}
+
 export function createOpenClawSessionOperations(
   client: GatewayRpcClient | null | undefined,
   requestJson: SessionHttpRequestJson | null = null,
 ): GatewaySessionOperations {
   return {
-    async list(input) {
+    async list(input, options) {
+      throwIfAborted(options);
       requireTransport(client, requestJson);
       if (client) {
         return await client.request<SessionsListRpcPayload>(
@@ -86,7 +104,8 @@ export function createOpenClawSessionOperations(
         withQuery(GATEWAY_SESSION_API_PATHS.list, input),
       );
     },
-    async usage(input) {
+    async usage(input, options) {
+      throwIfAborted(options);
       requireTransport(client, requestJson);
       if (client) {
         return await client.request<SessionsUsagePayload>(
@@ -98,7 +117,8 @@ export function createOpenClawSessionOperations(
         withQuery(GATEWAY_SESSION_API_PATHS.usage, input),
       );
     },
-    async preview(input) {
+    async preview(input, options) {
+      throwIfAborted(options);
       requireTransport(client, requestJson);
       if (client) {
         return await client.request<SessionsPreviewPayload>(
@@ -111,7 +131,8 @@ export function createOpenClawSessionOperations(
         { method: "POST", body: input },
       );
     },
-    async detail(input) {
+    async detail(input, options) {
+      throwIfAborted(options);
       requireTransport(client, requestJson);
       if (client) {
         return await client.request<SessionDetailPayload>(
@@ -124,7 +145,8 @@ export function createOpenClawSessionOperations(
         { method: "POST", body: input },
       );
     },
-    async patch(input) {
+    async patch(input, options) {
+      throwIfAborted(options);
       requireTransport(client, requestJson);
       if (client) {
         await client.request<unknown>("sessions.patch", input);
