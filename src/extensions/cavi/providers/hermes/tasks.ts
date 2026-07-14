@@ -3,6 +3,18 @@ import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/ru
 import type { RuntimeTaskState, RuntimeTaskSummary, TaskClient } from "../../../../core/runtime/control-plane/tasks.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
 import type { OperatorTaskRecord, OperatorTaskState } from "../../domain/operator.js";
+import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
+
+const TASK_SCHEMA_ERROR = "Hermes CAVI task response failed schema validation";
+
+function taskSnapshot(value: unknown): { tasks: { tasks: OperatorTaskRecord[] } } {
+  try {
+    requireHermesSafeJsonRecord(value, "CAVI task");
+  } catch {
+    throw new Error(TASK_SCHEMA_ERROR);
+  }
+  return value as { tasks: { tasks: OperatorTaskRecord[] } };
+}
 
 function state(value: OperatorTaskState): RuntimeTaskState {
   switch (value) {
@@ -14,8 +26,11 @@ function state(value: OperatorTaskState): RuntimeTaskState {
   }
 }
 
-function timestamp(value: number): string | undefined {
-  return Number.isFinite(value) && value >= 0 ? new Date(value).toISOString() : undefined;
+function timestamp(value: number): string {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 8_640_000_000_000_000) {
+    throw new Error(TASK_SCHEMA_ERROR);
+  }
+  return new Date(value).toISOString();
 }
 
 function mapTask(task: OperatorTaskRecord, method: "operator.tasks.list" | "operator.tasks.get"): RuntimeTaskSummary {
@@ -23,8 +38,8 @@ function mapTask(task: OperatorTaskRecord, method: "operator.tasks.list" | "oper
   const updatedAt = timestamp(task.receipt.updated_at);
   return {
     id: task.envelope.task_id, state: state(task.receipt.state),
-    ...(createdAt === undefined ? {} : { createdAt }),
-    ...(updatedAt === undefined ? {} : { updatedAt }),
+    createdAt,
+    updatedAt,
     runId: task.receipt.run_id, cancellable: false,
     metadata: {
       provider: "hermes", stability: "experimental",
@@ -42,11 +57,12 @@ export function createHermesCaviTaskClient(adapters: CaviControlAdapters): TaskC
         throw new TypeError("Task page limit must be a positive integer");
       }
       const envelope = await adapters.loadOperatorControl();
-      return { data: envelope.data.tasks.tasks.slice(0, query.limit).map((task) => mapTask(task, "operator.tasks.list")) };
+      const snapshot = taskSnapshot(envelope.data);
+      return { data: snapshot.tasks.tasks.slice(0, query.limit).map((task) => mapTask(task, "operator.tasks.list")) };
     },
     async getTask(id: string) {
       const envelope = await adapters.loadOperatorControl();
-      const task = envelope.data.tasks.tasks.find((candidate) => candidate.envelope.task_id === id);
+      const task = taskSnapshot(envelope.data).tasks.tasks.find((candidate) => candidate.envelope.task_id === id);
       if (!task) throw new ApiClientError(`Hermes CAVI task not found: ${id}`, { code: ApiClientErrorCode.EndpointNotFound });
       return mapTask(task, "operator.tasks.get");
     },

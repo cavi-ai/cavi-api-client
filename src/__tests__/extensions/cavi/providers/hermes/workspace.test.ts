@@ -55,4 +55,51 @@ describe("Hermes CAVI workspace composition", () => {
     await expect(client.listWorkspaces()).resolves.toEqual([]);
     await expect(client.getWorkspace("/work/operator")).rejects.toThrow(/not found/i);
   });
+
+  it("deduplicates identical explicit identities across and within sources", async () => {
+    const identity = { id: "shared", displayName: "Shared", root: "/work/shared", accessMode: "read-only" };
+    const client = createHermesCaviWorkspaceClient(adapters({
+      projectBoard: { workspaceIdentity: { ...identity } },
+      operator: { registryDetail: { agents: [
+        { id: "a", workspaceIdentity: { ...identity } },
+        { id: "b", workspaceIdentity: { ...identity } },
+      ] } },
+    }));
+    await expect(client.listWorkspaces()).resolves.toHaveLength(1);
+  });
+
+  it.each([
+    ["same source", undefined],
+    ["cross source", { id: "shared", displayName: "Shared", root: "/work/a", accessMode: "read-only" }],
+  ])("fails closed on %s workspace identity conflicts", async (label, projectIdentity) => {
+    const secondIdentity = {
+      id: "shared", displayName: "Shared", root: "/work/b", accessMode: "read-write",
+    };
+    const firstIdentity = label === "cross source" ? secondIdentity : {
+      id: "shared", displayName: "Shared", root: "/work/a", accessMode: "read-only",
+    };
+    const client = createHermesCaviWorkspaceClient(adapters({
+      projectBoard: projectIdentity === undefined ? {} : { workspaceIdentity: projectIdentity },
+      operator: { registryDetail: { agents: [
+        { id: "a", workspaceIdentity: firstIdentity },
+        { id: "b", workspaceIdentity: secondIdentity },
+      ] } },
+    }));
+    await expect(client.listWorkspaces()).rejects.toThrow(
+      /^Hermes CAVI workspace response failed schema validation$/u,
+    );
+  });
+
+  it("rejects unsafe descriptors and arrays without invoking getters", async () => {
+    const getter = vi.fn(() => ({ id: "unsafe", accessMode: "read-write" }));
+    const agent = { id: "operator" };
+    Object.defineProperty(agent, "workspaceIdentity", { enumerable: true, get: getter });
+    const agents = [agent];
+    Object.defineProperty(agents, "extra", { enumerable: true, value: true });
+    const client = createHermesCaviWorkspaceClient(adapters({
+      projectBoard: {}, operator: { registryDetail: { agents } },
+    }));
+    await expect(client.listWorkspaces()).rejects.toThrow(/schema validation/u);
+    expect(getter).not.toHaveBeenCalled();
+  });
 });

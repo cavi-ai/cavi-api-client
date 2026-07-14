@@ -2,6 +2,9 @@ import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
 import type { RuntimeControlPlaneMetadata } from "../../../../core/runtime/control-plane/types.js";
 import type { RuntimeWorkspaceDescriptor, WorkspaceClient } from "../../../../core/runtime/control-plane/workspace.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
+import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
+
+const WORKSPACE_SCHEMA_ERROR = "Hermes CAVI workspace response failed schema validation";
 
 type ExplicitWorkspaceIdentity = {
   id: string; displayName?: string; root?: string;
@@ -10,6 +13,14 @@ type ExplicitWorkspaceIdentity = {
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function safeSnapshot(value: unknown): Record<string, unknown> {
+  try {
+    return requireHermesSafeJsonRecord(value, "CAVI workspace");
+  } catch {
+    throw new Error(WORKSPACE_SCHEMA_ERROR);
+  }
 }
 
 function workspaceIdentity(value: unknown): ExplicitWorkspaceIdentity | null {
@@ -42,18 +53,37 @@ function mapWorkspace(identity: ExplicitWorkspaceIdentity, method: string, trans
 export function createHermesCaviWorkspaceClient(adapters: CaviControlAdapters): WorkspaceClient {
   const list = async (): Promise<readonly RuntimeWorkspaceDescriptor[]> => {
     const [projectBoard, operator] = await Promise.all([adapters.loadProjectBoardWorkspace(), adapters.loadOperatorControl()]);
-    const workspaces: RuntimeWorkspaceDescriptor[] = [];
-    const projectIdentity = workspaceIdentity(record(projectBoard.data)?.workspaceIdentity);
-    if (projectIdentity) workspaces.push(mapWorkspace(projectIdentity, "project-board.workspace", "http"));
-    const registry = record(record(operator.data)?.registryDetail);
+    const projectSnapshot = safeSnapshot(projectBoard.data);
+    const operatorSnapshot = safeSnapshot(operator.data);
+    const candidates: Array<{ identity: ExplicitWorkspaceIdentity; method: string; transport: "http" | "websocket"; providerData?: Record<string, unknown> }> = [];
+    const projectIdentity = workspaceIdentity(projectSnapshot.workspaceIdentity);
+    if (projectIdentity) candidates.push({ identity: projectIdentity, method: "project-board.workspace", transport: "http" });
+    const registry = record(operatorSnapshot.registryDetail);
     const agents = Array.isArray(registry?.agents) ? registry.agents : [];
     for (const value of agents) {
       const agent = record(value);
       const identity = workspaceIdentity(agent?.workspaceIdentity);
-      if (identity) workspaces.push(mapWorkspace(identity, "operator.registry", "websocket", typeof agent?.id === "string" ? { agentId: agent.id } : undefined));
+      if (identity) candidates.push({
+        identity, method: "operator.registry", transport: "websocket",
+        ...(typeof agent?.id === "string" ? { providerData: { agentId: agent.id } } : {}),
+      });
     }
-    const seen = new Set<string>();
-    return workspaces.filter((workspace) => !seen.has(workspace.providerId) && seen.add(workspace.providerId));
+    const identities = new Map<string, ExplicitWorkspaceIdentity>();
+    const workspaces: RuntimeWorkspaceDescriptor[] = [];
+    for (const candidate of candidates) {
+      const existing = identities.get(candidate.identity.id);
+      if (existing) {
+        if (existing.accessMode !== candidate.identity.accessMode
+          || existing.root !== candidate.identity.root
+          || existing.displayName !== candidate.identity.displayName) {
+          throw new Error(WORKSPACE_SCHEMA_ERROR);
+        }
+        continue;
+      }
+      identities.set(candidate.identity.id, candidate.identity);
+      workspaces.push(mapWorkspace(candidate.identity, candidate.method, candidate.transport, candidate.providerData));
+    }
+    return workspaces;
   };
   return {
     listWorkspaces: list,
