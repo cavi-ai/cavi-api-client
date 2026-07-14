@@ -32,7 +32,7 @@ describe("Hermes usage", () => {
   });
 
   it("combines optional CAVI cost only with explicit authority and currency", async () => {
-    const snapshot = { totals: { estimatedCostUsd: 4.25 } } as CostHistorySnapshot;
+    const snapshot = { range: "7d", totals: { estimatedCostUsd: 4.25 } } as CostHistorySnapshot;
     const getCostHistory = vi.fn(async () => snapshot);
     const grounded = createHermesUsageClient({
       rest: rest(), caviCostHistory: { getCostHistory, range: "7d", currency: "USD", accountingAuthority: "cavi-ledger" },
@@ -44,5 +44,41 @@ describe("Hermes usage", () => {
       rest: rest(), caviCostHistory: { getCostHistory, range: "7d", currency: "", accountingAuthority: "" },
     });
     await expect(ungrounded.getUsage()).resolves.toMatchObject({ cost: { availability: "unavailable" } });
+  });
+
+  it.each([
+    ["EUR", "7d", 7],
+    ["usd", "7d", 7],
+    ["", "7d", 7],
+    ["USD", "24h", 7],
+    ["USD", "7d", 1],
+  ] as const)("keeps cost unavailable for currency %s, range %s, period %d", async (currency, range, periodDays) => {
+    const payload = structuredClone(fixture) as { period_days: number };
+    payload.period_days = periodDays;
+    const getCostHistory = vi.fn(async () => ({ totals: { estimatedCostUsd: 4.25 } } as CostHistorySnapshot));
+    const client = createHermesUsageClient({
+      rest: { getUsage: vi.fn(async () => payload) } as unknown as HermesDashboardRestClient,
+      caviCostHistory: { getCostHistory, range, currency, accountingAuthority: "cavi-ledger" },
+    });
+    await expect(client.getUsage()).resolves.toMatchObject({ cost: { availability: "unavailable" } });
+    expect(getCostHistory).not.toHaveBeenCalled();
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])("rejects invalid authoritative USD cost %s", async (amount) => {
+    const getCostHistory = vi.fn(async () => ({ range: "7d", totals: { estimatedCostUsd: amount } } as CostHistorySnapshot));
+    const client = createHermesUsageClient({
+      rest: rest(),
+      caviCostHistory: { getCostHistory, range: "7d", currency: "USD", accountingAuthority: "cavi-ledger" },
+    });
+    await expect(client.getUsage()).resolves.toMatchObject({ cost: { availability: "unavailable" } });
+  });
+
+  it("rejects a cost snapshot whose attested range differs from the requested aggregation", async () => {
+    const getCostHistory = vi.fn(async () => ({ range: "24h", totals: { estimatedCostUsd: 4.25 } } as CostHistorySnapshot));
+    const client = createHermesUsageClient({
+      rest: rest(),
+      caviCostHistory: { getCostHistory, range: "7d", currency: "USD", accountingAuthority: "cavi-ledger" },
+    });
+    await expect(client.getUsage()).resolves.toMatchObject({ cost: { availability: "unavailable" } });
   });
 });

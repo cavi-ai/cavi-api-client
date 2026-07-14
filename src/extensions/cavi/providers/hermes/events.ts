@@ -1,6 +1,7 @@
 import type { RuntimeUsage } from "../../../../core/runtime/usage.js";
 import type { RuntimeControlPlaneEvent, RuntimeEventClient, RuntimeEventSubscription } from "../../../../core/runtime/control-plane/events.js";
 import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import { isSensitiveKey, stringifyRedacted } from "../../../../core/http/redaction.js";
 import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
 import type { HermesDashboardEvent, HermesDashboardJsonRpcClient } from "./types.js";
 
@@ -21,11 +22,57 @@ function string(value: unknown, label: string): string {
   return value;
 }
 
+const NATIVE_EVENT_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/u;
+const USAGE_KEYS = new Set(["input_tokens", "output_tokens", "total_tokens", "cache_read_tokens", "cache_write_tokens"]);
+
+function nativeEventName(value: unknown): string {
+  const name = string(value, "event");
+  if (!NATIVE_EVENT_NAME.test(name) || isSensitiveKey(name)) throw new TypeError("event name is invalid");
+  return name;
+}
+
+function usageNumber(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError("runtime usage contains an invalid numeric field");
+  }
+  return value;
+}
+
+function usage(value: unknown): RuntimeUsage {
+  const record = requireHermesSafeJsonRecord(value, "runtime usage");
+  const keys = Object.keys(record);
+  if (keys.length === 0 || keys.some((key) => !USAGE_KEYS.has(key))) {
+    throw new TypeError("runtime usage contains unsupported fields");
+  }
+  const inputTokens = usageNumber(record, "input_tokens");
+  const outputTokens = usageNumber(record, "output_tokens");
+  const totalTokens = usageNumber(record, "total_tokens");
+  const cacheReadTokens = usageNumber(record, "cache_read_tokens");
+  const cacheWriteTokens = usageNumber(record, "cache_write_tokens");
+  if (totalTokens !== undefined && inputTokens !== undefined && outputTokens !== undefined
+    && totalTokens !== inputTokens + outputTokens) {
+    throw new TypeError("runtime usage total does not match input and output");
+  }
+  return {
+    ...(inputTokens === undefined ? {} : { inputTokens }),
+    ...(outputTokens === undefined ? {} : { outputTokens }),
+    ...(totalTokens === undefined ? {} : { totalTokens }),
+    ...(cacheReadTokens === undefined ? {} : { cacheReadTokens }),
+    ...(cacheWriteTokens === undefined ? {} : { cacheWriteTokens }),
+  };
+}
+
+function redactedFailure(value: unknown): { message: string } {
+  return { message: stringifyRedacted(value, 256) ?? "Hermes operation failed" };
+}
+
 function mapEvent(native: HermesDashboardEvent): RuntimeControlPlaneEvent | undefined {
   if (native.type === "gateway.ready" || native.type === "gateway.closed" || native.type === "gateway.close" || native.type === "disconnect") return undefined;
   const payload = requireHermesSafeJsonRecord(native.payload, "runtime event");
   const operationId = string(payload.run_id ?? payload.operationId, "operationId");
-  const event = string(payload.event ?? native.type, "event");
+  const event = nativeEventName(payload.event ?? native.type);
   const base = { operationId, metadata: metadata(native.type) };
   switch (event) {
     case "operation.started": return { ...base, event };
@@ -35,19 +82,28 @@ function mapEvent(native: HermesDashboardEvent): RuntimeControlPlaneEvent | unde
       const tool = string(payload.toolCallId ?? payload.tool, "toolCallId");
       return { ...base, event, toolCallId: tool, toolName: string(payload.toolName ?? payload.tool, "toolName") };
     }
+    case "tool.progress": {
+      const tool = string(payload.toolCallId ?? payload.tool, "toolCallId");
+      return { ...base, event, toolCallId: tool, progress: {} };
+    }
     case "tool.completed": {
       const tool = string(payload.toolCallId ?? payload.tool, "toolCallId");
-      return { ...base, event, toolCallId: tool, ...(payload.result === undefined ? {} : { result: payload.result }) };
+      return { ...base, event, toolCallId: tool };
     }
-    case "usage.updated": return { ...base, event, usage: payload.usage as RuntimeUsage };
+    case "approval.requested": return { ...base, event, approvalId: string(payload.approvalId, "approvalId") };
+    case "approval.resolved": {
+      if (typeof payload.approved !== "boolean") throw new TypeError("approved must be a boolean");
+      return { ...base, event, approvalId: string(payload.approvalId, "approvalId"), approved: payload.approved };
+    }
+    case "usage.updated": return { ...base, event, usage: usage(payload.usage) };
     case "operation.completed":
     case "run.completed": return { ...base, event: "operation.completed" };
     case "operation.failed":
-    case "run.failed": return { ...base, event: "operation.failed", error: payload.error };
+    case "run.failed": return { ...base, event: "operation.failed", error: redactedFailure(payload.error) };
     case "operation.cancelled":
     case "run.cancelled": return { ...base, event: "operation.cancelled" };
     case "operation.interrupted": return { ...base, event, ...(typeof payload.reason === "string" ? { reason: payload.reason } : {}) };
-    default: return { ...base, event: "operation.updated", update: { nativeEvent: event, payload } };
+    default: return { ...base, event: "operation.updated", update: { nativeEvent: event } };
   }
 }
 
@@ -106,8 +162,8 @@ export function createHermesRuntimeEventClient(rpc: HermesDashboardJsonRpcClient
         throw error;
       }
       const subscriber: Subscriber = { operationId: params.operationId, ...handlers, active: true };
-      subscribers.add(subscriber);
       detach ??= rpc.subscribe(notify);
+      subscribers.add(subscriber);
       const dispose = (): void => {
         if (!subscriber.active) return;
         subscriber.active = false;
