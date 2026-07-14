@@ -43,7 +43,8 @@ describe("docs integrity", () => {
       "publicBasePath: /docs/api-client/v0.11.0",
       "stableAlias: /docs/api-client",
       "entrypoints: manifest.json, navigation.json",
-      "integrity: manifest.package.sha256",
+      "identity: manifest.package",
+      "integrity: manifest.sha256",
     ]) {
       expect(consumer).toContain(contract);
     }
