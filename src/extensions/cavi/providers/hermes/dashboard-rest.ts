@@ -127,6 +127,11 @@ function requireSafePayload(value: unknown, label: string): void {
   if (!isSafeJsonValue(value)) throw schemaError(label, value);
 }
 
+export function requireHermesSafeJsonRecord(value: unknown, label: string): Record<string, unknown> {
+  requireSafePayload(value, label);
+  return requireRecord(value, label);
+}
+
 function own(record: JsonRecord, key: string, label: string, root: unknown): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(record, key);
   if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) throw schemaError(label, root);
