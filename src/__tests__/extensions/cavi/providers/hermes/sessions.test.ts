@@ -34,7 +34,7 @@ describe("Hermes canonical session client", () => {
   it("pages stably and preserves opaque ids, status, timestamps, and absent optionals", async () => {
     const fixturePayload = result("session-list-result") as { sessions: Array<Record<string, unknown>> };
     const payload = { sessions: [...fixturePayload.sessions, { ...fixturePayload.sessions[0], id: "opaque/second" }] };
-    const { operations } = setup([payload, payload]);
+    const { operations } = setup([payload, payload, payload]);
     const client = createHermesSessionClient(operations);
     const first = await client.listSessions({ limit: 1 });
     expect(first.data).toEqual([{
@@ -46,8 +46,25 @@ describe("Hermes canonical session client", () => {
     expect(first.data[0]).not.toHaveProperty("model");
     const second = await client.listSessions({ cursor: first.nextCursor, limit: 1 });
     expect(second.data[0]?.id).toBe("opaque/second");
-    expect(second.nextCursor).toBeUndefined();
+    expect(second.nextCursor).toEqual(expect.any(String));
+    const terminal = await client.listSessions({ cursor: second.nextCursor, limit: 1 });
+    expect(terminal).toEqual({ data: [] });
     await expect(client.listSessions({ cursor: "not-a-cursor" })).rejects.toThrow("Invalid Hermes session cursor");
+  });
+
+  it("emits a cursor for an exact-limit JSON-RPC page when upstream reports more rows", async () => {
+    const fixturePayload = result("session-list-result") as { sessions: Array<Record<string, unknown>> };
+    const { operations } = setup([{ sessions: fixturePayload.sessions, total: 2 }]);
+
+    await expect(createHermesSessionClient(operations).listSessions({ limit: 1 }))
+      .resolves.toMatchObject({ data: [{ id: "session-fixture-001" }], nextCursor: expect.any(String) });
+  });
+
+  it("uses bounded optimistic pagination for an exact-limit JSON-RPC page without a total", async () => {
+    const fixturePayload = result("session-list-result") as { sessions: Array<Record<string, unknown>> };
+    const { operations } = setup([{ sessions: fixturePayload.sessions }]);
+    await expect(createHermesSessionClient(operations).listSessions({ limit: 1 }))
+      .resolves.toMatchObject({ nextCursor: expect.any(String) });
   });
 
   it("maps fixture-proven interrupt semantics to cancellation and forwards abort options", async () => {

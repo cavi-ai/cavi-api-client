@@ -25,8 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   task, workspace, cost, and upstream protocol-ownership boundaries. The
   Hermes session module requires both dashboard REST and a channel. An explicit
   dashboard token suppresses authentication resolution and wins over the generic
-  token; otherwise resolved headers win when present, with the generic token as
-  fallback. The
+  token; otherwise a resolved authorization header wins, with the generic token
+  supplying bearer authorization when resolved headers contain no authentication.
+  Hermes session pagination preserves validated upstream totals, CAVI task
+  snapshots fail closed on malformed nested schemas, and task/workspace metadata
+  reports the adapter's actual WebSocket or HTTP transport. The
   immutable generated `v0.11.0` documentation remains historically accurate
   and intentionally excludes these unreleased APIs.
 

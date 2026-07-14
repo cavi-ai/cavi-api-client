@@ -318,11 +318,15 @@ unavailability, while session detail is REST-only. Hermes runtime-control events
 require only the channel and are JSON-RPC notifications,
 not SSE. SSE remains an independent core transport used only by upstream
 surfaces that expose SSE.
+Session-list pagination preserves a validated upstream `total`; when JSON-RPC
+omits it, an exact-limit page emits one bounded optimistic cursor, while a short
+page terminates pagination and the 200-session window remains enforced.
 
 An explicit `dashboardToken` suppresses `resolveAuth` and wins over the
-provider-neutral `token`. Without `dashboardToken`, resolved headers are used
-when present; if the resolver is absent or returns no headers, the generic
-`token` is used. Factory-created channels are
+provider-neutral `token`. Without `dashboardToken`, a resolver-provided
+authorization header wins. If resolved headers contain no authorization, the
+generic `token` supplies bearer authorization while unrelated resolved headers
+are preserved. Factory-created channels are
 owned and disposed by the facade, injected channels are borrowed unless
 `ownsChannel: true`, and partial construction unwinds owned resources in reverse
 order without replacing the primary error.

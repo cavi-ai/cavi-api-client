@@ -131,6 +131,29 @@ describe("createHermesRuntimeControlClient", () => {
     await client.dispose();
   });
 
+  it.each([
+    ["empty", {}],
+    ["unrelated", { "X-Request-Context": "runtime" }],
+  ] as const)("uses the generic token when resolved %s headers contain no authentication", async (_label, resolvedHeaders) => {
+    let headers = new Headers();
+    const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      headers = new Headers(init?.headers);
+      return new Response(JSON.stringify({ providers: [] }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    });
+    const client = await createHermesRuntimeControlClient({
+      dashboardBaseUrl: "https://dashboard.test",
+      token: "core",
+      resolveAuth: async () => ({ headers: resolvedHeaders }),
+      fetch,
+    });
+    await client.authStatus.listAuthStatus();
+    expect(headers.get("authorization")).toBe("Bearer core");
+    if ("X-Request-Context" in resolvedHeaders) expect(headers.get("x-request-context")).toBe("runtime");
+    await client.dispose();
+  });
+
   it("installs CAVI modules without dashboard REST configuration", async () => {
     const client = await createHermesRuntimeControlClient({ cavi: caviOptions() });
     await expect(client.tasks.listTasks({ cursor: "unsupported" })).rejects.toMatchObject({

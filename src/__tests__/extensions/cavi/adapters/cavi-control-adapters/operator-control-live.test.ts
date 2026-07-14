@@ -47,6 +47,7 @@ describe("loadOperatorControlLive", () => {
     );
 
     expect(envelope.source).toBe("gateway");
+    expect(envelope.transports).toEqual({ tasks: "websocket", registryDetail: "websocket" });
     expect(request).toHaveBeenCalledOnce();
     expect(requestJson).not.toHaveBeenCalled();
   });
@@ -57,6 +58,7 @@ describe("loadOperatorControlLive", () => {
     const envelope = await loadOperatorControlLive(requestJson, null);
 
     expect(envelope.source).toBe("gateway");
+    expect(envelope.transports).toEqual({ tasks: "http", registryDetail: "http" });
     expect(requestJson).toHaveBeenCalledWith(
       expect.stringContaining(`${OPERATOR_API.snapshot}?`),
     );
@@ -82,6 +84,7 @@ describe("loadOperatorControlLive", () => {
     const envelope = await loadOperatorControlLive(requestJson, null);
 
     expect(envelope.source).toBe("gateway");
+    expect(envelope.transports).toEqual({ tasks: "http", registryDetail: "http" });
     expect(requestJson).toHaveBeenCalledWith(
       expect.stringContaining(`${OPERATOR_API.snapshot}?`),
     );

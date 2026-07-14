@@ -58,13 +58,14 @@ export function createHermesCaviWorkspaceClient(adapters: CaviControlAdapters): 
     const candidates: Array<{ identity: ExplicitWorkspaceIdentity; method: string; transport: "http" | "websocket"; providerData?: Record<string, unknown> }> = [];
     const projectIdentity = workspaceIdentity(projectSnapshot.workspaceIdentity);
     if (projectIdentity) candidates.push({ identity: projectIdentity, method: "project-board.workspace", transport: "http" });
+    const operatorTransport = operator.transports.registryDetail;
     const registry = record(operatorSnapshot.registryDetail);
     const agents = Array.isArray(registry?.agents) ? registry.agents : [];
     for (const value of agents) {
       const agent = record(value);
       const identity = workspaceIdentity(agent?.workspaceIdentity);
       if (identity) candidates.push({
-        identity, method: "operator.registry", transport: "websocket",
+        identity, method: "operator.registry", transport: operatorTransport,
         ...(typeof agent?.id === "string" ? { providerData: { agentId: agent.id } } : {}),
       });
     }
