@@ -630,6 +630,25 @@ describe("package hardening", () => {
     );
   });
 
+  it("packs every runtime-control consumer entry with ESM and NodeNext declarations", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+      exports: Record<string, { types?: string; import?: string; default?: string }>;
+    };
+    for (const [subpath, target] of [
+      [".", "index"],
+      ["./core/runtime", "core/runtime/index"],
+      ["./core/runtime/providers", "core/runtime/providers/index"],
+      ["./providers/hermes", "providers/hermes/index"],
+      ["./extensions/cavi", "extensions/cavi/index"],
+    ] as const) {
+      expect(packageJson.exports[subpath]).toEqual({
+        types: `./dist/${target}.d.ts`,
+        import: `./dist/${target}.js`,
+        default: `./dist/${target}.js`,
+      });
+    }
+  });
+
   it("keeps dist free of stale compiled modules", () => {
     const offenders = walkFilesIfExists(DIST_ROOT)
       .filter((filePath) => /\.(?:js|d\.ts)$/u.test(filePath))
