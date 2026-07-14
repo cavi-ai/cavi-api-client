@@ -55,6 +55,24 @@ export type RuntimeControlClientConformanceHarness = Readonly<{
   create: () => RuntimeControlClient | Promise<RuntimeControlClient>;
   /** Sensitive values that must never appear in provider errors. */
   secrets?: readonly string[];
+  /** Optional provider-backed lifecycle probes for abort and resource ownership. */
+  lifecycle?: Readonly<{
+    abortReason?: unknown;
+    preAbort?: (signal: AbortSignal) => Promise<unknown>;
+    inFlightAbort?: (signal: AbortSignal) => Promise<Readonly<{
+      operation: Promise<unknown>;
+      cleanup?: () => void | Promise<void>;
+    }>>;
+    ownership?: Readonly<{
+      borrowed?: () => Promise<RuntimeControlClientResourceProbe>;
+      owned?: () => Promise<RuntimeControlClientResourceProbe>;
+    }>;
+  }>;
+}>;
+
+export type RuntimeControlClientResourceProbe = Readonly<{
+  dispose: () => void | Promise<void>;
+  releases: () => number;
 }>;
 
 export type RuntimeControlClientConformanceReport = Readonly<{
@@ -84,6 +102,66 @@ function isUsage(value: unknown): boolean {
 
 function isSubscription(value: unknown): boolean {
   return object(value) && typeof value.dispose === "function";
+}
+
+async function runLifecycleConformance(
+  harness: RuntimeControlClientConformanceHarness,
+  failures: string[],
+): Promise<void> {
+  const lifecycle = harness.lifecycle;
+  if (!lifecycle) return;
+  const reason = lifecycle.abortReason ?? new Error("runtime control conformance abort");
+  if (lifecycle.preAbort) {
+    const controller = new AbortController();
+    controller.abort(reason);
+    let returned: unknown;
+    try {
+      returned = await lifecycle.preAbort(controller.signal);
+      failures.push("pre-aborted construction did not reject with the abort reason");
+    } catch (error) {
+      if (error !== reason) failures.push("pre-aborted construction did not reject with the abort reason");
+    } finally {
+      if (object(returned) && typeof returned.dispose === "function") {
+        try {
+          await (returned.dispose as () => void | Promise<void>)();
+        } catch {
+          failures.push("pre-abort cleanup failed");
+        }
+      }
+    }
+  }
+  if (lifecycle.inFlightAbort) {
+    const controller = new AbortController();
+    let probe: Awaited<ReturnType<NonNullable<typeof lifecycle.inFlightAbort>>> | undefined;
+    try {
+      probe = await lifecycle.inFlightAbort(controller.signal);
+      controller.abort(reason);
+      try {
+        await probe.operation;
+        failures.push("in-flight operation did not reject with the abort reason");
+      } catch (error) {
+        if (error !== reason) failures.push("in-flight operation did not reject with the abort reason");
+      }
+    } finally {
+      await probe?.cleanup?.();
+    }
+  }
+  for (const [kind, createProbe] of [
+    ["borrowed", lifecycle.ownership?.borrowed],
+    ["owned", lifecycle.ownership?.owned],
+  ] as const) {
+    if (!createProbe) continue;
+    const probe = await createProbe();
+    await probe.dispose();
+    await probe.dispose();
+    const releases = probe.releases();
+    if (kind === "borrowed" && releases !== 0) {
+      failures.push("borrowed resource was released by client disposal");
+    }
+    if (kind === "owned" && releases !== 1) {
+      failures.push("owned resource was not released exactly once");
+    }
+  }
 }
 
 export async function runRuntimeControlClientConformance(
@@ -148,6 +226,7 @@ export async function runRuntimeControlClientConformance(
         unavailable.push(operation);
       }
     }
+    await runLifecycleConformance(harness, failures);
   } finally {
     if (canDispose) {
       try {

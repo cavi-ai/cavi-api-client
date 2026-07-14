@@ -245,7 +245,7 @@ function compatibilityExceptionModules(markdown = readFileSync(ownershipDoc, "ut
 describe("CAVI extension ownership", () => {
   it("classifies every public CAVI export exactly once", () => {
     expect(classifiedSymbols()).toEqual(publicCaviExports().map(({ symbol }) => symbol));
-  });
+  }, 15_000); // TypeScript export ownership analysis is compiler-heavy under V8 coverage instrumentation.
 
   it("rejects classification rows with invalid or incomplete metadata", () => {
     const markdown = readFileSync(ownershipDoc, "utf8");
