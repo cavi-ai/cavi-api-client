@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Documented every public CAVI extension export in a compiler-checked ownership
+  inventory and enforced the core-to-extension dependency direction, the exact
+  four released provider forwarding exceptions, and generic transport/snapshot
+  implementation ownership without changing any public export.
 - Published the provider-neutral `createRuntimeControlClient` facade and root
   `CapabilityUnavailable` error for the exact `authStatus`, `sessions`,
   `models`, `usage`, `tasks`, `workspace`, and `events` contract. Documented the
