@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Decomposed the monolithic README into a concise, provider-neutral package
+  entry point. Exhaustive imports now live in a dedicated export catalog, while
+  provider setup and implementation details live in focused provider guides.
+  This documentation-only change does not alter public exports or runtime
+  behavior.
+
 ### Fixed
 
 - Hardened the OpenClaw canonical adapter so factory-owned WebSockets resolve

@@ -22,13 +22,25 @@
     {
       "title": "Guides",
       "pages": [
+        { "title": "Imports and exports", "path": "guides/imports-and-exports.md" },
         { "title": "Requests", "path": "guides/requests.md" },
         { "title": "Streaming", "path": "guides/streaming.md" },
         { "title": "Files", "path": "guides/files.md" },
         { "title": "Batching", "path": "guides/batching.md" },
         { "title": "Manifests", "path": "guides/manifests.md" },
         { "title": "React", "path": "guides/react.md" },
-        { "title": "Testing", "path": "guides/testing.md" }
+        { "title": "Testing", "path": "guides/testing.md" },
+        {
+          "title": "Providers",
+          "pages": [
+            { "title": "Overview", "path": "guides/providers/index.md" },
+            { "title": "Hermes", "path": "guides/providers/hermes.md" },
+            { "title": "OpenClaw", "path": "guides/providers/openclaw.md" },
+            { "title": "Claude", "path": "guides/providers/claude.md" },
+            { "title": "Codex", "path": "guides/providers/codex.md" },
+            { "title": "Gemini", "path": "guides/providers/gemini.md" }
+          ]
+        }
       ]
     },
     {
