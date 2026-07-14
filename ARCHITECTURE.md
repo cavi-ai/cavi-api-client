@@ -165,14 +165,15 @@ cannot be proven; it does not claim replay.
 The CAVI extension composes Hermes without changing that provider boundary.
 Hermes dashboard calls use standard JSON-RPC 2.0 over a shared message-channel
 contract, whereas OpenClaw uses its authenticated gateway handshake and custom
-WebSocket RPC framing. Hermes session list and usage operations can fall back
-from JSON-RPC to dashboard REST only for channel unavailability; detail remains
-REST. Hermes events are JSON-RPC notifications. SSE is a separate core
+WebSocket RPC framing. The session module requires both dashboard REST and a
+channel; only then can list and usage fall back from JSON-RPC to dashboard REST
+for channel unavailability, while detail remains REST. Hermes events require
+only the channel and are JSON-RPC notifications. SSE is a separate core
 transport and is not implied by either runtime-control adapter.
 
-Hermes dashboard REST auth is resolved before construction when an explicit
-dashboard token is absent: resolver headers outrank dashboard and generic
-tokens, and the dashboard token otherwise outranks the generic token. Owned
+An explicit Hermes dashboard token suppresses authentication resolution and
+wins over the generic token. Without a dashboard token, resolved headers are
+used when present; otherwise the generic token is used. Owned
 channels are closed on disposal and reverse-order construction unwind; borrowed
 channels retain caller ownership unless explicitly transferred. CAVI plugin
 task and workspace modules are independently installable from the dashboard
