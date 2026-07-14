@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory.js";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory.js";
 import type { OpenClawRpc } from "../../../../providers/openclaw/control-plane/rpc.js";
 import { createOpenClawUsageClient } from "../../../../providers/openclaw/control-plane/usage.js";
 
@@ -188,7 +188,7 @@ describe("OpenClaw usage control plane", () => {
 
   it("is wired by the factory", async () => {
     const rpc = createRpc({ "usage.status": status, "usage.cost": cost });
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
 
     await expect(plane.usage.getUsage()).resolves.toMatchObject({ cost: { availability: "unavailable" } });
   });

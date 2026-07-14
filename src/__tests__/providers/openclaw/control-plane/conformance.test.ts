@@ -3,7 +3,7 @@ import { OPENCLAW_PROVIDER_MODULE } from "../../../../providers/openclaw/provide
 
 describe("OpenClaw canonical control-plane registration", () => {
   it("registers its canonical factory and all seven modules", () => {
-    expect(OPENCLAW_PROVIDER_MODULE.createCanonicalControlPlane).toBeTypeOf("function");
+    expect(OPENCLAW_PROVIDER_MODULE.createRuntimeControlClient).toBeTypeOf("function");
     expect(OPENCLAW_PROVIDER_MODULE.controlPlane?.modules).toEqual({
       sessions: true, models: true, usage: true, tasks: true,
       workspace: true, authStatus: true, events: true,

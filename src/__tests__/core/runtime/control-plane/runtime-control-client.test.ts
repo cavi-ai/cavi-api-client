@@ -1,15 +1,14 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   CapabilityUnavailable,
-  createUnavailableCanonicalControlPlane,
-  type CanonicalControlPlaneOptions,
-  type CanonicalRuntimeControlPlane,
+  createUnavailableRuntimeControlClient,
+  type RuntimeControlClient,
   type RuntimeControlPlane,
 } from "../../../../core/runtime/index";
 
 describe("canonical runtime control plane", () => {
   it("always exposes every required control-plane surface", () => {
-    const plane = createUnavailableCanonicalControlPlane("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
 
     expect(Object.keys(plane)).toEqual(expect.arrayContaining([
       "authStatus",
@@ -21,13 +20,12 @@ describe("canonical runtime control plane", () => {
       "events",
       "dispose",
     ]));
-    expectTypeOf(plane).toEqualTypeOf<CanonicalRuntimeControlPlane>();
+    expectTypeOf(plane).toEqualTypeOf<RuntimeControlClient>();
     expectTypeOf<RuntimeControlPlane>().toBeObject();
-    expectTypeOf<CanonicalControlPlaneOptions>().toBeObject();
   });
 
   it("rejects every client method with its typed capability name", async () => {
-    const plane = createUnavailableCanonicalControlPlane("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
     const calls: ReadonlyArray<[string, () => Promise<unknown>]> = [
       ["controlPlane.authStatus.list", () => plane.authStatus.listAuthStatus()],
       ["controlPlane.sessions.list", () => plane.sessions.listSessions({})],
@@ -56,7 +54,7 @@ describe("canonical runtime control plane", () => {
   });
 
   it("creates a fresh CapabilityUnavailable for every rejection", async () => {
-    const plane = createUnavailableCanonicalControlPlane("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
     const first = await plane.sessions.listSessions({}).catch((error: unknown) => error);
     const second = await plane.sessions.listSessions({}).catch((error: unknown) => error);
 
@@ -66,7 +64,7 @@ describe("canonical runtime control plane", () => {
   });
 
   it("has an idempotent side-effect-free dispose", async () => {
-    const plane = createUnavailableCanonicalControlPlane("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
 
     await expect(plane.dispose()).resolves.toBeUndefined();
     await expect(plane.dispose()).resolves.toBeUndefined();

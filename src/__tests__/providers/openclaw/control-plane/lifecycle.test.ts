@@ -24,7 +24,7 @@ vi.mock("../../../../providers/openclaw/websocket", () => ({
   OpenClawWebSocketClient: MockOpenClawWebSocketClient,
 }));
 
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory";
 
 function createRpc(): OpenClawRpc {
   return {
@@ -114,7 +114,7 @@ describe("OpenClaw control-plane RPC lifecycle", () => {
 
   it("leaves an injected RPC seam caller-owned by default", async () => {
     const rpc = createRpc();
-    const plane = await createOpenClawControlPlane({ rpc });
+    const plane = await createOpenClawRuntimeControlClient({ rpc });
 
     expect(rpc.request).not.toHaveBeenCalled();
     await plane.dispose();
@@ -124,7 +124,7 @@ describe("OpenClaw control-plane RPC lifecycle", () => {
   });
 
   it("creates one authenticated client and disposes the owned connection once", async () => {
-    const plane = await createOpenClawControlPlane({
+    const plane = await createOpenClawRuntimeControlClient({
       webSocketUrl: "wss://openclaw.example/ws",
       token: "token",
     });
@@ -139,7 +139,7 @@ describe("OpenClaw control-plane RPC lifecycle", () => {
 
   it("disposes an injected RPC once when ownership is explicit", async () => {
     const rpc = createRpc();
-    const plane = await createOpenClawControlPlane({
+    const plane = await createOpenClawRuntimeControlClient({
       rpc,
       takeRpcOwnership: true,
     });

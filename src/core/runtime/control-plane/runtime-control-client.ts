@@ -5,7 +5,7 @@ import type { TaskClient } from "./tasks.js";
 import type { UsageClient } from "./usage.js";
 import type { WorkspaceClient } from "./workspace.js";
 
-export interface CanonicalRuntimeControlPlane {
+export interface RuntimeControlClient {
   readonly authStatus: AuthStatusClient;
   readonly sessions: SessionClient;
   readonly models: ModelCatalogClient;
@@ -14,11 +14,6 @@ export interface CanonicalRuntimeControlPlane {
   readonly workspace: WorkspaceClient;
   readonly events: RuntimeEventClient;
   dispose(): Promise<void>;
-}
-
-export interface CanonicalControlPlaneOptions {
-  readonly providerId: string;
-  readonly capabilities: ReadonlySet<string>;
 }
 
 export class CapabilityUnavailable extends Error {
@@ -32,10 +27,10 @@ export class CapabilityUnavailable extends Error {
   }
 }
 
-export function createUnavailableCanonicalControlPlane(
+export function createUnavailableRuntimeControlClient(
   providerId: string,
   capabilities: ReadonlySet<string>,
-): CanonicalRuntimeControlPlane {
+): RuntimeControlClient {
   const unavailable = (capability: string): Promise<never> =>
     Promise.reject(new CapabilityUnavailable(providerId, capability));
 

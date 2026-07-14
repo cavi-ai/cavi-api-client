@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createOpenClawControlPlane } from "../../../../providers/openclaw/control-plane/factory";
+import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory";
 
 class HandshakeWebSocket extends EventTarget {
   static readonly OPEN = 1;
@@ -57,7 +57,7 @@ describe("OpenClaw control-plane factory client profile", () => {
     });
 
     try {
-      const plane = await createOpenClawControlPlane({
+      const plane = await createOpenClawRuntimeControlClient({
         webSocketUrl: "wss://openclaw.example/ws",
         token: "factory-token",
       });
@@ -103,7 +103,7 @@ describe("OpenClaw control-plane factory client profile", () => {
     Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: undefined });
     const resolveAuth = vi.fn(async () => ({ headers: { Authorization: "Bearer fresh-token" } }));
     try {
-      const plane = await createOpenClawControlPlane({
+      const plane = await createOpenClawRuntimeControlClient({
         webSocketUrl: "wss://openclaw.example/ws",
         token: "stale-token",
         resolveAuth,
@@ -129,7 +129,7 @@ describe("OpenClaw control-plane factory client profile", () => {
     globalThis.WebSocket = HandshakeWebSocket as unknown as typeof WebSocket;
     Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: undefined });
     try {
-      const plane = await createOpenClawControlPlane({
+      const plane = await createOpenClawRuntimeControlClient({
         webSocketUrl: "wss://openclaw.example/ws",
         token: "stale-token",
         resolveAuth: async () => ({ headers }),
@@ -148,7 +148,7 @@ describe("OpenClaw control-plane factory client profile", () => {
     HandshakeWebSocket.instances = [];
     globalThis.WebSocket = HandshakeWebSocket as unknown as typeof WebSocket;
     try {
-      await expect(createOpenClawControlPlane({
+      await expect(createOpenClawRuntimeControlClient({
         webSocketUrl: "wss://openclaw.example/ws",
         resolveAuth: async () => { throw new Error("auth store unavailable"); },
       })).rejects.toMatchObject({
