@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { buildDocumentation } from "./build.mjs";
 
 function parseArguments(argv) {
+  const allowedOptions = new Set(["package", "out", "source-date-epoch", "root"]);
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
     const option = argv[index];
@@ -15,7 +16,9 @@ function parseArguments(argv) {
     if (!option?.startsWith("--") || value === undefined) {
       throw new Error("usage: check.mjs [--package <release.tgz>] [--out <directory>] [--source-date-epoch <seconds>]");
     }
-    values[option.slice(2)] = value;
+    const name = option.slice(2);
+    if (!allowedOptions.has(name)) throw new Error(`unsupported option --${name}`);
+    values[name] = value;
   }
   values.package ??= process.env.CAVI_DOCS_PACKAGE_TGZ ?? process.env.CAVI_API_CLIENT_STABLE_TARBALL;
   values.out ??= "docs/api-client/v0.11.0";
@@ -74,7 +77,6 @@ export async function checkDocumentation(argv = process.argv.slice(2)) {
       "--out", generated,
       "--source-date-epoch", options["source-date-epoch"],
       "--root", path.resolve(options.root),
-      ...(options["expected-sha256"] ? ["--expected-sha256", options["expected-sha256"]] : []),
     ]);
     const [generatedFiles, committedFiles] = await Promise.all([
       filePaths(generated),

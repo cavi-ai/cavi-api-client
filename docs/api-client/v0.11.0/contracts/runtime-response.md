@@ -1,5 +1,7 @@
 # Runtime response
 
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
 Contract: runtime-response
 Version: 0.11.0
 Stability: stable
@@ -88,4 +90,5 @@ Upstream state names are adapter-normalized and remain subject to provider suppo
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
+- fixture: `docs/examples/runtime-node.ts`
 - conformance-test: `src/__tests__/core/runtime/run-types.test.ts`

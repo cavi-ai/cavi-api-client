@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { normalizedRelativePath, safeSlug } from "./paths.mjs";
+import { DOCUMENTED_PACKAGE } from "./types.mjs";
 
 function readContainedFile(root, relativePath, label) {
   normalizedRelativePath(relativePath, label);
@@ -65,6 +66,8 @@ function renderContractPage(contract) {
   return [
     `# ${contract.title}`,
     "",
+    `Package: ${DOCUMENTED_PACKAGE}`,
+    "Verified by: declaration + fixture + conformance test",
     `Contract: ${contract.id}`,
     `Version: ${contract.version}`,
     `Stability: ${contract.stability}`,

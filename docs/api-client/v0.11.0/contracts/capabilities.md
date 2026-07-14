@@ -1,5 +1,7 @@
 # Runtime capabilities
 
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
 Contract: capabilities
 Version: 0.11.0
 Stability: stable
@@ -78,4 +80,5 @@ Capabilities are observations of an upstream implementation, not protocol owners
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
+- fixture: `docs/examples/runtime-capabilities.ts`
 - conformance-test: `src/__tests__/core/runtime/capabilities.test.ts`
