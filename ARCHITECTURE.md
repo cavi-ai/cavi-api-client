@@ -162,6 +162,25 @@ unsupported: supplying any cursor rejects with
 the adapter emits `stream.reconnected` followed by `stream.gap` when continuity
 cannot be proven; it does not claim replay.
 
+The CAVI extension composes Hermes without changing that provider boundary.
+Hermes dashboard calls use standard JSON-RPC 2.0 over a shared message-channel
+contract, whereas OpenClaw uses its authenticated gateway handshake and custom
+WebSocket RPC framing. Hermes session list and usage operations can fall back
+from JSON-RPC to dashboard REST only for channel unavailability; detail remains
+REST. Hermes events are JSON-RPC notifications. SSE is a separate core
+transport and is not implied by either runtime-control adapter.
+
+Hermes dashboard REST auth is resolved before construction when an explicit
+dashboard token is absent: resolver headers outrank dashboard and generic
+tokens, and the dashboard token otherwise outranks the generic token. Owned
+channels are closed on disposal and reverse-order construction unwind; borrowed
+channels retain caller ownership unless explicitly transferred. CAVI plugin
+task and workspace modules are independently installable from the dashboard
+modules. Tasks model operator task lifecycle rather than cron schedules, and
+workspace output requires explicit upstream workspace identity. Uncertain cost
+or cost without validated currency stays provider data instead of becoming a
+canonical monetary amount.
+
 The package contract is canonical for its consumers while upstream wire APIs
 remain provider-owned and mirrored. The seven facade modules are `authStatus`,
 `sessions`, `models`, `usage`, `tasks`, `workspace`, and `events`. Resources

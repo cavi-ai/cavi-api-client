@@ -308,6 +308,36 @@ native-event validation failures surface as sanitized, non-retryable
 names must use a bounded, secret-safe vocabulary before they can reach mapping,
 metadata, or public errors; safe unknown names map to `operation.updated`.
 
+Hermes and OpenClaw do not share a wire protocol. The Hermes extension uses
+standard JSON-RPC 2.0 over a `TransportMessageChannel`; it neither performs the
+OpenClaw gateway handshake nor implements OpenClaw's custom WebSocket RPC
+framing. Hermes `session.list` and `session.usage` prefer JSON-RPC and use
+dashboard REST only for channel connect/close unavailability, while session
+detail is REST-only. Hermes runtime-control events are JSON-RPC notifications,
+not SSE. SSE remains an independent core transport used only by upstream
+surfaces that expose SSE.
+
+Hermes dashboard authentication resolves once before REST construction when no
+explicit `dashboardToken` is present. Resolver headers take precedence over
+`dashboardToken` and the provider-neutral `token`; otherwise
+`dashboardToken` takes precedence over `token`. Factory-created channels are
+owned and disposed by the facade, injected channels are borrowed unless
+`ownsChannel: true`, and partial construction unwinds owned resources in reverse
+order without replacing the primary error.
+
+The CAVI-backed Hermes `tasks` surface maps operator task-lifecycle records; it
+does not expose cron schedules or scheduled deployments, and cancellation is a
+typed unavailable capability. Its workspace surface requires an explicit
+workspace identity from project-board or operator-registry data. Agent IDs are
+metadata, not workspace identity. Cost is canonical only when the upstream data
+supports its currency semantics; uncertain or currency-less totals remain
+provider data with canonical cost availability `unavailable`.
+
+Protocol ownership remains upstream. Hermes, OpenClaw, Caviclaw, gateway, and
+plugin runtimes define their wire behavior; `@cavi-ai/api-client` follows those
+contracts and provides a provider-neutral mirror for consumers. It is not the
+canonical runtime contract owner.
+
 ## Runtime Providers
 
 These are runtime-only providers reached via their subpaths (`./providers/claude`,

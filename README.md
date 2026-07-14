@@ -387,6 +387,21 @@ const controlPlane = await createRuntimeControlClient(config.provider, {
 const sessions = await controlPlane.sessions.listSessions({ limit: 50 });
 ```
 
+Keep provider selection in setup and pass only the required facade to consumer
+code. The consumer stays branch-free even when a method is unavailable:
+
+```ts
+import type { RuntimeControlClient } from "@cavi-ai/api-client";
+
+export async function loadRuntimeOverview(control: RuntimeControlClient) {
+  const [sessions, workspaces] = await Promise.all([
+    control.sessions.listSessions({ limit: 20 }),
+    control.workspace.listWorkspaces(),
+  ]);
+  return { sessions: sessions.data, workspaces };
+}
+```
+
 The package contract is canonical for its consumers; upstream wire APIs remain
 provider-owned and mirrored. OpenClaw native event cursor resume is unsupported:
 supplying a cursor rejects with `CapabilityUnavailable("openclaw",
@@ -976,6 +991,24 @@ and explicit CAVI plugin config independently enables tasks and workspace even
 when dashboard REST is absent. Other operations
 reject with method-specific `CapabilityUnavailable` errors. Injected channels
 are borrowed unless `ownsChannel: true` is set.
+
+Hermes dashboard traffic uses standard JSON-RPC 2.0 over its message channel;
+it does not speak OpenClaw's authenticated gateway handshake or custom
+WebSocket RPC framing. Hermes session list and usage calls prefer JSON-RPC and
+fall back to dashboard REST only when that channel is unavailable; session
+detail remains REST. Its normalized events come from JSON-RPC notifications,
+not SSE. SSE remains a separate shared transport for upstream APIs that expose
+an SSE endpoint. OpenClaw instead uses its native gateway WebSocket protocol and
+native gateway event subscription.
+
+The Hermes CAVI `tasks` module reports operator task-lifecycle records, not cron
+or scheduled-deployment definitions, and does not claim cancellation. Workspace
+descriptors are emitted only from explicit project-board or operator-registry
+workspace identity; agent identity is never substituted. Monetary totals remain
+unavailable unless the upstream value includes enough currency evidence to make
+the canonical amount meaningful. Upstream Hermes, OpenClaw, Caviclaw, gateway,
+and plugin runtimes own their wire protocols; this package is a follower that
+mirrors and normalizes only fixture-proven behavior.
 
 ## Secure Credential Handling
 

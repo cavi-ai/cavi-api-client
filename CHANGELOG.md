@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registries; generic module types and defensive-copy registries are preserved,
   and mutable extension setup is snapshotted without cloning opaque runtime
   resources.
+- Documented branch-free `RuntimeControlClient` consumption and the exact
+  Hermes/OpenClaw transport, REST fallback, event, authentication, lifecycle,
+  task, workspace, cost, and upstream protocol-ownership boundaries. The
+  immutable generated `v0.11.0` documentation remains historically accurate
+  and intentionally excludes these unreleased APIs.
 
 ### Changed
 

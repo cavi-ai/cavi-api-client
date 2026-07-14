@@ -6,6 +6,15 @@ A generic-looking symbol name is not evidence that it belongs in core. Promotion
 requires a provider-neutral contract, at least one non-CAVI consumer, and an
 additive migration plan.
 
+`RuntimeControlClient` and `createRuntimeControlClient` are core/provider-layer
+contracts and are not CAVI exports. The CAVI extension owns only setup-time
+composition through `createHermesRuntimeControlClient`,
+`withCaviRuntimeControlProviders`, and `CaviRuntimeControlProviderOptions`.
+That composition may mirror Hermes dashboard JSON-RPC/REST and CAVI plugin task
+or workspace behavior, but it does not own those upstream protocols. Hermes,
+OpenClaw, Caviclaw, gateway, and plugin runtimes remain protocol owners; this
+package is a follower/mirror and normalizes only proven behavior.
+
 ## Classification rules
 
 - **keep**: CAVI routes, domain DTOs, fallbacks, environment and path wrappers,
