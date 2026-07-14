@@ -55,7 +55,7 @@ describe("Hermes CAVI workspace composition", () => {
     }]);
   });
 
-  it("does not assign wire provenance to local fallback workspace data", async () => {
+  it("fails closed for registry-only fallback inside a partial gateway envelope", async () => {
     const source = adapters({
       projectBoard: {}, operator: { registryDetail: { agents: [{
         id: "operator", workspaceIdentity: { id: "local", accessMode: "read-only" },
@@ -63,8 +63,8 @@ describe("Hermes CAVI workspace composition", () => {
     });
     vi.mocked(source.loadOperatorControl).mockResolvedValueOnce({
       data: { registryDetail: { agents: [{ id: "operator", workspaceIdentity: { id: "local", accessMode: "read-only" } }] } },
-      source: "mock", fetchedAt: 1, contractGaps: [],
-      transports: { tasks: "fallback", registryDetail: "fallback" },
+      source: "gateway", fetchedAt: 1, contractGaps: [],
+      transports: { tasks: "websocket", registryDetail: "fallback" },
     } as never);
     await expect(createHermesCaviWorkspaceClient(source).listWorkspaces())
       .rejects.toThrow(/^Hermes CAVI workspace response failed schema validation$/u);

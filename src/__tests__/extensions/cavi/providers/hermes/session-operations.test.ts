@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { TransportError } from "../../../../../core/transport/error.js";
 import type { HermesDashboardRestClient } from "../../../../../extensions/cavi/providers/hermes/dashboard-rest.js";
 import { createHermesSessionOperations } from "../../../../../extensions/cavi/providers/hermes/session-operations.js";
+import { createHermesSessionClient } from "../../../../../extensions/cavi/providers/hermes/sessions.js";
 import type { HermesDashboardJsonRpcClient } from "../../../../../extensions/cavi/providers/hermes/types.js";
 
 function fixture(kind: "json-rpc" | "rest", name: string): unknown {
@@ -110,6 +111,22 @@ describe("Hermes session operations", () => {
       metadata: { kind: "json-rpc", phase: "connect", operation: "json-rpc", retryable: true, attempt: 1 },
     }));
     await expect(createHermesSessionOperations({ rpc, rest }).list({})).resolves.toMatchObject({ count: 1 });
+  });
+
+  it("does not repeat a cursor when REST fallback cannot advance beyond its first-page prefix", async () => {
+    const restPayload = fixture("rest", "sessions") as { sessions: unknown[]; total: number };
+    const { rpc, rest } = drivers(undefined, {
+      listSessions: vi.fn(async () => ({ ...restPayload, total: 2 } as never)),
+    });
+    vi.mocked(rpc.request).mockRejectedValue(new TransportError("closed", {
+      metadata: { kind: "json-rpc", phase: "close", operation: "json-rpc", retryable: false, attempt: 1 },
+    }));
+    const client = createHermesSessionClient(createHermesSessionOperations({ rpc, rest }));
+    const first = await client.listSessions({ limit: 1 });
+    expect(first.nextCursor).toEqual(expect.any(String));
+    const second = await client.listSessions({ cursor: first.nextCursor, limit: 1 });
+    expect(second).toEqual({ data: [] });
+    expect(rest.listSessions).toHaveBeenCalledTimes(2);
   });
 
   it.each(["prototype", "accessor", "blocked-key"])("rejects unsafe RPC %s rows without property access", async (kind) => {

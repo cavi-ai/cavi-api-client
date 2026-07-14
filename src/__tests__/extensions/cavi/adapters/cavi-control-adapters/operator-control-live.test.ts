@@ -8,6 +8,14 @@ import {
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
   operatorControlExpectedContractSummary,
 } from "../../../../../extensions/cavi/contracts/paths";
+import {
+  createEmptyOperatorMemory,
+  createEmptyOperatorRegistry,
+  createEmptyOperatorStatus,
+  createEmptyOperatorTasks,
+  createEmptyWorkerReady,
+  createEmptyWorkerTasks,
+} from "../../../../../extensions/cavi/operator-control/defaults";
 
 const operatorSnapshot = {
   status: {},
@@ -102,5 +110,26 @@ describe("loadOperatorControlLive", () => {
     const envelope = await loadOperatorControlLive(requestJson, client, operatorSnapshot as never);
     expect(envelope.source).toBe("mock");
     expect(envelope.transports).toEqual({ tasks: "fallback", registryDetail: "fallback" });
+  });
+
+  it.each([
+    ["tasks", CAVI_CONTROL_OPERATOR_RPC_METHODS.tasksList],
+    ["registryDetail", CAVI_CONTROL_OPERATOR_RPC_METHODS.registry],
+  ] as const)("marks only the unavailable %s section as fallback provenance", async (section, failedMethod) => {
+    const requestJson = vi.fn(async () => { throw new Error("http unavailable"); }) as JsonHttpRequest;
+    const client = createMockGatewayClient(async (method) => {
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.snapshot || method === failedMethod) throw new Error("ws unavailable");
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.status) return createEmptyOperatorStatus();
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.registry) return createEmptyOperatorRegistry();
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.tasksList) return createEmptyOperatorTasks();
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.memoryList) return createEmptyOperatorMemory();
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.workerReady) return createEmptyWorkerReady();
+      if (method === CAVI_CONTROL_OPERATOR_RPC_METHODS.workerTasksList) return createEmptyWorkerTasks();
+      throw new Error(`unexpected method ${method}`);
+    });
+    const envelope = await loadOperatorControlLive(requestJson, client);
+    expect(envelope.source).toBe("gateway");
+    expect(envelope.transports[section]).toBe("fallback");
+    expect(envelope.data.sectionStatus[section].available).toBe(false);
   });
 });

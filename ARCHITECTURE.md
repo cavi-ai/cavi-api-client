@@ -182,7 +182,9 @@ task and workspace modules are independently installable from the dashboard
 modules. Tasks model operator task lifecycle rather than cron schedules, and
 workspace output requires explicit upstream workspace identity. Operator-backed
 results report the actual wire transport; local fallback records remain non-wire
-and are not normalized as runtime-control task or workspace results. Uncertain cost
+and are not normalized as runtime-control task or workspace results. Provenance
+is section-specific so partial task or registry outages cannot inherit another
+section's successful wire transport. Uncertain cost
 or cost without validated currency stays provider data instead of becoming a
 canonical monetary amount.
 
