@@ -102,6 +102,18 @@ describe("docs integrity", () => {
     );
   });
 
+  it("provisions immutable stable docs inputs before CI documentation typechecking", () => {
+    const workflow = read(".github/workflows/ci.yml");
+    expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
+    expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
+    expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
+    expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
+    expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
+      workflow.indexOf("Typecheck documentation examples"),
+    );
+  });
+
   it("package.json version has a matching CHANGELOG entry", () => {
     // Before publishing version X.Y.Z, CHANGELOG.md must carry a `## [X.Y.Z]`
     // heading (Keep-a-Changelog). A missing heading means the release notes were
