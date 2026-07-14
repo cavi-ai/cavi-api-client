@@ -90,5 +90,5 @@ Upstream state names are adapter-normalized and remain subject to provider suppo
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
-- fixture: `docs/examples/runtime-node.ts`
+- fixture: `docs/examples/contracts/runtime-response.ts`
 - conformance-test: `src/__tests__/core/runtime/run-types.test.ts`

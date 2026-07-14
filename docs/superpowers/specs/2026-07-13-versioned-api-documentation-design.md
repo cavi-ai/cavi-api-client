@@ -1,8 +1,8 @@
 # Versioned API Documentation Design
 
-**Status:** Approved design checkpoint  
-**Package:** `@cavi-ai/api-client`  
-**Initial documented release:** `v0.11.0`  
+**Status:** Approved design checkpoint
+**Package:** `@cavi-ai/api-client`
+**Initial documented release:** `v0.11.0`
 **Public route:** `https://cavi-ai.xyz/docs/api-client`
 
 ## Purpose
