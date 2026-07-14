@@ -97,6 +97,7 @@ describe("docs integrity", () => {
     expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
     expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
     expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow).not.toContain("${{ runner.temp }}");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
       workflow.indexOf("Verify package"),
     );
@@ -109,6 +110,7 @@ describe("docs integrity", () => {
     expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
     expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
     expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow).not.toContain("${{ runner.temp }}");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
       workflow.indexOf("Typecheck documentation examples"),
     );
