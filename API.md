@@ -212,6 +212,14 @@ not retain aliases for the unreleased names.
   injected channel unless `ownsChannel` is explicitly true. Dashboard-specific
   URLs, credentials, transport ownership, and plugin configuration remain in
   `HermesCaviRuntimeControlOptions`, not the provider-neutral core options.
+- `withCaviRuntimeControlProviders(base, options)` — exported only from the
+  CAVI extension, returns a new registry that preserves the base module list,
+  aliases, capabilities, and resolution order while replacing the resolved
+  Hermes runtime-control factory. CAVI-only Hermes configuration is captured at
+  setup; provider-neutral call options override overlapping setup fields.
+- `CaviRuntimeControlProviderOptions` — CAVI-extension setup type whose optional
+  `hermes` field owns `HermesCaviRuntimeControlOptions` without widening the
+  package-root `RuntimeControlClientOptions` contract.
 - `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
   implemented control-plane transports and focused modules; declarations do not
   add those methods to `RuntimeClient`.

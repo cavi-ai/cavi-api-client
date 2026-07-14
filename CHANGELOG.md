@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the CAVI-only `withCaviRuntimeControlProviders` registry enhancer. It
+  immutably installs the resolved Hermes runtime-control factory while
+  preserving base modules, aliases, capabilities, resolution order, the root
+  capability matrix, and provider-neutral package-factory options.
+
 ### Changed
 
 - Extracted the core gateway session loaders behind an injectable,

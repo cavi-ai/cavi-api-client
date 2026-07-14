@@ -49,6 +49,7 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     const cavi = await import("../extensions/cavi/index");
     expect(cavi.CaviControlApiClient).toBeDefined();
     expect(cavi.createTeamRegistry).toBeDefined();
+    expect(cavi.withCaviRuntimeControlProviders).toBeTypeOf("function");
   });
 
   it("low-level core primitives resolve on their core subpaths", async () => {

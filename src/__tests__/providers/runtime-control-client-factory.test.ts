@@ -50,4 +50,28 @@ describe("package default createRuntimeControlClient", () => {
     expect(explicitFactory).toHaveBeenCalledWith({ registry });
     expect(createBuiltInRuntimeControlClient).not.toHaveBeenCalled();
   });
+
+  it("keeps extension configuration out of the provider-neutral package factory options", async () => {
+    const { createRuntimeControlClient, createRuntimeProviderRegistry } = await import(
+      "../../index"
+    );
+    const explicitFactory = vi.fn(async () =>
+      createUnavailableRuntimeControlClient("fixture", new Set())
+    );
+    const registry = createRuntimeProviderRegistry({
+      modules: [{ kind: "fixture", createRuntimeControlClient: explicitFactory }],
+    });
+
+    await createRuntimeControlClient("fixture", {
+      registry,
+      baseUrl: "https://core.test",
+      token: "core-token",
+    });
+
+    expect(explicitFactory).toHaveBeenCalledWith({
+      registry,
+      baseUrl: "https://core.test",
+      token: "core-token",
+    });
+  });
 });
