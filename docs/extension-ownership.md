@@ -13,8 +13,9 @@ additive migration plan.
   the extension.
 - **already-core**: the CAVI barrel re-exports a canonical core or contracts
   primitive and must compose it without copying its implementation.
-- **promote-now**: reserved only for the provider-neutral session operation port
-  introduced by Task 3. No current export qualifies.
+- **promote-now**: the provider-neutral gateway session operation port is now
+  owned by core. It is not a CAVI export, so no inventory row uses this
+  classification; CAVI composes the core loader and does not copy the port.
 - **compatibility-exception**: limited to the four released provider forwarding
   modules listed below.
 - **retire-later**: requires an obsolete released symbol, a documented
@@ -373,3 +374,11 @@ snapshot implementation filenames are normalized explicitly, including through
 relative alias barrels. Extension code must reuse canonical transport and gateway
 snapshot owners rather than introduce duplicate `transport` or `snapshot`
 implementation filenames.
+
+## Provider-neutral gateway session operations
+
+`GatewaySessionOperations` is the core-owned seam for list, usage, preview,
+detail, and patch operations. `createSessionLoaders` accepts an injected port;
+when none is supplied, `createOpenClawSessionOperations` preserves the released
+plural OpenClaw RPC names and session REST fallbacks. CAVI continues to compose
+the core loader and owns no duplicate session operation implementation.
