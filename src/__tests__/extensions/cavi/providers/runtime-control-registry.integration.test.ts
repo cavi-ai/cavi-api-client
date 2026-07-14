@@ -15,10 +15,10 @@ const fixtureTransport = () => ({
 });
 
 async function consume(providerId: string, registry: ReturnType<typeof withCaviRuntimeControlProviders>) {
-  const options = providerId === "openclaw" || providerId === "open-claw"
-    ? { registry, transport: fixtureTransport() }
-    : { registry };
-  const client: RuntimeControlClient = await createRuntimeControlClient(providerId, options);
+  const client: RuntimeControlClient = await createRuntimeControlClient(providerId, {
+    registry,
+    transport: fixtureTransport(),
+  });
   try {
     return await client.sessions.listSessions();
   } finally {
@@ -27,6 +27,12 @@ async function consume(providerId: string, registry: ReturnType<typeof withCaviR
 }
 
 describe("CAVI runtime-control registry real integration", () => {
+  it("keeps the consumer helper free of provider comparisons and branches", () => {
+    const source = consume.toString();
+    expect(source).not.toMatch(/providerId\s*===|\bif\s*\(|\bswitch\s*\(|\?/);
+    expect(source.match(/createRuntimeControlClient/g)).toHaveLength(1);
+  });
+
   it("returns exact complete unavailable Hermes behavior with real composition and missing config", async () => {
     const registry = withCaviRuntimeControlProviders(createBuiltInRuntimeProviderRegistry());
     const client = await createRuntimeControlClient("hermes-api-server", { registry });
