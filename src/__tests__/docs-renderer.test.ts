@@ -3,7 +3,6 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { createHash } from "node:crypto";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { buildDocumentation } from "../../scripts/docs/build.mjs";
@@ -165,6 +164,7 @@ describe("renderDocumentation", () => {
     const metadata = JSON.parse(render().get("manifest.json")!);
 
     expect(request).toContain("Source of truth: upstream-compatible-mirror");
+    expect(request).toMatch(/^# Runtime request\n\nPackage: @cavi-ai\/api-client\nVerified by: declaration \+ fixture \+ conformance test\n/u);
     expect(request).toContain("Capability: supported");
     expect(request).toContain("RuntimeRunStartBody");
     expect(metadata).toMatchObject({
@@ -177,6 +177,33 @@ describe("renderDocumentation", () => {
       schemaVersion: 2,
       generatedAt: "2023-11-14T22:13:20.000Z",
     });
+  });
+
+  it("renders package and derived verification headers on every contract page", () => {
+    const output = render();
+    for (const contract of contracts) {
+      const page = output.get(`contracts/${contract.id}.md`)!;
+      expect(page, contract.id).toContain("Package: @cavi-ai/api-client");
+      expect(page, contract.id).toContain("Verified by: declaration + fixture + conformance test");
+    }
+  });
+
+  it("rejects a stable contract missing a required evidence type", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-contract-test-"));
+    temporaryDirectories.push(workspace);
+    const contract = JSON.parse(await readFile("docs/api-client/source/contracts/capabilities.json", "utf8"));
+    contract.evidence = contract.evidence.filter(({ type }: { type: string }) => type !== "fixture");
+    await mkdir(path.join(workspace, "docs/api-client/source/contracts"), { recursive: true });
+    await writeFile(path.join(workspace, "docs/api-client/source/contracts/capabilities.json"), `${JSON.stringify(contract, null, 2)}\n`);
+    for (const evidence of contract.evidence) {
+      const destination = path.join(workspace, evidence.path);
+      await mkdir(path.dirname(destination), { recursive: true });
+      await writeFile(destination, "evidence\n");
+    }
+
+    await expect(loadContracts(workspace, manifest)).rejects.toThrow(
+      "capabilities: expected evidence to include fixture; observed missing",
+    );
   });
 
   it("renders the exact stable declaration signature without a placeholder fallback", () => {
@@ -223,7 +250,7 @@ describe("renderDocumentation", () => {
     })).toThrow(".:request: expected declaration signature from stable release manifest; observed missing");
   });
 
-  it("parses build arguments and writes rendered files to the selected directory", async () => {
+  it("production build rejects a synthetic fixture despite arbitrary CLI arguments", async () => {
     const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-build-test-"));
     temporaryDirectories.push(workspace);
     const fixtureRoot = path.join(workspace, "root");
@@ -241,23 +268,16 @@ describe("renderDocumentation", () => {
     await execFileAsync("tar", ["-czf", tarball, "package"], {
       cwd: path.resolve("src/__tests__/fixtures/docs-release"),
     });
-    const rendered = await buildDocumentation([
+    await expect(buildDocumentation([
       "--source-date-epoch", "1700000000",
       "--root", fixtureRoot,
       "--tarball", tarball,
-      "--expected-sha256", createHash("sha256").update(await readFile(tarball)).digest("hex"),
+      "--expected-sha256", "0".repeat(64),
       "--output", output,
-    ]);
-
-    expect(await readFile(path.join(output, "manifest.json"), "utf8")).toBe(
-      rendered.get("manifest.json"),
-    );
-    expect(await readFile(path.join(output, "reference/index.md"), "utf8")).toContain(
-      "createRuntimeClient<TInput>",
-    );
+    ])).rejects.toThrow("unsupported option --expected-sha256");
   });
 
-  it("reports the exact generated path when a committed artifact drifts", async () => {
+  it("production check rejects a synthetic fixture before drift comparison", async () => {
     const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-check-test-"));
     temporaryDirectories.push(workspace);
     const tarball = path.join(workspace, "release.tgz");
@@ -271,14 +291,7 @@ describe("renderDocumentation", () => {
     await execFileAsync("tar", ["-czf", tarball, "package"], {
       cwd: path.resolve("src/__tests__/fixtures/docs-release"),
     });
-    await buildDocumentation([
-      "--source-date-epoch", "1700000000",
-      "--root", fixtureRoot,
-      "--tarball", tarball,
-      "--expected-sha256", createHash("sha256").update(await readFile(tarball)).digest("hex"),
-      "--output", committed,
-    ]);
-    await writeFile(path.join(committed, "reference/index.md"), "drift\n");
+    await mkdir(committed, { recursive: true });
 
     await expect(execFileAsync(process.execPath, [
       "scripts/docs/check.mjs",
@@ -286,9 +299,8 @@ describe("renderDocumentation", () => {
       "--out", committed,
       "--source-date-epoch", "1700000000",
       "--root", fixtureRoot,
-      "--expected-sha256", createHash("sha256").update(await readFile(tarball)).digest("hex"),
     ])).rejects.toMatchObject({
-      stderr: expect.stringContaining("generated documentation drift: reference/index.md"),
+      stderr: expect.stringContaining("stable artifact digest mismatch"),
     });
   });
 

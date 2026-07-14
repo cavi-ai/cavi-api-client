@@ -1,5 +1,7 @@
 # Runtime error
 
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
 Contract: runtime-error
 Version: 0.11.0
 Stability: stable
@@ -75,4 +77,5 @@ Provider error payloads are not canonicalized beyond the packed client type.
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
+- fixture: `docs/examples/runtime-browser.ts`
 - conformance-test: `src/__tests__/core/errors.test.ts`

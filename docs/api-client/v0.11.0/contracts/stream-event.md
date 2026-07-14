@@ -1,5 +1,7 @@
 # Stream event
 
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
 Contract: stream-event
 Version: 0.11.0
 Stability: stable
@@ -70,4 +72,5 @@ Event ordering and resumability beyond the normalized union remain upstream-owne
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
+- fixture: `docs/examples/custom-runtime-provider.ts`
 - conformance-test: `src/__tests__/core/runtime/stream-run-contract.test.ts`

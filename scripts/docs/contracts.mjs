@@ -7,6 +7,7 @@ import { normalizedRelativePath, safeSlug } from "./paths.mjs";
 const CONTRACTS_DIRECTORY = "docs/api-client/source/contracts";
 const REQUIRED_KEYS = ["id", "title", "version", "stability", "sourceOfTruth", "symbols", "capability", "evidence", "summary", "purpose", "lifecycle", "fieldConstraints", "behavior", "dependencies", "examples", "compatibilityNotes"];
 const SOURCE_OF_TRUTH = "upstream-compatible-mirror";
+const REQUIRED_EVIDENCE_TYPES = ["declaration", "fixture", "conformance-test"];
 
 /** @typedef {{subpath: string, name: string}} ContractSymbol */
 /** @typedef {{id: string, title: string, version: string, stability: "stable", sourceOfTruth: "upstream-compatible-mirror", symbols: Array<ContractSymbol & {signature:string}>, capability: import("./types.mjs").CapabilityState, evidence: Array<{type:string,path:string}>, summary: string, purpose:string, lifecycle:string, fieldConstraints:Array<{field:string,constraint:string}>, behavior:{errors:string,retry:string,cancellation:string,streaming:string}, dependencies:{capabilities:string[],transports:string[]}, examples:{valid:{value:unknown,expected:string},invalid:{value:unknown,expectedFailure:string}}, compatibilityNotes:string}} ContractRecord */
@@ -119,6 +120,12 @@ export async function loadContracts(root, manifest) {
         if (!(await lstat(resolvedEvidencePath)).isFile()) throw new Error("not a file");
       } catch {
         diagnostics.push({ contractId: id, requirement: `evidence file ${evidenceValue} to exist`, observed: "missing", action: "add the evidence file or correct its path" });
+      }
+    }
+    if (Array.isArray(record.evidence)) {
+      const evidenceTypes = new Set(record.evidence.map((item) => item?.type));
+      for (const requiredType of REQUIRED_EVIDENCE_TYPES) {
+        if (!evidenceTypes.has(requiredType)) diagnostics.push({ contractId: id, requirement: `evidence to include ${requiredType}`, observed: "missing", action: `add repository-backed ${requiredType} evidence` });
       }
     }
     if (Array.isArray(record.symbols)) record.symbols = record.symbols.map((symbol) => ({ ...symbol, signature: manifest.symbols.find((item) => item.subpath === symbol.subpath && item.name === symbol.name)?.signature ?? "" }));

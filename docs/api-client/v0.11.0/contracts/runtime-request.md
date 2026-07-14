@@ -1,5 +1,7 @@
 # Runtime request
 
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
 Contract: runtime-request
 Version: 0.11.0
 Stability: stable
@@ -81,4 +83,5 @@ Provider-specific metadata remains owned by the upstream runtime.
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
+- fixture: `docs/examples/runtime-browser.ts`
 - conformance-test: `src/__tests__/core/runtime/run-types.test.ts`

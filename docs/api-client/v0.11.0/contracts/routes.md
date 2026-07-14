@@ -1,5 +1,7 @@
 # Runtime routes
 
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
 Contract: routes
 Version: 0.11.0
 Stability: stable
@@ -69,4 +71,5 @@ Actual endpoint behavior remains owned by the compatible gateway.
 ## Verification evidence
 
 - declaration: `docs/api-client/source/releases/0.11.0-manifest.json`
+- fixture: `docs/examples/runtime-registry.ts`
 - conformance-test: `src/__tests__/contracts/route-resolver.test.ts`

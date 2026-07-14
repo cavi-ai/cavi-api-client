@@ -10,6 +10,7 @@ import { containedPath } from "./paths.mjs";
 
 /** @param {string[]} argv */
 function parseArguments(argv) {
+  const allowedOptions = new Set(["tarball", "package", "output", "out", "source-date-epoch", "root"]);
   /** @type {Record<string, string>} */
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
@@ -18,7 +19,9 @@ function parseArguments(argv) {
     if (!option?.startsWith("--") || value === undefined) {
       throw new Error("usage: build.mjs --tarball <release.tgz> --output <directory> --source-date-epoch <seconds>");
     }
-    values[option.slice(2)] = value;
+    const name = option.slice(2);
+    if (!allowedOptions.has(name)) throw new Error(`unsupported option --${name}`);
+    values[name] = value;
   }
   values.tarball ??= values.package;
   values.output ??= values.out;
@@ -33,7 +36,7 @@ export async function buildDocumentation(argv) {
   const options = parseArguments(argv);
   const root = path.resolve(options.root ?? ".");
   const outputDirectory = path.resolve(options.output);
-  const manifest = await inspectRelease(path.resolve(options.tarball), options["expected-sha256"] ? { expectedSha256: options["expected-sha256"] } : undefined);
+  const manifest = await inspectRelease(path.resolve(options.tarball));
   const contracts = await loadContracts(root, manifest);
   const navigation = JSON.parse(
     await readFile(path.join(root, "docs/api-client/source/navigation.json"), "utf8"),

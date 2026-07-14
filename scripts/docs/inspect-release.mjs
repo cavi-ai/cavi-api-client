@@ -133,10 +133,9 @@ function normalizePublicExports(exportsField) {
  * @param {string} tgzPath
  * @returns {Promise<import("./types.mjs").ReleaseManifest>}
  */
-export async function inspectRelease(tgzPath, options = {}) {
+async function inspectReleaseWithExpectedSha256(tgzPath, expectedSha256) {
   const archive = await readFile(tgzPath);
   const sha256 = createHash("sha256").update(archive).digest("hex");
-  const expectedSha256 = options.expectedSha256 ?? APPROVED_RELEASE_SHA256;
   if (sha256 !== expectedSha256) {
     throw new Error(`stable artifact digest mismatch: expected sha256:${expectedSha256}, observed sha256:${sha256}`);
   }
@@ -270,4 +269,21 @@ export async function inspectRelease(tgzPath, options = {}) {
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+}
+
+/** @param {string} tgzPath */
+export async function inspectRelease(tgzPath) {
+  const archive = await readFile(tgzPath);
+  const sha256 = createHash("sha256").update(archive).digest("hex");
+  if (sha256 !== APPROVED_RELEASE_SHA256) {
+    throw new Error(`stable artifact digest mismatch: expected sha256:${APPROVED_RELEASE_SHA256}, observed sha256:${sha256}`);
+  }
+  return inspectReleaseWithExpectedSha256(tgzPath, APPROVED_RELEASE_SHA256);
+}
+
+/** Test-only synthetic archive inspection. Never import from production scripts. */
+export async function inspectReleaseFixtureForTest(tgzPath) {
+  const archive = await readFile(tgzPath);
+  const fixtureSha256 = createHash("sha256").update(archive).digest("hex");
+  return inspectReleaseWithExpectedSha256(tgzPath, fixtureSha256);
 }

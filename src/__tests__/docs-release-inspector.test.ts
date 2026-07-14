@@ -11,17 +11,18 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { inspectRelease } from "../../scripts/docs/inspect-release.mjs";
+import {
+  inspectRelease,
+  inspectReleaseFixtureForTest,
+} from "../../scripts/docs/inspect-release.mjs";
 
 const execFileAsync = promisify(execFile);
 const fixture = path.resolve("src/__tests__/fixtures/docs-release/package");
 const temporaryDirectories: string[] = [];
 async function inspectFixture(tarball: string) {
-  const expectedSha256 = createHash("sha256").update(await readFile(tarball)).digest("hex");
-  return inspectRelease(tarball, { expectedSha256 });
+  return inspectReleaseFixtureForTest(tarball);
 }
 
 async function packFixture(
@@ -52,6 +53,38 @@ describe("inspectRelease", () => {
     const invalidArchive = path.join(directory, "not-a-tarball.tgz");
     await writeFile(invalidArchive, "wrong artifact");
     await expect(inspectRelease(invalidArchive)).rejects.toThrow("stable artifact digest mismatch");
+  });
+
+  it("keeps production digest verification immutable and ahead of tar invocation", async () => {
+    const inspector = await readFile("scripts/docs/inspect-release.mjs", "utf8");
+    const productionInspector = inspector.slice(inspector.indexOf("export async function inspectRelease(tgzPath)"), inspector.indexOf("/** Test-only"));
+    const digestGuard = productionInspector.indexOf("sha256 !== APPROVED_RELEASE_SHA256");
+
+    expect(digestGuard).toBeGreaterThan(-1);
+    expect(productionInspector).not.toContain('execFileAsync("tar"');
+    expect(inspectRelease.length).toBe(1);
+  });
+
+  it.each([
+    "scripts/docs/build.mjs",
+    "scripts/docs/check.mjs",
+    "scripts/docs/snapshot-release.mjs",
+  ])("does not let production CLI %s accept or forward an arbitrary digest", async (script) => {
+    const source = await readFile(script, "utf8");
+
+    expect(source).not.toContain("expected-sha256");
+    expect(source).not.toContain("expectedSha256");
+    expect(source).not.toContain("inspectReleaseFixtureForTest");
+  });
+
+  it("rejects digest override arguments at every production CLI boundary", async () => {
+    const override = ["--expected-sha256", "0".repeat(64)];
+    await expect(execFileAsync(process.execPath, ["scripts/docs/build.mjs", ...override]))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("unsupported option --expected-sha256") });
+    await expect(execFileAsync(process.execPath, ["scripts/docs/check.mjs", ...override]))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("unsupported option --expected-sha256") });
+    await expect(execFileAsync(process.execPath, ["scripts/docs/snapshot-release.mjs", "archive.tgz", "manifest.json", "0".repeat(64)]))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("usage:") });
   });
   it("inspects public type exports in a stable release tarball", async () => {
     const manifest = await inspectFixture(await packFixture());
