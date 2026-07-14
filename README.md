@@ -943,6 +943,29 @@ const control = await createHermesRuntimeControlClient({
 await control.dispose();
 ```
 
+Applications that select providers dynamically can install the same Hermes
+composition into an existing registry without branching at the call site:
+
+```ts
+import { createRuntimeControlClient } from "@cavi-ai/api-client";
+import {
+  withCaviRuntimeControlProviders,
+} from "@cavi-ai/api-client/extensions/cavi";
+
+const registry = withCaviRuntimeControlProviders(baseRegistry, {
+  hermes: { dashboardBaseUrl, dashboardToken, cavi: caviOptions },
+});
+const control = await createRuntimeControlClient(providerId, {
+  registry,
+  baseUrl,
+  token,
+});
+```
+
+The enhancer returns a new registry, preserves provider metadata and aliases,
+and closes over CAVI-only setup. Provider-neutral call options remain on the
+root factory and take precedence where the option surfaces overlap.
+
 All seven canonical modules are always present. Dashboard REST config enables
 auth status, models, and usage; a dashboard channel enables sessions and events;
 and explicit CAVI plugin config independently enables tasks and workspace even

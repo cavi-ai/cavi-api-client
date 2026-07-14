@@ -34,6 +34,9 @@ src/index.ts
   changing the provider interface. The complete, compiler-checked ownership
   inventory and the four released provider forwarding exceptions are recorded
   in [CAVI Extension Ownership](docs/extension-ownership.md).
+  Its runtime-control registry enhancer clones an application registry and
+  installs only the resolved Hermes CAVI factory; it does not mutate the base
+  registry, root capability matrix, provider-neutral factory, or other modules.
 - `frameworks/react/` contains optional React bindings. React is an optional peer
   dependency and is never imported by the root entry.
 
