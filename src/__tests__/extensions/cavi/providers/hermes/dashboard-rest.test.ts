@@ -24,7 +24,7 @@ describe("Hermes dashboard REST client", () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(json(fixture("sessions")))
       .mockResolvedValueOnce(json(fixture("session-detail")))
-      .mockResolvedValueOnce(json({ deleted: true }));
+      .mockResolvedValueOnce(json(fixture("session-delete")));
     const client = createHermesDashboardRestClient({
       baseUrl: "https://hermes.example/root/",
       authToken: null,
@@ -33,13 +33,21 @@ describe("Hermes dashboard REST client", () => {
 
     await expect(client.listSessions()).resolves.toEqual(fixture("sessions"));
     await expect(client.getSession("session /?#")).resolves.toEqual(fixture("session-detail"));
-    await expect(client.deleteSession("session /?#")).resolves.toEqual({ deleted: true });
+    await expect(client.deleteSession("session /?#")).resolves.toEqual(fixture("session-delete"));
 
     expect(fetchImpl.mock.calls.map(([url, init]) => [url, init?.method])).toEqual([
       ["https://hermes.example/root/api/sessions", "GET"],
       ["https://hermes.example/root/api/sessions/session%20%2F%3F%23", "GET"],
       ["https://hermes.example/root/api/sessions/session%20%2F%3F%23", "DELETE"],
     ]);
+  });
+
+  it("rejects blank ids but preserves nonblank opaque ids byte-for-byte before encoding", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(json(fixture("session-detail")));
+    const client = createHermesDashboardRestClient({ baseUrl: "", authToken: null, fetchImpl });
+    expect(() => client.getSession("  ")).toThrow(/id is required/i);
+    await client.getSession(" session-id ");
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("/api/sessions/%20session-id%20");
   });
 
   it("uses exact GET routes and validates upstream analytics, models, and auth fixtures", async () => {
@@ -144,5 +152,110 @@ describe("Hermes dashboard REST client", () => {
     await expect(client.listSessions()).rejects.toThrow(/schema/i);
     await expect(client.listSessions()).rejects.toThrow(/schema/i);
     expect(fallback.request).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["session row", "sessions", { ...fixture("sessions") as object, sessions: [{}] }],
+    ["negative total", "sessions", { ...fixture("sessions") as object, total: -1 }],
+    ["fractional limit", "sessions", { ...fixture("sessions") as object, limit: 1.5 }],
+    ["negative offset", "sessions", { ...fixture("sessions") as object, offset: -1 }],
+    ["daily row", "usage", { ...fixture("analytics-usage") as object, daily: [{}] }],
+    ["model row", "usage", { ...fixture("analytics-usage") as object, by_model: [{}] }],
+    ["usage totals", "usage", { ...fixture("analytics-usage") as object, totals: {} }],
+    ["skills summary", "usage", {
+      ...fixture("analytics-usage") as object,
+      skills: { summary: {}, top_skills: [] },
+    }],
+    ["model provider", "models", { providers: [{}], model: "m", provider: "p" }],
+    ["model names", "models", {
+      ...fixture("models") as object,
+      providers: [{ ...(fixture("models") as { providers: object[] }).providers[0], models: [1] }],
+    }],
+    ["provider auth status", "auth", {
+      providers: [{ id: "p", name: "P", flow: "pkce", cli_command: "x", docs_url: "x", status: {} }],
+    }],
+  ])("rejects malformed nested %s DTO fields", async (_name, operation, payload) => {
+    const client = createHermesDashboardRestClient({
+      baseUrl: "", authToken: null, fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(json(payload)),
+    });
+    const call = operation === "sessions" ? client.listSessions()
+      : operation === "usage" ? client.getUsage()
+      : operation === "models" ? client.getModels()
+      : client.getProviderAuth();
+    await expect(call).rejects.toThrow(/schema/i);
+  });
+
+  it("rejects prototype, class, inherited, and accessor-backed fallback values without invoking getters", async () => {
+    let getterCalls = 0;
+    const accessor = Object.defineProperty({}, "sessions", {
+      enumerable: true,
+      get() { getterCalls += 1; return []; },
+    });
+    class SessionsPayload {
+      sessions: object[] = [];
+      total = 0;
+      limit = 20;
+      offset = 0;
+    }
+    const inherited = Object.create({ sessions: [], total: 0, limit: 20, offset: 0 }) as object;
+    const fallback = { request: vi.fn()
+      .mockResolvedValueOnce(new SessionsPayload())
+      .mockResolvedValueOnce(inherited)
+      .mockResolvedValueOnce(accessor) };
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => new Response("missing", { status: 405 }));
+    const client = createHermesDashboardRestClient({ baseUrl: "", authToken: null, fetchImpl, fallback });
+    await expect(client.listSessions()).rejects.toThrow(/schema/i);
+    await expect(client.listSessions()).rejects.toThrow(/schema/i);
+    await expect(client.listSessions()).rejects.toThrow(/schema/i);
+    expect(getterCalls).toBe(0);
+  });
+
+  it("strictly validates delete and recursively safe config/profile JSON objects", async () => {
+    const validConfig = fixture("config");
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(json(validConfig))
+      .mockResolvedValueOnce(json({ display_name: "Fixture", preferences: { compact: true } }))
+      .mockResolvedValueOnce(json({ ok: false }))
+      .mockResolvedValueOnce(json({ deleted: true }))
+      .mockResolvedValueOnce(json({ ok: true, extra: true }))
+      .mockResolvedValueOnce(json([]))
+      .mockResolvedValueOnce(new Response(`{"preferences":{"__proto__":{"polluted":true}}}`));
+    const client = createHermesDashboardRestClient({ baseUrl: "", authToken: null, fetchImpl });
+    await expect(client.getConfig()).resolves.toEqual(validConfig);
+    await expect(client.getProfile()).resolves.toEqual({ display_name: "Fixture", preferences: { compact: true } });
+    await expect(client.deleteSession("one")).rejects.toThrow(/schema/i);
+    await expect(client.deleteSession("one")).rejects.toThrow(/schema/i);
+    await expect(client.deleteSession("one")).rejects.toThrow(/schema/i);
+    await expect(client.getConfig()).rejects.toThrow(/schema/i);
+    await expect(client.getProfile()).rejects.toThrow(/schema/i);
+
+    const unsafe = Object.create(null) as Record<string, unknown>;
+    unsafe.safe = Object.defineProperty({}, "secret", { get: () => "leak", enumerable: true });
+    const fallback = { request: vi.fn().mockResolvedValue(unsafe) };
+    const missing = vi.fn<typeof fetch>().mockResolvedValue(new Response("missing", { status: 404 }));
+    const fallbackClient = createHermesDashboardRestClient({ baseUrl: "", authToken: null, fetchImpl: missing, fallback });
+    await expect(fallbackClient.listSessions()).rejects.toThrow(/schema/i);
+  });
+
+  it("handles 405 fallback and fails closed for 500, pre-abort, fallback reject, and fallback abort", async () => {
+    const fallback = { request: vi.fn()
+      .mockResolvedValueOnce(fixture("sessions"))
+      .mockRejectedValueOnce(new Error("fallback rejected"))
+      .mockRejectedValueOnce(new DOMException("fallback stopped", "AbortError")) };
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("missing", { status: 405 }))
+      .mockResolvedValueOnce(new Response("server", { status: 500 }))
+      .mockResolvedValueOnce(new Response("missing", { status: 404 }))
+      .mockResolvedValueOnce(new Response("missing", { status: 404 }))
+      .mockResolvedValueOnce(new Response("missing", { status: 404 }));
+    const client = createHermesDashboardRestClient({ baseUrl: "", authToken: null, fetchImpl, fallback });
+    await expect(client.listSessions()).resolves.toEqual(fixture("sessions"));
+    await expect(client.listSessions()).rejects.toThrow();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(client.listSessions({ signal: controller.signal })).rejects.toThrow();
+    await expect(client.listSessions()).rejects.toThrow("fallback rejected");
+    await expect(client.listSessions()).rejects.toMatchObject({ name: "AbortError" });
+    expect(fallback.request).toHaveBeenCalledTimes(3);
   });
 });
