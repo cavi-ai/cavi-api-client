@@ -134,6 +134,7 @@ export function createHermesCaviTaskClient(adapters: CaviControlAdapters): TaskC
       const envelope = await adapters.loadOperatorControl();
       const snapshot = taskSnapshot(envelope.data);
       const transport = envelope.transports.tasks;
+      if (transport === "fallback") throw new Error(TASK_SCHEMA_ERROR);
       return { data: snapshot.tasks.tasks.slice(0, query.limit).map((task) => mapTask(task, "operator.tasks.list", transport)) };
     },
     async getTask(id: string) {
@@ -141,6 +142,7 @@ export function createHermesCaviTaskClient(adapters: CaviControlAdapters): TaskC
       const task = taskSnapshot(envelope.data).tasks.tasks.find((candidate) => candidate.envelope.task_id === id);
       if (!task) throw new ApiClientError(`Hermes CAVI task not found: ${id}`, { code: ApiClientErrorCode.EndpointNotFound });
       const transport = envelope.transports.tasks;
+      if (transport === "fallback") throw new Error(TASK_SCHEMA_ERROR);
       return mapTask(task, "operator.tasks.get", transport);
     },
     cancelTask: () => Promise.reject(new CapabilityUnavailable("hermes", "controlPlane.tasks.cancel")),

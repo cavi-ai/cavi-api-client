@@ -33,7 +33,7 @@ import {
 import { loadOperatorControlSection } from "../../operator-control/load-section.js";
 
 const OPERATOR_FULL_FALLBACK_BACKOFF_MS = 15_000;
-type OperatorTransport = "websocket" | "http";
+type OperatorTransport = "websocket" | "http" | "fallback";
 type OperatorControlEnvelope = DataEnvelope<OperatorControlSnapshot> & {
   transports: { tasks: OperatorTransport; registryDetail: OperatorTransport };
 };
@@ -410,7 +410,7 @@ export async function loadOperatorControlLive(
     const envelope = {
       data: resolveOperatorControlFallback(fallback),
       source: "mock",
-      transports: { tasks: "http", registryDetail: "http" },
+      transports: { tasks: "fallback", registryDetail: "fallback" },
       fetchedAt: Date.now(),
       contractGaps: [
         fallbackGap(

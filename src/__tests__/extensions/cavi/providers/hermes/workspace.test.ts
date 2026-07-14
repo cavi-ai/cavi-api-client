@@ -55,6 +55,21 @@ describe("Hermes CAVI workspace composition", () => {
     }]);
   });
 
+  it("does not assign wire provenance to local fallback workspace data", async () => {
+    const source = adapters({
+      projectBoard: {}, operator: { registryDetail: { agents: [{
+        id: "operator", workspaceIdentity: { id: "local", accessMode: "read-only" },
+      }] } },
+    });
+    vi.mocked(source.loadOperatorControl).mockResolvedValueOnce({
+      data: { registryDetail: { agents: [{ id: "operator", workspaceIdentity: { id: "local", accessMode: "read-only" } }] } },
+      source: "mock", fetchedAt: 1, contractGaps: [],
+      transports: { tasks: "fallback", registryDetail: "fallback" },
+    } as never);
+    await expect(createHermesCaviWorkspaceClient(source).listWorkspaces())
+      .rejects.toThrow(/^Hermes CAVI workspace response failed schema validation$/u);
+  });
+
   it("does not promote config, repo paths, portal IDs, or team IDs without workspace identity", async () => {
     const client = createHermesCaviWorkspaceClient(adapters({
       projectBoard: { profile: { name: "Project Board", photoPath: "/config/project.json" }, configPath: "/config/cavi.json" },

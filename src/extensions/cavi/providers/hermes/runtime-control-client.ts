@@ -100,7 +100,7 @@ export async function createHermesRuntimeControlClient(
       ? undefined
       : (() => {
         const headers = new Headers(resolvedHeaders);
-        if (!headers.has("authorization") && options.token !== undefined) {
+        if ((headers.get("authorization")?.trim() ?? "").length === 0 && options.token !== undefined) {
           headers.set("authorization", `Bearer ${options.token}`);
         }
         return Object.fromEntries(headers.entries());

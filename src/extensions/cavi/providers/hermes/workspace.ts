@@ -64,10 +64,13 @@ export function createHermesCaviWorkspaceClient(adapters: CaviControlAdapters): 
     for (const value of agents) {
       const agent = record(value);
       const identity = workspaceIdentity(agent?.workspaceIdentity);
-      if (identity) candidates.push({
-        identity, method: "operator.registry", transport: operatorTransport,
-        ...(typeof agent?.id === "string" ? { providerData: { agentId: agent.id } } : {}),
-      });
+      if (identity) {
+        if (operatorTransport === "fallback") throw new Error(WORKSPACE_SCHEMA_ERROR);
+        candidates.push({
+          identity, method: "operator.registry", transport: operatorTransport,
+          ...(typeof agent?.id === "string" ? { providerData: { agentId: agent.id } } : {}),
+        });
+      }
     }
     const identities = new Map<string, ExplicitWorkspaceIdentity>();
     const workspaces: RuntimeWorkspaceDescriptor[] = [];

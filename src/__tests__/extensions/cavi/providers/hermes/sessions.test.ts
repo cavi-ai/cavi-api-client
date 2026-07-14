@@ -98,6 +98,17 @@ describe("Hermes canonical session client", () => {
     expect(rpc.request).toHaveBeenCalledWith("session.list", { limit: 200 }, { signal: undefined });
   });
 
+  it("never emits a cursor at the 200-session boundary even when upstream total is larger", async () => {
+    const fixturePayload = result("session-list-result") as { sessions: Array<Record<string, unknown>> };
+    const sessions = Array.from({ length: 200 }, (_, index) => ({
+      ...fixturePayload.sessions[0], id: `session-${index}`,
+    }));
+    const { operations } = setup([{ sessions, total: 201 }]);
+    const page = await createHermesSessionClient(operations).listSessions({ limit: 200 });
+    expect(page.data).toHaveLength(200);
+    expect(page.nextCursor).toBeUndefined();
+  });
+
   it("gets REST-backed detail and rejects unsupported preview and patch exactly", async () => {
     const { operations } = setup([]);
     await expect(createHermesSessionClient(operations).getSession("session-fixture-001")).resolves.toEqual({
