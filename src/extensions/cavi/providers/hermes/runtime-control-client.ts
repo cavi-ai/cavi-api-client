@@ -20,7 +20,7 @@ import { createHermesCaviWorkspaceClient } from "./workspace.js";
 export type CaviControlAdapterOptions = Parameters<typeof createCaviControlAdapters>[0];
 
 export interface HermesCaviRuntimeControlOptions {
-  dashboardBaseUrl: string;
+  dashboardBaseUrl?: string;
   dashboardWebSocketUrl?: string;
   dashboardToken?: string;
   fetch?: typeof globalThis.fetch;
@@ -34,54 +34,100 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw signal.reason;
 }
 
+type Cleanup = Readonly<{ disarm(): void }>;
+
+function createCleanupStack(): {
+  register(cleanup: () => Promise<void>): Cleanup;
+  unwind(): Promise<void>;
+} {
+  const entries: Array<{ active: boolean; cleanup: () => Promise<void> }> = [];
+  return {
+    register(cleanup) {
+      const entry = { active: true, cleanup };
+      entries.push(entry);
+      return {
+        disarm: () => { entry.active = false; },
+      };
+    },
+    async unwind() {
+      let firstError: unknown;
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const entry = entries[index];
+        if (!entry?.active) continue;
+        entry.active = false;
+        try {
+          await entry.cleanup();
+        } catch (error) {
+          firstError ??= error;
+        }
+      }
+      if (firstError !== undefined) throw new Error("Hermes runtime control cleanup failed");
+    },
+  };
+}
+
 export async function createHermesRuntimeControlClient(
   options: RuntimeControlClientOptions & HermesCaviRuntimeControlOptions,
 ): Promise<RuntimeControlClient> {
   throwIfAborted(options.signal);
   const unavailable = createUnavailableRuntimeControlClient("hermes", new Set());
-  const dashboardBaseUrl = options.dashboardBaseUrl.trim();
-  if (dashboardBaseUrl.length === 0) return unavailable;
-
-  const resolvedAuth = options.dashboardToken === undefined
-    ? await options.resolveAuth?.()
-    : undefined;
-  throwIfAborted(options.signal);
-  const resolvedHeaders = resolvedAuth?.headers === undefined
-    ? undefined
-    : { ...resolvedAuth.headers };
-
-  const rest = createHermesDashboardRestClient({
-    baseUrl: dashboardBaseUrl,
-    authToken: resolvedHeaders === undefined
-      ? options.dashboardToken ?? options.token ?? null
-      : null,
-    defaultHeaders: resolvedHeaders,
-    fetchImpl: options.fetch,
-  });
+  const cleanup = createCleanupStack();
+  const dashboardBaseUrl = options.dashboardBaseUrl?.trim() ?? "";
+  const dashboardWebSocketUrl = options.dashboardWebSocketUrl?.trim() ?? "";
+  let authStatus = unavailable.authStatus;
   let sessions = unavailable.sessions;
+  let models = unavailable.models;
+  let usage = unavailable.usage;
   let events = unavailable.events;
   let tasks = unavailable.tasks;
   let workspace = unavailable.workspace;
-  const usage = createHermesUsageClient({ rest });
-
-  let rpc: ReturnType<typeof createHermesDashboardJsonRpcClient> | undefined;
+  let channel = options.channel;
+  let ownsChannel = options.ownsChannel === true;
+  let directChannelCleanup: Cleanup | undefined;
+  if (channel && ownsChannel) {
+    const ownedChannel = channel;
+    directChannelCleanup = cleanup.register(() => ownedChannel.close());
+  }
   try {
-    let channel = options.channel;
-    let ownsChannel = options.ownsChannel === true;
-    if (!channel && options.dashboardWebSocketUrl?.trim()) {
+    const resolvedAuth = dashboardBaseUrl.length > 0 && options.dashboardToken === undefined
+      ? await options.resolveAuth?.()
+      : undefined;
+    throwIfAborted(options.signal);
+    const resolvedHeaders = resolvedAuth?.headers === undefined
+      ? undefined
+      : { ...resolvedAuth.headers };
+    const rest = dashboardBaseUrl.length === 0
+      ? undefined
+      : createHermesDashboardRestClient({
+        baseUrl: dashboardBaseUrl,
+        authToken: resolvedHeaders === undefined
+          ? options.dashboardToken ?? options.token ?? null
+          : null,
+        defaultHeaders: resolvedHeaders,
+        fetchImpl: options.fetch,
+      });
+    if (rest) {
+      authStatus = createHermesAuthStatusClient(rest);
+      models = createHermesModelCatalogClient(rest);
+      usage = createHermesUsageClient({ rest });
+    }
+    if (!channel && dashboardWebSocketUrl.length > 0) {
       const internal = createWebSocketTransport({ onLifecycleEvent: options.trace }).connect({
-        url: options.dashboardWebSocketUrl,
+        url: dashboardWebSocketUrl,
         signal: options.signal,
       });
       channel = internal;
       ownsChannel = true;
+      directChannelCleanup = cleanup.register(() => internal.close());
       await internal.ready;
       throwIfAborted(options.signal);
     }
     if (channel) {
-      rpc = createHermesDashboardJsonRpcClient({ channel, ownsChannel });
-      sessions = createHermesSessionClient(createHermesSessionOperations({ rpc, rest }));
+      const rpc = createHermesDashboardJsonRpcClient({ channel, ownsChannel });
+      directChannelCleanup?.disarm();
+      cleanup.register(() => rpc.dispose());
       events = createHermesRuntimeEventClient(rpc);
+      if (rest) sessions = createHermesSessionClient(createHermesSessionOperations({ rpc, rest }));
     }
     if (options.cavi) {
       const adapters = createCaviControlAdapters(options.cavi);
@@ -90,19 +136,23 @@ export async function createHermesRuntimeControlClient(
     }
     throwIfAborted(options.signal);
   } catch (error) {
-    await rpc?.dispose();
+    try {
+      await cleanup.unwind();
+    } catch {
+      // Cleanup is best effort and must never replace the primary construction error.
+    }
     throw error;
   }
 
   let disposePromise: Promise<void> | undefined;
   const dispose = () => {
-    disposePromise ??= rpc?.dispose() ?? Promise.resolve();
+    disposePromise ??= cleanup.unwind();
     return disposePromise;
   };
   return {
-    authStatus: createHermesAuthStatusClient(rest),
+    authStatus,
     sessions,
-    models: createHermesModelCatalogClient(rest),
+    models,
     usage,
     tasks,
     workspace,

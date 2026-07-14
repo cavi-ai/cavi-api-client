@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Made Hermes runtime-control composition independent per configured surface:
+  CAVI task/workspace adapters now install without dashboard REST, while absent
+  dashboard modules remain exact unavailable facades. Construction now unwinds
+  owned channels and RPC resources in reverse order, including readiness,
+  synchronous subscription, and post-construction abort failures, without
+  closing borrowed channels or replacing the primary error.
 - Added the current `/cavi-control/api/cost/history` route as a fail-closed
   fallback for 404/405 responses from the released plugin cost-history route.
   The existing adapter, response handling, fallback behavior, and in-flight
