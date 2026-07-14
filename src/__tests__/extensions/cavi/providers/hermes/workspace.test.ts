@@ -3,13 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import type { CaviControlAdapters } from "../../../../../extensions/cavi/adapters/create-cavi-control-adapters.js";
 import { createHermesCaviWorkspaceClient } from "../../../../../extensions/cavi/providers/hermes/workspace.js";
 
-function adapters(params: { projectBoard?: unknown; operator?: unknown }): CaviControlAdapters {
+function adapters(params: { projectBoard?: unknown; operator?: unknown; operatorTransport?: "websocket" | "http" }): CaviControlAdapters {
   return {
     loadProjectBoardWorkspace: vi.fn(async () => ({
       data: params.projectBoard, source: "gateway", fetchedAt: 1, contractGaps: [],
     })),
     loadOperatorControl: vi.fn(async () => ({
-      data: params.operator, source: "gateway", fetchedAt: 1, contractGaps: [],
+      data: params.operator, source: "gateway", fetchedAt: 1, contractGaps: [], transports: { tasks: params.operatorTransport ?? "websocket", registryDetail: params.operatorTransport ?? "websocket" },
     })),
   } as unknown as CaviControlAdapters;
 }
@@ -41,6 +41,18 @@ describe("Hermes CAVI workspace composition", () => {
         metadata: { provider: "hermes", stability: "experimental", source: { transport: "websocket", method: "operator.registry" }, providerData: { agentId: "operator" } },
       },
     ]);
+  });
+
+  it("reports HTTP provenance for operator workspace identities loaded by HTTP fallback", async () => {
+    const client = createHermesCaviWorkspaceClient(adapters({
+      projectBoard: {}, operatorTransport: "http",
+      operator: { registryDetail: { agents: [{
+        id: "operator", workspaceIdentity: { id: "operator-control", accessMode: "read-only" },
+      }] } },
+    }));
+    await expect(client.listWorkspaces()).resolves.toMatchObject([{
+      metadata: { source: { transport: "http", method: "operator.registry" } },
+    }]);
   });
 
   it("does not promote config, repo paths, portal IDs, or team IDs without workspace identity", async () => {

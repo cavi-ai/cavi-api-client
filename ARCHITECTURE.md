@@ -172,8 +172,9 @@ only the channel and are JSON-RPC notifications. SSE is a separate core
 transport and is not implied by either runtime-control adapter.
 
 An explicit Hermes dashboard token suppresses authentication resolution and
-wins over the generic token. Without a dashboard token, resolved headers are
-used when present; otherwise the generic token is used. Owned
+wins over the generic token. Without a dashboard token, a resolved
+authorization header wins; when resolved headers contain no authorization, the
+generic token supplies bearer authorization and unrelated headers remain. Owned
 channels are closed on disposal and reverse-order construction unwind; borrowed
 channels retain caller ownership unless explicitly transferred. CAVI plugin
 task and workspace modules are independently installable from the dashboard

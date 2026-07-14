@@ -66,10 +66,19 @@ function isTransportUnavailable(error: unknown): boolean {
     && (metadata.phase === "connect" || metadata.phase === "close");
 }
 
-function parseRpcList(value: unknown): SessionsListRpcPayload {
+function parseRpcList(value: unknown, requestedLimit: number | undefined): SessionsListRpcPayload {
   const payload = record(value, "session.list");
   if (!Array.isArray(payload.sessions)) throw new Error("Hermes session.list response failed schema validation");
-  return { sessions: payload.sessions.map(sessionRow), count: payload.sessions.length };
+  const sessions = payload.sessions.map(sessionRow);
+  const total = payload.total === undefined
+    ? sessions.length === requestedLimit && sessions.length < 200
+      ? sessions.length + 1
+      : sessions.length
+    : finite(payload.total, "session.list total");
+  if (!Number.isSafeInteger(total) || total < sessions.length) {
+    throw new Error("Hermes session.list response failed schema validation");
+  }
+  return { sessions, count: total };
 }
 
 function parseRestList(value: HermesDashboardSessions): SessionsListRpcPayload {
@@ -131,7 +140,7 @@ export function createHermesSessionOperations(options: {
       throwIfAborted(requestOptions);
       try {
         const value = await options.rpc.request<unknown>("session.list", input, requestOptions);
-        return parseRpcList(value);
+        return parseRpcList(value, input.limit);
       } catch (error) {
         if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
         if (!isTransportUnavailable(error)) throw error;

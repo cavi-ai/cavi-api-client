@@ -107,7 +107,9 @@ export type CaviControlAdapters = {
     windowDays: number,
   ) => Promise<DataEnvelope<RoutingMatrixSnapshot>>;
   loadIncidents: () => Promise<DataEnvelope<IncidentsSnapshot>>;
-  loadOperatorControl: () => Promise<DataEnvelope<OperatorControlSnapshot>>;
+  loadOperatorControl: () => Promise<DataEnvelope<OperatorControlSnapshot> & {
+    transports: { tasks: "websocket" | "http"; registryDetail: "websocket" | "http" };
+  }>;
   loadProjectBoardWorkspace: () => Promise<DataEnvelope<ProjectBoardWorkspaceSnapshot>>;
   loadTaskDiscourse: (
     taskId: string,

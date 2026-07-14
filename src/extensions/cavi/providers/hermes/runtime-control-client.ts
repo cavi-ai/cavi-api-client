@@ -96,14 +96,23 @@ export async function createHermesRuntimeControlClient(
     const resolvedHeaders = resolvedAuth?.headers === undefined
       ? undefined
       : { ...resolvedAuth.headers };
+    const effectiveResolvedHeaders = resolvedHeaders === undefined
+      ? undefined
+      : (() => {
+        const headers = new Headers(resolvedHeaders);
+        if (!headers.has("authorization") && options.token !== undefined) {
+          headers.set("authorization", `Bearer ${options.token}`);
+        }
+        return Object.fromEntries(headers.entries());
+      })();
     const rest = dashboardBaseUrl.length === 0
       ? undefined
       : createHermesDashboardRestClient({
         baseUrl: dashboardBaseUrl,
-        authToken: resolvedHeaders === undefined
+        authToken: effectiveResolvedHeaders === undefined
           ? options.dashboardToken ?? options.token ?? null
           : null,
-        defaultHeaders: resolvedHeaders,
+        defaultHeaders: effectiveResolvedHeaders,
         fetchImpl: options.fetch,
       });
     if (rest) {

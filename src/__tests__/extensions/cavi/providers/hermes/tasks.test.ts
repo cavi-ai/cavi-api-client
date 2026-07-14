@@ -7,7 +7,7 @@ import type { CaviControlAdapters } from "../../../../../extensions/cavi/adapter
 import { createHermesCaviTaskClient } from "../../../../../extensions/cavi/providers/hermes/tasks.js";
 import type { OperatorControlSnapshot } from "../../../../../extensions/cavi/domain/operator.js";
 
-function adaptersWithTasks(createdAt = 1_752_508_800_000): { adapters: CaviControlAdapters; loadOperatorControl: ReturnType<typeof vi.fn> } {
+function adaptersWithTasks(createdAt = 1_752_508_800_000, transport: "websocket" | "http" = "websocket"): { adapters: CaviControlAdapters; loadOperatorControl: ReturnType<typeof vi.fn> } {
   const tasks = [{
     envelope: {
       task_id: "operator/task-1",
@@ -26,8 +26,8 @@ function adaptersWithTasks(createdAt = 1_752_508_800_000): { adapters: CaviContr
     events: [], validation: null, outcome: null,
   }];
   const loadOperatorControl = vi.fn(async () => ({
-    data: { tasks: { tasks } } as unknown as OperatorControlSnapshot,
-    source: "gateway" as const, fetchedAt: 1_752_508_900_000, contractGaps: [],
+    data: { tasks: { tasks, summary: { accepted: 0, queued: 0, started: 1, retrying: 0, blocked: 0, completed: 0, "dead-letter": 0 } } } as unknown as OperatorControlSnapshot,
+    source: "gateway" as const, fetchedAt: 1_752_508_900_000, contractGaps: [], transports: { tasks: transport, registryDetail: transport },
   }));
   return { adapters: { loadOperatorControl } as unknown as CaviControlAdapters, loadOperatorControl };
 }
@@ -52,6 +52,13 @@ describe("Hermes CAVI task composition", () => {
       metadata: { source: { transport: "websocket", method: "operator.tasks.get" } },
     });
     expect(loadOperatorControl).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the actual adapter transport after HTTP fallback", async () => {
+    const client = createHermesCaviTaskClient(adaptersWithTasks(1_752_508_800_000, "http").adapters);
+    await expect(client.listTasks()).resolves.toMatchObject({
+      data: [{ metadata: { source: { transport: "http", method: "operator.tasks.list" } } }],
+    });
   });
 
   it("reports cancellation as unavailable instead of inventing a CAVI mutation", async () => {
@@ -98,5 +105,19 @@ describe("Hermes CAVI task composition", () => {
     const client = createHermesCaviTaskClient({ loadOperatorControl } as unknown as CaviControlAdapters);
     await expect(client.listTasks()).rejects.toThrow(/schema validation/u);
     expect(getter).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { tasks: [] },
+    { tasks: { tasks: [{}] } },
+    { tasks: { tasks: [{ envelope: { task_id: "" }, receipt: {} }] } },
+    { tasks: { tasks: [{ envelope: { task_id: "task", requester: { id: "operator", kind: "agent" }, target: { capability: "engineering" }, objective: "x", tier: "INVALID", acceptance_criteria: [], timeout_s: 1 }, receipt: { task_id: "task", run_id: "run", state: "started", attempt: 1, created_at: 1, updated_at: 1, artifacts: [] }, events: [], validation: null, outcome: null }] } },
+    { tasks: { tasks: [{ envelope: { task_id: "task", requester: { id: "operator", kind: "agent" }, target: { capability: "engineering" }, objective: "x", tier: "STANDARD", acceptance_criteria: [], timeout_s: 1 }, receipt: { task_id: "task", run_id: "run", state: "invented", attempt: 1, created_at: 1, updated_at: 1, artifacts: [] }, events: [], validation: null, outcome: null }] } },
+  ])("fails closed for malformed JSON-safe task snapshots", async (data) => {
+    const loadOperatorControl = vi.fn(async () => ({
+      data, source: "gateway" as const, fetchedAt: 1, contractGaps: [], transports: { tasks: "http" as const, registryDetail: "http" as const },
+    }));
+    await expect(createHermesCaviTaskClient({ loadOperatorControl } as unknown as CaviControlAdapters).listTasks())
+      .rejects.toThrow(/^Hermes CAVI task response failed schema validation$/u);
   });
 });
