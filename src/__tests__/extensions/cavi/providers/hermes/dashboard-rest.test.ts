@@ -258,4 +258,71 @@ describe("Hermes dashboard REST client", () => {
     await expect(client.listSessions()).rejects.toMatchObject({ name: "AbortError" });
     expect(fallback.request).toHaveBeenCalledTimes(3);
   });
+
+  it.each([
+    ["nested accessor", () => {
+      const payload = structuredClone(fixture("sessions")) as Record<string, unknown>;
+      payload.unknown = Object.defineProperty({}, "secret", {
+        enumerable: true,
+        get() { throw new Error("unsafe getter was invoked"); },
+      });
+      return payload;
+    }],
+    ["nested class", () => {
+      class UnknownMetadata { value = "unsafe"; }
+      return { ...structuredClone(fixture("sessions")) as object, unknown: new UnknownMetadata() };
+    }],
+    ["nested cycle", () => {
+      const cycle: Record<string, unknown> = {};
+      cycle.self = cycle;
+      return { ...structuredClone(fixture("sessions")) as object, unknown: cycle };
+    }],
+    ["array string property", () => {
+      const payload = structuredClone(fixture("sessions")) as { sessions: unknown[] };
+      Object.defineProperty(payload.sessions, "extra", { value: true, enumerable: true });
+      return payload;
+    }],
+    ["array symbol property", () => {
+      const payload = structuredClone(fixture("sessions")) as { sessions: unknown[] };
+      Object.defineProperty(payload.sessions, Symbol("extra"), { value: true, enumerable: true });
+      return payload;
+    }],
+    ["array accessor property", () => {
+      const payload = structuredClone(fixture("sessions")) as { sessions: unknown[] };
+      Object.defineProperty(payload.sessions, "extra", {
+        enumerable: true,
+        get() { throw new Error("unsafe array getter was invoked"); },
+      });
+      return payload;
+    }],
+    ["array cycle", () => {
+      const cycle: unknown[] = [];
+      cycle.push(cycle);
+      return { ...structuredClone(fixture("sessions")) as object, unknown: cycle };
+    }],
+  ])("rejects otherwise valid plugin fallback DTOs with unsafe %s augmentation", async (_name, makePayload) => {
+    const fallback = { request: vi.fn().mockResolvedValue(makePayload()) };
+    const client = createHermesDashboardRestClient({
+      baseUrl: "",
+      authToken: null,
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(new Response("missing", { status: 404 })),
+      fallback,
+    });
+    await expect(client.listSessions()).rejects.toThrow(/schema/i);
+  });
+
+  it("preserves recursively safe unknown upstream fields", async () => {
+    const payload = {
+      ...structuredClone(fixture("sessions")) as object,
+      upstream_extension: { enabled: true, labels: ["one", null, 2] },
+    };
+    const fallback = { request: vi.fn().mockResolvedValue(payload) };
+    const client = createHermesDashboardRestClient({
+      baseUrl: "",
+      authToken: null,
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(new Response("missing", { status: 404 })),
+      fallback,
+    });
+    await expect(client.listSessions()).resolves.toBe(payload);
+  });
 });
