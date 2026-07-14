@@ -132,14 +132,53 @@ function hasMixedCoreCaviConcern(filePath: string): boolean {
     owners.has("core") && owners.has("cavi"));
 }
 
-function publicCaviExports(): string[] {
+type PublicExportOwner = "core/contracts" | "CAVI extension";
+
+interface PublicCaviExport {
+  symbol: string;
+  actualOwner: PublicExportOwner;
+}
+
+let publicCaviExportCache: PublicCaviExport[] | undefined;
+
+function publicExportOwner(symbol: ts.Symbol, checker: ts.TypeChecker): PublicExportOwner {
+  const resolved = symbol.flags & ts.SymbolFlags.Alias
+    ? checker.getAliasedSymbol(symbol)
+    : symbol;
+  const declarationOwners = new Set((resolved.declarations ?? symbol.declarations ?? []).map(
+    (declaration) => {
+      const declarationPath = relative(declaration.getSourceFile().fileName);
+      if (declarationPath.startsWith("src/core/")
+        || declarationPath.startsWith("src/contracts/")) return "core/contracts";
+      if (declarationPath.startsWith("src/extensions/cavi/")) return "CAVI extension";
+      throw new Error(
+        `Unsupported CAVI export owner for ${symbol.name}: ${declarationPath}`,
+      );
+    },
+  ));
+  if (declarationOwners.size !== 1) {
+    throw new Error(
+      `Ambiguous CAVI export owner for ${symbol.name}: ${[...declarationOwners].sort().join(", ")}`,
+    );
+  }
+  return [...declarationOwners][0] as PublicExportOwner;
+}
+
+function publicCaviExports(): PublicCaviExport[] {
+  if (publicCaviExportCache) return publicCaviExportCache;
   const program = ts.createProgram(parsedTsConfig.fileNames, parsedTsConfig.options);
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(caviEntry);
   if (!source) throw new Error("CAVI public entry was not included in the TypeScript program");
   const module = checker.getSymbolAtLocation(source);
   if (!module) throw new Error("CAVI public entry has no module symbol");
-  return checker.getExportsOfModule(module).map((symbol) => symbol.name).sort();
+  publicCaviExportCache = checker.getExportsOfModule(module)
+    .map((symbol) => ({
+      symbol: symbol.name,
+      actualOwner: publicExportOwner(symbol, checker),
+    }))
+    .sort((left, right) => left.symbol < right.symbol ? -1 : left.symbol > right.symbol ? 1 : 0);
+  return publicCaviExportCache;
 }
 
 function classifiedSymbols(markdown = existsSync(ownershipDoc)
@@ -173,7 +212,15 @@ function classifiedSymbols(markdown = existsSync(ownershipDoc)
     return !expectedOwner || owner === expectedOwner;
   });
   const symbols = rows.map(([symbol]) => symbol.replaceAll("`", ""));
-  if (!valid || new Set(symbols).size !== symbols.length) return [];
+  const actualExports = new Map(publicCaviExports().map((entry) => [entry.symbol, entry.actualOwner]));
+  const matchesActualOwners = rows.every(([symbolCell, owner, classification]) => {
+    const actualOwner = actualExports.get(symbolCell.replaceAll("`", ""));
+    if (!actualOwner || owner !== actualOwner) return false;
+    return actualOwner === "core/contracts"
+      ? classification === "already-core" || classification === "promote-now"
+      : classification === "keep" || classification === "retire-later";
+  });
+  if (!valid || !matchesActualOwners || new Set(symbols).size !== symbols.length) return [];
   return symbols.sort();
 }
 
@@ -197,7 +244,7 @@ function compatibilityExceptionModules(markdown = readFileSync(ownershipDoc, "ut
 
 describe("CAVI extension ownership", () => {
   it("classifies every public CAVI export exactly once", () => {
-    expect(classifiedSymbols()).toEqual(publicCaviExports());
+    expect(classifiedSymbols()).toEqual(publicCaviExports().map(({ symbol }) => symbol));
   });
 
   it("rejects classification rows with invalid or incomplete metadata", () => {
@@ -211,8 +258,23 @@ describe("CAVI extension ownership", () => {
     ];
 
     for (const candidate of malformed) {
-      expect(classifiedSymbols(candidate)).not.toEqual(publicCaviExports());
+      expect(classifiedSymbols(candidate)).not.toEqual(
+        publicCaviExports().map(({ symbol }) => symbol),
+      );
     }
+  });
+
+  it("rejects a textually consistent classification that contradicts the compiler owner", () => {
+    const markdown = readFileSync(ownershipDoc, "utf8");
+    const mislabeled = markdown.replace(
+      "| `appendHttpQuery` | core/contracts | already-core |",
+      "| `appendHttpQuery` | CAVI extension | keep |",
+    );
+
+    expect(mislabeled).not.toBe(markdown);
+    expect(classifiedSymbols(mislabeled)).not.toEqual(
+      publicCaviExports().map(({ symbol }) => symbol),
+    );
   });
 
   it("validates every compatibility-exception column and the exact allowlist", () => {

@@ -29,7 +29,9 @@ re-export barrel, resolves aliases to their declaration files, and produces the
 same symbol set the compiler exposes to consumers. The architecture test compares
 this table to that live set exactly. It also validates all five columns, the
 classification vocabulary, owner/classification consistency, nonempty evidence
-and action, and symbol uniqueness.
+and action, and symbol uniqueness. Each symbol alias is resolved to its compiler
+declaration, and the row's owner and classification family must match that
+actual `core/contracts` or `CAVI extension` owner.
 
 | Symbol | Current owner | Classification | Evidence | Action |
 | --- | --- | --- | --- | --- |

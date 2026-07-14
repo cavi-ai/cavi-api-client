@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strengthened the CAVI ownership guard to validate complete classification
   metadata and resolve static, dynamic, TypeScript import-equals, CommonJS, and
   relative barrel dependencies across core, contracts, providers, and extension
-  implementations.
+  implementations. Inventory owners and classification families now also match
+  each compiler-resolved export declaration rather than trusting table text.
 - Hardened the OpenClaw canonical adapter so factory-owned WebSockets resolve
   fresh bearer authentication case-insensitively before connecting, without
   duplicate semantic headers. Native event names and payloads are bounded and
