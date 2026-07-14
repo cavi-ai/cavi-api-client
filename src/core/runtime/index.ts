@@ -10,5 +10,11 @@ export {
 export * from "./protocol.js";
 export * from "./run-stream.js";
 export * from "./dry-run.js";
+export {
+  CapabilityUnavailable,
+  createUnavailableCanonicalControlPlane,
+  type CanonicalControlPlaneOptions,
+  type CanonicalRuntimeControlPlane,
+} from "./control-plane/canonical.js";
 export * from "./control-plane/index.js";
 export * from "./providers/index.js";

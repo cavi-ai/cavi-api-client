@@ -16,9 +16,13 @@ describe("runtime provider capability matrix", () => {
     ]);
   });
 
-  it("does not advertise unimplemented control-plane modules in the foundation slice", () => {
-    for (const row of Object.values(RUNTIME_PROVIDER_CAPABILITY_MATRIX)) {
-      expect(row.controlPlane).toEqual({});
+  it("advertises only the registered OpenClaw canonical control plane", () => {
+    expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX.openclaw.controlPlane.modules).toEqual({
+      sessions: true, models: true, usage: true, tasks: true,
+      workspace: true, authStatus: true, events: true,
+    });
+    for (const [provider, row] of Object.entries(RUNTIME_PROVIDER_CAPABILITY_MATRIX)) {
+      if (provider !== "openclaw") expect(row.controlPlane).toEqual({});
     }
   });
 
@@ -49,7 +53,10 @@ describe("runtime provider capability matrix", () => {
       openclaw: {
         runtime: { ...gatewayRuntime, media: false, wiki: false },
         transports: { http, sse, websocket },
-        controlPlane: {},
+        controlPlane: {
+          modules: { sessions: true, models: true, usage: true, tasks: true, workspace: true, authStatus: true, events: true },
+          transports: { websocket },
+        },
       },
     });
   });

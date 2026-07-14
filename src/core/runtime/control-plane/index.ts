@@ -7,3 +7,4 @@ export * from "./tasks.js";
 export * from "./workspace.js";
 export * from "./events.js";
 export * from "./control-plane.js";
+export * from "./canonical.js";

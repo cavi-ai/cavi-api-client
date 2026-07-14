@@ -5,5 +5,15 @@ export async function resolveTransportHeaders(
   resolver?: TransportAuthResolver,
 ): Promise<Record<string, string>> {
   const auth = await resolver?.();
-  return { ...defaults, ...auth?.headers };
+  const headers: Record<string, string> = {};
+  for (const source of [defaults, auth?.headers] as const) {
+    if (!source) continue;
+    for (const [name, value] of Object.entries(source)) {
+      const semanticName = name.toLowerCase();
+      const previous = Object.keys(headers).find((candidate) => candidate.toLowerCase() === semanticName);
+      if (previous !== undefined) delete headers[previous];
+      headers[name] = value;
+    }
+  }
+  return headers;
 }

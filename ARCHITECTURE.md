@@ -98,11 +98,61 @@ clients—sessions, models, usage, tasks, workspace, and read-only authenticatio
 status—alongside normalized control-plane events and independently declared
 transport capabilities.
 
+`CanonicalRuntimeControlPlane` is an additive, required-shape facade over those
+seven modules: authentication status, sessions, models, usage, tasks, workspace,
+and events. It also owns an idempotent `dispose()` lifecycle method. When an
+adapter is unavailable, `createUnavailableCanonicalControlPlane` preserves the
+shape while rejecting every module operation with a fresh
+`CapabilityUnavailable` that identifies the provider and capability; disposal
+remains side-effect free. The existing optional `RuntimeControlPlane` is
+preserved for declaration-driven providers.
+
+The provider registry is also the boundary for canonical construction. Core
+remains registry-driven and never imports provider implementations. The
+package-root `createRuntimeControlPlane(provider, options)` supplies a fresh
+registry composed at the provider layer from the shipped Hermes and OpenClaw
+modules unless the caller supplies `options.registry`. It uses the registry's
+existing kind/alias normalization and delegates to an optional provider
+`createCanonicalControlPlane` hook, and falls back to the required unavailable
+facade. Its configuration remains provider-neutral (`baseUrl`, `webSocketUrl`,
+`token`, `resolveAuth`, `signal`, `trace`, `transport`, and `registry`), so adding
+the facade does not couple core to a provider. OpenClaw registers that hook at
+the provider layer; providers without one fall back truthfully to the typed
+unavailable facade.
+
+The OpenClaw boundary resolves fresh auth before a factory-owned WebSocket is
+opened and validates all native payloads before mapping. Wire parser failures
+are converted at each operation boundary into sanitized, non-retryable protocol
+errors. Workspace identity is derived only from explicit upstream workspace
+strings, and upstream cost without a validated currency is not promoted to
+canonical available cost.
+
+The provider-neutral `transport` option is also the deterministic test seam.
+The OpenClaw provider recognizes a structurally compatible request/subscription
+transport internally, so tests exercise the real package registry and factory
+path without placing an OpenClaw-specific contract in the root API. The public
+canonical conformance runner checks every required method, exercises supported
+and unavailable behavior, and owns facade disposal with `try`/`finally`. Its
+harness declares the expected provider ID, and unavailable results conform only
+when both that ID and the operation-specific canonical capability match exactly.
+
 Provider declarations are stable-first and truthful: an absent or experimental
 module is unsupported, and a factory may return only modules it declares. The
-initial built-in provider declarations are empty because this release ships the
-contract foundation and conformance machinery, not provider adapters. The frozen
-root capability matrix remains supported and records that absence explicitly.
+OpenClaw declaration lists all seven modules and its stable authenticated
+WebSocket transport; other declarations remain empty. The frozen root capability
+matrix preserves every existing key and adds this detail additively.
+
+OpenClaw event continuity follows the native gateway stream. Cursor resume is
+unsupported: supplying any cursor rejects with
+`CapabilityUnavailable("openclaw", "controlPlane.events.cursor")`. On reconnect,
+the adapter emits `stream.reconnected` followed by `stream.gap` when continuity
+cannot be proven; it does not claim replay.
+
+The package contract is canonical for its consumers while upstream wire APIs
+remain provider-owned and mirrored. The seven facade modules are `authStatus`,
+`sessions`, `models`, `usage`, `tasks`, `workspace`, and `events`. Resources
+created by the OpenClaw factory are client-owned and closed by `dispose()`;
+injected transports are caller-owned and are never closed by the facade.
 
 Authentication status is metadata, never credential transport; secret-bearing
 fields such as tokens, API keys, passwords, cookies, and authorization headers

@@ -98,11 +98,13 @@ export {
 } from "./core/runtime/batch.js";
 export { unsupportedRuntimeSurface, type RuntimeClient } from "./core/runtime/client.js";
 export {
+  CapabilityUnavailable,
   RUNTIME_CONTROL_PLANE_EVENT_NAMES,
   RUNTIME_TRANSPORT_KINDS,
   inspectRuntimeEventSequence,
   runtimeTransportSupports,
   type AuthStatusClient,
+  type CanonicalRuntimeControlPlane,
   type ModelCatalogClient,
   type RuntimeAuthStatus,
   type RuntimeControlPlane,
@@ -135,11 +137,14 @@ export {
 export {
   createRuntimeClient,
   normalizeRuntimeProviderToken,
+  type CanonicalControlPlaneFactory,
+  type CanonicalControlPlaneFactoryOptions,
   type CreateRuntimeClientOptions,
   type RuntimeControlPlaneDeclaration,
   type RuntimeClientOptions,
   type RuntimeProviderRegistry,
 } from "./core/runtime/providers/index.js";
+export { createRuntimeControlPlane } from "./providers/control-plane-factory.js";
 export {
   RUNTIME_PROVIDER_CAPABILITY_MATRIX,
   getRuntimeProviderCapabilityRow,
