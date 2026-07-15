@@ -1,33 +1,56 @@
-# Migrating to the curated 0.10.x API
+# Migration guide
 
-The root entry now exports only the curated stable API. Provider modules, the
-CAVI extension, framework bindings, and low-level core primitives moved to
-subpaths. Update imports:
+The package root is a curated provider-neutral API. Concrete providers,
+extensions, framework bindings, and lower-level infrastructure are published as
+subpath exports.
 
-| Was (root) | Now (subpath) |
+## Move concrete implementations to subpaths
+
+| Previously imported from the root | Import from |
 | --- | --- |
-| `CaviControlApiClient`, `PortalApiClient`, `LibraryApiClient`, `createTeamRegistry`, `TEAM_REGISTRY_CONFIG`, `resolveCaviPath`, `CAVI_SURFACE_CONTRACTS`, CAVI contracts (`portals`/`mobile`/`paths`) | `@cavi-ai/api-client/extensions/cavi` |
-| `HermesApiClient`, `HERMES_PROVIDER_MODULE`, `createHermesTeamRegistry`, Hermes chat-run/media/wiki/agent-config/websocket/env-config | `@cavi-ai/api-client/providers/hermes` |
-| `OpenClawApiClient`, `OPENCLAW_PROVIDER_MODULE`, `OPENCLAW_MANIFEST`, `createOpenClawTeamRegistry`, OpenClaw media/wiki/agent-config/websocket | `@cavi-ai/api-client/providers/openclaw` |
-| `ClaudeApiClient`, `CLAUDE_PROVIDER_MODULE`, `mapAnthropicStreamEvent` | `@cavi-ai/api-client/providers/claude` |
-| `BaseHttpApiClient`, `RawHttpApiClient`, `JsonHttpApiClient`, redaction helpers, client-id helpers | `@cavi-ai/api-client/core/http` |
-| SSE / WS helpers (`GatewayWebSocketClient`, …) | `@cavi-ai/api-client/core/sse`, `@cavi-ai/api-client/core/ws` |
-| Gateway resource clients (`GatewayMediaApiClient`, `GatewayWikiApiClient`, `GatewayAgentConfigApiClient`, `GatewayRpcClient`, `GatewaySseRunEventProvider`, jobs, commands, snapshots, `portalConfigPatchPath`) | `@cavi-ai/api-client/core/gateway` |
-| `resolveHttpSurfaceConfigFromEnv` and other env config | `@cavi-ai/api-client/core/env` |
-| `core/data` guards | `@cavi-ai/api-client/core/data` |
+| CAVI control, portal, library, registry, and adapter symbols | `@cavi-ai/api-client/extensions/cavi` |
+| Hermes clients and provider modules | `@cavi-ai/api-client/providers/hermes` |
+| OpenClaw clients and provider modules | `@cavi-ai/api-client/providers/openclaw` |
+| Claude clients and provider modules | `@cavi-ai/api-client/providers/claude` |
+| Codex clients, provider modules, and files | `@cavi-ai/api-client/providers/codex` |
+| Gemini clients, provider modules, and files | `@cavi-ai/api-client/providers/gemini` |
+| HTTP clients and redaction helpers | `@cavi-ai/api-client/core/http` |
+| Gateway resource clients | `@cavi-ai/api-client/core/gateway` |
+| Shared transport factories | `@cavi-ai/api-client/core/transport` |
+| Node-only stdio and Unix-socket transports | `@cavi-ai/api-client/core/transport/node` |
+| React bindings | `@cavi-ai/api-client/frameworks/react` |
+| Conformance helpers | `@cavi-ai/api-client/testing` |
 
-## What stays at the root
+See [Exports and import paths](docs/guides/exports.md) for the complete catalog
+and recommended narrow provider entries.
 
-The curated stable API remains importable from `@cavi-ai/api-client`:
+## Prefer the universal runtime factory
 
-- **Unified client + registry** — `GatewayApiClient`, `RuntimeClient`, the
-  `create*ProviderRegistry`/`createGateway*` factories, provider-module types.
-- **Errors & guards** — `ApiClientError`, `HttpApiError`, `GatewayHttpError`,
-  `isAuthError`, `getErrorCode`, …
-- **Graceful degradation** — `DataEnvelope`, `withFallback`, `contractGap`.
-- **Auth seam** — `HttpApiClientOptions`, `bearerCredentials`, `apiKeyCredentials`.
-- **Runtime contract** — `RuntimeCapabilities`, run types, `RunStreamEvent` + the
-  run-stream contract, protocol guard.
-- **Contracts** — `paths`, `surfaces`, `resolve`, team-manifest, manifest-source,
-  route-resolver.
-- **`resolveRepoRoot`** / `requireRepoRoot`.
+Keep workflow code typed against `RuntimeClient`. At the application boundary,
+register concrete provider modules and construct the client selected by
+configuration. Do not make reusable workflow functions accept provider API
+keys, provider-specific base URLs, or concrete provider client classes.
+
+## Gate optional operations
+
+Retrieval, cancellation, streaming, batch, and gateway resources are not
+universal. Check the runtime capability and the optional method before invoking
+it. Do not infer support from a provider name.
+
+## Runtime control
+
+Use the provider-neutral `createRuntimeControlClient` facade for canonical
+control-plane modules. Provider-owned raw gateway behavior remains an optional
+extension and should not be treated as a universal runtime capability.
+
+## Provider migrations
+
+Provider-specific request mapping and credentials are documented outside this
+guide:
+
+- [Providers and setup](docs/guides/providers.md)
+- [Claude integrations](docs/guides/claude.md)
+- [Operation reference](API.md)
+
+The package mirrors upstream-compatible behavior; it does not redefine an
+upstream runtime's canonical wire contract.

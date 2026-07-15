@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the provider-heavy README with a concise, wiki-first,
+  provider-neutral entry point and moved exports, provider selection, Claude
+  integrations, development checks, and consumer verification into focused
+  linked documents.
+
 ## [0.12.0] - 2026-07-15
 
 ### Added
