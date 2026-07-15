@@ -50,7 +50,6 @@ Every documented HTTP path is validated against the owner `paths.ts` files by
 | Gateway teams, kanban & vault | [`operations/gateway/teams.md`](docs/api-client/v0.11.0/operations/gateway/teams.md) |
 | Gateway WebSocket RPC methods | [`operations/gateway/rpc-methods.md`](docs/api-client/v0.11.0/operations/gateway/rpc-methods.md) |
 | CAVI extension surfaces | [`operations/cavi/`](docs/api-client/v0.11.0/operations/cavi) |
-| Redundancy audit (removal candidates) | [`operations/removal-candidates.md`](docs/api-client/v0.11.0/operations/removal-candidates.md) |
 | Runtime concepts, transports, errors | [`concepts/`](docs/api-client/v0.11.0/concepts), [`reference/core-errors.md`](docs/api-client/v0.11.0/reference/core-errors.md) |
 | Exhaustive type declarations (by subpath) | [`reference/`](docs/api-client/v0.11.0/reference) |
 
@@ -62,6 +61,11 @@ The immutable API documentation for package `0.11.0` is generated and shipped at
 and [`navigation.json`](docs/api-client/v0.11.0/navigation.json) for navigation.
 The copy/install and public-path contract is defined in
 [`docs/api-client/CONSUMER.md`](docs/api-client/CONSUMER.md).
+
+This versioned directory describes the packed `0.11.0` declaration surface. It
+is not the documentation for the current repository version. Current guides
+live in [`docs/guides`](docs/guides), and newer release artifacts must be added
+under their own version rather than rewriting this snapshot.
 
 Verify the stable artifact before consumption:
 

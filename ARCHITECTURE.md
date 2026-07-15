@@ -243,10 +243,9 @@ injected transports are caller-owned and are never closed by the facade.
 
 Authentication status is metadata, never credential transport; secret-bearing
 fields such as tokens, API keys, passwords, cookies, and authorization headers
-are prohibited. Hosted Codex using OpenAI Responses and the planned
-`codex-app-server` JSON-RPC integration are separate provider identities and will
-be designed as separate adapters. Existing execution-plane consumers require no
-migration.
+are prohibited. Hosted Codex using OpenAI Responses is a distinct provider
+identity. Prospective adapters and unimplemented transports belong in design
+proposals rather than this description of the current package architecture.
 
 Node-owned stdio and Unix-domain socket byte channels live behind the dedicated
 `@cavi-ai/api-client/core/transport/node` subpath. The root and universal
