@@ -184,8 +184,11 @@ behind a **subpath** so consumers import only the slice they need:
   `@cavi-ai/api-client/providers/hermes/runtime`, and
   `@cavi-ai/api-client/providers/openclaw/runtime`.
 - `@cavi-ai/api-client/testing` exposes the runner-neutral
-  `inspectRuntimeProviderConformance` and `inspectRuntimeControlPlaneConformance`
-  reports for third-party providers.
+  `inspectRuntimeProviderConformance`, `inspectRuntimeControlPlaneConformance`,
+  and `runRawGatewayConformance` reports for third-party providers. The raw
+  gateway harness accepts a provider-neutral fixture factory and applies the
+  same request, raw-event, connection-state, reconnect, cancellation,
+  unsupported-operation, and exact-once disposal checks to every driver.
 
 > **Upgrading from a flat-import version?** Provider modules, the CAVI extension,
 > and low-level primitives moved off the root entry to their subpaths. See
@@ -348,7 +351,13 @@ consumers do not need to change, and the optional `RuntimeControlPlane` contract
 remains supported. For consumers that need one predictable control-plane shape,
 `RuntimeControlClient` requires all seven modules: `authStatus`,
 `sessions`, `models`, `usage`, `tasks`, `workspace`, and `events`, plus an
-idempotent `dispose()`. `createUnavailableRuntimeControlClient(providerId,
+immutable provider-neutral `extensions` registry and an idempotent `dispose()`.
+Use `defineRuntimeControlExtension`, `createRuntimeControlExtensionRegistry`,
+and `withRuntimeControlExtensions` for typed capability discovery without
+provider-name branching. Lookup uses exact descriptor identity, repeated
+enhancers compose additively, and the core client property names `authStatus`,
+`sessions`, `models`, `usage`, `tasks`, `workspace`, `events`, `extensions`, and
+`dispose` are reserved from extension IDs. `createUnavailableRuntimeControlClient(providerId,
 capabilities)` supplies that complete shape when no adapter is available; every
 module method rejects with a fresh `CapabilityUnavailable` containing the
 provider ID and method-specific capability. Adopt `createControlPlane` only
@@ -413,10 +422,33 @@ resolve `resolveAuth` before opening the socket; a resolver-provided bearer
 authorization overrides the static token case-insensitively, with duplicate
 semantic headers collapsed deterministically. OpenClaw workspace results require
 an explicit upstream workspace descriptor, and currency-less upstream cost is
-reported as canonically unavailable. Malformed control-plane payloads and
+reported as canonically unavailable. Current upstream session pagination/default
+metadata, usage cost/cache metadata, and agent runtime/thinking metadata are
+validated without changing the canonical result shape. Pre-aborted calls do not
+dispatch hidden RPC work during later disposal. Malformed control-plane payloads and
 unsafe native events fail with sanitized, non-retryable protocol errors. Native
 event names are bounded and secret-safe before mapping or metadata; safe unknown
 names remain available as `operation.updated` provider data.
+
+Owned gateway connections may receive provider-neutral handshake and request
+settings through `RuntimeControlClientOptions.gatewayConnection`, which reuses
+`GatewayRpcClientOptions`. OpenClaw forwards client identity, device identity,
+scopes, protocol range, pre-auth timeout, request limits, and secret-safe RPC
+tracing. Injected transports still take precedence. Hermes does not implement
+that OpenClaw-style handshake and rejects every semantically supplied field with a typed,
+field-specific `CapabilityUnavailable`; it never silently downgrades identity or
+scope settings. Explicitly undefined fields and scope arrays that normalize to
+omission are accepted. Other falsey values remain supplied when they alter RPC
+semantics. Zero request timeout, request concurrency, and pre-auth timeout use
+shared defaults and are therefore accepted; protocol zero remains supplied and
+is rejected. Opt-in reconnect uses
+`RuntimeControlClientOptions.gatewayReconnect`, reusing the package's bounded
+`TransportRetryPolicy`. OpenClaw retries only lifecycle errors marked retryable
+by its RPC driver, publishes `reconnecting`, and cancels pending backoff on
+disposal. Manual `gateway.raw.connect()` calls share only an in-flight attempt
+and can reconnect after a later drop. Hermes rejects this policy and post-close
+manual reconnect explicitly because its fixed dashboard channel cannot be
+reconstructed.
 
 The public `runRuntimeControlClientConformance({ providerId, create })` helper from
 `@cavi-ai/api-client/testing` verifies the exact required methods, exercises
@@ -425,6 +457,14 @@ rejections, and always disposes the facade. The harness `providerId` is the exac
 provider every unavailable error must identify; each error must also name the
 operation's exact canonical capability. Its report separates `supported`,
 `unavailable`, and `failures`; empty module objects fail conformance.
+
+`runRawGatewayConformance(createChannel)` from the same testing subpath verifies
+the optional `gateway.raw` channel without accepting or branching on a provider
+name. OpenClaw supplies raw RPC, events, and lifecycle over its gateway
+WebSocket. Hermes supplies raw requests and notifications only when its
+JSON-RPC message channel is configured; REST-only Hermes clients truthfully omit
+the extension. Normalized Hermes run-event SSE remains a separate
+`RuntimeControlClient.events` transport, not a fallback raw channel.
 
 ### One Client Shape
 
@@ -730,6 +770,14 @@ Consumers should use exported constants and resolvers such as `resolvePath` and
 clients, components, or adapters. New or changed paths must come from the
 upstream gateway/plugin contract first.
 
+Use `resolvePluginApiPath(plugin, ...segments)` for generic plugin mounts such
+as `/api/plugins/machine/...` or `/api/plugins/front-door/...`.
+`resolvePortalApiPath(portal, relativePath)` remains the distinct portal
+dispatcher under `/api/plugins/portal/{portal}/...`. Library consumers that
+accept released legacy inputs can compare against
+`LIBRARY_LEGACY_API_BASE_PATH` (`/library/api`) before resolving the current
+plugin-backed library surfaces.
+
 ### Team Manifest
 
 The team manifest is an **interface, not data the package owns**. The package
@@ -942,16 +990,18 @@ const adapters = createCaviControlAdapters({
 const overview = await adapters.loadOverview();
 ```
 
-Hermes dashboard and optional CAVI plugin control surfaces can be composed from
+Hermes API Server, optional dashboard, and CAVI plugin control surfaces can be composed from
 the same extension without adding provider-specific fields to the core factory:
 
 ```ts
 import { createHermesRuntimeControlClient } from "@cavi-ai/api-client/extensions/cavi";
 
 const control = await createHermesRuntimeControlClient({
+  baseUrl: hermesApiServerBaseUrl,
+  token: apiServerKey,
+  // Optional separate TUI/dashboard service:
   dashboardBaseUrl,
   dashboardWebSocketUrl,
-  dashboardToken,
   cavi: { gatewayBaseUrl, authToken },
 });
 
@@ -964,10 +1014,12 @@ composition into an existing registry without branching at the call site:
 ```ts
 import { createRuntimeControlClient } from "@cavi-ai/api-client";
 import {
+  CAVI_CONTROL_EXTENSION,
   withCaviRuntimeControlProviders,
 } from "@cavi-ai/api-client/extensions/cavi";
 
 const registry = withCaviRuntimeControlProviders(baseRegistry, {
+  openclaw: { cavi: caviOptions },
   hermes: { dashboardBaseUrl, dashboardToken, cavi: caviOptions },
 });
 const control = await createRuntimeControlClient(providerId, {
@@ -975,24 +1027,39 @@ const control = await createRuntimeControlClient(providerId, {
   baseUrl,
   token,
 });
+const caviControl = control.extensions.get(CAVI_CONTROL_EXTENSION);
 ```
 
 The enhancer returns a new registry, preserves provider metadata and aliases,
 and closes over CAVI-only setup. Provider-neutral call options remain on the
 root factory and take precedence where the option surfaces overlap. It fails
-closed if the registry has no single canonical Hermes kind or if the `hermes`
+closed if an enhanced provider has no single canonical kind or if its normalized
 token is shadowed by another provider alias. Mutable nested CAVI configuration
 is snapshotted per enhanced registry; injected channels, signals, functions,
 fetch implementations, and transport clients intentionally retain identity.
 
-All seven canonical modules are always present. Dashboard REST config enables
-auth status, models, and usage; a dashboard channel enables events; sessions
-require both dashboard REST and a channel. Explicit CAVI plugin config
+The optional `cavi.control` extension is independent from released core calls:
+OpenClaw and Hermes retain their canonical tasks/workspace behavior, while the
+complete `CaviControlAdapters` surface is discovered through the typed
+descriptor without provider-name branching in consumers.
+
+All seven canonical modules are always present. `baseUrl` selects the aiohttp
+API Server: construction probes `/v1/capabilities`, models use `/v1/models`,
+sessions use `/api/sessions/list`, and usage uses `/api/sessions/usage`. API
+Server auth status, session mutation, cron-as-task, and workspace semantics are
+typed unavailable. A caller-owned existing run may opt into
+`/v1/runs/{run_id}/events` through `apiServerRunEvents`; no run is created.
+The runtime facade owns those SSE subscriptions and aborts every active stream
+on idempotent disposal. API Server `resolveAuth` remains independent from an
+explicit dashboard token, so credentials never cross between the two origins.
+Dashboard REST and JSON-RPC remain separately configured, and only an explicit
+dashboard message channel installs `gateway.raw`. Explicit CAVI plugin config
 independently enables tasks and workspace even when dashboard REST is absent.
 Other operations
 reject with method-specific `CapabilityUnavailable` errors. Injected channels
 are borrowed unless `ownsChannel: true` is set.
 
+Hermes API Server traffic is REST plus SSE and exposes no WebSocket route.
 Hermes dashboard traffic uses standard JSON-RPC 2.0 over its message channel;
 it does not speak OpenClaw's authenticated gateway handshake or custom
 WebSocket RPC framing. When both dashboard REST and a channel are configured,
@@ -1129,6 +1196,53 @@ The hardening tests in
 [`src/__tests__/package-hardening.test.ts`](src/__tests__/package-hardening.test.ts)
 enforce package boundaries, path ownership, forbidden imports, and output shape.
 Update them only when the package boundary intentionally changes.
+
+### Durable consumer verification snapshots
+
+Release maintainers can capture a dirty consumer migration without committing
+it or retaining a temporary worktree. The producer includes tracked and
+non-ignored untracked files, excludes dependency/build/test output and private
+`.superpowers` content, and emits a deterministic Git bundle plus metadata:
+
+```sh
+pnpm run build:runtime-control-consumer-snapshot -- \
+  --source /path/to/cavi-control \
+  --label cavi-control \
+  --expected-origin https://github.com/owner/cavi-control.git \
+  --expected-base <expected-head-commit> \
+  --allow-absolute-path /absolute/path/to/the/final-runtime-control-rc.tgz \
+  --out .artifacts/runtime-control/consumer-snapshots
+```
+
+Final evidence should always supply the expected origin and base. The producer
+rejects synthetic clones or stale worktrees, excludes private agent/debug
+artifacts, and fails closed on newly introduced absolute workstation paths.
+Paths already present in the pinned base remain unchanged. The one exact final
+RC path may be explicitly allowed; metadata records only its digest.
+
+Use the generated metadata files as verifier inputs; the verifier validates the
+bundle digest, commit, tree, full path/mode/content inventory, and the untracked
+path-set digest embedded immutably in the snapshot commit before running the
+same consumer gates. Capture aborts and removes partial outputs if the source
+status, included path content/modes, or tracked diff changes while the snapshot
+is being built. The bundle inventory, tracked-diff digest, and source
+invariance therefore describe one coherent capture window:
+
+```sh
+pnpm run verify:runtime-control-consumers -- \
+  --web .artifacts/runtime-control/consumer-snapshots/cavi-control.json \
+  --mobile .artifacts/runtime-control/consumer-snapshots/cc-mobile.json
+```
+
+The verifier does not rewrite the captured dependency manifest or lock. They
+must already reference the exact final RC tarball with its exact integrity,
+otherwise verification fails before installation.
+
+Bundles and metadata are local ignored evidence, not public repository
+artifacts. A committed manifest may record their local paths and digests for an
+authorized maintainer's machine, but must not imply that another checkout can
+retrieve them. Publishing consumer source requires a separately authorized
+private artifact location.
 
 ## Contributing
 

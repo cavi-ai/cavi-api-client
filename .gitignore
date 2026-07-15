@@ -9,6 +9,7 @@ docs/.code-review-graph/
 .env.production.local
 dist
 coverage/
+.artifacts/runtime-control/
 *.tgz
 # Added by code-review-graph
 .code-review-graph/

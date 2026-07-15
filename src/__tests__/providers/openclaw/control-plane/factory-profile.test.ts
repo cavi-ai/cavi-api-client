@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createOpenClawRuntimeControlClient } from "../../../../providers/openclaw/control-plane/factory";
+import { GATEWAY_RAW_EXTENSION } from "../../../../core/runtime/control-plane/raw-gateway.js";
 
 class HandshakeWebSocket extends EventTarget {
   static readonly OPEN = 1;
@@ -46,6 +47,68 @@ class HandshakeWebSocket extends EventTarget {
 }
 
 describe("OpenClaw control-plane factory client profile", () => {
+  it("rejects an invalid reconnect policy before opening a socket", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    HandshakeWebSocket.instances = [];
+    globalThis.WebSocket = HandshakeWebSocket as unknown as typeof WebSocket;
+    try {
+      await expect(createOpenClawRuntimeControlClient({
+        webSocketUrl: "wss://openclaw.example/ws",
+        gatewayReconnect: { maxAttempts: 0, baseDelayMs: 10, maxDelayMs: 20 },
+      })).rejects.toThrow("maxAttempts must be a positive integer");
+      expect(HandshakeWebSocket.instances).toHaveLength(0);
+    } finally { globalThis.WebSocket = originalWebSocket; }
+  });
+  it("forwards provider-neutral gateway connection settings to the owned client", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    HandshakeWebSocket.instances = [];
+    globalThis.WebSocket = HandshakeWebSocket as unknown as typeof WebSocket;
+    const deviceIdentityLoader = vi.fn(async () => null);
+    const onRpcTrace = vi.fn();
+    try {
+      const plane = await createOpenClawRuntimeControlClient({
+        webSocketUrl: "wss://openclaw.example/ws",
+        gatewayConnection: {
+          clientId: "mobile-client",
+          clientVersion: "2.3.4",
+          clientPlatform: "react-native",
+          clientMode: "mobile",
+          connectFrameId: "monotonic",
+          minProtocol: 3,
+          maxProtocol: 5,
+          enableDeviceIdentity: true,
+          deviceIdentityLoader,
+          requestedScopes: ["operator.read", "operator.write"],
+          preauthHandshakeTimeoutMs: 4_321,
+          requestTimeoutMs: 8_765,
+          maxConcurrentRequests: 7,
+          onRpcTrace,
+        },
+      });
+      const frame = JSON.parse(HandshakeWebSocket.instances[0].sent[0]) as {
+        id: string;
+        params: { minProtocol: number; maxProtocol: number; scopes: string[]; client: Record<string, string> };
+      };
+      expect(frame.id).not.toBe("mobile-client");
+      expect(frame.params).toMatchObject({
+        minProtocol: 3,
+        maxProtocol: 5,
+        scopes: ["operator.read", "operator.write"],
+        client: { id: "mobile-client", version: "2.3.4", platform: "react-native", mode: "mobile" },
+      });
+      expect(deviceIdentityLoader).toHaveBeenCalledTimes(1);
+      await plane.extensions.get(GATEWAY_RAW_EXTENSION)!.request("sessions.list");
+      expect(onRpcTrace).toHaveBeenCalledWith(expect.objectContaining({
+        method: "sessions.list",
+        params: {},
+        ok: true,
+      }));
+      await plane.dispose();
+    } finally {
+      globalThis.WebSocket = originalWebSocket;
+    }
+  });
+
   it("connects the owned real client with stable profile and auth/device defaults", async () => {
     const originalWebSocket = globalThis.WebSocket;
     const originalIndexedDb = globalThis.indexedDB;
@@ -75,7 +138,7 @@ describe("OpenClaw control-plane factory client profile", () => {
       expect(connectFrame.method).toBe("connect");
       expect(connectFrame.id).toBe(connectFrame.params.client.id);
       expect(connectFrame.params.client).toEqual({
-        id: "openclaw-control",
+        id: "openclaw-control-ui",
         version: "0.1.0",
         platform: "web",
         mode: "webchat",

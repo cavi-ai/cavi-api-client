@@ -5,6 +5,7 @@ import {
   type RuntimeControlClient,
 } from "../../index.js";
 import { CapabilityUnavailable } from "../../core/runtime/control-plane/runtime-control-client.js";
+import { defineRuntimeControlExtension } from "../../core/runtime/control-plane/extensions.js";
 import { runRuntimeControlClientConformance } from "../../testing/index.js";
 import { createBuiltInRuntimeProviderRegistry } from "../../providers/runtime-provider-registry.js";
 import { withCaviRuntimeControlProviders } from "../../extensions/cavi/providers/runtime-control-registry.js";
@@ -189,6 +190,44 @@ describe("canonical control-plane conformance", () => {
       "authStatus.listAuthStatus must be a function",
       "events.subscribe must be a function",
     ]));
+  });
+
+  it("rejects missing, unsorted, or duplicate extension registry IDs", async () => {
+    const missing = await runRuntimeControlClientConformance({
+      providerId: "fixture",
+      create: async () => ({
+        ...(await createRuntimeControlClient("fixture")),
+        extensions: undefined,
+      } as unknown as RuntimeControlClient),
+    });
+    expect(missing.failures).toContain("extensions must be a runtime-control extension registry");
+
+    const invalid = await runRuntimeControlClientConformance({
+      providerId: "fixture",
+      create: async () => ({
+        ...(await createRuntimeControlClient("fixture")),
+        extensions: {
+          has: () => false,
+          get: () => undefined,
+          list: () => ["fixture.zeta", "fixture.alpha", "fixture.alpha"],
+        },
+      }),
+    });
+    expect(invalid.failures).toContain("extensions.list must return sorted unique IDs");
+  });
+
+  it("verifies absent extension descriptors without throwing", async () => {
+    const report = await runRuntimeControlClientConformance({
+      providerId: "claude",
+      create: () => createRuntimeControlClient("claude"),
+    });
+    const client = await createRuntimeControlClient("claude");
+    const absent = defineRuntimeControlExtension("fixture.absent");
+
+    expect(report.valid).toBe(true);
+    expect(client.extensions.has(absent)).toBe(false);
+    expect(client.extensions.get(absent)).toBeUndefined();
+    await client.dispose();
   });
 
   it("rejects CapabilityUnavailable from the wrong provider", async () => {

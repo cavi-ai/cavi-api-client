@@ -167,7 +167,20 @@ export function resolvePortalApiPath(portalId: string, relativePath: string): st
   });
 }
 
+export function resolvePluginApiPath(pluginId: string, ...segments: string[]): string {
+  const plugin = pluginId.trim();
+  if (!plugin) {
+    throw new Error("resolvePluginApiPath: missing pluginId");
+  }
+  const root = `/api/plugins/${encodeURIComponent(plugin)}`;
+  return appendCaviApiPath(root, segments.join("/"), {
+    boundaryLabel: "plugin root",
+    errorPrefix: "resolvePluginApiPath",
+  });
+}
+
 export const LIBRARY_API_BASE_PATH = "/library/api" as const;
+export const LIBRARY_LEGACY_API_BASE_PATH = LIBRARY_API_BASE_PATH;
 
 export const LIBRARY_API_ENDPOINTS = {
   root: LIBRARY_API_BASE_PATH,

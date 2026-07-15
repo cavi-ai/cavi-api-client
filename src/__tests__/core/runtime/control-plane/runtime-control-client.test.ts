@@ -18,8 +18,10 @@ describe("canonical runtime control plane", () => {
       "tasks",
       "workspace",
       "events",
+      "extensions",
       "dispose",
     ]));
+    expect(plane.extensions.list()).toEqual([]);
     expectTypeOf(plane).toEqualTypeOf<RuntimeControlClient>();
     expectTypeOf<RuntimeControlPlane>().toBeObject();
   });

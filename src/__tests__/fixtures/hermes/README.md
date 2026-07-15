@@ -5,6 +5,10 @@ source without copying runtime state, logs, credentials, user paths, prompts, or
 identities. All fixtures were transcribed and sanitized from upstream commit
 `de1950c24b214d0127dc72eeb73fdcd90d841d14`.
 
+`api-server/` pins the live-confirmed aiohttp API Server shapes used by
+Martavis. `dashboard/` is the separately configured FastAPI/TUI service; its
+REST and JSON-RPC WebSocket fixtures are never API Server defaults.
+
 | Fixture | Upstream source | Commit | Sanitization |
 | --- | --- | --- | --- |
 | `session-list-request.json` | `tui_gateway/server.py` (`session.list`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Deterministic RPC id and limit only. |
@@ -22,3 +26,6 @@ identities. All fixtures were transcribed and sanitized from upstream commit
 | `provider-auth.json` | `hermes_cli/web_server.py` (`list_oauth_providers`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced provider identity and origin; omitted credential previews. |
 | `malformed.json` | `hermes_cli/web_server.py` (`get_sessions`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Synthetic structurally invalid response; valid JSON for parser tests. |
 | `run-events.txt` | `gateway/platforms/api_server.py` (`_handle_run_events`, `_make_run_event_callback`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaced run id, timestamps, text, tool name, duration, and usage. |
+| `capabilities.json` | `gateway/platforms/api_server.py` (`_handle_capabilities`) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Retains public route and feature declarations; replaces the model identity. |
+| `sessions-list.json` | `gateway/platforms/api_server.py` (mounted session API) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaces session identity, title, timestamps, and counts. |
+| `sessions-usage.json` | `gateway/platforms/api_server.py` (mounted session API) | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | Replaces session identity, tokens, cost, and counts. |

@@ -9,7 +9,7 @@ import {
 } from "./types.js";
 import { HttpApiError } from "./errors.js";
 import { redactPreviewText } from "./redaction.js";
-import { getErrorMessage } from "../errors.js";
+import { getErrorMessage, isAbortError } from "../errors.js";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_CLIENT_ID = "cavi-api-client";
@@ -55,17 +55,19 @@ function buildRequestBody(init?: HttpApiRequestInit): BodyInit | undefined {
 function createRequestAbortSignal(
   timeoutMs: number,
   inputSignal?: AbortSignal,
-): { signal: AbortSignal; cleanup: () => void } {
+): { signal: AbortSignal; source: () => "caller" | "timeout" | undefined; cleanup: () => void } {
   const controller = new AbortController();
-  const abort = (reason?: unknown): void => {
+  let source: "caller" | "timeout" | undefined;
+  const abort = (nextSource: "caller" | "timeout", reason?: unknown): void => {
     if (controller.signal.aborted) return;
+    source = nextSource;
     if (reason !== undefined) {
       controller.abort(reason);
       return;
     }
     controller.abort();
   };
-  const abortFromInputSignal = (): void => abort(inputSignal?.reason);
+  const abortFromInputSignal = (): void => abort("caller", inputSignal?.reason);
 
   if (inputSignal?.aborted) {
     abortFromInputSignal();
@@ -73,10 +75,11 @@ function createRequestAbortSignal(
     inputSignal?.addEventListener("abort", abortFromInputSignal, { once: true });
   }
 
-  const timeout = setTimeout(() => abort(), timeoutMs);
+  const timeout = setTimeout(() => abort("timeout"), timeoutMs);
 
   return {
     signal: controller.signal,
+    source: () => source,
     cleanup: () => {
       clearTimeout(timeout);
       inputSignal?.removeEventListener("abort", abortFromInputSignal);
@@ -188,6 +191,9 @@ export class BaseHttpApiClient {
     const traceUrl = previewTraceText(url);
 
     try {
+      if (init?.signal?.aborted) {
+        throw init.signal.reason;
+      }
       const response = await this.fetchImpl(
         url,
         this.buildFetchInit(method, headers, body, abortSignal.signal, init),
@@ -231,6 +237,9 @@ export class BaseHttpApiClient {
     } catch (error) {
       if (error instanceof HttpApiError) {
         throw error;
+      }
+      if (abortSignal.source() === "caller" && init?.signal && (error === init.signal.reason || isAbortError(error))) {
+        throw init.signal.reason;
       }
       const message = getErrorMessage(error);
       const safeMessage = previewErrorBody(message);
