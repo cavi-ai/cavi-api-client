@@ -20,6 +20,14 @@ const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
 const api = read("API.md");
 const architecture = read("ARCHITECTURE.md");
+// Control-plane facade + OpenClaw adapter docs migrated from API.md into the
+// operation reference pipeline (API.md is now an index/pointer).
+const controlPlaneOps = read(
+  "docs/api-client/source/pages/operations/gateway/control-plane.md",
+);
+const openclawOps = read(
+  "docs/api-client/source/pages/operations/providers/openclaw.md",
+);
 
 describe("docs integrity", () => {
   it("publishes reproducible documentation build and drift-check commands", () => {
@@ -221,18 +229,19 @@ describe("docs integrity", () => {
     ).toEqual([]);
   });
 
-  it("API.md truthfully documents the registered OpenClaw adapter", () => {
-    const apiMd = read("API.md");
-
+  it("truthfully documents the registered OpenClaw adapter in the operation reference", () => {
     for (const publicContract of [
       "RuntimeControlPlane",
       "RuntimeEventClient",
       "RuntimeTransportCapabilities",
       "RuntimeAuthStatus",
     ]) {
-      expect(apiMd, `API.md is missing ${publicContract}`).toContain(publicContract);
+      expect(
+        openclawOps,
+        `operations/providers/openclaw.md is missing ${publicContract}`,
+      ).toContain(publicContract);
     }
-    expect(apiMd).toContain(
+    expect(openclawOps).toContain(
       "OpenClaw declares all seven canonical modules and its stable WebSocket transport",
     );
   });
@@ -275,12 +284,12 @@ describe("docs integrity", () => {
   });
 
   it("documents the canonical control-plane facade without provider drift", () => {
-    const publicDocs = [readme, api, architecture, changelog];
+    const publicDocs = [readme, controlPlaneOps, architecture, changelog];
     const modules = ["authStatus", "sessions", "models", "usage", "tasks", "workspace", "events"];
 
     for (const [name, document] of [
       ["README.md", readme],
-      ["API.md", api],
+      ["operations/gateway/control-plane.md", controlPlaneOps],
     ] as const) {
       expect(document, `${name} is missing the provider-neutral factory example`).toContain(
         "createRuntimeControlClient(config.provider, {",
@@ -308,12 +317,17 @@ describe("docs integrity", () => {
       "tasks.get",
       "tasks.cancel",
     ]) {
-      expect(api, `API.md is missing verified OpenClaw method ${method}`).toContain(`\`${method}\``);
+      expect(
+        controlPlaneOps,
+        `operations/gateway/control-plane.md is missing verified OpenClaw method ${method}`,
+      ).toContain(`\`${method}\``);
     }
 
     expect(publicDocs.every((document) => document.includes("CapabilityUnavailable"))).toBe(true);
-    expect(`${readme}\n${api}`).toMatch(/upstream wire APIs remain\s+provider-owned and mirrored/iu);
-    const eventContinuityDocs = `${readme}\n${api}\n${architecture}\n${changelog}`;
+    expect(`${readme}\n${controlPlaneOps}`).toMatch(
+      /upstream wire APIs remain\s+provider-owned and mirrored/iu,
+    );
+    const eventContinuityDocs = `${readme}\n${controlPlaneOps}\n${architecture}\n${changelog}`;
     expect(eventContinuityDocs).toContain(
       'CapabilityUnavailable("openclaw", "controlPlane.events.cursor")',
     );
@@ -321,7 +335,7 @@ describe("docs integrity", () => {
     expect(eventContinuityDocs).toContain("stream.gap");
     expect(eventContinuityDocs).toMatch(/cursor resume is unsupported/iu);
     expect(eventContinuityDocs).toMatch(/does not claim replay/iu);
-    expect(`${api}\n${architecture}`).toMatch(/caller-owned/iu);
-    expect(`${api}\n${architecture}`).toMatch(/client-owned/iu);
+    expect(`${controlPlaneOps}\n${architecture}`).toMatch(/caller-owned/iu);
+    expect(`${controlPlaneOps}\n${architecture}`).toMatch(/client-owned/iu);
   });
 });
