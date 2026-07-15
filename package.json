@@ -258,7 +258,7 @@
     "typecheck:gate": "tsc --noEmit -p tsconfig.gate.json",
     "typecheck:docs": "node scripts/docs/typecheck-stable.mjs",
     "docs:build": "node scripts/docs/build.mjs --package $CAVI_DOCS_PACKAGE_TGZ --out docs/api-client/v0.11.0 --source-date-epoch $SOURCE_DATE_EPOCH",
-    "docs:check": "node scripts/docs/check.mjs",
+    "docs:check": "node scripts/docs/check.mjs && node scripts/docs/check-operation-endpoints.mjs",
     "diagnose": "node scripts/diagnose.mjs",
     "diagnose:static": "node scripts/diagnose.mjs --mode=static",
     "check:runtime-control-ledger": "node scripts/runtime-control/check-ledger.mjs",

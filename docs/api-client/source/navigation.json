@@ -32,6 +32,32 @@
       ]
     },
     {
+      "title": "API Reference",
+      "pages": [
+        { "title": "Reading an operation", "path": "operations/index.md" },
+        { "title": "Runtime operations", "path": "operations/runtime.md" },
+        { "title": "Claude (Anthropic)", "path": "operations/providers/claude-anthropic.md" },
+        { "title": "Codex (OpenAI)", "path": "operations/providers/codex.md" },
+        { "title": "Gemini (Google)", "path": "operations/providers/gemini.md" },
+        { "title": "Hermes", "path": "operations/providers/hermes.md" },
+        { "title": "OpenClaw", "path": "operations/providers/openclaw.md" },
+        { "title": "Claude Managed Agents (beta)", "path": "operations/providers/claude-managed-agents.md" },
+        { "title": "Gateway · Control plane", "path": "operations/gateway/control-plane.md" },
+        { "title": "Gateway · Media & wiki", "path": "operations/gateway/media-wiki.md" },
+        { "title": "Gateway · Sessions & agent config", "path": "operations/gateway/sessions.md" },
+        { "title": "Gateway · Teams, kanban & vault", "path": "operations/gateway/teams.md" },
+        { "title": "Gateway · WebSocket RPC methods", "path": "operations/gateway/rpc-methods.md" },
+        { "title": "CAVI · Project board", "path": "operations/cavi/project-board.md" },
+        { "title": "CAVI · Discourse", "path": "operations/cavi/discourse.md" },
+        { "title": "CAVI · Operator control", "path": "operations/cavi/operator-control.md" },
+        { "title": "CAVI · Library", "path": "operations/cavi/library.md" },
+        { "title": "CAVI · Registry", "path": "operations/cavi/registry.md" },
+        { "title": "CAVI · Portal", "path": "operations/cavi/portal.md" },
+        { "title": "CAVI · Memory", "path": "operations/cavi/memory.md" },
+        { "title": "Removal candidates", "path": "operations/removal-candidates.md" }
+      ]
+    },
+    {
       "title": "API reference",
       "path": "reference/index.md"
     },

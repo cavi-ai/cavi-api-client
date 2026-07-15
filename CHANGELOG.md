@@ -103,6 +103,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fallbacks retain non-wire provenance. The
   immutable generated `v0.11.0` documentation remains historically accurate
   and intentionally excludes these unreleased APIs.
+- Added an OpenAI-style operation reference to the documentation pipeline
+  (rendered on cavi-ai.xyz): per-operation method signatures, request bodies,
+  responses, runnable examples, and the HTTP endpoint each operation maps to,
+  covering the universal runtime contract, every provider (Claude, Codex,
+  Gemini, Hermes, OpenClaw), Claude Managed Agents, the gateway control-plane and
+  WebSocket RPC surfaces, and the CAVI extension, plus a companion redundancy
+  audit that records removal candidates. A new `docs:check` step
+  (`scripts/docs/check-operation-endpoints.mjs`) fails the build when a
+  documented HTTP path is not owned by a `paths.ts` file.
 
 ### Changed
 
@@ -121,6 +130,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and conformance kit to the `RuntimeControlClient` vocabulary. This is a
   pre-release rename, not a compatibility removal; the older released
   `RuntimeControlPlane` declaration API remains intact.
+- Reduced `API.md` to an index that points at the pipeline operation reference;
+  its former control-plane facade and OpenClaw adapter prose moved into the
+  operation pages, and the `docs-integrity` contract now verifies them there.
+  Renamed the Claude provider reference page to `claude-anthropic.md` to avoid a
+  `CLAUDE.md` case collision on case-insensitive filesystems.
 
 ### Fixed
 
