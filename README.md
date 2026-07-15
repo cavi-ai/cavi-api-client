@@ -3,9 +3,10 @@
 </h1>
 
 <p align="center">
-  <strong>One TypeScript client contract for agent runtimes.</strong><br>
+  <strong>One TypeScript client for every agent runtime. 🛰️</strong><br>
   Build against <code>RuntimeClient</code>, discover capabilities at runtime, and
   keep provider and transport details at the application boundary.
+  <strong>Swap providers, not your code.</strong>
 </p>
 
 <p align="center">
