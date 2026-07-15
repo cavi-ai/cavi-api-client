@@ -20,6 +20,8 @@ const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
 const api = read("API.md");
 const architecture = read("ARCHITECTURE.md");
+const exportsGuide = read("docs/guides/exports.md");
+const developmentGuide = read("docs/guides/development.md");
 // Control-plane facade + OpenClaw adapter docs migrated from API.md into the
 // operation reference pipeline (API.md is now an index/pointer).
 const controlPlaneOps = read(
@@ -68,7 +70,8 @@ describe("docs integrity", () => {
     expect(pkg.files).toContain("!docs/superpowers");
     expect(pkg.files).toContain("!docs/superpowers/**");
 
-    expect(readme).toContain("pnpm docs:check");
+    expect(developmentGuide).toContain("pnpm run verify");
+    expect(developmentGuide).toContain("CAVI_API_CLIENT_STABLE_TARBALL");
     expect(readme).toContain("docs/api-client/v0.11.0");
     expect(api).toContain("pnpm docs:check");
     expect(api).toContain("docs/api-client/v0.11.0");
@@ -153,11 +156,13 @@ describe("docs integrity", () => {
     }
   });
 
-  it("README documents the published subpath exports", () => {
-    // The README's import examples must reference subpaths that the package
-    // actually exports. Guards against documenting a removed or renamed entry.
+  it("public guides document only published subpath exports", () => {
+    // Consumer-facing import examples must reference subpaths that the package
+    // actually exports. The README stays a concise front door; the linked
+    // exports guide owns the exhaustive catalog.
+    const publicImportDocs = `${readme}\n${exportsGuide}`;
     const documentedSubpaths = Array.from(
-      readme.matchAll(/@cavi-ai\/api-client(\/[a-z0-9/-]+)/g),
+      publicImportDocs.matchAll(/@cavi-ai\/api-client(\/[a-z0-9./-]+)/g),
       (m) => m[1],
     );
     const exportedSubpaths = new Set(
@@ -171,9 +176,9 @@ describe("docs integrity", () => {
     }
   });
 
-  it("documents every published subpath export in the README", () => {
+  it("documents every published subpath export in the exports guide", () => {
     // Reverse of the check above: every package.json export key (other than
-    // the root ".") must be mentioned in README.md at least once, so a new
+    // the root ".") must be mentioned in the focused exports guide, so a new
     // export can't ship undocumented. Matches on the export key's path
     // portion (the key minus its leading ".") rather than requiring the
     // literal "@cavi-ai/api-client" prefix, since some exports — e.g. the
@@ -185,8 +190,8 @@ describe("docs integrity", () => {
     for (const key of exportedKeys) {
       const pathPortion = key.slice(1);
       expect(
-        readme.includes(pathPortion),
-        `package.json exports "${key}" but README.md never mentions it`,
+        exportsGuide.includes(pathPortion),
+        `package.json exports "${key}" but docs/guides/exports.md never mentions it`,
       ).toBe(true);
     }
   });
@@ -264,7 +269,7 @@ describe("docs integrity", () => {
   });
 
   it("documents the shared transport runtime and its isolation boundaries", () => {
-    const publicDocs = `${readme}\n${api}\n${architecture}\n${changelog}`;
+    const publicDocs = `${readme}\n${exportsGuide}\n${api}\n${architecture}\n${changelog}`;
 
     for (const token of [
       "@cavi-ai/api-client/core/transport",
@@ -284,11 +289,10 @@ describe("docs integrity", () => {
   });
 
   it("documents the canonical control-plane facade without provider drift", () => {
-    const publicDocs = [readme, controlPlaneOps, architecture, changelog];
+    const publicDocs = [controlPlaneOps, architecture, changelog];
     const modules = ["authStatus", "sessions", "models", "usage", "tasks", "workspace", "events"];
 
     for (const [name, document] of [
-      ["README.md", readme],
       ["operations/gateway/control-plane.md", controlPlaneOps],
     ] as const) {
       expect(document, `${name} is missing the provider-neutral factory example`).toContain(
@@ -324,7 +328,7 @@ describe("docs integrity", () => {
     }
 
     expect(publicDocs.every((document) => document.includes("CapabilityUnavailable"))).toBe(true);
-    expect(`${readme}\n${controlPlaneOps}`).toMatch(
+    expect(controlPlaneOps).toMatch(
       /upstream wire APIs remain\s+provider-owned and mirrored/iu,
     );
     const eventContinuityDocs = `${readme}\n${controlPlaneOps}\n${architecture}\n${changelog}`;
