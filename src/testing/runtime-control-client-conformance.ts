@@ -176,6 +176,30 @@ export async function runRuntimeControlClientConformance(
   const failures: string[] = [];
   const canDispose = typeof plane.dispose === "function";
   if (!canDispose) failures.push("dispose must be a function");
+  const extensionRegistry = plane.extensions;
+  if (
+    !object(extensionRegistry)
+    || typeof extensionRegistry.has !== "function"
+    || typeof extensionRegistry.get !== "function"
+    || typeof extensionRegistry.list !== "function"
+  ) {
+    failures.push("extensions must be a runtime-control extension registry");
+  } else {
+    try {
+      const ids = extensionRegistry.list();
+      const sortedUnique = Array.isArray(ids)
+        && ids.every((id) => typeof id === "string")
+        && ids.every((id, index) => index === 0 || ids[index - 1]! < id);
+      if (!sortedUnique) failures.push("extensions.list must return sorted unique IDs");
+
+      const absent = { id: "conformance.absent" };
+      if (extensionRegistry.has(absent) !== false || extensionRegistry.get(absent) !== undefined) {
+        failures.push("extensions must return false and undefined for absent descriptors");
+      }
+    } catch {
+      failures.push("extensions must support list and absent descriptor lookup without throwing");
+    }
+  }
 
   try {
     for (const [moduleName, methodName, invoke, validate] of OPERATIONS) {

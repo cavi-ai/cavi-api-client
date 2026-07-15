@@ -12,6 +12,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added deterministic consumer snapshot tooling for release-candidate evidence.
+  It captures dirty tracked and intended untracked sources without private or
+  generated artifacts, emits a verified Git bundle plus path/mode/content
+  metadata, encodes untracked provenance in the immutable commit, preserves
+  original worktree status bytes, rejects capture races, and lets the consumer
+  verifier consume and independently re-derive that durable evidence directly.
+  Final evidence can pin the expected consumer origin/base, rejects private
+  workstation paths and agent/debug artifacts, and verifies the captured RC
+  dependency and lock without rewriting either file.
+
+- Aligned Hermes runtime control with the live aiohttp API Server: `baseUrl`
+  capability-probes `/v1/capabilities` and maps `/v1/models`,
+  `/api/sessions/list`, and `/api/sessions/usage`. The separate TUI dashboard
+  remains explicit, API-server-only clients do not claim `gateway.raw`, and an
+  existing run may opt into `/v1/runs/{run_id}/events` SSE without creating a
+  run. Unsupported auth, session mutations, cron-as-task, and workspace remain
+  typed unavailable. OpenClaw's owned default identity now matches the accepted
+  `openclaw-control-ui`; explicit consumer identity still wins.
+  API Server authentication resolves independently from explicit dashboard
+  credentials, and runtime disposal aborts all active API Server SSE streams
+  while suppressing post-dispose delivery. Naturally completed and failed
+  streams release their captured handlers immediately; later caller or runtime
+  disposal is harmless.
+
+- Added opt-in, provider-neutral `RuntimeControlClientOptions.gatewayReconnect`
+  with retryable-only bounded backoff for owned OpenClaw gateway lifecycles.
+  Concurrent connects share only their in-flight promise, later manual connects
+  invoke the transport again, and disposal cancels pending retries. Hermes
+  rejects the policy and post-close manual reconnect explicitly because its
+  fixed dashboard channel cannot be reconstructed safely.
+- Added provider-neutral `RuntimeControlClientOptions.gatewayConnection`,
+  composed from the existing `GatewayRpcClientOptions`, so owned OpenClaw
+  connections can receive mobile-safe identity, device signing, scopes,
+  protocol, timeout, request-limit, and redacted RPC-trace settings. Injected
+  transports retain precedence; Hermes rejects unsupported fields explicitly
+  instead of silently downgrading security configuration.
+- Added the optional provider-neutral `GATEWAY_RAW_EXTENSION` (`gateway.raw`)
+  contract for arbitrary operation requests, unchanged raw event snapshots,
+  normalized connection state, cancellation, and exact-once asynchronous
+  disposal. The descriptor does not claim provider support and remains distinct
+  from normalized runtime-control events and the CAVI-only `cavi.control`
+  extension.
+- Added shared `gateway.raw` conformance for OpenClaw and Hermes covering
+  request and raw-event identity, listener isolation, ordered reconnect state,
+  abort propagation, typed unsupported operations, and exact-once disposal.
+  Published testing imports, compatibility evidence, and dependency guardrails
+  keep the suite provider-neutral; REST-only Hermes remains unsupported.
+- Added the CAVI extension's provider-neutral `resolvePluginApiPath` dispatcher
+  for generic `/api/plugins/{plugin}/...` routes and the
+  `LIBRARY_LEGACY_API_BASE_PATH` compatibility constant for consumers that
+  normalize released `/library/api` inputs. Portal dispatch and existing
+  library route behavior are unchanged.
+- Added a provider-neutral runtime-control scenario catalog through the testing
+  subpath. It records typed capability unavailability, keeps live mutation
+  probes behind an explicit disposable mode and typed extension, cleans created
+  resources in reverse order, redacts failure details, and always reports client
+  disposal independently.
+- Added a provider-neutral typed extension registry to `RuntimeControlClient`.
+  Descriptors normalize IDs, registries reject blank or duplicate IDs and expose
+  immutable sorted discovery with descriptor-identity lookup, and repeated
+  `withRuntimeControlExtensions` calls compose without shadowing existing or core
+  client properties while preserving module identity and delegating disposal
+  exactly once.
+- Added the typed `CAVI_CONTROL_EXTENSION` (`cavi.control`) descriptor. The CAVI
+  registry enhancer now installs independently constructed complete CAVI control
+  adapters for configured OpenClaw and Hermes providers while preserving their
+  released core modules, immutable base registries, and canonical alias checks.
 - Added the CAVI-only `withCaviRuntimeControlProviders` registry enhancer. It
   immutably installs the resolved Hermes runtime-control factory while
   preserving base modules, aliases, capabilities, resolution order, the root
@@ -57,6 +124,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- OpenClaw canonical session summaries now preserve the upstream preferred
+  title, using an explicit session label before the derived display name for
+  both list and get operations.
+- Aligned OpenClaw control-plane validation with current upstream
+  `sessions.list` pagination/default metadata, `usage.cost` cost-detail and
+  cache-status fields, and `agents.list` runtime/thinking metadata while
+  retaining fail-closed nested validation, including current session label and
+  display-name fields. Current OpenClaw session pagination now follows validated
+  continuation metadata without truncating later pages.
+  Already-aborted OpenClaw requests no longer dispatch a hidden RPC that rejects
+  during disposal, Hermes API Server requests preserve caller abort identity
+  without dispatching fetch, and late caller cancellation no longer masks an
+  unrelated HTTP transport failure or a timeout that already won the combined
+  abort race.
 - Made Hermes runtime-control composition independent per configured surface:
   CAVI task/workspace adapters now install without dashboard REST, while absent
   dashboard modules remain exact unavailable facades. Construction now unwinds

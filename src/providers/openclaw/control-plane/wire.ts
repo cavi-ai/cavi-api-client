@@ -55,6 +55,50 @@ function numericTimestamp(value: unknown, label: string, required = false): numb
 }
 function assign(output: WireObject, key: string, value: unknown): void { if (value !== undefined) output[key] = value; }
 function strings(value: unknown, label: string): string[] { return array(value, label).map((item, index) => string(item, `${label}[${index}]`) as string); }
+function nullableString(value: unknown, label: string): string | null {
+  if (value === null) return null;
+  return string(value, label) as string;
+}
+function nullableInteger(value: unknown, label: string): number | null {
+  if (value === null) return null;
+  return integer(value, label, 0, true) as number;
+}
+
+const AGENT_RUNTIME_SOURCES = new Set(["env", "agent", "defaults", "model", "provider", "implicit", "session", "session-key"]);
+function agentRuntime(value: unknown, label: string): WireObject {
+  const input = closed(value, label, ["id", "fallback", "source"]);
+  const source = string(input.source, `${label}.source`);
+  if (!AGENT_RUNTIME_SOURCES.has(source as string)) throw new OpenClawWireError(`${label}.source is invalid`);
+  const output: WireObject = { id: string(input.id, `${label}.id`), source };
+  if (input.fallback !== undefined) {
+    if (input.fallback !== "openclaw" && input.fallback !== "none") throw new OpenClawWireError(`${label}.fallback is invalid`);
+    output.fallback = input.fallback;
+  }
+  return output;
+}
+function thinkingLevel(value: unknown, label: string): WireObject {
+  const input = closed(value, label, ["id", "label"]);
+  return { id: string(input.id, `${label}.id`), label: string(input.label, `${label}.label`) };
+}
+function assignThinkingFields(input: WireObject, output: WireObject, label: string): void {
+  if (input.thinkingLevels !== undefined) {
+    output.thinkingLevels = array(input.thinkingLevels, `${label}.thinkingLevels`).map((item, index) =>
+      thinkingLevel(item, `${label}.thinkingLevels[${index}]`));
+  }
+  if (input.thinkingOptions !== undefined) output.thinkingOptions = strings(input.thinkingOptions, `${label}.thinkingOptions`);
+  assign(output, "thinkingDefault", string(input.thinkingDefault, `${label}.thinkingDefault`, false));
+}
+
+function sessionDefaults(value: unknown): WireObject {
+  const input = closed(value, "defaults", ["modelProvider", "model", "contextTokens", "agentRuntime", "thinkingLevels", "thinkingOptions", "thinkingDefault"]);
+  const output: WireObject = {};
+  if (input.modelProvider !== undefined) output.modelProvider = nullableString(input.modelProvider, "defaults.modelProvider");
+  if (input.model !== undefined) output.model = nullableString(input.model, "defaults.model");
+  if (input.contextTokens !== undefined) output.contextTokens = nullableInteger(input.contextTokens, "defaults.contextTokens");
+  if (input.agentRuntime !== undefined) output.agentRuntime = agentRuntime(input.agentRuntime, "defaults.agentRuntime");
+  assignThinkingFields(input, output, "defaults");
+  return output;
+}
 
 const MODEL_KEYS = ["id", "name", "provider", "alias", "contextWindow", "reasoning"] as const;
 function model(value: unknown, label: string): WireObject {
@@ -79,10 +123,42 @@ function task(value: unknown, label: string): WireObject {
 }
 
 function session(value: unknown, label: string): WireObject {
-  const keys = ["key", "sessionId", "createdAt", "updatedAt"] as const;
+  const keys = [
+    "key", "sessionId", "label", "displayName", "createdAt", "updatedAt", "kind",
+    "archived", "pinned", "unread", "thinkingLevel", "thinkingLevels",
+    "thinkingOptions", "thinkingDefault", "effectiveFastMode",
+    "effectiveFastModeSource", "fastAutoOnSeconds", "inputTokens",
+    "outputTokens", "totalTokens", "totalTokensFresh", "effectiveResponseUsage",
+    "modelProvider", "model", "agentRuntime", "hasActiveRun",
+  ] as const;
   const input = closed(value, label, keys); const output: WireObject = { key: string(input.key, `${label}.key`) };
   assign(output, "sessionId", string(input.sessionId, `${label}.sessionId`, false));
+  assign(output, "label", string(input.label, `${label}.label`, false));
+  assign(output, "displayName", string(input.displayName, `${label}.displayName`, false));
   assign(output, "createdAt", timestamp(input.createdAt, `${label}.createdAt`)); assign(output, "updatedAt", timestamp(input.updatedAt, `${label}.updatedAt`));
+  if (input.kind !== undefined) {
+    if (!["direct", "group", "global", "unknown"].includes(input.kind as string)) throw new OpenClawWireError(`${label}.kind is invalid`);
+    output.kind = input.kind as string;
+  }
+  for (const key of ["archived", "pinned", "unread", "effectiveFastMode", "totalTokensFresh", "hasActiveRun"]) {
+    assign(output, key, boolean(input[key], `${label}.${key}`));
+  }
+  assign(output, "thinkingLevel", string(input.thinkingLevel, `${label}.thinkingLevel`, false));
+  assignThinkingFields(input, output, label);
+  if (input.effectiveFastModeSource !== undefined) {
+    if (!["default", "session", "auto"].includes(input.effectiveFastModeSource as string)) throw new OpenClawWireError(`${label}.effectiveFastModeSource is invalid`);
+    output.effectiveFastModeSource = input.effectiveFastModeSource as string;
+  }
+  for (const key of ["fastAutoOnSeconds", "inputTokens", "outputTokens", "totalTokens"]) {
+    assign(output, key, integer(input[key], `${label}.${key}`, 0));
+  }
+  if (input.effectiveResponseUsage !== undefined) {
+    if (!["on", "off", "tokens", "full"].includes(input.effectiveResponseUsage as string)) throw new OpenClawWireError(`${label}.effectiveResponseUsage is invalid`);
+    output.effectiveResponseUsage = input.effectiveResponseUsage as string;
+  }
+  assign(output, "modelProvider", string(input.modelProvider, `${label}.modelProvider`, false));
+  assign(output, "model", string(input.model, `${label}.model`, false));
+  if (input.agentRuntime !== undefined) output.agentRuntime = agentRuntime(input.agentRuntime, `${label}.agentRuntime`);
   return output;
 }
 
@@ -161,8 +237,38 @@ export function parseModelsAuthStatus(value: unknown): WireObject {
   };
 }
 export function parseSessionsList(value: unknown): WireObject {
-  const input = closed(value, "payload", ["ts", "path", "count", "defaults", "sessions"]); closed(input.defaults, "defaults", []);
-  return { ts: timestamp(input.ts, "ts", true), path: string(input.path, "path", false), count: integer(input.count, "count", 0, true), defaults: {}, sessions: array(input.sessions, "sessions").map((item, i) => session(item, `sessions[${i}]`)) };
+  const input = closed(value, "payload", ["ts", "path", "count", "totalCount", "limitApplied", "offset", "nextOffset", "hasMore", "defaults", "sessions"]);
+  const output: WireObject = {
+    ts: timestamp(input.ts, "ts", true),
+    path: string(input.path, "path", false),
+    count: integer(input.count, "count", 0, true),
+    defaults: sessionDefaults(input.defaults),
+    sessions: array(input.sessions, "sessions").map((item, i) => session(item, `sessions[${i}]`)),
+  };
+  assign(output, "totalCount", integer(input.totalCount, "totalCount", 0));
+  assign(output, "limitApplied", integer(input.limitApplied, "limitApplied", 0));
+  assign(output, "offset", integer(input.offset, "offset", 0));
+  if (input.nextOffset !== undefined) output.nextOffset = input.nextOffset === null ? null : integer(input.nextOffset, "nextOffset", 0, true);
+  assign(output, "hasMore", boolean(input.hasMore, "hasMore"));
+  const currentPagination = ["totalCount", "limitApplied", "nextOffset", "hasMore"].some((key) => key in input);
+  if (currentPagination) {
+    if (!("totalCount" in output) || !("limitApplied" in output) || !("nextOffset" in output) || !("hasMore" in output)) {
+      throw new OpenClawWireError("sessions pagination metadata is incomplete");
+    }
+    const count = output.count as number;
+    const totalCount = output.totalCount as number;
+    const limitApplied = output.limitApplied as number;
+    const offset = (output.offset as number | undefined) ?? 0;
+    const nextOffset = output.nextOffset as number | null;
+    const hasMore = output.hasMore as boolean;
+    if (count !== (output.sessions as unknown[]).length || count > limitApplied || offset + count > totalCount) {
+      throw new OpenClawWireError("sessions pagination metadata is inconsistent");
+    }
+    if (hasMore ? nextOffset !== offset + count || nextOffset >= totalCount : nextOffset !== null || offset + count < totalCount) {
+      throw new OpenClawWireError("sessions pagination continuation is inconsistent");
+    }
+  }
+  return output;
 }
 export function parseSessionsDescribe(value: unknown): WireObject { const input = closed(value, "payload", ["session"]); if (!("session" in input)) throw new OpenClawWireError("session is required"); return { session: input.session === null ? null : session(input.session, "session") }; }
 export function parseSessionsAbort(value: unknown): WireObject {
@@ -180,9 +286,19 @@ export function parseUsageStatus(value: unknown): WireObject {
   const input = closed(value, "payload", ["updatedAt", "providers"]); return { updatedAt: timestamp(input.updatedAt, "updatedAt", true), providers: array(input.providers, "providers").map((item, i) => { const label = `providers[${i}]`; const provider = closed(item, label, ["provider", "displayName", "windows"]); return { provider: string(provider.provider, `${label}.provider`), displayName: string(provider.displayName, `${label}.displayName`), windows: array(provider.windows, `${label}.windows`).map((window, j) => usageWindow(window, `${label}.windows[${j}]`)) }; }) };
 }
 const USAGE_COST_KEYS = ["input", "output", "cacheRead", "cacheWrite", "totalTokens", "totalCost", "missingCostEntries"] as const;
+const USAGE_COST_DETAIL_KEYS = ["inputCost", "outputCost", "cacheReadCost", "cacheWriteCost"] as const;
 function usageCostMetrics(value: unknown, label: string, alreadyClosed = false): WireObject {
-  const input = alreadyClosed ? object(value, label) : closed(value, label, USAGE_COST_KEYS); const output: WireObject = {};
+  const input = alreadyClosed ? object(value, label) : closed(value, label, [...USAGE_COST_KEYS, ...USAGE_COST_DETAIL_KEYS]); const output: WireObject = {};
   for (const key of USAGE_COST_KEYS) {
+    const metric = input[key];
+    if (typeof metric !== "number" || !Number.isFinite(metric) || metric < 0) throw new OpenClawWireError(`${label}.${key} is invalid`);
+    output[key] = metric;
+  }
+  const presentDetails = USAGE_COST_DETAIL_KEYS.filter((key) => input[key] !== undefined);
+  if (presentDetails.length !== 0 && presentDetails.length !== USAGE_COST_DETAIL_KEYS.length) {
+    throw new OpenClawWireError(`${label} cost details are incomplete`);
+  }
+  for (const key of presentDetails) {
     const metric = input[key];
     if (typeof metric !== "number" || !Number.isFinite(metric) || metric < 0) throw new OpenClawWireError(`${label}.${key} is invalid`);
     output[key] = metric;
@@ -190,21 +306,45 @@ function usageCostMetrics(value: unknown, label: string, alreadyClosed = false):
   return output;
 }
 function usageCostDay(value: unknown, label: string): WireObject {
-  const input = closed(value, label, ["date", ...USAGE_COST_KEYS]);
+  const input = closed(value, label, ["date", ...USAGE_COST_KEYS, ...USAGE_COST_DETAIL_KEYS]);
   const output = usageCostMetrics(input, label, true);
   output.date = string(input.date, `${label}.date`);
   return output;
 }
-export function parseUsageCost(value: unknown): WireObject { const input = closed(value, "payload", ["updatedAt", "days", "totals", "daily"]); return { updatedAt: timestamp(input.updatedAt, "updatedAt", true), days: integer(input.days, "days", 0, true), totals: usageCostMetrics(input.totals, "totals"), daily: array(input.daily, "daily").map((item, i) => usageCostDay(item, `daily[${i}]`)) }; }
+function usageCacheStatus(value: unknown): WireObject {
+  const input = closed(value, "cacheStatus", ["status", "cachedFiles", "pendingFiles", "staleFiles", "refreshedAt"]);
+  if (!["fresh", "partial", "stale", "refreshing"].includes(input.status as string)) throw new OpenClawWireError("cacheStatus.status is invalid");
+  const output: WireObject = {
+    status: input.status as string,
+    cachedFiles: integer(input.cachedFiles, "cacheStatus.cachedFiles", 0, true),
+    pendingFiles: integer(input.pendingFiles, "cacheStatus.pendingFiles", 0, true),
+    staleFiles: integer(input.staleFiles, "cacheStatus.staleFiles", 0, true),
+  };
+  assign(output, "refreshedAt", numericTimestamp(input.refreshedAt, "cacheStatus.refreshedAt"));
+  return output;
+}
+export function parseUsageCost(value: unknown): WireObject {
+  const input = closed(value, "payload", ["updatedAt", "days", "totals", "daily", "cacheStatus"]);
+  const output: WireObject = {
+    updatedAt: timestamp(input.updatedAt, "updatedAt", true),
+    days: integer(input.days, "days", 0, true),
+    totals: usageCostMetrics(input.totals, "totals"),
+    daily: array(input.daily, "daily").map((item, i) => usageCostDay(item, `daily[${i}]`)),
+  };
+  if (input.cacheStatus !== undefined) output.cacheStatus = usageCacheStatus(input.cacheStatus);
+  return output;
+}
 export function parseTasksList(value: unknown): WireObject { const input = closed(value, "payload", ["tasks", "nextCursor"]); const output: WireObject = { tasks: array(input.tasks, "tasks").map((item, i) => task(item, `tasks[${i}]`)) }; assign(output, "nextCursor", string(input.nextCursor, "nextCursor", false)); return output; }
 export function parseTasksGet(value: unknown): WireObject { const input = closed(value, "payload", ["task"]); return { task: task(input.task, "task") }; }
 export function parseTasksCancel(value: unknown): WireObject { const input = closed(value, "payload", ["found", "cancelled", "reason", "task"]); const output: WireObject = { found: boolean(input.found, "found", true), cancelled: boolean(input.cancelled, "cancelled", true) }; assign(output, "reason", string(input.reason, "reason", false)); if (input.task !== undefined) output.task = task(input.task, "task"); return output; }
 
 function agent(value: unknown, label: string): WireObject {
-  const input = closed(value, label, ["id", "name", "identity", "workspace", "workspaceGit", "model"]); const output: WireObject = { id: string(input.id, `${label}.id`) };
+  const input = closed(value, label, ["id", "name", "identity", "workspace", "workspaceGit", "model", "agentRuntime", "thinkingLevels", "thinkingOptions", "thinkingDefault"]); const output: WireObject = { id: string(input.id, `${label}.id`) };
   assign(output, "name", string(input.name, `${label}.name`, false)); assign(output, "workspace", string(input.workspace, `${label}.workspace`, false)); assign(output, "workspaceGit", boolean(input.workspaceGit, `${label}.workspaceGit`));
   if (input.identity !== undefined) { const identity = closed(input.identity, `${label}.identity`, ["name", "theme", "emoji", "avatar", "avatarUrl"]); const copy: WireObject = {}; for (const key of ["name", "theme", "emoji", "avatar", "avatarUrl"]) assign(copy, key, string(identity[key], `${label}.identity.${key}`, false)); output.identity = copy; }
   if (input.model !== undefined) { const modelInput = closed(input.model, `${label}.model`, ["primary", "fallbacks"]); const copy: WireObject = {}; assign(copy, "primary", string(modelInput.primary, `${label}.model.primary`, false)); if (modelInput.fallbacks !== undefined) copy.fallbacks = strings(modelInput.fallbacks, `${label}.model.fallbacks`); output.model = copy; }
+  if (input.agentRuntime !== undefined) output.agentRuntime = agentRuntime(input.agentRuntime, `${label}.agentRuntime`);
+  assignThinkingFields(input, output, label);
   return output;
 }
 export function parseAgentsList(value: unknown): WireObject { const input = closed(value, "payload", ["defaultId", "mainKey", "scope", "agents"]); if (input.scope !== "per-sender" && input.scope !== "global") throw new OpenClawWireError("scope is invalid"); return { defaultId: string(input.defaultId, "defaultId"), mainKey: string(input.mainKey, "mainKey"), scope: input.scope, agents: array(input.agents, "agents").map((item, i) => agent(item, `agents[${i}]`)) }; }
