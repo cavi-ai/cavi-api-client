@@ -1,5 +1,6 @@
 import type { TransportMessageChannel } from "../../../../core/transport/channel.js";
 import type { TransportError } from "../../../../core/transport/error.js";
+import type { RawGatewayConnectionState } from "../../../../core/runtime/control-plane/raw-gateway.js";
 
 export type RequestOptions = Readonly<{ signal?: AbortSignal }>;
 
@@ -20,3 +21,10 @@ export interface HermesDashboardJsonRpcClient {
   subscribe(listener: (event: HermesDashboardEvent) => void): () => void;
   dispose(): Promise<void>;
 }
+
+export type HermesRawGatewayLifecycle = Readonly<{
+  connect: () => Promise<void>;
+  getConnectionState: () => RawGatewayConnectionState;
+  onConnectionState: (listener: (state: RawGatewayConnectionState) => void) => () => void;
+  dispose?: () => void | Promise<void>;
+}>;

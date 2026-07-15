@@ -98,9 +98,10 @@ describe("Hermes dashboard REST client", () => {
     }));
     const client = createHermesDashboardRestClient({ baseUrl: "", authToken: null, fetchImpl, fallback });
     const controller = new AbortController();
+    const reason = new DOMException("stopped", "AbortError");
     const pending = client.listSessions({ signal: controller.signal });
-    controller.abort(new DOMException("stopped", "AbortError"));
-    await expect(pending).rejects.toMatchObject({ name: "HttpApiError", status: 0 });
+    controller.abort(reason);
+    await expect(pending).rejects.toBe(reason);
     expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     expect(fallback.request).not.toHaveBeenCalled();
   });

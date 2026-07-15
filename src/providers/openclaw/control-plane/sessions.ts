@@ -26,6 +26,8 @@ type CancelOptions = RequestOptions & { operationId?: string };
 type WireSession = {
   key: string;
   sessionId?: string;
+  label?: string;
+  displayName?: string;
   createdAt?: string | number;
   updatedAt?: string | number;
 };
@@ -102,9 +104,11 @@ function mapSession(
   state: RuntimeSessionState = "unknown",
   providerData?: Record<string, unknown>,
 ): RuntimeSessionSummary {
+  const title = session.label ?? session.displayName;
   return {
     id: session.key,
     providerId: session.sessionId ?? session.key,
+    ...(title === undefined ? {} : { title }),
     state,
     ...(session.createdAt === undefined ? {} : { createdAt: normalizeTimestamp(session.createdAt) }),
     ...(session.updatedAt === undefined ? {} : { updatedAt: normalizeTimestamp(session.updatedAt) }),
@@ -130,8 +134,13 @@ export function createOpenClawSessionClient(rpc: OpenClawRpc) {
         const sessions = parsed.sessions as WireSession[];
         const data = sessions.slice(offset, offset + limit).map((session) => mapSession(session, "sessions.list"));
         const nextOffset = offset + data.length;
-        const hasNext = nextOffset < Math.min(parsed.count as number, MAX_UPSTREAM_SESSIONS)
-          && nextOffset < sessions.length;
+        const hasCurrentPagination = typeof parsed.hasMore === "boolean";
+        const hasNext = hasCurrentPagination
+          ? parsed.hasMore === true
+            && parsed.nextOffset === nextOffset
+            && nextOffset < Math.min(parsed.totalCount as number, MAX_UPSTREAM_SESSIONS)
+          : nextOffset < Math.min(parsed.count as number, MAX_UPSTREAM_SESSIONS)
+            && nextOffset < sessions.length;
         return { data, ...(hasNext ? { nextCursor: encodeCursor(nextOffset) } : {}) };
       });
     },

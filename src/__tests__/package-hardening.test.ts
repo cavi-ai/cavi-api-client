@@ -62,10 +62,12 @@ import {
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   CAVI_SURFACE_CONTRACTS,
+  LIBRARY_LEGACY_API_BASE_PATH,
   TEAM_REGISTRY_CONFIG,
   appendCaviApiPath,
   resolveCaviPath,
   resolveLibraryApiPath,
+  resolvePluginApiPath,
   resolvePortalApiPath,
 } from "../extensions/cavi/index";
 
@@ -147,6 +149,16 @@ const APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS = [
   "RuntimeControlClientOptions",
   "CapabilityUnavailable",
   "createRuntimeControlClient",
+  "RuntimeControlExtensionDescriptor",
+  "RuntimeControlExtensionRegistry",
+  "createRuntimeControlExtensionRegistry",
+  "defineRuntimeControlExtension",
+  "withRuntimeControlExtensions",
+  "GATEWAY_RAW_EXTENSION",
+  "RawGatewayChannel",
+  "RawGatewayConnectionState",
+  "RawGatewayEvent",
+  "RawGatewayRequestOptions",
 ] as const;
 
 const FORBIDDEN_PACKAGES = [
@@ -519,6 +531,8 @@ describe("package hardening", () => {
       );
 
     expect(source).toContain("export const CAVI_CONTROL_OPERATOR_API");
+    expect(source).toContain("export const LIBRARY_LEGACY_API_BASE_PATH");
+    expect(source).toContain("export function resolvePluginApiPath");
     expect(source).toContain("projectBoard:");
     expect(hiddenFeaturePathOwners).toEqual([]);
   });
@@ -640,6 +654,7 @@ describe("package hardening", () => {
       ["./core/runtime/providers", "core/runtime/providers/index"],
       ["./providers/hermes", "providers/hermes/index"],
       ["./extensions/cavi", "extensions/cavi/index"],
+      ["./testing", "testing/index"],
     ] as const) {
       expect(packageJson.exports[subpath]).toEqual({
         types: `./dist/${target}.d.ts`,
@@ -658,6 +673,7 @@ describe("package hardening", () => {
       "@cavi-ai/api-client/core/runtime/providers",
       "@cavi-ai/api-client/providers/hermes",
       "@cavi-ai/api-client/extensions/cavi",
+      "@cavi-ai/api-client/testing",
     ]) expect(packedConsumerScript).toContain(specifier);
     expect(packedConsumerScript).toContain('"moduleResolution": "NodeNext"');
     expect(packedConsumerScript).toContain("--ignore-scripts");
@@ -1136,6 +1152,7 @@ describe("package hardening", () => {
 
     expect(rootIndex).toContain('from "./core/runtime/control-plane/index.js"');
     expect(testingIndex).toContain('export * from "./runtime-control-plane-conformance.js"');
+    expect(testingIndex).toContain('export * from "./raw-gateway-conformance.js"');
     expect(rootIndex).toContain('from "./providers/capability-matrix.js"');
     expect(rootIndex).toContain("RUNTIME_PROVIDER_CAPABILITY_MATRIX");
     expect(rootIndex).toContain("getRuntimeProviderCapabilityRow");
@@ -1143,6 +1160,27 @@ describe("package hardening", () => {
     expect(rootIndex).toContain("RuntimeProviderCapabilityRow");
     expect(rootIndex).not.toMatch(/(?:CLAUDE|CODEX|GEMINI|HERMES|OPENCLAW)_PROVIDER_MODULE/u);
     expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
+  });
+
+  it("keeps provider-neutral runtime-control and testing code free of concrete raw transports", () => {
+    const providerNeutralFiles = [
+      ...walkFiles(path.join(SRC_ROOT, "core", "runtime", "control-plane")),
+      path.join(SRC_ROOT, "testing", "raw-gateway-conformance.ts"),
+    ];
+    const concreteImport = /from\s+["'][^"']*(?:providers\/|extensions\/cavi\/providers\/|core\/(?:gateway\/rpc|ws|sse)(?:\/|(?:\.[cm]?[jt]s)?(?=["']))|core\/transport\/(?:websocket|sse|json-rpc)(?:\/|(?:\.[cm]?[jt]s)?(?=["'])))[^"']*["']/u;
+    for (const directImport of [
+      'import { x } from "../core/transport/websocket.js";',
+      'import { x } from "../core/transport/sse.ts";',
+      'import { x } from "../core/transport/json-rpc";',
+      'import { x } from "../core/ws/index.js";',
+      'import { x } from "../core/sse/stream.js";',
+      'import { x } from "../core/gateway/rpc/error.js";',
+    ]) expect(concreteImport.test(directImport)).toBe(true);
+    const offenders = providerNeutralFiles
+      .filter((filePath) => concreteImport.test(read(filePath)))
+      .map(rel);
+
+    expect(offenders).toEqual([]);
   });
 
   it("curates approved root additions without exporting transport factories", () => {
@@ -1255,6 +1293,10 @@ describe("package hardening", () => {
     expect(resolvePortalApiPath("machine", "dashboard")).toBe(
       "/api/plugins/portal/machine/dashboard",
     );
+    expect(resolvePluginApiPath("machine", "dashboard")).toBe(
+      "/api/plugins/machine/dashboard",
+    );
+    expect(LIBRARY_LEGACY_API_BASE_PATH).toBe("/library/api");
     expect(resolveLibraryApiPath("status")).toBe("/library/api/status");
     expect(resolveLibraryApiPath("/library/api/status")).toBe("/library/api/status");
     expect(() => appendCaviApiPath("/api/plugins/demo", "../secret")).toThrow(

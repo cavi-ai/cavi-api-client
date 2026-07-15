@@ -10,6 +10,7 @@ import type {
   OpenClawRpc,
   OpenClawRpcEvent,
 } from "./control-plane/rpc.js";
+import type { RawGatewayConnectionState } from "../../core/runtime/control-plane/raw-gateway.js";
 
 export type OpenClawWebSocketClientOptions = GatewayWebSocketClientOptions;
 
@@ -66,9 +67,13 @@ function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(abortError());
     signal.addEventListener("abort", abort, { once: true });
-    void promise.then(resolve, reject).finally(() => {
+    const cleanup = () => {
       signal.removeEventListener("abort", abort);
-    });
+    };
+    void promise.then(
+      (value) => { cleanup(); resolve(value); },
+      (error) => { cleanup(); reject(error); },
+    );
   });
 }
 
@@ -89,11 +94,16 @@ export class OpenClawWebSocketClient
     params: Record<string, unknown> = {},
     options?: { signal?: AbortSignal },
   ): Promise<TPayload> {
+    if (options?.signal?.aborted) return Promise.reject(abortError());
     return withAbort(super.request<TPayload>(method, params), options?.signal);
   }
 
   subscribe(listener: (event: OpenClawRpcEvent) => void): () => void {
     return this.onEvent(listener);
+  }
+
+  onConnectionState(listener: (state: RawGatewayConnectionState, error?: unknown) => void): () => void {
+    return this.onStateChange((state, error) => listener(state, error ?? undefined));
   }
 
   dispose(): Promise<void> {

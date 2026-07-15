@@ -35,7 +35,8 @@ src/index.ts
   inventory and the four released provider forwarding exceptions are recorded
   in [CAVI Extension Ownership](docs/extension-ownership.md).
   Its runtime-control registry enhancer clones an application registry and
-  installs only the resolved Hermes CAVI factory; it does not mutate the base
+  wraps configured OpenClaw and Hermes factories with the typed `cavi.control`
+  extension; it does not mutate the base
   registry, root capability matrix, provider-neutral factory, or other modules.
   Canonical normalized-kind cardinality and semantic kind/alias resolution are
   validated before composition, so missing, ambiguous, and alias-shadowed
@@ -68,7 +69,11 @@ that kernel. Narrow runtime provider entries exclude CAVI product adapters.
 Historical Hermes/OpenClaw team-registry exports remain deprecated forwarding
 aliases, while their implementations are owned by `extensions/cavi/providers`.
 The public `testing` entry exposes runner-neutral conformance reports for
-third-party provider authors.
+third-party provider authors, including one shared raw-gateway harness that
+binds a channel to controllable driver events and lifecycle state without a
+provider discriminator. Both OpenClaw and Hermes drivers must pass that same
+request, raw-event, reconnect, abort, unsupported-operation, and exact-once
+disposal contract.
 
 OpenClaw/Hermes-specific behavior belongs in the matching provider module; Claude
 (Anthropic) is runtime-only and maps `startRun` to the Messages API. Claude also
@@ -109,7 +114,39 @@ transport capabilities.
 
 `RuntimeControlClient` is an additive, required-shape facade over those
 seven modules: authentication status, sessions, models, usage, tasks, workspace,
-and events. It also owns an idempotent `dispose()` lifecycle method. When an
+and events. It also owns an immutable typed extension registry and an idempotent
+`dispose()` lifecycle method. Extension descriptors give later capabilities a
+provider-neutral discovery seam without adding provider-name branches to core.
+The optional singleton `gateway.raw` descriptor uses that seam for arbitrary
+gateway operations, unchanged raw event snapshots, connection state, and an
+exact-once asynchronous lifecycle. It does not widen normalized
+`RuntimeControlClient.events`, claim that a provider implements the extension,
+or overlap the product-specific `cavi.control` adapter.
+OpenClaw owns the extension through its gateway WebSocket. Hermes installs it
+only with a configured JSON-RPC message channel; its normalized SSE run-event
+surface is separate and REST-only Hermes configurations do not claim raw
+support. Provider-neutral core and testing modules cannot import concrete RPC,
+WebSocket, SSE, JSON-RPC, or provider drivers.
+`RuntimeControlClientOptions.gatewayConnection` composes the existing
+provider-neutral `GatewayRpcClientOptions` for owned gateway handshakes and
+request controls. OpenClaw forwards those settings into its owned WebSocket;
+injected transports remain authoritative and caller-owned. Hermes rejects
+semantically supplied settings field by field with `CapabilityUnavailable`, because its
+dashboard JSON-RPC channel has no equivalent connect handshake. This prevents
+security configuration from being silently discarded.
+`RuntimeControlClientOptions.gatewayReconnect` is the provider-neutral opt-in
+policy for the canonical gateway lifecycle and reuses `TransportRetryPolicy`.
+The shared lifecycle owns bounded backoff, retryability gating, in-flight-only
+connect deduplication, state publication, and timer cancellation. OpenClaw
+supplies truthful RPC close/auth/protocol metadata. Hermes rejects the policy
+and post-close reconnect explicitly because a fixed dashboard message channel
+cannot be safely rebuilt in place.
+Explicitly undefined fields and scope arrays that core normalizes to omission
+are accepted. So are zero request timeout, concurrency, and pre-auth timeout,
+whose shared resolvers select defaults. Protocol zero, false, blank identity
+strings, and empty pre-auth maps are still supplied because they can change the
+shared RPC behavior.
+When an
 adapter is unavailable, `createUnavailableRuntimeControlClient` preserves the
 shape while rejecting every module operation with a fresh
 `CapabilityUnavailable` that identifies the provider and capability; disposal
@@ -163,13 +200,23 @@ the adapter emits `stream.reconnected` followed by `stream.gap` when continuity
 cannot be proven; it does not claim replay.
 
 The CAVI extension composes Hermes without changing that provider boundary.
-Hermes dashboard calls use standard JSON-RPC 2.0 over a shared message-channel
+The provider-neutral `baseUrl` targets Hermes's aiohttp API Server, whose
+control plane is capability-discovered REST plus opt-in existing-run SSE. It
+does not mount WebSocket and does not map cron jobs to runtime tasks. Hermes
+dashboard calls use standard JSON-RPC 2.0 over a separately configured shared message-channel
 contract, whereas OpenClaw uses its authenticated gateway handshake and custom
 WebSocket RPC framing. The session module requires both dashboard REST and a
 channel; only then can list and usage fall back from JSON-RPC to dashboard REST
-for channel unavailability, while detail remains REST. Hermes events require
-only the channel and are JSON-RPC notifications. SSE is a separate core
-transport and is not implied by either runtime-control adapter.
+for channel unavailability, while detail remains REST. Dashboard events require
+only the channel and are JSON-RPC notifications. API Server SSE is installed
+only when the caller supplies an existing run id, session key, and client
+identity; no run mutation is invented.
+The facade owns every active SSE subscription, suppresses delivery after
+disposal, and aborts streams exactly once. API Server resolved authentication
+and explicit dashboard-token authentication remain origin-scoped and cannot
+override or leak into each other.
+Natural stream completion and transport failure unregister the subscription
+before later runtime disposal, including completion-before-registration races.
 
 An explicit Hermes dashboard token suppresses authentication resolution and
 wins over the generic token. Without a dashboard token, a resolved
@@ -226,6 +273,9 @@ API route literals are centralized:
 Clients, adapters, React hooks, and provider modules should import path constants
 or use resolver helpers instead of assembling paths inline. The hardening tests
 enforce this for both bare paths and full URLs with embedded paths.
+Generic CAVI plugin routes use `resolvePluginApiPath`; portal-dispatch routes use
+the separate `resolvePortalApiPath` contract. The legacy library base remains an
+input-normalization alias and does not redefine the plugin library surface.
 
 ## Data And Failure Semantics
 

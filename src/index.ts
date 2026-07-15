@@ -99,13 +99,22 @@ export {
 export { unsupportedRuntimeSurface, type RuntimeClient } from "./core/runtime/client.js";
 export {
   CapabilityUnavailable,
+  createRuntimeControlExtensionRegistry,
+  defineRuntimeControlExtension,
+  GATEWAY_RAW_EXTENSION,
   RUNTIME_CONTROL_PLANE_EVENT_NAMES,
   RUNTIME_TRANSPORT_KINDS,
   inspectRuntimeEventSequence,
   runtimeTransportSupports,
   type AuthStatusClient,
   type RuntimeControlClient,
+  type RuntimeControlExtensionDescriptor,
+  type RuntimeControlExtensionRegistry,
   type ModelCatalogClient,
+  type RawGatewayChannel,
+  type RawGatewayConnectionState,
+  type RawGatewayEvent,
+  type RawGatewayRequestOptions,
   type RuntimeAuthStatus,
   type RuntimeControlPlane,
   type RuntimeControlPlaneEvent,
@@ -133,6 +142,7 @@ export {
   type TaskClient,
   type UsageClient,
   type WorkspaceClient,
+  withRuntimeControlExtensions,
 } from "./core/runtime/control-plane/index.js";
 export {
   createRuntimeClient,

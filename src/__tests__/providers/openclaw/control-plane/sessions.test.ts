@@ -65,6 +65,70 @@ describe("OpenClaw session control plane", () => {
     expect(result.nextCursor).toEqual(expect.any(String));
   });
 
+  it("maps an upstream session label to the canonical title before displayName", async () => {
+    const rpc = createRpc({
+      ts: 1,
+      count: 1,
+      defaults: {},
+      sessions: [{
+        key: "session:labelled",
+        sessionId: "native-labelled",
+        label: "User rename",
+        displayName: "Derived channel title",
+      }],
+    });
+
+    const result = await createOpenClawSessionClient(rpc).listSessions();
+
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        id: "session:labelled",
+        providerId: "native-labelled",
+        title: "User rename",
+      }),
+    ]);
+  });
+
+  it("uses current upstream pagination metadata without truncating later pages", async () => {
+    const rpc: OpenClawRpc = {
+      request: vi.fn(async (_method, params) => params.limit === 2
+        ? {
+            ts: 1,
+            path: "/sessions",
+            count: 2,
+            totalCount: 3,
+            limitApplied: 2,
+            nextOffset: 2,
+            hasMore: true,
+            defaults: {},
+            sessions: [{ key: "s0" }, { key: "s1" }],
+          }
+        : {
+            ts: 1,
+            path: "/sessions",
+            count: 3,
+            totalCount: 3,
+            limitApplied: 3,
+            nextOffset: null,
+            hasMore: false,
+            defaults: {},
+            sessions: [{ key: "s0" }, { key: "s1" }, { key: "s2" }],
+          }),
+      subscribe: vi.fn(() => () => undefined),
+      dispose: vi.fn(async () => undefined),
+    };
+    const client = createOpenClawSessionClient(rpc);
+
+    const first = await client.listSessions({ limit: 2 });
+    const second = await client.listSessions({ cursor: first.nextCursor, limit: 2 });
+
+    expect(first.data.map(({ id }) => id)).toEqual(["s0", "s1"]);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(second.data.map(({ id }) => id)).toEqual(["s2"]);
+    expect(second.nextCursor).toBeUndefined();
+    expect(rpc.request).toHaveBeenNthCalledWith(2, "sessions.list", { limit: 4 }, { signal: undefined });
+  });
+
   it("uses a private cursor offset and caps the upstream page bound", async () => {
     const firstRpc = createRpc({ ts: 0, count: 300, defaults: {}, sessions: [{ key: "s0" }, { key: "s1" }] });
     const first = await createOpenClawSessionClient(firstRpc).listSessions({ limit: 1 });
@@ -128,6 +192,24 @@ describe("OpenClaw session control plane", () => {
     expect(result).not.toHaveProperty("title");
     expect(result).not.toHaveProperty("createdAt");
     expect(vi.mocked(rpc.request).mock.calls.some(([method]) => method === "sessions.get")).toBe(false);
+  });
+
+  it("maps upstream displayName to the canonical title when label is absent", async () => {
+    const rpc = createRpc({
+      session: {
+        key: "session:display-name",
+        sessionId: "native-display-name",
+        displayName: "Derived channel title",
+      },
+    });
+
+    const result = await createOpenClawSessionClient(rpc).getSession("session:display-name");
+
+    expect(result).toEqual(expect.objectContaining({
+      id: "session:display-name",
+      providerId: "native-display-name",
+      title: "Derived channel title",
+    }));
   });
 
   it("cancels once with operationId mapped to runId and reports an aborted run truthfully", async () => {
