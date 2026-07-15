@@ -60,12 +60,6 @@ describe("GeminiApiClient", () => {
     expect(status.error).toBe("SAFETY");
   });
 
-  it("getRun and cancelRun throw EndpointNotFound (synchronous API)", async () => {
-    const client = new GeminiApiClient({ apiKey: "k", fetchImpl: mockFetch({}) });
-    await expect(client.getRun("x")).rejects.toThrow(/unsupported/);
-    await expect(client.cancelRun("x")).rejects.toThrow(/unsupported/);
-  });
-
   it("dryRun:true short-circuits startRun with zero network calls (A3)", async () => {
     const fetchImpl = mockFetch({});
     const client = new GeminiApiClient({ apiKey: "k", fetchImpl });
@@ -82,5 +76,39 @@ describe("GeminiApiClient", () => {
   it("dryRun:true still validates — missing model throws ValidationFailed", async () => {
     const client = new GeminiApiClient({ apiKey: "k", fetchImpl: mockFetch({}) });
     await expect(client.startRun({ input: "hi", dryRun: true })).rejects.toThrow(/model is required/);
+  });
+
+  describe("Gemini getRun/cancelRun graceful degrade", () => {
+    const okResponse = {
+      candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 },
+    };
+    const fetchImpl = () =>
+      (async () =>
+        new Response(JSON.stringify(okResponse), {
+          status: 200, headers: { "content-type": "application/json" },
+        })) as unknown as typeof fetch;
+
+    it("getRun returns the terminal status for a run started via this client", async () => {
+      const client = new GeminiApiClient({ apiKey: "k", defaultModel: "gemini-2.5-flash", fetchImpl: fetchImpl() });
+      const started = await client.startRun({ input: "hi" });
+      const got = await client.getRun(started.run_id);
+      expect(got.run_id).toBe(started.run_id);
+      expect(got.status).toBe(started.status);
+    });
+
+    it("getRun returns an honest unknown status (never throws) for a foreign run id", async () => {
+      const client = new GeminiApiClient({ apiKey: "k", defaultModel: "gemini-2.5-flash", fetchImpl: fetchImpl() });
+      const got = await client.getRun("gemini-not-ours");
+      expect(got.status).toBe("unknown");
+      expect(got.error).toContain("gemini");
+    });
+
+    it("cancelRun is a no-op success that never throws", async () => {
+      const client = new GeminiApiClient({ apiKey: "k", defaultModel: "gemini-2.5-flash", fetchImpl: fetchImpl() });
+      const started = await client.startRun({ input: "hi" });
+      await expect(client.cancelRun(started.run_id)).resolves.toEqual({ status: started.status });
+      await expect(client.cancelRun("foreign")).resolves.toEqual({ status: "completed" });
+    });
   });
 });
