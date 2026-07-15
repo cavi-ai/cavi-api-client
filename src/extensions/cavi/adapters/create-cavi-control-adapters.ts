@@ -358,3 +358,5 @@ export function createCaviControlAdapters(opts: {
     callProjectBoard: projectBoardMutations.callProjectBoard,
   };
 }
+
+export type CaviControlAdapterOptions = Parameters<typeof createCaviControlAdapters>[0];

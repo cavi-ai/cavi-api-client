@@ -1,0 +1,53 @@
+# Runtime-control compatibility ledger
+
+> Generated from `runtime-control-ledger.json` by `pnpm run check:runtime-control-ledger`. Do not edit by hand.
+
+| Domain | Operation | Canonical capability | Provider | Status | Transport | Wire operation | Upstream revision | Fixture | Live proof |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| auth | listAuthStatus | `controlPlane.authStatus.list` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| auth | listAuthStatus | `controlPlane.authStatus.list` | hermes | extension | http | `unavailable (API Server); GET /api/provider-auth (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/rest/provider-auth.json` | required |
+| auth | listAuthStatus | `controlPlane.authStatus.list` | openclaw | core | websocket | `models.authStatus` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/models-auth-status.json` | required |
+| sessions | cancelSession | `controlPlane.sessions.cancel` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| sessions | cancelSession | `controlPlane.sessions.cancel` | hermes | extension | json-rpc | `unavailable (API Server); session.interrupt (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/json-rpc/session-interrupt-result.json` | required |
+| sessions | cancelSession | `controlPlane.sessions.cancel` | openclaw | core | websocket | `sessions.abort` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/sessions-abort.json` | required |
+| sessions | getSession | `controlPlane.sessions.get` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| sessions | getSession | `controlPlane.sessions.get` | hermes | extension | http | `unavailable (API Server); GET /api/sessions/{id} (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/rest/session-detail.json` | required |
+| sessions | getSession | `controlPlane.sessions.get` | openclaw | core | websocket | `sessions.describe` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/sessions-describe.json` | required |
+| sessions | listSessions | `controlPlane.sessions.list` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| sessions | listSessions | `controlPlane.sessions.list` | hermes | extension | http | `GET /api/sessions/list (API Server); session.list (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/api-server/sessions-list.json` | required |
+| sessions | listSessions | `controlPlane.sessions.list` | openclaw | core | websocket | `sessions.list` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/sessions-list.json` | required |
+| models | listModels | `controlPlane.models.list` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| models | listModels | `controlPlane.models.list` | hermes | extension | http | `GET /v1/models (API Server); GET /api/models (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/api-server/models.json` | required |
+| models | listModels | `controlPlane.models.list` | openclaw | core | websocket | `models.list` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/models-list.json` | required |
+| usage | getUsage | `controlPlane.usage.get` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| usage | getUsage | `controlPlane.usage.get` | hermes | extension | http | `GET /api/sessions/usage (API Server); GET /api/analytics/usage (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/api-server/sessions-usage.json` | required |
+| usage | getUsage | `controlPlane.usage.get` | openclaw | core | websocket | `usage.status` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/usage-status.json` | required |
+| cost | getCost | `controlPlane.cost.get` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| cost | getCost | `controlPlane.cost.get` | hermes | extension | http | `unavailable (API Server); GET /api/analytics/usage (explicit dashboard)` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/rest/analytics-usage.json` | required |
+| cost | getCost | `controlPlane.cost.get` | openclaw | core | websocket | `usage.cost` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/usage-cost.json` | required |
+| tasks | cancelTask | `controlPlane.tasks.cancel` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| tasks | cancelTask | `controlPlane.tasks.cancel` | hermes | extension | http | `operator.tasks.cancel` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/mock-data/cavi/operator/snapshot.ts` | required |
+| tasks | cancelTask | `controlPlane.tasks.cancel` | openclaw | core | websocket | `tasks.cancel` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/tasks-cancel.json` | required |
+| tasks | getTask | `controlPlane.tasks.get` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| tasks | getTask | `controlPlane.tasks.get` | hermes | extension | http | `operator.tasks.get` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/mock-data/cavi/operator/snapshot.ts` | required |
+| tasks | getTask | `controlPlane.tasks.get` | openclaw | core | websocket | `tasks.get` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/tasks-get.json` | required |
+| tasks | listTasks | `controlPlane.tasks.list` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| tasks | listTasks | `controlPlane.tasks.list` | hermes | extension | http | `operator.tasks.list` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/mock-data/cavi/operator/snapshot.ts` | required |
+| tasks | listTasks | `controlPlane.tasks.list` | openclaw | core | websocket | `tasks.list` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/tasks-list.json` | required |
+| workspace | getWorkspace | `controlPlane.workspace.get` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| workspace | getWorkspace | `controlPlane.workspace.get` | hermes | extension | http | `operator.workspaces.get` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/mock-data/cavi/operator/snapshot.ts` | required |
+| workspace | getWorkspace | `controlPlane.workspace.get` | openclaw | core | websocket | `agents.list` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/agents-list.json` | required |
+| workspace | listWorkspaces | `controlPlane.workspace.list` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| workspace | listWorkspaces | `controlPlane.workspace.list` | hermes | extension | http | `operator.workspaces.list` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/mock-data/cavi/operator/snapshot.ts` | required |
+| workspace | listWorkspaces | `controlPlane.workspace.list` | openclaw | core | websocket | `agents.list` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/agents-list.json` | required |
+| events | rawConnectionState | `gateway.raw.state` | hermes | extension | json-rpc | `message-channel lifecycle and gateway.ready notification` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/json-rpc/event-notification.json` | required |
+| events | rawConnectionState | `gateway.raw.state` | openclaw | core | websocket | `gateway WebSocket lifecycle` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/providers/openclaw/control-plane/raw-gateway.test.ts` | required |
+| events | rawReconnect | `gateway.raw.reconnect` | hermes | unavailable | json-rpc | `fixed message channel cannot be reconstructed` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | — | not-applicable |
+| events | rawReconnect | `gateway.raw.reconnect` | openclaw | core | websocket | `retryable gateway WebSocket reconnect` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/providers/openclaw/control-plane/raw-gateway.test.ts` | required |
+| events | rawRequest | `gateway.raw.request` | hermes | extension | json-rpc | `arbitrary JSON-RPC method` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/json-rpc/session-list-request.json` | required |
+| events | rawRequest | `gateway.raw.request` | openclaw | core | websocket | `arbitrary gateway RPC method` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/sessions-list.json` | required |
+| events | rawSubscribe | `gateway.raw.events` | hermes | extension | json-rpc | `JSON-RPC notification` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/dashboard/json-rpc/event-notification.json` | required |
+| events | rawSubscribe | `gateway.raw.events` | openclaw | core | websocket | `event` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/providers/openclaw/control-plane/raw-gateway.test.ts` | required |
+| events | subscribe | `controlPlane.events.subscribe` | codex | unavailable | stdio | `unavailable` | `9e552e9d15ba52bed7077d5357f3e18e330f8f38` | — | not-applicable |
+| events | subscribe | `controlPlane.events.subscribe` | hermes | extension | sse | `GET /v1/runs/{id}/events` | `de1950c24b214d0127dc72eeb73fdcd90d841d14` | `src/__tests__/fixtures/hermes/runtime/events/run-events.txt` | required |
+| events | subscribe | `controlPlane.events.subscribe` | openclaw | core | websocket | `event` | `4583102e29175a35815ea8031d6a0f254f7b4514` | `src/__tests__/fixtures/openclaw/control-plane/sessions-list.json` | required |

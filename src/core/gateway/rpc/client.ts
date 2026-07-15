@@ -348,6 +348,20 @@ function normalizeGatewayRpcError(
   return new GatewayRpcError(getErrorMessage(error, fallbackMessage), fallbackCode);
 }
 
+function gatewayConnectionError(
+  error: GatewayRpcError,
+  phase: "authenticate" | "connect" | "close",
+  retryable: boolean,
+): GatewayRpcError {
+  return new GatewayRpcError(error.message, error.code, {
+    kind: "websocket",
+    phase,
+    operation: "connect",
+    retryable,
+    attempt: 1,
+  });
+}
+
 function redactGatewayRpcTraceParams(
   method: string,
   params: Record<string, unknown>,
@@ -403,6 +417,13 @@ function createGatewaySocketClosedError(
       ? "gateway websocket closed"
       : closed.message,
     ApiClientErrorCode.SocketClosed,
+    {
+      kind: "websocket",
+      phase: "close",
+      operation: "connect",
+      retryable: true,
+      attempt: 1,
+    },
   );
 }
 
@@ -733,10 +754,20 @@ export class GatewayRpcClient {
               return;
             }
             connectPhase = "settled";
-            const normalizedError = normalizeGatewayRpcError(
+            const normalized = normalizeGatewayRpcError(
               error,
               "gateway connect failed",
               ApiClientErrorCode.ConnectFailed,
+            );
+            const normalizedError = gatewayConnectionError(
+              normalized,
+              normalized.code === ApiClientErrorCode.AuthRequired || normalized.code === ApiClientErrorCode.AuthForbidden
+                ? "authenticate"
+                : "connect",
+              normalized.code !== ApiClientErrorCode.AuthRequired
+                && normalized.code !== ApiClientErrorCode.AuthForbidden
+                && normalized.code !== ApiClientErrorCode.ProtocolMismatch
+                && normalized.code !== ApiClientErrorCode.PermissionDenied,
             );
             this.setState("error", normalizedError);
             this.connectRejected = true;
@@ -794,6 +825,10 @@ export class GatewayRpcClient {
         const error = new GatewayRpcError(
           "gateway websocket failed",
           ApiClientErrorCode.SocketError,
+          {
+            kind: "websocket", phase: "connect", operation: "connect",
+            retryable: true, attempt: 1,
+          },
         );
         this.setState("error", error);
         if (connectPhase !== "settled") {

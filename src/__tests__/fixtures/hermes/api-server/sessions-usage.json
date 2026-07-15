@@ -1,0 +1,1 @@
+{"sessions":[{"key":"session-1","usage":{"totalTokens":42,"totalCost":0.25,"messageCounts":{"total":2,"toolCalls":1,"errors":0}}}],"aggregates":{"messages":{"total":2,"toolCalls":1,"errors":0}},"totals":{"totalCost":0.25}}

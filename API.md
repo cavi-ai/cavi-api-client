@@ -178,7 +178,23 @@ modules as unsupported instead of assuming a fallback exists.
   and events.
 - `RuntimeControlClient` — a required facade containing all seven
   focused modules (`authStatus`, `sessions`, `models`, `usage`, `tasks`,
-  `workspace`, and `events`) and `dispose()`. Disposal is idempotent.
+  `workspace`, and `events`), an immutable `extensions` registry, and
+  `dispose()`. Disposal is idempotent.
+- `RuntimeControlExtensionDescriptor<T>` / `defineRuntimeControlExtension(id)` —
+  declare a typed, provider-neutral extension ID.
+- `RuntimeControlExtensionRegistry` / `createRuntimeControlExtensionRegistry(entries)` —
+  provide immutable descriptor-identity typed lookup and sorted extension
+  discovery while rejecting blank and duplicate IDs. The provider-neutral core
+  names `authStatus`, `sessions`, `models`, `usage`, `tasks`, `workspace`,
+  `events`, `extensions`, and `dispose` are reserved and cannot be extension IDs.
+- `withRuntimeControlExtensions(client, entries)` — returns a frozen facade that
+  preserves the client's module objects and existing registered extensions,
+  rejects cross-wrap ID collisions, and delegates disposal exactly once.
+- `GATEWAY_RAW_EXTENSION` / `RawGatewayChannel` — optional provider-neutral
+  `gateway.raw` descriptor and channel for arbitrary operation requests, raw
+  `{ event, payload }` subscriptions, connection state, and lifecycle ownership.
+  Raw events remain distinct from normalized `RuntimeControlClient.events`, and
+  this core extension is separate from the CAVI-only `cavi.control` surface.
 - `CapabilityUnavailable` — typed error carrying the `providerId` and
   method-specific `capability` that is unavailable.
 - `createUnavailableRuntimeControlClient(providerId, capabilities)` — creates
@@ -197,7 +213,25 @@ not retain aliases for the unreleased names.
   registry-driven. The factory invokes a resolved module's optional canonical
   hook or returns the complete unavailable facade. `RuntimeControlClientOptions`
   contains only provider-neutral URL, token/auth resolver, abort signal, trace,
-  transport, and registry inputs. Registry membership alone does not imply a
+  transport, registry, and optional `gatewayConnection` and `gatewayReconnect`
+  inputs. The connection field
+  composes the existing public `GatewayRpcClientOptions` contract for client
+  identity, connect-frame correlation, device identity, requested scopes,
+  protocol range, pre-auth timeout, request limits, and redacted RPC tracing.
+  OpenClaw forwards it only when creating its owned WebSocket. An injected
+  transport retains precedence and ownership. Hermes rejects each semantically
+  supplied setting with field-specific `CapabilityUnavailable` instead of
+  silently ignoring security-relevant configuration.
+  Explicitly `undefined` fields and scope arrays that normalize to omission are
+  accepted, as are zero values for request timeout, request concurrency, and
+  pre-auth timeout because their shared resolvers use defaults. Protocol zero,
+  false, blank identity strings, and empty pre-auth maps remain supplied because
+  they can change existing RPC behavior. `gatewayReconnect` reuses
+  `TransportRetryPolicy` for opt-in, bounded, retryable-only OpenClaw reconnect.
+  Pending backoff is cancelled by disposal, and connect deduplication lasts only
+  for the in-flight attempt. Hermes rejects this option and post-close manual
+  reconnect explicitly because its fixed dashboard message channel cannot be
+  reconstructed. Registry membership alone does not imply a
   built-in canonical adapter. OpenClaw recognizes a structurally compatible RPC
   fixture supplied through `transport`, which keeps deterministic construction
   tests on the same provider-neutral factory path without exposing an
@@ -205,25 +239,31 @@ not retain aliases for the unreleased names.
 - `RuntimeControlClientFactory` — asynchronous provider-module hook that
   produces the required `RuntimeControlClient` shape.
 - `createHermesRuntimeControlClient(options)` — exported from the CAVI
-  extension, composes Hermes dashboard REST/JSON-RPC modules with optional CAVI
+  extension, composes Hermes API Server REST/SSE, separately configured
+  dashboard REST/JSON-RPC modules, and optional CAVI
   task and workspace adapters. It always returns the complete canonical shape,
   installs each independently configured surface, uses typed unavailable
   modules for missing configuration, and borrows an
   injected channel unless `ownsChannel` is explicitly true. Dashboard-specific
   URLs, credentials, transport ownership, and plugin configuration remain in
   `HermesCaviRuntimeControlOptions`, not the provider-neutral core options.
+- `CAVI_CONTROL_EXTENSION` — typed `cavi.control` descriptor exported only from
+  the CAVI extension. Configured OpenClaw and Hermes clients expose the complete
+  `CaviControlAdapters` value through `client.extensions.get(...)`; providers
+  without CAVI adapter configuration return `undefined`.
 - `withCaviRuntimeControlProviders(base, options)` — exported only from the
   CAVI extension, returns a new registry that preserves the base module list,
-  aliases, capabilities, and resolution order while replacing the resolved
-  Hermes runtime-control factory. It requires exactly one canonical normalized
-  Hermes kind and rejects missing, ambiguous, or alias-shadowed registries
-  without installing a factory on another provider. The generic return retains
+  aliases, capabilities, and resolution order while wrapping configured
+  OpenClaw and Hermes runtime-control factories. It requires exactly one
+  canonical normalized kind for each enhanced provider and rejects missing,
+  ambiguous, or alias-shadowed registries without installing a factory on
+  another provider. The generic return retains
   custom provider-module types. CAVI-only mutable configuration is snapshotted
   at setup while channels, signals, functions, fetch implementations, and
   transport clients remain opaque references; provider-neutral call options
   override overlapping setup fields.
 - `CaviRuntimeControlProviderOptions` — CAVI-extension setup type whose optional
-  `hermes` field owns `HermesCaviRuntimeControlOptions` without widening the
+  `openclaw.cavi` and `hermes` fields own CAVI composition without widening the
   package-root `RuntimeControlClientOptions` contract.
 - `RuntimeControlPlaneDeclaration` — an optional provider-module declaration of
   implemented control-plane transports and focused modules; declarations do not
@@ -248,6 +288,12 @@ not retain aliases for the unreleased names.
   `@cavi-ai/api-client/testing`; validates that a provider's control-plane
   factory, declared transports, and declared focused modules match its exposed
   runner-neutral control-plane object, and rejects undeclared exposed modules.
+- `runRawGatewayConformance(createChannel)` — exported from
+  `@cavi-ai/api-client/testing`; runs one provider-neutral request/event/state
+  and lifecycle contract against a channel plus controllable driver fixture.
+  It verifies response and raw-payload identity, listener isolation, ordered
+  reconnect state, abort reasons, typed unsupported operations, and exact-once
+  disposal without accepting a provider name.
 
 OpenClaw declares all seven canonical modules and its stable WebSocket transport;
 unregistered providers retain the required shape and typed unavailable errors.
@@ -303,12 +349,29 @@ are collapsed deterministically. Workspace descriptors are emitted only for expl
 `agents.list` workspace values; agent IDs remain provider metadata. Because the
 current `usage.cost` wire has no validated currency field, its amount remains
 provider data and canonical cost availability is `unavailable`. Parser and
-native-event validation failures surface as sanitized, non-retryable
+normalizer validation accepts the current upstream session pagination/default
+metadata, usage cost-detail/cache-status metadata, and agent runtime/thinking
+metadata, but still rejects unknown or malformed nested fields. An
+already-aborted request is rejected before any RPC is dispatched, so later
+client disposal cannot surface a hidden connection-close rejection.
+Native-event validation failures surface as sanitized, non-retryable
 `TransportProtocolError` values with exact operation metadata. Native event
 names must use a bounded, secret-safe vocabulary before they can reach mapping,
 metadata, or public errors; safe unknown names map to `operation.updated`.
 
-Hermes and OpenClaw do not share a wire protocol. The Hermes extension uses
+Hermes and OpenClaw do not share a wire protocol. `baseUrl` selects the Hermes
+aiohttp API Server and probes `/v1/capabilities`; it maps `/v1/models`,
+`/api/sessions/list`, and `/api/sessions/usage`. It does not infer auth status,
+session mutation, task semantics from `/api/jobs`, workspace, or WebSocket
+support. `apiServerRunEvents` binds only a supplied existing run id to
+`/v1/runs/{run_id}/events` SSE. The runtime owns and aborts active subscriptions
+on disposal. Caller-aborted API Server requests preserve the supplied abort
+reason and do not dispatch a pre-aborted fetch. API Server authentication
+resolves independently from
+`dashboardToken`; explicit dashboard credentials are sent only to the dashboard
+origin.
+
+The optional Hermes dashboard uses
 standard JSON-RPC 2.0 over a `TransportMessageChannel`; it neither performs the
 OpenClaw gateway handshake nor implements OpenClaw's custom WebSocket RPC
 framing. Sessions are installed only when both dashboard REST and a channel are
@@ -563,6 +626,11 @@ The plugin alias paths mirror the operator paths under
 
 ## CAVI Portal Surfaces
 
+`resolvePluginApiPath(plugin, ...segments)` resolves generic plugin routes under
+`/api/plugins/:plugin/...`. It does not add the portal dispatcher segment;
+portal routes continue to use `resolvePortalApiPath(portal, relativePath)` under
+`/api/plugins/portal/:portal/...`.
+
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |
 | `portal.dashboard` | GET | `/api/plugins/portal/:portal/dashboard` | Generic portal dashboard aggregate. The `:portal` identity is supplied by the host team manifest and resolved via `resolvePortalApiPath`; the package hardcodes no portal or persona names. |
@@ -571,8 +639,10 @@ The plugin alias paths mirror the operator paths under
 
 ## Library APIs
 
-`LIBRARY_API_ENDPOINTS` uses `/library/api`. CAVI surface contracts also mirror
-several library routes under `/api/plugins/library`.
+`LIBRARY_API_ENDPOINTS` uses `/library/api`, also exported as
+`LIBRARY_LEGACY_API_BASE_PATH` for consumers that normalize released legacy
+inputs before routing. CAVI surface contracts also mirror several library routes
+under `/api/plugins/library`.
 
 | Key | Method | Path | Description |
 | --- | --- | --- | --- |

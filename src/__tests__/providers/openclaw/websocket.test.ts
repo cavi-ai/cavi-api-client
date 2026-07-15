@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OpenClawWebSocketClient } from "../../../providers/openclaw/websocket";
+import { getTransportErrorMetadata } from "../../../core/transport/error.js";
 
 class MockWebSocket extends EventTarget {
   static readonly CONNECTING = 0;
@@ -7,6 +8,7 @@ class MockWebSocket extends EventTarget {
   static readonly CLOSING = 2;
   static readonly CLOSED = 3;
   static instances: MockWebSocket[] = [];
+  static connectError: { code: string; message: string } | undefined;
 
   readyState = MockWebSocket.CONNECTING;
   sent: string[] = [];
@@ -26,7 +28,9 @@ class MockWebSocket extends EventTarget {
     queueMicrotask(() => {
       const event = new Event("message") as Event & { data: string };
       Object.defineProperty(event, "data", {
-        value: JSON.stringify({
+        value: JSON.stringify(frame.method === "connect" && MockWebSocket.connectError
+          ? { type: "res", id: frame.id, ok: false, error: MockWebSocket.connectError }
+          : {
           type: "res",
           id: frame.id,
           ok: true,
@@ -51,6 +55,53 @@ class MockWebSocket extends EventTarget {
 }
 
 describe("OpenClawWebSocketClient defaults", () => {
+  it.each(["auth_required", "protocol_mismatch"])(
+    "marks %s handshake errors non-retryable in connection state",
+    async (code) => {
+      const originalWebSocket = globalThis.WebSocket;
+      MockWebSocket.instances = [];
+      MockWebSocket.connectError = { code, message: "connect rejected" };
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+      try {
+        const client = new OpenClawWebSocketClient("wss://openclaw.example/ws", "token", {
+          clientId: "metadata-test", enableDeviceIdentity: false,
+        });
+        let observed: Error | null = null;
+        client.onStateChange((state, error) => { if (state === "error") observed = error; });
+
+        await expect(client.connect()).rejects.toMatchObject({ code });
+        expect(getTransportErrorMetadata(observed)).toMatchObject({ retryable: false });
+        await client.close();
+      } finally {
+        MockWebSocket.connectError = undefined;
+        globalThis.WebSocket = originalWebSocket;
+      }
+    },
+  );
+  it("preserves retryable socket-close metadata in connection state", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    MockWebSocket.instances = [];
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+    try {
+      const client = new OpenClawWebSocketClient("wss://openclaw.example/ws", "token", {
+        clientId: "metadata-test", enableDeviceIdentity: false,
+      });
+      let observed: Error | null = null;
+      client.onStateChange((state, error) => { if (state === "error") observed = error; });
+      await client.connect();
+      const socket = MockWebSocket.instances[0];
+      socket.readyState = MockWebSocket.CLOSED;
+      const close = new Event("close") as Event & { code: number; wasClean: boolean };
+      Object.defineProperties(close, { code: { value: 1006 }, wasClean: { value: false } });
+      socket.dispatchEvent(close);
+      await Promise.resolve();
+
+      expect(getTransportErrorMetadata(observed)).toMatchObject({
+        kind: "websocket", phase: "close", operation: "connect", retryable: true,
+      });
+      await client.close();
+    } finally { globalThis.WebSocket = originalWebSocket; }
+  });
   it("correlates the connect handshake on the advertised client id", async () => {
     const originalWebSocket = globalThis.WebSocket;
     MockWebSocket.instances = [];

@@ -12,14 +12,20 @@ import type { OpenClawRpc } from "./rpc.js";
 import { resolveTransportHeaders } from "../../../core/transport/auth.js";
 import { TransportError } from "../../../core/transport/error.js";
 import { isAbortError } from "../../../core/errors.js";
-import { normalizeTransportAbort } from "../../../core/transport/backoff.js";
+import { normalizeTransportAbort, validateTransportRetryPolicy } from "../../../core/transport/backoff.js";
 import { createOpenClawRuntimeEventClient } from "./events.js";
 import { createOpenClawSessionClient } from "./sessions.js";
 import { createOpenClawTaskClient } from "./tasks.js";
 import { createOpenClawUsageClient } from "./usage.js";
 import { createOpenClawWorkspaceClient } from "./workspace.js";
+import { createOpenClawRawGatewayChannel } from "./raw-gateway.js";
+import {
+  createRawGatewayDisposer,
+  GATEWAY_RAW_EXTENSION,
+} from "../../../core/runtime/control-plane/raw-gateway.js";
+import { withRuntimeControlExtensions } from "../../../core/runtime/control-plane/extensions.js";
 
-const OPENCLAW_CONTROL_PLANE_CLIENT_ID = "openclaw-control";
+const OPENCLAW_CONTROL_PLANE_CLIENT_ID = "openclaw-control-ui";
 
 export type OpenClawRuntimeControlClientOptions = RuntimeControlClientOptions & {
   rpc?: OpenClawRpc;
@@ -59,6 +65,7 @@ export async function createOpenClawRuntimeControlClient(
   const injectedRpc = options.rpc ?? injectedTransport;
   const createdRpc = injectedRpc === undefined;
   const ownsRpc = createdRpc || options.takeRpcOwnership === true;
+  if (createdRpc && options.gatewayReconnect) validateTransportRetryPolicy(options.gatewayReconnect);
   if (createdRpc && options.signal?.aborted) throw normalizeTransportAbort(options.signal);
   let resolvedHeaders: Record<string, string> = {};
   if (createdRpc) {
@@ -85,7 +92,10 @@ export async function createOpenClawRuntimeControlClient(
     ? new OpenClawWebSocketClient(
         resolveWebSocketUrl(options),
         bearerToken(resolvedHeaders) ?? null,
-        { clientId: OPENCLAW_CONTROL_PLANE_CLIENT_ID },
+        {
+          ...options.gatewayConnection,
+          clientId: options.gatewayConnection?.clientId ?? OPENCLAW_CONTROL_PLANE_CLIENT_ID,
+        },
       )
     : undefined;
   const rpc = injectedRpc ?? ownedClient;
@@ -99,9 +109,17 @@ export async function createOpenClawRuntimeControlClient(
     "openclaw",
     new Set<string>(),
   );
-  let disposePromise: Promise<void> | undefined;
+  const disposeRpc = createRawGatewayDisposer(
+    ownsRpc ? () => rpc.dispose() : () => undefined,
+  );
+  const rawGateway = createOpenClawRawGatewayChannel(rpc, {
+    connect: rpc.connect?.bind(rpc) ?? (() => Promise.resolve()),
+    getConnectionState: rpc.getConnectionState?.bind(rpc) ?? (() => "connected"),
+    onConnectionState: rpc.onConnectionState?.bind(rpc) ?? (() => () => undefined),
+    dispose: disposeRpc,
+  }, createdRpc ? options.gatewayReconnect : undefined);
 
-  return {
+  const client: RuntimeControlClient = {
     ...plane,
     authStatus: createOpenClawAuthStatusClient(rpc),
     events: createOpenClawRuntimeEventClient(rpc),
@@ -111,9 +129,8 @@ export async function createOpenClawRuntimeControlClient(
     usage: createOpenClawUsageClient(rpc),
     workspace: createOpenClawWorkspaceClient(rpc),
     dispose(): Promise<void> {
-      if (!ownsRpc) return Promise.resolve();
-      disposePromise ??= rpc?.dispose() ?? Promise.resolve();
-      return disposePromise;
+      return rawGateway.dispose();
     },
   };
+  return withRuntimeControlExtensions(client, [[GATEWAY_RAW_EXTENSION, rawGateway]]);
 }

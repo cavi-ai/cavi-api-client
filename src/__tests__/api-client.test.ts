@@ -866,15 +866,83 @@ describe("agnostic HTTP API client package", () => {
 
     const assertion = expect(
       client.get("/cancelled", { signal: callerController.signal }),
-    ).rejects.toMatchObject({
-      name: "HttpApiError",
-      path: "/cancelled",
-      status: 0,
-    });
+    ).rejects.toBe("caller cancelled");
     callerController.abort("caller cancelled");
     await vi.advanceTimersByTimeAsync(0);
 
     await assertion;
+  });
+
+  it("does not replace a timeout abort when the caller aborts before rejection handling", async () => {
+    vi.useFakeTimers();
+    const callerController = new AbortController();
+    const fetchImpl = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("The operation timed out.", "AbortError"));
+          });
+        }),
+    );
+    const client = new TestApiClient({
+      baseUrl: "https://api.example",
+      defaultTimeoutMs: 50,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    const request = client.get("/timeout-first", { signal: callerController.signal });
+    vi.advanceTimersByTime(51);
+    callerController.abort("late cancellation");
+
+    await expect(request).rejects.toMatchObject({
+      name: "HttpApiError",
+      path: "/timeout-first",
+      status: 0,
+      message: expect.stringContaining("timed out"),
+    });
+  });
+
+  it("removes the exact caller abort listener and clears the timeout after completion", async () => {
+    vi.useFakeTimers();
+    const callerController = new AbortController();
+    const add = vi.spyOn(callerController.signal, "addEventListener");
+    const remove = vi.spyOn(callerController.signal, "removeEventListener");
+    const client = new TestApiClient({
+      baseUrl: "https://api.example",
+      fetchImpl: vi.fn(async () => new Response("{}", { status: 200 })) as unknown as typeof fetch,
+    });
+
+    await expect(client.get("/complete", { signal: callerController.signal })).resolves.toEqual({});
+
+    const abortListener = add.mock.calls.find(([type]) => type === "abort")?.[1];
+    expect(abortListener).toEqual(expect.any(Function));
+    expect(remove).toHaveBeenCalledWith("abort", abortListener);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not mask a fetch failure when the caller aborts before rejection handling", async () => {
+    const callerController = new AbortController();
+    let rejectFetch: ((reason?: unknown) => void) | undefined;
+    const fetchImpl = vi.fn(
+      () => new Promise<Response>((_resolve, reject) => {
+        rejectFetch = reject;
+      }),
+    );
+    const client = new TestApiClient({
+      baseUrl: "https://api.example",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    const request = client.get("/network-failure", { signal: callerController.signal });
+    rejectFetch?.(new Error("network failed"));
+    callerController.abort("late cancellation");
+
+    await expect(request).rejects.toMatchObject({
+      name: "HttpApiError",
+      path: "/network-failure",
+      status: 0,
+      message: expect.stringContaining("network failed"),
+    });
   });
 
   it("uses inherited transport for library search", async () => {
