@@ -4,6 +4,7 @@ import {
   CAVI_CONTROL_OPERATOR_API,
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
   CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS,
+  LIBRARY_LEGACY_API_BASE_PATH,
   projectBoardBacklogItemPath,
   projectBoardWorkspaceDiagnosticRouteHint,
   projectBoardWorkspaceExpectedContractSummary,
@@ -11,6 +12,7 @@ import {
   operatorTaskDiscoursePluginAliasPath,
   operatorTaskDiscoursePath,
   resolvePortalApiPath,
+  resolvePluginApiPath,
 } from "../../../extensions/cavi/contracts/paths";
 import { describeHttpContract } from "../../../core/http/contracts";
 import { CAVI_COST_HISTORY_API_PATHS } from "../../../extensions/cavi/runtime/paths";
@@ -89,6 +91,26 @@ describe("api-paths", () => {
     expect(() => resolvePortalApiPath("martina", "../config")).toThrow(/portal root/u);
     expect(() => resolvePortalApiPath("martina", "%2e%2e/config")).toThrow(/portal root/u);
     expect(() => resolvePortalApiPath("martina", "runs\\latest")).toThrow(/backslashes/u);
+  });
+
+  it("exports the released legacy library input base without changing the canonical library route", () => {
+    expect(LIBRARY_LEGACY_API_BASE_PATH).toBe("/library/api");
+  });
+
+  it("resolvePluginApiPath keeps generic plugin routes distinct from portal routes", () => {
+    expect(resolvePluginApiPath("machine", "media")).toBe("/api/plugins/machine/media");
+    expect(resolvePluginApiPath("front-door", "ideas", "idea%20one")).toBe(
+      "/api/plugins/front-door/ideas/idea%20one",
+    );
+    expect(resolvePluginApiPath("portal-memory", "teams/machine")).toBe(
+      "/api/plugins/portal-memory/teams/machine",
+    );
+    expect(resolvePluginApiPath("x/y", "status")).toBe("/api/plugins/x%2Fy/status");
+    expect(resolvePluginApiPath("machine")).toBe("/api/plugins/machine");
+    expect(() => resolvePluginApiPath(" ", "status")).toThrow(/missing plugin/u);
+    expect(() => resolvePluginApiPath("machine", "../status")).toThrow(/plugin root/u);
+    expect(() => resolvePluginApiPath("machine", "%2e%2e/status")).toThrow(/plugin root/u);
+    expect(() => resolvePluginApiPath("machine", "media\\latest")).toThrow(/backslashes/u);
   });
 
   it("describeHttpContract formats with optional body hint", () => {

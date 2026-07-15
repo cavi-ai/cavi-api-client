@@ -5,6 +5,8 @@ import type { RuntimeControlClient } from "../../../../core/runtime/control-plan
 import { createRuntimeControlClient } from "../../../../providers/runtime-control-client-factory.js";
 import { createBuiltInRuntimeProviderRegistry } from "../../../../providers/runtime-provider-registry.js";
 import { withCaviRuntimeControlProviders } from "../../../../extensions/cavi/providers/runtime-control-registry.js";
+import { CAVI_CONTROL_EXTENSION } from "../../../../extensions/cavi/adapters/runtime-control-extension.js";
+import { GATEWAY_RAW_EXTENSION } from "../../../../core/runtime/control-plane/raw-gateway.js";
 
 const fixtureTransport = () => ({
   request: vi.fn(async (method: string) => ({
@@ -12,6 +14,13 @@ const fixtureTransport = () => ({
   })[method]),
   subscribe: vi.fn(() => () => undefined),
   dispose: vi.fn(async () => undefined),
+});
+
+const fixtureHermesChannel = () => ({
+  send: vi.fn(async () => undefined),
+  subscribe: vi.fn(() => () => undefined),
+  subscribeClose: vi.fn(() => () => undefined),
+  close: vi.fn(async () => undefined),
 });
 
 async function consume(providerId: string, registry: ReturnType<typeof withCaviRuntimeControlProviders>) {
@@ -38,7 +47,7 @@ describe("CAVI runtime-control registry real integration", () => {
     const client = await createRuntimeControlClient("hermes-api-server", { registry });
 
     expect(Object.keys(client).sort()).toEqual([
-      "authStatus", "dispose", "events", "models", "sessions", "tasks", "usage", "workspace",
+      "authStatus", "dispose", "events", "extensions", "models", "sessions", "tasks", "usage", "workspace",
     ]);
     const unavailableCalls: Array<[string, () => Promise<unknown>]> = [
       ["controlPlane.authStatus.list", () => client.authStatus.listAuthStatus()],
@@ -67,5 +76,53 @@ describe("CAVI runtime-control registry real integration", () => {
     for (const provider of ["hermes", "hermes-api-server", "codex", "claude", "gemini", "unknown"]) {
       await expect(consume(provider, registry)).rejects.toBeInstanceOf(CapabilityUnavailable);
     }
+  });
+
+  it("keeps released core calls and the complete optional CAVI extension independently discoverable", async () => {
+    const cavi = { gatewayBaseUrl: "https://gateway.test" } as never;
+    const registry = withCaviRuntimeControlProviders(createBuiltInRuntimeProviderRegistry(), {
+      openclaw: { cavi },
+      hermes: { cavi },
+    });
+    const openclaw = await createRuntimeControlClient("openclaw", {
+      registry,
+      transport: fixtureTransport(),
+    });
+    const hermes = await createRuntimeControlClient("hermes", { registry });
+
+    await expect(openclaw.sessions.listSessions()).resolves.toMatchObject({ data: [] });
+    expect(openclaw.extensions.get(CAVI_CONTROL_EXTENSION)).toBeDefined();
+    expect(hermes.extensions.get(CAVI_CONTROL_EXTENSION)).toBeDefined();
+    expect(openclaw.extensions.get(CAVI_CONTROL_EXTENSION))
+      .not.toBe(hermes.extensions.get(CAVI_CONTROL_EXTENSION));
+    expect(hermes.tasks.listTasks).toBeTypeOf("function");
+    expect(hermes.workspace.listWorkspaces).toBeTypeOf("function");
+    expect(hermes.tasks).not.toBe(hermes.extensions.get(CAVI_CONTROL_EXTENSION));
+    expect(hermes.workspace).not.toBe(hermes.extensions.get(CAVI_CONTROL_EXTENSION));
+
+    await Promise.all([openclaw.dispose(), hermes.dispose()]);
+  });
+
+  it("preserves gateway.raw while composing cavi.control for both providers", async () => {
+    const cavi = { gatewayBaseUrl: "https://gateway.test" } as never;
+    const registry = withCaviRuntimeControlProviders(createBuiltInRuntimeProviderRegistry(), {
+      openclaw: { cavi },
+      hermes: { cavi, channel: fixtureHermesChannel() },
+    });
+    const openclaw = await createRuntimeControlClient("openclaw", {
+      registry,
+      transport: fixtureTransport(),
+    });
+    const hermes = await createRuntimeControlClient("hermes", { registry });
+
+    for (const client of [openclaw, hermes]) {
+      expect(client.extensions.get(GATEWAY_RAW_EXTENSION)).toBeDefined();
+      expect(client.extensions.get(CAVI_CONTROL_EXTENSION)).toBeDefined();
+      expect(client.extensions.list()).toEqual(["cavi.control", "gateway.raw"]);
+    }
+
+    await Promise.all([
+      openclaw.dispose(), openclaw.dispose(), hermes.dispose(), hermes.dispose(),
+    ]);
   });
 });

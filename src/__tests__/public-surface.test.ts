@@ -1,7 +1,12 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   CapabilityUnavailable,
+  createRuntimeControlExtensionRegistry,
   createRuntimeControlClient,
+  defineRuntimeControlExtension,
+  withRuntimeControlExtensions,
+  type RuntimeControlExtensionDescriptor,
+  type RuntimeControlExtensionRegistry,
   type RuntimeControlClient,
   type RuntimeControlClientOptions,
 } from "../index.js";
@@ -12,6 +17,11 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     expectTypeOf<RuntimeControlClient>().toBeObject();
     expectTypeOf<RuntimeControlClientOptions>().toBeObject();
     expect(CapabilityUnavailable).toBeTypeOf("function");
+    expect(createRuntimeControlExtensionRegistry).toBeTypeOf("function");
+    expect(defineRuntimeControlExtension).toBeTypeOf("function");
+    expect(withRuntimeControlExtensions).toBeTypeOf("function");
+    expectTypeOf<RuntimeControlExtensionDescriptor<unknown>>().toBeObject();
+    expectTypeOf<RuntimeControlExtensionRegistry>().toBeObject();
   });
 
   it("provider clients/modules resolve on ./providers/*", async () => {
