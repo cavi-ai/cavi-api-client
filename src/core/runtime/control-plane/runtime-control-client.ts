@@ -1,3 +1,4 @@
+import { createRuntimeControlExtensionRegistry, type RuntimeControlExtensionRegistry } from "./extensions.js";
 import type { RuntimeEventClient } from "./events.js";
 import type { AuthStatusClient, ModelCatalogClient } from "./models.js";
 import type { SessionClient } from "./sessions.js";
@@ -13,6 +14,7 @@ export interface RuntimeControlClient {
   readonly tasks: TaskClient;
   readonly workspace: WorkspaceClient;
   readonly events: RuntimeEventClient;
+  readonly extensions: RuntimeControlExtensionRegistry;
   dispose(): Promise<void>;
 }
 
@@ -63,6 +65,7 @@ export function createUnavailableRuntimeControlClient(
     events: {
       subscribe: () => unavailable("controlPlane.events.subscribe"),
     },
+    extensions: createRuntimeControlExtensionRegistry(),
     dispose: () => Promise.resolve(),
   };
 }

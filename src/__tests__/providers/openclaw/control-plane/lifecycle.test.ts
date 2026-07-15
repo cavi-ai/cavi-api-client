@@ -112,6 +112,115 @@ describe("OpenClaw control-plane RPC lifecycle", () => {
     }
   });
 
+  it("does not leak the expected pending request rejection when disposal closes the connection", async () => {
+    const actual = await vi.importActual<
+      typeof import("../../../../providers/openclaw/websocket")
+    >("../../../../providers/openclaw/websocket");
+    const originalWebSocket = globalThis.WebSocket;
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+
+    class PendingWebSocket extends EventTarget {
+      static readonly OPEN = 1;
+      readyState = PendingWebSocket.OPEN;
+
+      constructor() {
+        super();
+        queueMicrotask(() => this.dispatchEvent(new Event("open")));
+      }
+
+      send(data: string): void {
+        const frame = JSON.parse(data) as { id: string; method: string };
+        if (frame.method !== "connect") return;
+        queueMicrotask(() => {
+          const event = new Event("message") as Event & { data: string };
+          Object.defineProperty(event, "data", { value: JSON.stringify({
+            type: "res", id: frame.id, ok: true, payload: { type: "hello-ok", protocol: 4 },
+          }) });
+          this.dispatchEvent(event);
+        });
+      }
+
+      close(): void {
+        queueMicrotask(() => this.dispatchEvent(new Event("close")));
+      }
+    }
+
+    globalThis.WebSocket = PendingWebSocket as unknown as typeof WebSocket;
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const rpc = new actual.OpenClawWebSocketClient(
+        "wss://openclaw.example/ws",
+        "token",
+        { clientId: "lifecycle", enableDeviceIdentity: false },
+      );
+      await rpc.connect();
+      const request = rpc.request("sessions.list");
+      const expected = expect(request).rejects.toThrow(/not connected|connection closed/);
+      await rpc.dispose();
+      await expected;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+      globalThis.WebSocket = originalWebSocket;
+    }
+  });
+
+  it("does not dispatch a hidden RPC for an already-aborted request before disposal", async () => {
+    const actual = await vi.importActual<
+      typeof import("../../../../providers/openclaw/websocket")
+    >("../../../../providers/openclaw/websocket");
+    const originalWebSocket = globalThis.WebSocket;
+    const sentMethods: string[] = [];
+
+    class RecordingWebSocket extends EventTarget {
+      static readonly OPEN = 1;
+      readyState = RecordingWebSocket.OPEN;
+
+      constructor() {
+        super();
+        queueMicrotask(() => this.dispatchEvent(new Event("open")));
+      }
+
+      send(data: string): void {
+        const frame = JSON.parse(data) as { id: string; method: string };
+        sentMethods.push(frame.method);
+        if (frame.method !== "connect") return;
+        queueMicrotask(() => {
+          const event = new Event("message") as Event & { data: string };
+          Object.defineProperty(event, "data", { value: JSON.stringify({
+            type: "res", id: frame.id, ok: true, payload: { type: "hello-ok", protocol: 4 },
+          }) });
+          this.dispatchEvent(event);
+        });
+      }
+
+      close(): void {
+        queueMicrotask(() => this.dispatchEvent(new Event("close")));
+      }
+    }
+
+    globalThis.WebSocket = RecordingWebSocket as unknown as typeof WebSocket;
+    try {
+      const rpc = new actual.OpenClawWebSocketClient(
+        "wss://openclaw.example/ws",
+        "token",
+        { clientId: "lifecycle", enableDeviceIdentity: false },
+      );
+      await rpc.connect();
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(rpc.request("sessions.list", {}, { signal: controller.signal }))
+        .rejects.toMatchObject({ name: "AbortError" });
+      expect(sentMethods).toEqual(["connect"]);
+      await rpc.dispose();
+    } finally {
+      globalThis.WebSocket = originalWebSocket;
+    }
+  });
+
   it("leaves an injected RPC seam caller-owned by default", async () => {
     const rpc = createRpc();
     const plane = await createOpenClawRuntimeControlClient({ rpc });

@@ -8,6 +8,7 @@ export * from "./library/clip.js";
 export * from "./portal/client.js";
 export * from "./portal/tts.js";
 export * from "./adapters/create-cavi-control-adapters.js";
+export * from "./adapters/runtime-control-extension.js";
 export * from "./fallbacks/provider.js";
 export * from "./project-board/constants.js";
 export * from "./project-board/fallback.js";

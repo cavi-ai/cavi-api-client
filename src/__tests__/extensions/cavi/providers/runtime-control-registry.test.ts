@@ -11,13 +11,18 @@ import type { TransportMessageChannel } from "../../../../core/transport/channel
 import { createRuntimeControlClient } from "../../../../providers/runtime-control-client-factory.js";
 import { RUNTIME_PROVIDER_CAPABILITY_MATRIX } from "../../../../providers/capability-matrix.js";
 import { withCaviRuntimeControlProviders } from "../../../../extensions/cavi/providers/runtime-control-registry.js";
+import { CAVI_CONTROL_EXTENSION } from "../../../../extensions/cavi/adapters/runtime-control-extension.js";
 
-const { createHermesExtensionClient } = vi.hoisted(() => ({
+const { createHermesExtensionClient, createAdapters } = vi.hoisted(() => ({
   createHermesExtensionClient: vi.fn(),
+  createAdapters: vi.fn((options: unknown) => ({ options })),
 }));
 
 vi.mock("../../../../extensions/cavi/providers/hermes/runtime-control-client.js", () => ({
   createHermesRuntimeControlClient: createHermesExtensionClient,
+}));
+vi.mock("../../../../extensions/cavi/adapters/create-cavi-control-adapters.js", () => ({
+  createCaviControlAdapters: createAdapters,
 }));
 
 const sessionClient = (id: string) => ({
@@ -56,6 +61,38 @@ async function listSessions(providerId: string, registry: ReturnType<typeof crea
 }
 
 describe("withCaviRuntimeControlProviders", () => {
+  it("installs independently constructed CAVI adapters for OpenClaw and Hermes", async () => {
+    createHermesExtensionClient.mockImplementation(async () => sessionClient("hermes"));
+    const base = createRuntimeProviderRegistry({ modules: baseModules() });
+    const openclawCavi = { marker: "openclaw" } as never;
+    const hermesCavi = { marker: "hermes" } as never;
+    const options = { openclaw: { cavi: openclawCavi }, hermes: { cavi: hermesCavi } };
+    const originalOpenclaw = base.resolveProvider("openclaw");
+    const originalHermes = base.resolveProvider("hermes");
+    const registry = withCaviRuntimeControlProviders(base, options);
+
+    const [openclaw, hermes, codex] = await Promise.all([
+      createRuntimeControlClient("openclaw", { registry }),
+      createRuntimeControlClient("hermes", { registry }),
+      createRuntimeControlClient("codex", { registry }),
+    ]);
+
+    expect(openclaw.extensions.has(CAVI_CONTROL_EXTENSION)).toBe(true);
+    expect(openclaw.extensions.get(CAVI_CONTROL_EXTENSION)).toMatchObject({
+      options: { marker: "openclaw" },
+    });
+    expect(hermes.extensions.has(CAVI_CONTROL_EXTENSION)).toBe(true);
+    expect(hermes.extensions.get(CAVI_CONTROL_EXTENSION)).toMatchObject({
+      options: { marker: "hermes" },
+    });
+    expect(codex.extensions.has(CAVI_CONTROL_EXTENSION)).toBe(false);
+    expect(codex.extensions.get(CAVI_CONTROL_EXTENSION)).toBeUndefined();
+    expect(openclaw.extensions.get(CAVI_CONTROL_EXTENSION))
+      .not.toBe(hermes.extensions.get(CAVI_CONTROL_EXTENSION));
+    expect(base.resolveProvider("openclaw")).toBe(originalOpenclaw);
+    expect(base.resolveProvider("hermes")).toBe(originalHermes);
+    expect(options).toEqual({ openclaw: { cavi: openclawCavi }, hermes: { cavi: hermesCavi } });
+  });
   it("keeps one provider-neutral consumer path for kinds, aliases, and unknown providers", async () => {
     createHermesExtensionClient.mockImplementation(async (options: RuntimeControlClientOptions & {
       dashboardBaseUrl?: string;
@@ -135,7 +172,7 @@ describe("withCaviRuntimeControlProviders", () => {
     const client = await createRuntimeControlClient("hermes", { registry });
 
     expect(Object.keys(client).sort()).toEqual([
-      "authStatus", "dispose", "events", "models", "sessions", "tasks", "usage", "workspace",
+      "authStatus", "dispose", "events", "extensions", "models", "sessions", "tasks", "usage", "workspace",
     ]);
     await expect(client.sessions.listSessions()).rejects.toMatchObject({
       name: "CapabilityUnavailable",
@@ -174,6 +211,51 @@ describe("withCaviRuntimeControlProviders", () => {
     expect(() => withCaviRuntimeControlProviders(ambiguous)).toThrowError(
       "Invalid CAVI runtime-control registry: expected exactly one canonical Hermes module",
     );
+  });
+
+  it("fails closed when enhanced OpenClaw is missing, ambiguous, or alias-shadowed", () => {
+    const cavi = { gatewayBaseUrl: "https://gateway.test" } as never;
+    const missing = createRuntimeProviderRegistry({
+      modules: baseModules().filter((module) => module.kind !== "openclaw"),
+    });
+    expect(() => withCaviRuntimeControlProviders(missing, { openclaw: { cavi } })).toThrowError(
+      "Invalid CAVI runtime-control registry: expected exactly one canonical OpenClaw module",
+    );
+
+    const ambiguous = createRuntimeProviderRegistry({
+      modules: [...baseModules(), { kind: " OPENCLAW ", aliases: ["another-openclaw"] }],
+      allowOverrides: true,
+    });
+    expect(() => withCaviRuntimeControlProviders(ambiguous, { openclaw: { cavi } })).toThrowError(
+      "Invalid CAVI runtime-control registry: expected exactly one canonical OpenClaw module",
+    );
+
+    const shadow = { kind: "other", aliases: ["openclaw"] } as RuntimeProviderModule;
+    const shadowed = createRuntimeProviderRegistry({
+      modules: [...baseModules(), shadow],
+      allowOverrides: true,
+    });
+    expect(() => withCaviRuntimeControlProviders(shadowed, { openclaw: { cavi } })).toThrowError(
+      "Invalid CAVI runtime-control registry: OpenClaw resolution is shadowed",
+    );
+    expect(shadowed.resolveProvider("openclaw")).toBe(shadow);
+  });
+
+  it("fails closed when configured OpenClaw has no composable runtime-control factory", () => {
+    const modules = baseModules();
+    modules[1] = { ...modules[1]!, createRuntimeControlClient: undefined };
+    const base = createRuntimeProviderRegistry({ modules });
+    const originalOpenclaw = base.resolveProvider("openclaw");
+    const cavi = { gatewayBaseUrl: "https://gateway.test" } as never;
+
+    expect(() => withCaviRuntimeControlProviders(base, { openclaw: { cavi } })).toThrowError(
+      "Invalid CAVI runtime-control registry: canonical OpenClaw module has no runtime-control factory",
+    );
+    expect(base.resolveProvider("openclaw")).toBe(originalOpenclaw);
+
+    const unconfigured = withCaviRuntimeControlProviders(base);
+    expect(unconfigured.resolveProvider("openclaw")?.createRuntimeControlClient).toBeUndefined();
+    expect(base.resolveProvider("openclaw")).toBe(originalOpenclaw);
   });
 
   it("matches defensive registry copies semantically and preserves generic custom fields", () => {

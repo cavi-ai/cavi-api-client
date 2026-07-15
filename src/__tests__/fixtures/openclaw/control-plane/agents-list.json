@@ -1,1 +1,1 @@
-{"defaultId":"agent-a","mainKey":"main","scope":"per-sender","agents":[{"id":"agent-a","name":"Agent A"}]}
+{"defaultId":"agent-a","mainKey":"main","scope":"per-sender","agents":[{"id":"agent-a","name":"Agent A","workspace":"/workspace/main","workspaceGit":false,"agentRuntime":{"id":"codex","source":"implicit"},"thinkingLevels":[{"id":"off","label":"off"},{"id":"low","label":"low"}],"thinkingOptions":["off","low"],"thinkingDefault":"low"}]}

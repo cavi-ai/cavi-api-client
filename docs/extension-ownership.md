@@ -9,7 +9,8 @@ additive migration plan.
 `RuntimeControlClient` and `createRuntimeControlClient` are core/provider-layer
 contracts and are not CAVI exports. The CAVI extension owns only setup-time
 composition through `createHermesRuntimeControlClient`,
-`withCaviRuntimeControlProviders`, and `CaviRuntimeControlProviderOptions`.
+`withCaviRuntimeControlProviders`, `CAVI_CONTROL_EXTENSION`, and
+`CaviRuntimeControlProviderOptions`.
 That composition may mirror Hermes dashboard JSON-RPC/REST and CAVI plugin task
 or workspace behavior, but it does not own those upstream protocols. Hermes,
 OpenClaw, Caviclaw, gateway, and plugin runtimes remain protocol owners; this
@@ -61,6 +62,7 @@ actual `core/contracts` or `CAVI extension` owner.
 | `buildPortalTtsVoiceOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/portal/tts.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CAVI_CONTROL_API_ENDPOINTS` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CAVI_CONTROL_BASE_PATH` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
+| `CAVI_CONTROL_EXTENSION` | CAVI extension | keep | Declared by `src/extensions/cavi/adapters/runtime-control-extension.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep typed CAVI capability discovery and adapter composition under the CAVI extension. |
 | `CAVI_CONTROL_OPERATOR_API` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CAVI_CONTROL_OPERATOR_API_BASE` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
@@ -72,7 +74,7 @@ actual `core/contracts` or `CAVI extension` owner.
 | `CaviApiPathAppendOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CaviControlAdapterFallbackProvider` | CAVI extension | keep | Declared by `src/extensions/cavi/fallbacks/provider.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CaviControlAdapterFallbacks` | CAVI extension | keep | Declared by `src/extensions/cavi/fallbacks/provider.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
-| `CaviControlAdapterOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/hermes/runtime-control-client.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep dashboard/plugin composition under the CAVI extension. |
+| `CaviControlAdapterOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/adapters/create-cavi-control-adapters.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep CAVI adapter configuration under the CAVI extension. |
 | `CaviControlAdapters` | CAVI extension | keep | Declared by `src/extensions/cavi/adapters/create-cavi-control-adapters.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CaviControlApiClient` | CAVI extension | keep | Declared by `src/extensions/cavi/client.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `CaviRuntimeControlProviderOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/runtime-control-registry.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep provider-specific registry setup out of the package root. |
@@ -158,6 +160,7 @@ actual `core/contracts` or `CAVI extension` owner.
 | `HermesDashboardEvent` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/hermes/types.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `HermesDashboardJsonRpcClient` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/hermes/types.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `HermesDashboardJsonRpcOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/hermes/types.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
+| `HermesApiServerRunEventBinding` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/hermes/runtime-control-client.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep provider-specific existing-run SSE configuration out of core runtime-control options. |
 | `HermesCaviRuntimeControlOptions` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/hermes/runtime-control-client.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep provider-specific configuration out of core runtime-control options. |
 | `HermesGatewayTargets` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/mobile.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `HTTP_API_CLIENT_ENV_ALIASES` | CAVI extension | keep | Declared by `src/extensions/cavi/runtime/env-config.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
@@ -165,6 +168,7 @@ actual `core/contracts` or `CAVI extension` owner.
 | `HttpApiResolvedConfig` | CAVI extension | keep | Declared by `src/extensions/cavi/runtime/env-config.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `LIBRARY_API_BASE_PATH` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `LIBRARY_API_ENDPOINTS` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
+| `LIBRARY_LEGACY_API_BASE_PATH` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep legacy library input normalization under the CAVI extension without changing current route behavior. |
 | `LIBRARY_CLIP_DEFAULT_TEAM` | CAVI extension | keep | Declared by `src/extensions/cavi/library/clip.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `LIBRARY_CLIP_ENDPOINT` | CAVI extension | keep | Declared by `src/extensions/cavi/library/clip.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `LIBRARY_CLIP_HEALTH_ENDPOINT` | CAVI extension | keep | Declared by `src/extensions/cavi/library/clip.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
@@ -331,6 +335,7 @@ actual `core/contracts` or `CAVI extension` owner.
 | `resolveOperatorTaskDispatchContract` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/mobile.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `resolveOperatorTaskDispatchPath` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/mobile.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `resolvePath` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/resolve.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
+| `resolvePluginApiPath` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep generic CAVI plugin route resolution distinct from portal dispatch. |
 | `resolvePortalApiPath` | CAVI extension | keep | Declared by `src/extensions/cavi/contracts/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `resolvePortalLibraryRef` | CAVI extension | keep | Declared by `src/extensions/cavi/registry/portal-library-registry.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 | `resolvePortalPrimarySessionKey` | CAVI extension | keep | Declared by `src/extensions/cavi/registry/canonical-team-registry.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
@@ -410,3 +415,13 @@ Raw session rows type optional provider-neutral creation/update timestamps and
 state. Canonical session methods use the shared abortable request options; a
 provider leaves cancel absent unless its native operation has matching,
 fixture-proven semantics.
+
+## Runtime-control compatibility ownership
+
+The pinned compatibility ledger separates three authorities. Each upstream
+provider owns its observed wire operation, payload schema, and transport. Core
+owns the provider-neutral canonical capability names that adapters implement.
+CAVI owns extension IDs and the product-specific composition that installs
+extension providers; it does not redefine upstream wire operations or core
+capabilities. Drift reports are read-only evidence and never update the pinned
+ledger automatically.

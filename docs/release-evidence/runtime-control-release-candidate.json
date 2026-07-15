@@ -1,0 +1,329 @@
+{
+  "audit": {
+    "category": "service-unavailable",
+    "command": "pnpm audit --prod --registry=https://registry.npmjs.org/",
+    "exitCode": 1,
+    "replacement": {
+      "command": "osv-scanner scan source --offline --offline-vulnerabilities --sbom .artifacts/runtime-control/production.cdx.json --format table --verbosity error .",
+      "componentCount": 1,
+      "database": {
+        "acquisitionDate": "2026-07-15T07:42:39.355Z",
+        "acquisitionStatus": "available"
+      },
+      "exitCode": 0,
+      "mode": "offline-sbom",
+      "observedVersion": "2.4.0",
+      "observedVersionOutput": "osv-scanner version: 2.4.0\nosv-scalibr version: 0.4.5\ncommit: n/a\nbuilt at: n/a",
+      "sbomSha256": "8794fe2d557dae780109189bb28bf6db956943c54a45097fac0f5ad9d0dc4ac5",
+      "scanner": "osv-scanner 2.4.0",
+      "status": "passed",
+      "summary": "No issues found.",
+      "vulnerabilities": 0
+    },
+    "status": "unavailable",
+    "summary": "npm audit service returned HTTP 410 because the requested endpoints are retired."
+  },
+  "coverage": {
+    "command": "pnpm run coverage",
+    "status": "passed"
+  },
+  "packageVersion": "0.11.0",
+  "privateFiles": [],
+  "scan": {
+    "archiveEntries": 1363,
+    "status": "passed"
+  },
+  "schemaVersion": 1,
+  "sourceDateEpoch": 1783740944,
+  "tarball": {
+    "path": ".artifacts/runtime-control/cavi-ai-api-client-0.11.0-runtime-control.tgz",
+    "sha256": "b2d00768711c566e3fd0929603451a3246c841970a0e14ab77e881fbb990a45e"
+  },
+  "testSummary": {
+    "command": "pnpm run verify",
+    "status": "passed"
+  },
+  "upstream": {
+    "codex": "9e552e9d15ba52bed7077d5357f3e18e330f8f38",
+    "hermes": "de1950c24b214d0127dc72eeb73fdcd90d841d14",
+    "openclaw": "4583102e29175a35815ea8031d6a0f254f7b4514"
+  },
+  "consumerVerification": {
+    "artifactSha256": "b2d00768711c566e3fd0929603451a3246c841970a0e14ab77e881fbb990a45e",
+    "command": "node scripts/runtime-control/verify-consumers.mjs --web <cavi-control-worktree> --mobile <cc-mobile-worktree>",
+    "consumers": [
+      {
+        "name": "cavi-control",
+        "revision": "5e87f9d8b6782a0c5e70048f2336e3b7c3ea0f3d",
+        "tree": "86ba0576f10409414f3c7485e4cd905a8ce5babf",
+        "status": "passed",
+        "layers": [
+          {
+            "command": "source import boundary scan",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm install --frozen-lockfile",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "installed release candidate digest verification",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm run typecheck",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm run verify:apis",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm test",
+            "exitCode": 0,
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "name": "cc-mobile",
+        "revision": "0c85fa64311769d5d609992b64235d91cf4b85a9",
+        "tree": "5000f41d2eaeffa579939848ff2b0aa151fb6fb6",
+        "status": "passed",
+        "layers": [
+          {
+            "command": "source import boundary scan",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm install --frozen-lockfile",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "installed release candidate digest verification",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm exec tsc --noEmit",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm run test:api-client-import-surface",
+            "exitCode": 0,
+            "status": "passed"
+          },
+          {
+            "command": "pnpm run test:mobile-hardening-contracts",
+            "exitCode": 0,
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "snapshotWorktreeInvariance": [
+      {
+        "afterSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "cavi-control",
+        "status": "passed"
+      },
+      {
+        "afterSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "cc-mobile",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "consumerSnapshotProvenance": {
+    "algorithm": {
+      "commitIdentity": "Runtime Control Snapshot v1 <runtime-control-snapshot-v1@localhost>",
+      "commitTimestamp": "2000-01-01T00:00:00Z",
+      "id": "runtime-control-consumer-snapshot-v1",
+      "inventoryEncoding": "path NUL git-mode NUL SHA-256(content-or-symlink-target) newline; UTF-8 byte-order sort",
+      "untrackedProvenanceEncoding": "sorted untracked path plus NUL; SHA-256 embedded in snapshot commit message"
+    },
+    "availability": "maintainer-local-ignored-artifact",
+    "consumers": [
+      {
+        "algorithm": {
+          "commitIdentity": "Runtime Control Snapshot v1 <runtime-control-snapshot-v1@localhost>",
+          "commitTimestamp": "2000-01-01T00:00:00Z",
+          "id": "runtime-control-consumer-snapshot-v1",
+          "inventoryEncoding": "path NUL git-mode NUL SHA-256(content-or-symlink-target) newline; UTF-8 byte-order sort",
+          "untrackedProvenanceEncoding": "sorted untracked path plus NUL; SHA-256 embedded in snapshot commit message"
+        },
+        "allowedAbsolutePathSha256": [
+          "2c7315c78b9c5d69aba5c7eafd5cd13214d89421ef8f16d6b1db1c555547453f"
+        ],
+        "baseRevision": "53275d646861cf7fc4a411051ee32c242128c2d4",
+        "bundle": {
+          "path": ".artifacts/runtime-control/consumer-snapshots-live/cavi-control.bundle",
+          "sha256": "b51c77e5bb8bf0661adc147ebb846e02a9c3758752d7168823d4943627ceff36",
+          "verified": {
+            "bundleSha256": "b51c77e5bb8bf0661adc147ebb846e02a9c3758752d7168823d4943627ceff36",
+            "commit": "5e87f9d8b6782a0c5e70048f2336e3b7c3ea0f3d",
+            "includedInventory": {
+              "count": 1114,
+              "sha256": "d23deb207af9db237b5023114a88b04f4b896b15fca375bd5d4eede41bc11bb2"
+            },
+            "tree": "86ba0576f10409414f3c7485e4cd905a8ce5babf",
+            "untrackedIncludedInventory": {
+              "count": 9,
+              "sha256": "4c2c62055a6f1acf5219a26caa983fd6bf0fffc22ba0e65df9e5250c400ac9dd"
+            }
+          }
+        },
+        "excluded": [
+          ".agents",
+          ".artifacts",
+          ".claude",
+          ".cursor",
+          ".debug-chromium-proof",
+          ".e2e-pipeline",
+          ".expo",
+          ".gemini",
+          ".git",
+          ".kiro",
+          ".pnpm-store",
+          ".qoder",
+          ".remember",
+          ".superpowers",
+          ".vite",
+          ".worktrees",
+          "android/build",
+          "build",
+          "coverage",
+          "dist",
+          "docs/superpowers",
+          "ios/build",
+          "node_modules",
+          "playwright-report",
+          "registry",
+          "test-results"
+        ],
+        "label": "cavi-control",
+        "originalSourceStatus": {
+          "afterSha256": "6b091dea2ba46edae0c638143e80288b301d760a43a7dbc7da9874fd6db7c29f",
+          "beforeSha256": "6b091dea2ba46edae0c638143e80288b301d760a43a7dbc7da9874fd6db7c29f",
+          "equal": true,
+          "format": "git status --porcelain=v1 -z"
+        },
+        "packageJsonSha256": "0e91d3cf79332a38f94869dfdba7e78303e320502a7c8fb23b53b9d9a1eb7b95",
+        "pnpmLockSha256": "9f57117ae04fc141027132d9f7dadedd49a34710187b9e078c4ee720e4887cd5",
+        "snapshotCommit": "5e87f9d8b6782a0c5e70048f2336e3b7c3ea0f3d",
+        "snapshotTree": "86ba0576f10409414f3c7485e4cd905a8ce5babf",
+        "sourceRepository": {
+          "baseRevision": "53275d646861cf7fc4a411051ee32c242128c2d4",
+          "origin": "https://github.com/sasan1200/cavi-control.git"
+        },
+        "trackedDiffSha256": "36ebd255effc610e71fe892a7ad7c3ad758b49d168dd8f36fbcd83960a181491",
+        "untrackedPathsSha256": "bc966c6f7f8b5a92219667ae934808d4512976e9962a757ecf73551d2884223f",
+        "metadataPath": ".artifacts/runtime-control/consumer-snapshots-live/cavi-control.json",
+        "includedInventory": {
+          "count": 1114,
+          "sha256": "d23deb207af9db237b5023114a88b04f4b896b15fca375bd5d4eede41bc11bb2"
+        },
+        "untrackedIncludedInventory": {
+          "count": 9,
+          "sha256": "4c2c62055a6f1acf5219a26caa983fd6bf0fffc22ba0e65df9e5250c400ac9dd"
+        }
+      },
+      {
+        "algorithm": {
+          "commitIdentity": "Runtime Control Snapshot v1 <runtime-control-snapshot-v1@localhost>",
+          "commitTimestamp": "2000-01-01T00:00:00Z",
+          "id": "runtime-control-consumer-snapshot-v1",
+          "inventoryEncoding": "path NUL git-mode NUL SHA-256(content-or-symlink-target) newline; UTF-8 byte-order sort",
+          "untrackedProvenanceEncoding": "sorted untracked path plus NUL; SHA-256 embedded in snapshot commit message"
+        },
+        "allowedAbsolutePathSha256": [
+          "2c7315c78b9c5d69aba5c7eafd5cd13214d89421ef8f16d6b1db1c555547453f"
+        ],
+        "baseRevision": "1128463d2ad363746de5ec9cc202ae7d20c96112",
+        "bundle": {
+          "path": ".artifacts/runtime-control/consumer-snapshots-live/cc-mobile.bundle",
+          "sha256": "eb1e31c89ceb5affd58a478cf8736a05d27484421c2e2c8e013cca8b1b51a638",
+          "verified": {
+            "bundleSha256": "eb1e31c89ceb5affd58a478cf8736a05d27484421c2e2c8e013cca8b1b51a638",
+            "commit": "0c85fa64311769d5d609992b64235d91cf4b85a9",
+            "includedInventory": {
+              "count": 799,
+              "sha256": "03e2ed4b088ce81a91558ba325932521f4c607fe69f5ba333836d7db3333af22"
+            },
+            "tree": "5000f41d2eaeffa579939848ff2b0aa151fb6fb6",
+            "untrackedIncludedInventory": {
+              "count": 14,
+              "sha256": "7502e1335fb11a13a221e2707b1d8bf82b8c6221cfbc86d1a397914165e0301b"
+            }
+          }
+        },
+        "excluded": [
+          ".agents",
+          ".artifacts",
+          ".claude",
+          ".cursor",
+          ".debug-chromium-proof",
+          ".e2e-pipeline",
+          ".expo",
+          ".gemini",
+          ".git",
+          ".kiro",
+          ".pnpm-store",
+          ".qoder",
+          ".remember",
+          ".superpowers",
+          ".vite",
+          ".worktrees",
+          "android/build",
+          "build",
+          "coverage",
+          "dist",
+          "docs/superpowers",
+          "ios/build",
+          "node_modules",
+          "playwright-report",
+          "registry",
+          "test-results"
+        ],
+        "label": "cc-mobile",
+        "originalSourceStatus": {
+          "afterSha256": "f2056da1eed53e7f797792bd7c90c206783e9e84b9d31cb1f1a421647dd0d293",
+          "beforeSha256": "f2056da1eed53e7f797792bd7c90c206783e9e84b9d31cb1f1a421647dd0d293",
+          "equal": true,
+          "format": "git status --porcelain=v1 -z"
+        },
+        "packageJsonSha256": "adea38d89fd78ad593b43b11272cef11fdb5a196b1144dea6b763845d48975f2",
+        "pnpmLockSha256": "c5e25ed104e0c92ab07b822fa77972b66b75dfa3b596e76dd766b743ff28cd7b",
+        "snapshotCommit": "0c85fa64311769d5d609992b64235d91cf4b85a9",
+        "snapshotTree": "5000f41d2eaeffa579939848ff2b0aa151fb6fb6",
+        "sourceRepository": {
+          "baseRevision": "1128463d2ad363746de5ec9cc202ae7d20c96112",
+          "origin": "https://github.com/sasan1200/cc-mobile.git"
+        },
+        "trackedDiffSha256": "77fae5caa0e568b3ab869c6be60e04f1d787035514dee79c8a1c61e1b57ab244",
+        "untrackedPathsSha256": "d59a84536fb4607da73707f06a7b08da9adcfcccfa42fafeb554bfbe17518d76",
+        "metadataPath": ".artifacts/runtime-control/consumer-snapshots-live/cc-mobile.json",
+        "includedInventory": {
+          "count": 799,
+          "sha256": "03e2ed4b088ce81a91558ba325932521f4c607fe69f5ba333836d7db3333af22"
+        },
+        "untrackedIncludedInventory": {
+          "count": 14,
+          "sha256": "7502e1335fb11a13a221e2707b1d8bf82b8c6221cfbc86d1a397914165e0301b"
+        }
+      }
+    ],
+    "localOnly": true
+  }
+}

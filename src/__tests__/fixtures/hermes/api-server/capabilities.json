@@ -1,0 +1,1 @@
+{"object":"hermes.api_server.capabilities","platform":"hermes-agent","model":"hermes-live","auth":{"type":"bearer","required":true},"runtime":{"mode":"server_agent"},"features":{"run_events_sse":true},"endpoints":{"models":{"method":"GET","path":"/v1/models"},"run_events":{"method":"GET","path":"/v1/runs/{run_id}/events"}}}

@@ -190,6 +190,28 @@ describe("OpenClaw control-plane wire validation", () => {
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, totalCost: new Map() }] })).toThrow(OpenClawWireError);
   });
 
+  it.each([
+    ["sessions pagination", parseSessionsList, { ...(fixture("sessions-list") as object), totalCount: -1 }],
+    ["sessions pagination completeness", parseSessionsList, nestedPayload("sessions-list", (p) => { delete p.nextOffset; })],
+    ["sessions pagination count", parseSessionsList, nestedPayload("sessions-list", (p) => { p.count = 0; })],
+    ["sessions pagination continuation", parseSessionsList, nestedPayload("sessions-list", (p) => { p.hasMore = true; })],
+    ["sessions defaults runtime", parseSessionsList, nestedPayload("sessions-list", (p) => { p.defaults.agentRuntime.source = "invented"; })],
+    ["sessions defaults thinking", parseSessionsList, nestedPayload("sessions-list", (p) => { p.defaults.thinkingLevels[0].label = 1; })],
+    ["session kind", parseSessionsList, nestedPayload("sessions-list", (p) => { p.sessions[0].kind = "private"; })],
+    ["session label", parseSessionsList, nestedPayload("sessions-list", (p) => { p.sessions[0].label = 1; })],
+    ["session display name", parseSessionsList, nestedPayload("sessions-list", (p) => { p.sessions[0].displayName = 1; })],
+    ["session token count", parseSessionsList, nestedPayload("sessions-list", (p) => { p.sessions[0].totalTokens = -1; })],
+    ["session runtime", parseSessionsList, nestedPayload("sessions-list", (p) => { p.sessions[0].agentRuntime.source = "invented"; })],
+    ["session response usage", parseSessionsList, nestedPayload("sessions-list", (p) => { p.sessions[0].effectiveResponseUsage = "verbose"; })],
+    ["usage cost details", parseUsageCost, nestedPayload("usage-cost", (p) => { p.totals.inputCost = -1; })],
+    ["usage cache status", parseUsageCost, nestedPayload("usage-cost", (p) => { p.cacheStatus.status = "unknown"; })],
+    ["usage cache counts", parseUsageCost, nestedPayload("usage-cost", (p) => { p.cacheStatus.pendingFiles = -1; })],
+    ["agent runtime", parseAgentsList, nestedPayload("agents-list", (p) => { p.agents[0].agentRuntime.id = ""; })],
+    ["agent thinking options", parseAgentsList, nestedPayload("agents-list", (p) => { p.agents[0].thinkingOptions = ["off", 1]; })],
+  ] as const)("rejects malformed current upstream field: %s", (_name, parse, payload) => {
+    expect(() => parse(payload)).toThrow(OpenClawWireError);
+  });
+
   const usageMetricKeys = [
     "input",
     "output",
