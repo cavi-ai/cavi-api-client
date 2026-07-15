@@ -198,11 +198,19 @@ experimental modules as unsupported.
 **Capability** gateway (`gap` — unregistered providers return a typed unavailable facade)
 
 Resolves a provider kind or alias through the registry of shipped provider
-modules and returns a required `RuntimeControlClient` facade containing all seven
+modules and returns a required `RuntimeControlClient` facade containing the seven
 focused modules (`authStatus`, `sessions`, `models`, `usage`, `tasks`,
-`workspace`, `events`) plus an idempotent `dispose()`. `options` carries only
-provider-neutral URL, token/auth resolver, abort signal, trace, transport, and
-registry inputs.
+`workspace`, `events`), an immutable `extensions` registry, and an idempotent
+`dispose()`. `options` carries provider-neutral URL, token/auth resolver, abort
+signal, trace, transport, registry, and optional `gatewayConnection` /
+`gatewayReconnect` inputs. `gatewayConnection` composes the public
+`GatewayRpcClientOptions` contract (client identity, connect-frame correlation,
+device identity, requested scopes, protocol range, timeouts, request limits, and
+redacted RPC tracing); OpenClaw forwards it only when creating its owned
+WebSocket, an injected transport keeps precedence, and Hermes rejects each
+semantically supplied setting with a field-specific `CapabilityUnavailable`.
+`gatewayReconnect` reuses `TransportRetryPolicy` for opt-in, bounded,
+retryable-only OpenClaw reconnect.
 
 #### Example
 
@@ -224,6 +232,32 @@ and closed by `dispose()`; injected transports are caller-owned and remain open
 unless the caller closes them. On reconnect the adapter emits `stream.reconnected`
 followed by `stream.gap` when continuity cannot be proven; it does not claim
 replay.
+
+### Extensions registry and raw gateway
+
+**Signature** `defineRuntimeControlExtension(id)` · `createRuntimeControlExtensionRegistry(entries)` · `withRuntimeControlExtensions(client, entries)`
+**HTTP** `n/a (client-side)` · `gateway RPC` (for `gateway.raw` operation requests)
+**Capability** gateway (`gap` — `RawGatewayChannel` operations reject when the provider exposes no raw channel)
+
+The facade's `extensions` registry exposes provider-neutral, typed extensions by
+descriptor identity. `defineRuntimeControlExtension(id)` declares a typed,
+provider-neutral extension ID; `createRuntimeControlExtensionRegistry(entries)`
+builds an immutable registry with descriptor-identity typed lookup and sorted
+discovery, rejecting blank and duplicate IDs. The core names `authStatus`,
+`sessions`, `models`, `usage`, `tasks`, `workspace`, `events`, `extensions`, and
+`dispose` are reserved and cannot be extension IDs.
+`withRuntimeControlExtensions(client, entries)` returns a frozen facade that
+preserves the client's module objects and existing registered extensions, rejects
+cross-wrap ID collisions, and delegates disposal exactly once.
+
+`GATEWAY_RAW_EXTENSION` / `RawGatewayChannel` is an optional provider-neutral
+`gateway.raw` descriptor and channel for arbitrary operation requests, raw
+`{ event, payload }` subscriptions, connection state, and lifecycle ownership.
+Raw events remain distinct from the normalized `RuntimeControlClient.events`
+stream, and this core extension is separate from the CAVI-only `cavi.control`
+surface. Retrieve it with `client.extensions.get(GATEWAY_RAW_EXTENSION)`. The
+`@cavi-ai/api-client/testing` export `runRawGatewayConformance(createChannel)`
+verifies the request/event/state and lifecycle contract of a raw channel.
 
 ### RuntimeControlClient focused modules
 
@@ -260,11 +294,12 @@ side-effect free and idempotent.
 ### createHermesRuntimeControlClient
 
 **Signature** `createHermesRuntimeControlClient(options: HermesCaviRuntimeControlOptions): RuntimeControlClient`
-**HTTP** `n/a (JSON-RPC 2.0 over TransportMessageChannel + dashboard REST)`
+**HTTP** `n/a (Hermes API Server REST/SSE + optional dashboard REST/JSON-RPC over TransportMessageChannel)`
 **Capability** gateway (`gap` — modules installed only when configured)
 
-CAVI-extension composer of Hermes dashboard REST/JSON-RPC modules with optional
-CAVI task and workspace adapters. Always returns the complete canonical shape,
-uses typed unavailable modules for missing configuration, and borrows an injected
-channel unless `ownsChannel: true`. Sessions are installed only when both
-dashboard REST and a channel are configured.
+CAVI-extension composer of Hermes API Server REST/SSE, separately configured
+dashboard REST/JSON-RPC modules, and optional CAVI task and workspace adapters.
+Always returns the complete canonical shape, uses typed unavailable modules for
+missing configuration, and borrows an injected channel unless `ownsChannel: true`.
+Sessions are installed only when both a dashboard/API-server source and a channel
+are configured.
