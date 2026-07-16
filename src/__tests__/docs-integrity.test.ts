@@ -110,10 +110,13 @@ describe("docs integrity", () => {
   // assert the guarantee at its new home rather than string-matching YAML.
   it("enforces an immutable, digest-verified stable artifact in one shared place", () => {
     const fetchStable = read("scripts/docs/fetch-stable.mjs");
+    // The pin is read from types.mjs rather than restated, and a mismatch is fatal.
+    // That a supplied artifact is actually rejected on mismatch is proven
+    // behaviourally by docs-renderer.test.ts ("rejects a stable tarball whose
+    // digest does not match") — asserting the implementation line here would only
+    // break on refactors without adding protection.
     expect(fetchStable).toContain("APPROVED_RELEASE_SHA256");
     expect(fetchStable).toContain("stable artifact digest mismatch");
-    // An explicitly supplied artifact is verified too — never trusted blindly.
-    expect(fetchStable).toContain("return assertApprovedDigest(supplied)");
     expect(pkg.scripts["docs:stable"]).toBe("node scripts/docs/fetch-stable.mjs");
   });
 

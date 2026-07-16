@@ -26,12 +26,14 @@ function parseArguments(argv) {
     if (!allowedOptions.has(name)) throw new Error(`unsupported option --${name}`);
     values[name] = value;
   }
-  // The tarball stays REQUIRED: a production build must never guess the artifact
-  // it documents. Output path and reproducible-build timestamp derive from the
-  // release pins (types.mjs) so they cannot drift; explicit flags still win.
-  values.tarball ??= values.package ?? process.env.CAVI_DOCS_PACKAGE_TGZ;
+  // The tarball stays REQUIRED and is never read from the environment: a
+  // production build must be told explicitly which artifact it documents, so it
+  // cannot silently document whatever a stray env var points at. Callers pass
+  // --package (see the docs:build script). Output path and reproducible-build
+  // timestamp derive from the release pins (types.mjs) so they cannot drift.
+  values.tarball ??= values.package;
   values.output ??= values.out ?? DOCUMENTED_OUTPUT_DIRECTORY;
-  values["source-date-epoch"] ??= process.env.SOURCE_DATE_EPOCH ?? String(DOCUMENTED_SOURCE_DATE_EPOCH);
+  values["source-date-epoch"] ??= String(DOCUMENTED_SOURCE_DATE_EPOCH);
   for (const required of ["tarball", "output", "source-date-epoch"]) {
     if (!values[required]) throw new Error(`missing required option --${required}`);
   }
