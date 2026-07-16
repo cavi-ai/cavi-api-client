@@ -12,7 +12,20 @@ pnpm run lint:md
 `pnpm run verify` is the complete release gate. In addition to tests and the
 TypeScript build, it validates the locked documentation artifact and packed
 consumer declarations. Documentation verification therefore requires the exact
-stable package tarball identified by `CAVI_API_CLIENT_STABLE_TARBALL`.
+stable package tarball for the documented release.
+
+That artifact is provisioned for you: the documentation scripts fetch it into a
+gitignored `.cache/docs-stable/` and verify it against the sha256 pinned in
+`scripts/docs/types.mjs`, so `pnpm run verify` works with no setup. Run
+`pnpm run docs:stable` to fetch it up front. To use an artifact you already have,
+point `CAVI_API_CLIENT_STABLE_TARBALL` at it — a supplied tarball is digest-checked
+too, and never trusted blindly.
+
+The documented release is pinned once, in `scripts/docs/types.mjs`
+(`DOCUMENTED_VERSION`, `DOCUMENTED_TAG`, `DOCUMENTED_COMMIT`,
+`APPROVED_RELEASE_SHA256`, `DOCUMENTED_SOURCE_DATE_EPOCH`). Every output path,
+`files` entry, and workflow derives from those pins; bump them together, only
+there, once per release. `docs-pins.test.ts` fails the build if they drift.
 
 ## Documentation model
 

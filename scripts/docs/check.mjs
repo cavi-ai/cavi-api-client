@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
 import { buildDocumentationInTemporaryRoot } from "./build.mjs";
+import { resolveStableTarball } from "./fetch-stable.mjs";
+import { DOCUMENTED_OUTPUT_DIRECTORY, DOCUMENTED_SOURCE_DATE_EPOCH } from "./types.mjs";
 
 function parseArguments(argv) {
   const allowedOptions = new Set(["package", "out", "source-date-epoch", "root"]);
@@ -20,14 +22,12 @@ function parseArguments(argv) {
     if (!allowedOptions.has(name)) throw new Error(`unsupported option --${name}`);
     values[name] = value;
   }
-  values.package ??= process.env.CAVI_DOCS_PACKAGE_TGZ ?? process.env.CAVI_API_CLIENT_STABLE_TARBALL;
-  values.out ??= "docs/api-client/v0.11.0";
-  values["source-date-epoch"] ??= process.env.SOURCE_DATE_EPOCH;
+  // Defaults come from the release pins (types.mjs) so a bare `pnpm docs:check`
+  // works locally; an explicit flag or env var still wins (CI supplies both).
+  values.package ??= resolveStableTarball(["CAVI_DOCS_PACKAGE_TGZ", "CAVI_API_CLIENT_STABLE_TARBALL"]);
+  values.out ??= DOCUMENTED_OUTPUT_DIRECTORY;
+  values["source-date-epoch"] ??= process.env.SOURCE_DATE_EPOCH ?? String(DOCUMENTED_SOURCE_DATE_EPOCH);
   values.root ??= ".";
-  if (!values.package) {
-    throw new Error("CAVI_DOCS_PACKAGE_TGZ or CAVI_API_CLIENT_STABLE_TARBALL is required");
-  }
-  if (!values["source-date-epoch"]) throw new Error("SOURCE_DATE_EPOCH is required");
   return values;
 }
 
