@@ -101,14 +101,29 @@ describe("docs integrity", () => {
     }
   });
 
+  // The provisioning contract is unchanged — an immutable, digest-verified stable
+  // artifact must exist before any documentation gate runs. What changed is where
+  // it is enforced: the version and sha256 used to be duplicated as literals in
+  // both workflows (and four other files), which is exactly how the 0.12.0 release
+  // drifted. They now live once in scripts/docs/types.mjs, and fetch-stable.mjs
+  // performs the fetch + digest check for CI and local runs alike. These tests
+  // assert the guarantee at its new home rather than string-matching YAML.
+  it("enforces an immutable, digest-verified stable artifact in one shared place", () => {
+    const fetchStable = read("scripts/docs/fetch-stable.mjs");
+    expect(fetchStable).toContain("APPROVED_RELEASE_SHA256");
+    expect(fetchStable).toContain("stable artifact digest mismatch");
+    // An explicitly supplied artifact is verified too — never trusted blindly.
+    expect(fetchStable).toContain("return assertApprovedDigest(supplied)");
+    expect(pkg.scripts["docs:stable"]).toBe("node scripts/docs/fetch-stable.mjs");
+  });
+
   it("provisions immutable stable docs inputs before publish verification", () => {
     const workflow = read(".github/workflows/publish.yml");
-    expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
-    expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
-    expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
-    expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
-    expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow).toContain("run: pnpm run docs:stable");
     expect(workflow).not.toContain("${{ runner.temp }}");
+    // No release-coupled literals may reappear in the workflow.
+    expect(workflow).not.toContain("npm pack @cavi-ai/api-client@");
+    expect(workflow).not.toContain("SOURCE_DATE_EPOCH:");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
       workflow.indexOf("Verify package"),
     );
@@ -116,12 +131,10 @@ describe("docs integrity", () => {
 
   it("provisions immutable stable docs inputs before CI documentation typechecking", () => {
     const workflow = read(".github/workflows/ci.yml");
-    expect(workflow).toContain("CAVI_API_CLIENT_STABLE_TARBALL:");
-    expect(workflow).toContain("CAVI_DOCS_PACKAGE_TGZ:");
-    expect(workflow).toContain("SOURCE_DATE_EPOCH: 1783740944");
-    expect(workflow).toContain("3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5");
-    expect(workflow).toContain("npm pack @cavi-ai/api-client@0.11.0");
+    expect(workflow).toContain("run: pnpm run docs:stable");
     expect(workflow).not.toContain("${{ runner.temp }}");
+    expect(workflow).not.toContain("npm pack @cavi-ai/api-client@");
+    expect(workflow).not.toContain("SOURCE_DATE_EPOCH:");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
       workflow.indexOf("Typecheck documentation examples"),
     );

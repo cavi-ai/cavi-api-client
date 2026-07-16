@@ -56,7 +56,13 @@ afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) rmSync(directory, { force: true, recursive: true });
 });
 
-describe("runtime-control consumer snapshot producer", () => {
+// Every case here shells out to real `git` (clone, bundle, verify) against
+// temporary repositories, so wall time is dominated by process spawning rather
+// than the assertions. Vitest's 5s default is far too tight once the full suite
+// runs these in parallel with 200+ other files: the work itself takes ~20s.
+const GIT_BUNDLE_TIMEOUT_MS = 120_000;
+
+describe("runtime-control consumer snapshot producer", { timeout: GIT_BUNDLE_TIMEOUT_MS }, () => {
   it("creates deterministic reconstructable bundles with intended untracked files and private exclusions", () => {
     const source = sourceFixture();
     const packageBareBefore = git(process.cwd(), ["config", "--get", "core.bare"]);
