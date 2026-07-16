@@ -117,27 +117,29 @@ describe("docs integrity", () => {
     expect(pkg.scripts["docs:stable"]).toBe("node scripts/docs/fetch-stable.mjs");
   });
 
-  it("provisions immutable stable docs inputs before publish verification", () => {
-    const workflow = read(".github/workflows/publish.yml");
-    expect(workflow).toContain("run: pnpm run docs:stable");
+  // Each workflow `run:` step is its own shell, so provisioning must publish the
+  // artifact path to $GITHUB_ENV for the later gate steps to receive it. Asserting
+  // only that the step exists is not enough — that is exactly the gap that let a
+  // provision step ship without wiring the value through.
+  const assertProvisionsStableArtifact = (workflow: string, beforeStep: string) => {
+    expect(workflow).toContain("node scripts/docs/fetch-stable.mjs");
+    expect(workflow).toContain('echo "CAVI_API_CLIENT_STABLE_TARBALL=$TARBALL" >> "$GITHUB_ENV"');
+    expect(workflow).toContain('echo "CAVI_DOCS_PACKAGE_TGZ=$TARBALL" >> "$GITHUB_ENV"');
     expect(workflow).not.toContain("${{ runner.temp }}");
     // No release-coupled literals may reappear in the workflow.
     expect(workflow).not.toContain("npm pack @cavi-ai/api-client@");
     expect(workflow).not.toContain("SOURCE_DATE_EPOCH:");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
-      workflow.indexOf("Verify package"),
+      workflow.indexOf(beforeStep),
     );
+  };
+
+  it("provisions immutable stable docs inputs before publish verification", () => {
+    assertProvisionsStableArtifact(read(".github/workflows/publish.yml"), "Verify package");
   });
 
   it("provisions immutable stable docs inputs before CI documentation typechecking", () => {
-    const workflow = read(".github/workflows/ci.yml");
-    expect(workflow).toContain("run: pnpm run docs:stable");
-    expect(workflow).not.toContain("${{ runner.temp }}");
-    expect(workflow).not.toContain("npm pack @cavi-ai/api-client@");
-    expect(workflow).not.toContain("SOURCE_DATE_EPOCH:");
-    expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
-      workflow.indexOf("Typecheck documentation examples"),
-    );
+    assertProvisionsStableArtifact(read(".github/workflows/ci.yml"), "Typecheck documentation examples");
   });
 
   it("package.json version has a matching CHANGELOG entry", () => {
