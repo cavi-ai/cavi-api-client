@@ -42,3 +42,6 @@ docs/superpowers/
 .agents/
 .codex/
 .worktrees/
+
+# Fetched, digest-verified stable release artifacts (scripts/docs/fetch-stable.mjs)
+.cache

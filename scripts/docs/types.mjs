@@ -27,11 +27,35 @@
  * @property {ReleaseSymbol[]} symbols
  */
 
+/**
+ * The documented release — the last PUBLISHED version, whose real `.d.ts` the
+ * documentation gates type-check the published examples against.
+ *
+ * THESE PINS MOVE TOGETHER, ONCE PER RELEASE, AND ONLY HERE. Everything else
+ * (build output path, check output path, stable-typecheck includes, the `files`
+ * allowlist, and both workflows) derives from them. `docs-pins.test.ts` fails
+ * the build if they drift out of sync.
+ *
+ * To bump after publishing X.Y.Z:
+ *   DOCUMENTED_VERSION            X.Y.Z
+ *   DOCUMENTED_TAG                vX.Y.Z
+ *   DOCUMENTED_COMMIT             git rev-parse "vX.Y.Z^{}"
+ *   APPROVED_RELEASE_SHA256       shasum -a 256 "$(npm pack @cavi-ai/api-client@X.Y.Z)"
+ *   DOCUMENTED_SOURCE_DATE_EPOCH  git log -1 --format=%ct "vX.Y.Z^{}"
+ */
 export const DOCUMENTED_PACKAGE = "@cavi-ai/api-client";
 export const DOCUMENTED_VERSION = "0.11.0";
 export const DOCUMENTED_TAG = "v0.11.0";
 export const DOCUMENTED_COMMIT = "48adfa6ba7c3d5e8ffee0a6cf2572574ca630fa0";
 export const APPROVED_RELEASE_SHA256 = "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5";
+/**
+ * Reproducible-build timestamp: the committer time of DOCUMENTED_COMMIT. Pinned
+ * rather than read from git so the build stays reproducible in shallow clones
+ * and from the published tarball, where the commit may be absent.
+ */
+export const DOCUMENTED_SOURCE_DATE_EPOCH = 1783740944;
+/** Canonical output directory for the generated reference, relative to the repo root. */
+export const DOCUMENTED_OUTPUT_DIRECTORY = `docs/api-client/${DOCUMENTED_TAG}`;
 export const CAPABILITY_STATES = Object.freeze([
   "supported",
   "unsupported",
