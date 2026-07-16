@@ -45,7 +45,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Provision stable documentation artifact
-        run: pnpm run docs:stable
+        run: |
+          TARBALL="$(node scripts/docs/fetch-stable.mjs)"
+          echo "CAVI_API_CLIENT_STABLE_TARBALL=$TARBALL" >> "$GITHUB_ENV"
+          echo "CAVI_DOCS_PACKAGE_TGZ=$TARBALL" >> "$GITHUB_ENV"
 
       - name: Typecheck
         run: pnpm run typecheck
