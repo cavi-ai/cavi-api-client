@@ -1,22 +1,14 @@
-import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const expectedDigest = "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5";
-const tarball = process.env.CAVI_API_CLIENT_STABLE_TARBALL;
+import { resolveStableTarball } from "./fetch-stable.mjs";
+import { DOCUMENTED_TAG } from "./types.mjs";
 
-if (!tarball) {
-  throw new Error(
-    "CAVI_API_CLIENT_STABLE_TARBALL is required; set it to the @cavi-ai/api-client@0.11.0 .tgz artifact",
-  );
-}
-
-const observedDigest = createHash("sha256").update(readFileSync(tarball)).digest("hex");
-if (observedDigest !== expectedDigest) {
-  throw new Error(`stable artifact digest mismatch: expected ${expectedDigest}; observed ${observedDigest}`);
-}
+// The pinned version and its sha256 live in types.mjs; obtaining + verifying the
+// artifact lives in fetch-stable.mjs. This script only type-checks against it.
+const tarball = resolveStableTarball();
 
 const workspace = mkdtempSync(path.join(tmpdir(), "cavi-docs-stable-"));
 try {
@@ -29,8 +21,8 @@ try {
   };
   config.compilerOptions.typeRoots = [path.resolve("node_modules/@types")];
   config.include = [
-    path.resolve("docs/api-client/v0.11.0/examples/**/*.ts"),
-    path.resolve("docs/api-client/v0.11.0/examples/**/*.tsx"),
+    path.resolve(`docs/api-client/${DOCUMENTED_TAG}/examples/**/*.ts`),
+    path.resolve(`docs/api-client/${DOCUMENTED_TAG}/examples/**/*.tsx`),
     path.resolve("docs/examples/contracts/**/*.ts"),
   ];
   const generatedConfig = path.join(workspace, "tsconfig.docs-stable.json");

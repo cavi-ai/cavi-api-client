@@ -640,7 +640,15 @@ describe("package hardening", () => {
     expect(packageJson.scripts?.prepack).toBe("pnpm run build");
     expect(packageJson.scripts?.prepublishOnly).toBe("pnpm run verify");
     expect(packageJson.scripts?.verify).toBe(
-      "pnpm run clean && pnpm test && pnpm run typecheck:docs && pnpm run build && pnpm run docs:check && pnpm exec markdownlint-cli2 '**/*.md' '#node_modules' '#dist' && pnpm pack --dry-run",
+      // Two deliberate changes from the original chain:
+      // 1. The stable artifact is provisioned explicitly (respecting an already-set
+      //    env var) so the docs gates still receive it explicitly and never fetch
+      //    implicitly, while `pnpm run verify` needs no manual setup.
+      // 2. Markdown linting delegates to `lint:md` so verify and CI lint the exact
+      //    same file set (the curated globs in .markdownlint-cli2.jsonc). The old
+      //    inline '**/*.md' override rescanned the whole tree, including nested
+      //    node_modules under stray worktrees, which made verify unrunnable locally.
+      'pnpm run clean && pnpm test && export CAVI_API_CLIENT_STABLE_TARBALL="${CAVI_API_CLIENT_STABLE_TARBALL:-$(node scripts/docs/fetch-stable.mjs)}" && export CAVI_DOCS_PACKAGE_TGZ="${CAVI_DOCS_PACKAGE_TGZ:-$CAVI_API_CLIENT_STABLE_TARBALL}" && pnpm run typecheck:docs && pnpm run build && pnpm run docs:check && pnpm run lint:md && pnpm pack --dry-run',
     );
   });
 

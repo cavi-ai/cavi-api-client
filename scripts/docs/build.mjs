@@ -7,6 +7,7 @@ import { loadContracts } from "./contracts.mjs";
 import { inspectRelease } from "./inspect-release.mjs";
 import { renderDocumentation } from "./render.mjs";
 import { containedPath } from "./paths.mjs";
+import { DOCUMENTED_OUTPUT_DIRECTORY, DOCUMENTED_SOURCE_DATE_EPOCH } from "./types.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -25,8 +26,12 @@ function parseArguments(argv) {
     if (!allowedOptions.has(name)) throw new Error(`unsupported option --${name}`);
     values[name] = value;
   }
-  values.tarball ??= values.package;
-  values.output ??= values.out;
+  // The tarball stays REQUIRED: a production build must never guess the artifact
+  // it documents. Output path and reproducible-build timestamp derive from the
+  // release pins (types.mjs) so they cannot drift; explicit flags still win.
+  values.tarball ??= values.package ?? process.env.CAVI_DOCS_PACKAGE_TGZ;
+  values.output ??= values.out ?? DOCUMENTED_OUTPUT_DIRECTORY;
+  values["source-date-epoch"] ??= process.env.SOURCE_DATE_EPOCH ?? String(DOCUMENTED_SOURCE_DATE_EPOCH);
   for (const required of ["tarball", "output", "source-date-epoch"]) {
     if (!values[required]) throw new Error(`missing required option --${required}`);
   }
@@ -48,7 +53,7 @@ export async function buildDocumentation(argv) {
 export function resolvePublicDocumentationOutput(root, output) {
   const resolvedRoot = path.resolve(root);
   const resolvedOutput = path.resolve(resolvedRoot, output);
-  const canonicalOutput = path.join(resolvedRoot, "docs/api-client/v0.11.0");
+  const canonicalOutput = path.join(resolvedRoot, DOCUMENTED_OUTPUT_DIRECTORY);
   if (resolvedOutput !== canonicalOutput) {
     throw new Error(`unsafe documentation output directory: ${resolvedOutput}`);
   }
