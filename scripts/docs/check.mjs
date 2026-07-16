@@ -24,7 +24,7 @@ function parseArguments(argv) {
   }
   // Defaults come from the release pins (types.mjs) so a bare `pnpm docs:check`
   // works locally; an explicit flag or env var still wins (CI supplies both).
-  values.package ??= resolveStableTarball();
+  values.package ??= resolveStableTarball(["CAVI_DOCS_PACKAGE_TGZ", "CAVI_API_CLIENT_STABLE_TARBALL"]);
   values.out ??= DOCUMENTED_OUTPUT_DIRECTORY;
   values["source-date-epoch"] ??= process.env.SOURCE_DATE_EPOCH ?? String(DOCUMENTED_SOURCE_DATE_EPOCH);
   values.root ??= ".";

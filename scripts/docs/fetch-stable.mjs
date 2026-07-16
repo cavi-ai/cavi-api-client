@@ -78,16 +78,23 @@ export function ensureStableTarball() {
  * is meant to be verifying against. Provision it first with `pnpm run docs:stable`
  * (which `pnpm run verify` and both workflows do). Whatever is supplied is still
  * digest-checked; an unverified artifact is never returned.
+ *
+ * Each caller declares the env vars it honors, in precedence order, rather than
+ * sharing one union: a gate that accepts a variable its own contract does not name
+ * silently widens its input, and the caller's "this is required" check stops
+ * meaning what it says.
+ *
+ * @param {string[]} [envVars] Env vars to read, highest precedence first.
  */
-export function resolveStableTarball() {
-  const supplied = process.env.CAVI_API_CLIENT_STABLE_TARBALL ?? process.env.CAVI_DOCS_PACKAGE_TGZ;
-  if (!supplied) {
+export function resolveStableTarball(envVars = ["CAVI_API_CLIENT_STABLE_TARBALL"]) {
+  const name = envVars.find((variable) => process.env[variable]);
+  if (!name) {
     throw new Error(
-      "CAVI_API_CLIENT_STABLE_TARBALL is required; run `pnpm run docs:stable` to provision " +
+      `${envVars.join(" or ")} is required; run \`pnpm run docs:stable\` to provision ` +
         `the pinned ${DOCUMENTED_PACKAGE}@${DOCUMENTED_VERSION} artifact, or set it to that .tgz`,
     );
   }
-  return assertApprovedDigest(supplied);
+  return assertApprovedDigest(process.env[name]);
 }
 
 if (process.argv[1] && import.meta.url === `file://${path.resolve(process.argv[1])}`) {
