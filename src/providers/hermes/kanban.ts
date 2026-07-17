@@ -223,9 +223,17 @@ export function createHermesKanbanClient(
         ...(patch.priority === undefined ? {} : { priority: PRIORITY_VALUE[patch.priority] }),
       }),
 
-    // Native-status passthrough — the plugin validates the status token.
-    // `position` is not settable: the plugin derives column order from
-    // priority and created_at, so there is no per-card position to write.
+    // Native-status passthrough — the plugin validates the status token and
+    // rejects an unknown one with 400, or an illegal transition with 409.
+    //
+    // Provider difference worth knowing: the plugin refuses `running` here
+    // ("Cannot set status to 'running' directly; use the dispatcher/claim
+    // path", 400). A card enters `running` through the dispatcher, not through
+    // moveCard. OpenClaw has no such restriction. The error is surfaced rather
+    // than translated, so the caller sees the plugin's own reason.
+    //
+    // `position` is not settable: the plugin orders each column by
+    // priority DESC, created_at ASC, so there is no per-card position to write.
     moveCard: async (id: string, status: string) => await patchTask(id, { status }),
 
     // The plugin has no hard-delete route; `archived` is its retire status.
