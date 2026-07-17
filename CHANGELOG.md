@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a canonical, provider-agnostic `./core/teams` capability: `Team` /
+  `TeamMember` value types and a pure `TeamDirectory` resolver (resolve teams and
+  members by id/slug/code/alias), plus `createTeamDirectoryFromManifest` in
+  `./contracts` and a `./testing` conformance kit (`validateTeam`,
+  `inspectTeamDirectoryConformance`). The CAVI team registry now sources its
+  identifier normalizer from this canonical core. Additive; no runtime behavior
+  change to existing consumers.
+
 ### Changed
 
 - Replaced the provider-heavy README with a concise, wiki-first,
