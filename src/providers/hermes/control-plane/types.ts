@@ -1,6 +1,6 @@
-import type { TransportMessageChannel } from "../../../../core/transport/channel.js";
-import type { TransportError } from "../../../../core/transport/error.js";
-import type { RawGatewayConnectionState } from "../../../../core/runtime/control-plane/raw-gateway.js";
+import type { TransportMessageChannel } from "../../../core/transport/channel.js";
+import type { TransportError } from "../../../core/transport/error.js";
+import type { RawGatewayConnectionState } from "../../../core/runtime/control-plane/raw-gateway.js";
 
 export type RequestOptions = Readonly<{ signal?: AbortSignal }>;
 

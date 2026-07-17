@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import type { TransportMessageChannel } from "../../../../../core/transport/index.js";
-import { createHermesDashboardJsonRpcClient } from "../../../../../extensions/cavi/providers/hermes/dashboard-json-rpc.js";
+import type { TransportMessageChannel } from "../../../../core/transport/index.js";
+import { createHermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/dashboard-json-rpc";
 
 function fixture(name: string): unknown {
   return JSON.parse(readFileSync(fileURLToPath(
-    new URL(`../../../../fixtures/hermes/dashboard/json-rpc/${name}.json`, import.meta.url),
+    new URL(`../../../fixtures/hermes/dashboard/json-rpc/${name}.json`, import.meta.url),
   ), "utf8")) as unknown;
 }
 

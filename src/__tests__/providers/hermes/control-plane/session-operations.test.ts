@@ -2,15 +2,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import { TransportError } from "../../../../../core/transport/error.js";
-import type { HermesDashboardRestClient } from "../../../../../extensions/cavi/providers/hermes/dashboard-rest.js";
-import { createHermesSessionOperations } from "../../../../../extensions/cavi/providers/hermes/session-operations.js";
-import { createHermesSessionClient } from "../../../../../extensions/cavi/providers/hermes/sessions.js";
-import type { HermesDashboardJsonRpcClient } from "../../../../../extensions/cavi/providers/hermes/types.js";
+import { TransportError } from "../../../../core/transport/error.js";
+import type { HermesDashboardRestClient } from "../../../../providers/hermes/control-plane/dashboard-rest";
+import { createHermesSessionOperations } from "../../../../providers/hermes/control-plane/session-operations";
+import { createHermesSessionClient } from "../../../../providers/hermes/control-plane/sessions";
+import type { HermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/types";
 
 function fixture(kind: "json-rpc" | "rest", name: string): unknown {
   return JSON.parse(readFileSync(fileURLToPath(new URL(
-    `../../../../fixtures/hermes/dashboard/${kind}/${name}.json`, import.meta.url,
+    `../../../fixtures/hermes/dashboard/${kind}/${name}.json`, import.meta.url,
   )), "utf8")) as unknown;
 }
 

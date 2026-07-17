@@ -1,10 +1,10 @@
-import { HERMES_API_ENDPOINTS, GATEWAY_SESSION_API_PATHS } from "../../../../contracts/paths.js";
-import { JsonHttpApiClient } from "../../../../core/http/json-client.js";
-import { GatewayHttpError } from "../../../../core/http/gateway-error.js";
-import type { ModelCatalogClient, RuntimeModelDescriptor } from "../../../../core/runtime/control-plane/models.js";
-import type { SessionClient, RuntimeSessionSummary } from "../../../../core/runtime/control-plane/sessions.js";
-import type { UsageClient } from "../../../../core/runtime/control-plane/usage.js";
-import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import { HERMES_API_ENDPOINTS, GATEWAY_SESSION_API_PATHS } from "../../../contracts/paths.js";
+import { JsonHttpApiClient } from "../../../core/http/json-client.js";
+import { GatewayHttpError } from "../../../core/http/gateway-error.js";
+import type { ModelCatalogClient, RuntimeModelDescriptor } from "../../../core/runtime/control-plane/models.js";
+import type { SessionClient, RuntimeSessionSummary } from "../../../core/runtime/control-plane/sessions.js";
+import type { UsageClient } from "../../../core/runtime/control-plane/usage.js";
+import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
 
 type RequestOptions = Readonly<{

@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { TransportError } from "../../../../../core/transport/error.js";
-import { CapabilityUnavailable } from "../../../../../core/runtime/control-plane/runtime-control-client.js";
-import type { RawGatewayConnectionState } from "../../../../../core/runtime/control-plane/raw-gateway.js";
-import { createHermesRawGatewayChannel } from "../../../../../extensions/cavi/providers/hermes/raw-gateway.js";
+import { TransportError } from "../../../../core/transport/error.js";
+import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import type { RawGatewayConnectionState } from "../../../../core/runtime/control-plane/raw-gateway.js";
+import { createHermesRawGatewayChannel } from "../../../../providers/hermes/control-plane/raw-gateway";
 import type {
   HermesDashboardEvent,
   HermesDashboardJsonRpcClient,
   HermesRawGatewayLifecycle,
-} from "../../../../../extensions/cavi/providers/hermes/types.js";
+} from "../../../../providers/hermes/control-plane/types";
 
 function fixture() {
   const eventListeners = new Set<(event: HermesDashboardEvent) => void>();

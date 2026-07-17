@@ -16,19 +16,19 @@ import {
   createCaviControlAdapters,
   type CaviControlAdapterOptions,
 } from "../../adapters/create-cavi-control-adapters.js";
-import { createHermesAuthStatusClient } from "./auth-status.js";
-import { createHermesDashboardJsonRpcClient } from "./dashboard-json-rpc.js";
-import { createHermesDashboardRestClient } from "./dashboard-rest.js";
-import { createHermesRawGatewayChannel } from "./raw-gateway.js";
-import { createHermesRuntimeEventClient } from "./events.js";
-import { createHermesModelCatalogClient } from "./models.js";
-import { createHermesSessionOperations } from "./session-operations.js";
-import { createHermesSessionClient } from "./sessions.js";
+import { createHermesAuthStatusClient } from "../../../../providers/hermes/control-plane/auth-status.js";
+import { createHermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/dashboard-json-rpc.js";
+import { createHermesDashboardRestClient } from "../../../../providers/hermes/control-plane/dashboard-rest.js";
+import { createHermesRawGatewayChannel } from "../../../../providers/hermes/control-plane/raw-gateway.js";
+import { createHermesRuntimeEventClient } from "../../../../providers/hermes/control-plane/events.js";
+import { createHermesModelCatalogClient } from "../../../../providers/hermes/control-plane/models.js";
+import { createHermesSessionOperations } from "../../../../providers/hermes/control-plane/session-operations.js";
+import { createHermesSessionClient } from "../../../../providers/hermes/control-plane/sessions.js";
 import { createHermesCaviTaskClient } from "./tasks.js";
-import { createHermesUsageClient } from "./usage.js";
+import { createHermesUsageClient } from "../../../../providers/hermes/control-plane/usage.js";
 import { createHermesCaviWorkspaceClient } from "./workspace.js";
-import { createHermesApiServerControlPlane } from "./api-server-rest.js";
-import { createHermesApiServerEventClient } from "./api-server-events.js";
+import { createHermesApiServerControlPlane } from "../../../../providers/hermes/control-plane/api-server-rest.js";
+import { createHermesApiServerEventClient } from "../../../../providers/hermes/control-plane/api-server-events.js";
 
 export interface HermesApiServerRunEventBinding {
   runId: string;

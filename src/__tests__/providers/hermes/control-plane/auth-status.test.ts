@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import type { HermesDashboardRestClient } from "../../../../../extensions/cavi/providers/hermes/dashboard-rest.js";
-import { createHermesAuthStatusClient } from "../../../../../extensions/cavi/providers/hermes/auth-status.js";
+import type { HermesDashboardRestClient } from "../../../../providers/hermes/control-plane/dashboard-rest";
+import { createHermesAuthStatusClient } from "../../../../providers/hermes/control-plane/auth-status";
 
 const fixture = JSON.parse(readFileSync(fileURLToPath(new URL(
-  "../../../../fixtures/hermes/dashboard/rest/provider-auth.json", import.meta.url,
+  "../../../fixtures/hermes/dashboard/rest/provider-auth.json", import.meta.url,
 )), "utf8")) as unknown;
 
 describe("Hermes auth status", () => {

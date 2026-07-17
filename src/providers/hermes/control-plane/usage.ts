@@ -1,5 +1,5 @@
-import type { CostHistoryRange, CostHistorySnapshot } from "../../../../core/gateway/snapshots/contracts.js";
-import type { UsageClient, RuntimeUsageSummary } from "../../../../core/runtime/control-plane/usage.js";
+import type { CostHistoryRange, CostHistorySnapshot } from "../../../core/gateway/snapshots/contracts.js";
+import type { UsageClient, RuntimeUsageSummary } from "../../../core/runtime/control-plane/usage.js";
 import type { HermesDashboardRestClient } from "./dashboard-rest.js";
 
 export type HermesCaviCostHistorySource = Readonly<{

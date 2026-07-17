@@ -1,4 +1,4 @@
-import type { AuthStatusClient, RuntimeAuthStatus } from "../../../../core/runtime/control-plane/models.js";
+import type { AuthStatusClient, RuntimeAuthStatus } from "../../../core/runtime/control-plane/models.js";
 import type { HermesDashboardRestClient } from "./dashboard-rest.js";
 
 type AuthProvider = {

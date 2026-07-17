@@ -7,9 +7,9 @@ import {
   type RawGatewayConnectionState,
   type RawGatewayEvent,
   type RawGatewayRequestOptions,
-} from "../../../../core/runtime/control-plane/raw-gateway.js";
-import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
-import { getTransportErrorMetadata } from "../../../../core/transport/error.js";
+} from "../../../core/runtime/control-plane/raw-gateway.js";
+import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
+import { getTransportErrorMetadata } from "../../../core/transport/error.js";
 import type {
   HermesDashboardEvent,
   HermesDashboardJsonRpcClient,

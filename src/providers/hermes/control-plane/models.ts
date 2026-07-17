@@ -1,4 +1,4 @@
-import type { ModelCatalogClient, RuntimeModelDescriptor } from "../../../../core/runtime/control-plane/models.js";
+import type { ModelCatalogClient, RuntimeModelDescriptor } from "../../../core/runtime/control-plane/models.js";
 import type { HermesDashboardRestClient } from "./dashboard-rest.js";
 
 type ModelProvider = {

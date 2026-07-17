@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CapabilityUnavailable } from "../../../../../core/runtime/control-plane/runtime-control-client.js";
-import { createHermesRuntimeEventClient } from "../../../../../extensions/cavi/providers/hermes/events.js";
-import type { HermesDashboardEvent, HermesDashboardJsonRpcClient } from "../../../../../extensions/cavi/providers/hermes/types.js";
+import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import { createHermesRuntimeEventClient } from "../../../../providers/hermes/control-plane/events";
+import type { HermesDashboardEvent, HermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/types";
 
 function driver() {
   let listener: ((event: HermesDashboardEvent) => void) | undefined;

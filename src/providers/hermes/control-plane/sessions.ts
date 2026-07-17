@@ -1,7 +1,7 @@
-import type { GatewaySessionOperations } from "../../../../core/gateway/snapshots/session-operations.js";
-import type { RawSessionRow } from "../../../../core/gateway/snapshots/contracts.js";
-import type { ListSessionsOptions, RuntimeSessionSummary, SessionClient, SessionRequestOptions } from "../../../../core/runtime/control-plane/sessions.js";
-import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import type { GatewaySessionOperations } from "../../../core/gateway/snapshots/session-operations.js";
+import type { RawSessionRow } from "../../../core/gateway/snapshots/contracts.js";
+import type { ListSessionsOptions, RuntimeSessionSummary, SessionClient, SessionRequestOptions } from "../../../core/runtime/control-plane/sessions.js";
+import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
 
 const DEFAULT_LIMIT = 50;
