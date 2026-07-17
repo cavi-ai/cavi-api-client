@@ -14,5 +14,4 @@ export {
   type RawGatewayEvent,
   type RawGatewayRequestOptions,
 } from "./raw-gateway.js";
-export * from "./control-plane.js";
 export * from "./runtime-control-client.js";
