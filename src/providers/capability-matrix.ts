@@ -85,12 +85,23 @@ export const RUNTIME_PROVIDER_CAPABILITY_MATRIX = Object.freeze({
 export type RuntimeProviderCapabilityMatrixKey =
   keyof typeof RUNTIME_PROVIDER_CAPABILITY_MATRIX;
 
+/**
+ * Providers report a `providerKind` that differs from their matrix key for the
+ * two runtime-only providers whose kind carries the backend flavor. Map those
+ * reported kinds onto their matrix key so `getRuntimeProviderCapabilityRow(
+ * caps.providerKind)` resolves for every provider.
+ */
+const PROVIDER_KIND_ALIASES: Readonly<Record<string, RuntimeProviderCapabilityMatrixKey>> =
+  Object.freeze({
+    "claude-sdk": "claude",
+    "codex-responses": "codex",
+  });
+
 export function getRuntimeProviderCapabilityRow(
   provider: string,
 ): RuntimeProviderCapabilityRow | undefined {
-  return Object.prototype.hasOwnProperty.call(RUNTIME_PROVIDER_CAPABILITY_MATRIX, provider)
-    ? RUNTIME_PROVIDER_CAPABILITY_MATRIX[
-      provider as RuntimeProviderCapabilityMatrixKey
-    ]
-    : undefined;
+  const key = Object.prototype.hasOwnProperty.call(RUNTIME_PROVIDER_CAPABILITY_MATRIX, provider)
+    ? (provider as RuntimeProviderCapabilityMatrixKey)
+    : PROVIDER_KIND_ALIASES[provider];
+  return key ? RUNTIME_PROVIDER_CAPABILITY_MATRIX[key] : undefined;
 }
