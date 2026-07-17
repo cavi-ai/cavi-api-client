@@ -123,6 +123,11 @@
       "import": "./dist/core/kanban/index.js",
       "default": "./dist/core/kanban/index.js"
     },
+    "./core/teams": {
+      "types": "./dist/core/teams/index.d.ts",
+      "import": "./dist/core/teams/index.js",
+      "default": "./dist/core/teams/index.js"
+    },
     "./core/sse": {
       "types": "./dist/core/sse/index.d.ts",
       "import": "./dist/core/sse/index.js",
