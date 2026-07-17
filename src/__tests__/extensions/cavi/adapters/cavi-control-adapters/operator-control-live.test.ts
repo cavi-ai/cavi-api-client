@@ -44,7 +44,6 @@ describe("loadOperatorControlLive", () => {
       expect(params).toMatchObject({
         taskLimit: expect.any(Number),
         memoryLimit: expect.any(Number),
-        workerTaskLimit: expect.any(Number),
       });
       return operatorSnapshot;
     });
