@@ -1,5 +1,4 @@
 export * from "./runtime-provider-conformance.js";
-export * from "./runtime-control-plane-conformance.js";
 export * from "./runtime-control-client-conformance.js";
 export * from "./runtime-control-scenarios.js";
 export * from "./raw-gateway-conformance.js";

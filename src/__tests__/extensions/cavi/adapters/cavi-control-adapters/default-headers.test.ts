@@ -9,19 +9,14 @@ describe("createCaviControlAdapters default headers", () => {
     vi.restoreAllMocks();
   });
 
-  it("forwards caller default headers through REST-backed Project Board data calls", async () => {
+  it("forwards caller default headers through REST-backed data calls", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(
         JSON.stringify({
-          id: "task-headers-1",
-          title: "Check OpenClaw runtime headers",
-          description: null,
-          section: "inbox",
-          priority: "p1",
-          status: "todo",
-          tags: ["openclaw"],
-          createdAt: 1,
-          updatedAt: 1,
+          range: "24h",
+          series: [],
+          totals: { costUsd: 0, tokens: 0 },
+          lastUpdated: 1,
         }),
         { headers: { "Content-Type": "application/json" } },
       ),
@@ -40,17 +35,9 @@ describe("createCaviControlAdapters default headers", () => {
       },
     });
 
-    const created = await adapters.createProjectBoardBacklogItem({
-      title: "Check OpenClaw runtime headers",
-      description: "",
-      section: "inbox",
-      priority: "p1",
-      status: "todo",
-      tags: ["openclaw"],
-    });
+    await adapters.loadCostHistory("24h");
 
-    expect(created.data.id).toBe("task-headers-1");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalled();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
     expect(init?.headers).toMatchObject({
       Authorization: "Bearer test-token",

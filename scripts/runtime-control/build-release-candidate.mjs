@@ -213,13 +213,20 @@ export function buildReleaseCandidate() {
   run("pnpm", ["run", "verify"], { stdio: "inherit" });
   run("pnpm", ["run", "coverage"], { stdio: "inherit" });
   rmSync(artifactDirectory, { recursive: true, force: true });
+
+  // The candidate is named after whatever version is being built. This used to
+  // hardcode 0.11.0 (both the filename and a guard that threw on anything else),
+  // so the 0.12.0 release broke this script the moment package.json moved.
+  const pkg = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+  if (typeof pkg.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(pkg.version)) {
+    throw new Error(`package version must be a semantic version, observed ${String(pkg.version)}`);
+  }
+
   const packedPath = buildPackageTarball(artifactDirectory);
-  const canonicalName = "cavi-ai-api-client-0.11.0-runtime-control.tgz";
+  const canonicalName = `cavi-ai-api-client-${pkg.version}-runtime-control.tgz`;
   const tarballPath = path.join(artifactDirectory, canonicalName);
   if (packedPath !== tarballPath) renameSync(packedPath, tarballPath);
 
-  const pkg = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"));
-  if (pkg.version !== "0.11.0") throw new Error(`package version must remain 0.11.0, observed ${String(pkg.version)}`);
   const { entries, privateFiles } = scanArchive(tarballPath);
   if (privateFiles.length > 0) throw new Error(`private or unsafe package files detected:\n${privateFiles.join("\n")}`);
   const sha256 = createHash("sha256").update(readFileSync(tarballPath)).digest("hex");

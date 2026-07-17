@@ -14,15 +14,12 @@ import type {
 import {
   OPERATOR_MEMORY_SAMPLE_LIMIT,
   OPERATOR_TASK_SAMPLE_LIMIT,
-  OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
 } from "../../operator-control/constants.js";
 import {
   createEmptyOperatorMemory,
   createEmptyOperatorRegistry,
   createEmptyOperatorStatus,
   createEmptyOperatorTasks,
-  createEmptyWorkerReady,
-  createEmptyWorkerTasks,
 } from "../../operator-control/defaults.js";
 import {
   CAVI_CONTROL_OPERATOR_API as OPERATOR_API,
@@ -67,7 +64,6 @@ async function requestJsonWithAlias<TData>(
 function buildAvailableSectionStatus(params: {
   tasksLimit: number;
   memoryLimit: number;
-  workerTasksLimit: number;
 }): OperatorControlSnapshot["sectionStatus"] {
   return {
     status: {
@@ -94,18 +90,6 @@ function buildAvailableSectionStatus(params: {
       error: null,
       sampleLimit: params.memoryLimit,
     },
-    workerReady: {
-      available: true,
-      authoritative: true,
-      error: null,
-      sampleLimit: null,
-    },
-    workerTasks: {
-      available: true,
-      authoritative: false,
-      error: null,
-      sampleLimit: params.workerTasksLimit,
-    },
   };
 }
 
@@ -125,8 +109,6 @@ function createUnavailableSectionStatus(): OperatorControlSnapshot["sectionStatu
     registryDetail: { ...unavailable, authoritative: true },
     tasks: { ...unavailable, sampleLimit: OPERATOR_TASK_SAMPLE_LIMIT },
     memory: { ...unavailable, sampleLimit: OPERATOR_MEMORY_SAMPLE_LIMIT },
-    workerReady: { ...unavailable, authoritative: true },
-    workerTasks: { ...unavailable, sampleLimit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT },
   };
 }
 
@@ -136,8 +118,6 @@ function createEmptyOperatorControlSnapshot(): OperatorControlSnapshot {
     registryDetail: createEmptyOperatorRegistry(),
     tasks: createEmptyOperatorTasks(),
     memory: createEmptyOperatorMemory(),
-    workerReady: createEmptyWorkerReady(),
-    workerTasks: createEmptyWorkerTasks(),
     sectionStatus: createUnavailableSectionStatus(),
   };
 }
@@ -158,7 +138,6 @@ async function requestOperatorSnapshot(params: {
   const snapshotParams = {
     taskLimit: OPERATOR_TASK_SAMPLE_LIMIT,
     memoryLimit: OPERATOR_MEMORY_SAMPLE_LIMIT,
-    workerTaskLimit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
   };
   const httpPath = withQuery(OPERATOR_API.snapshot, snapshotParams);
   const httpAliasPath = withQuery(OPERATOR_API_PLUGIN_ALIAS.snapshot, snapshotParams);
@@ -232,7 +211,6 @@ export async function loadOperatorControlLive(
           buildAvailableSectionStatus({
             tasksLimit: OPERATOR_TASK_SAMPLE_LIMIT,
             memoryLimit: OPERATOR_MEMORY_SAMPLE_LIMIT,
-            workerTasksLimit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
           }),
       },
       source: "gateway",
@@ -251,8 +229,6 @@ export async function loadOperatorControlLive(
     registryResult,
     tasksResult,
     memoryResult,
-    workerReadyResult,
-    workerTasksResult,
   ] = await Promise.all([
     loadOperatorControlSection({
       key: "status",
@@ -342,49 +318,6 @@ export async function loadOperatorControlLive(
       ),
       note: "Operator memory list unavailable",
     }),
-    loadOperatorControlSection({
-      key: "workerReady",
-      run: async () =>
-        await requestOperatorSection<OperatorControlSnapshot["workerReady"]>({
-          client,
-          requestJson,
-          wsMethod: CAVI_CONTROL_OPERATOR_RPC_METHODS.workerReady,
-          httpPath: OPERATOR_API.workerReady,
-          httpAliasPath: OPERATOR_API_PLUGIN_ALIAS.workerReady,
-        }),
-      fallback: createEmptyWorkerReady,
-      authoritative: true,
-      sampleLimit: null,
-      expectedContract: expectedContract(
-        `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerReady}`,
-        OPERATOR_API.workerReady,
-      ),
-      note: "Operator worker readiness unavailable",
-    }),
-    loadOperatorControlSection({
-      key: "workerTasks",
-      run: async () =>
-        await requestOperatorSection<OperatorControlSnapshot["workerTasks"]>({
-          client,
-          requestJson,
-          wsMethod: CAVI_CONTROL_OPERATOR_RPC_METHODS.workerTasksList,
-          wsParams: { limit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT },
-          httpPath: withQuery(OPERATOR_API.workerTasks, {
-            limit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
-          }),
-          httpAliasPath: withQuery(OPERATOR_API_PLUGIN_ALIAS.workerTasks, {
-            limit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
-          }),
-        }),
-      fallback: createEmptyWorkerTasks,
-      authoritative: false,
-      sampleLimit: OPERATOR_WORKER_TASK_SAMPLE_LIMIT,
-      expectedContract: expectedContract(
-        `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerTasksList}`,
-        OPERATOR_API.workerTasks,
-      ),
-      note: "Operator worker task list unavailable",
-    }),
   ]);
 
   const contractGaps = [
@@ -392,8 +325,6 @@ export async function loadOperatorControlLive(
     registryResult.contractGap,
     tasksResult.contractGap,
     memoryResult.contractGap,
-    workerReadyResult.contractGap,
-    workerTasksResult.contractGap,
   ].filter((gap): gap is ContractGap => gap !== null);
 
   const allSectionsUnavailable = [
@@ -401,8 +332,6 @@ export async function loadOperatorControlLive(
     registryResult,
     tasksResult,
     memoryResult,
-    workerReadyResult,
-    workerTasksResult,
   ].every((result) => !result.status.available);
 
   if (allSectionsUnavailable) {
@@ -446,33 +375,17 @@ export async function loadOperatorControlLive(
         storePath: status.sharedMemory.storePath,
         collections: status.sharedMemory.collections,
       };
-  const workerReady = workerReadyResult.data;
-  const workerTasks = workerTasksResult.status.available
-    ? workerTasksResult.data
-    : {
-        ...workerTasksResult.data,
-        stats: {
-          pending: workerReady.pending,
-          active: workerReady.active,
-          shuttingDown: workerReady.shuttingDown,
-        },
-      };
-
   return {
     data: {
       status,
       registryDetail: registryResult.data,
       tasks,
       memory,
-      workerReady,
-      workerTasks,
       sectionStatus: {
         status: statusResult.status,
         registryDetail: registryResult.status,
         tasks: tasksResult.status,
         memory: memoryResult.status,
-        workerReady: workerReadyResult.status,
-        workerTasks: workerTasksResult.status,
       },
     },
     source: "gateway",

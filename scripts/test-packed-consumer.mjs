@@ -22,12 +22,12 @@ import { GATEWAY_RAW_EXTENSION, createRuntimeControlClient } from "@cavi-ai/api-
 import { CapabilityUnavailable, GATEWAY_RAW_EXTENSION as SUBPATH_GATEWAY_RAW_EXTENSION } from "@cavi-ai/api-client/core/runtime";
 import { createRuntimeProviderRegistry } from "@cavi-ai/api-client/core/runtime/providers";
 import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes";
-import { LIBRARY_LEGACY_API_BASE_PATH, resolvePluginApiPath, withCaviRuntimeControlProviders } from "@cavi-ai/api-client/extensions/cavi";
+import { LIBRARY_API_BASE_PATH, resolvePluginApiPath, withCaviRuntimeControlProviders } from "@cavi-ai/api-client/extensions/cavi";
 import { RUNTIME_CONTROL_SCENARIOS, runRawGatewayConformance, runRuntimeControlScenarios } from "@cavi-ai/api-client/testing";
 const symbols = [GATEWAY_RAW_EXTENSION, SUBPATH_GATEWAY_RAW_EXTENSION, createRuntimeControlClient, CapabilityUnavailable, createRuntimeProviderRegistry, HERMES_PROVIDER_MODULE, withCaviRuntimeControlProviders, RUNTIME_CONTROL_SCENARIOS, runRawGatewayConformance, runRuntimeControlScenarios];
 if (symbols.some((symbol) => symbol === undefined)) throw new Error("packed runtime-control export missing");
 if (GATEWAY_RAW_EXTENSION !== SUBPATH_GATEWAY_RAW_EXTENSION || GATEWAY_RAW_EXTENSION.id !== "gateway.raw") throw new Error("packed raw-gateway descriptor mismatch");
-if (LIBRARY_LEGACY_API_BASE_PATH !== "/library/api") throw new Error("packed legacy library path export missing");
+if (LIBRARY_API_BASE_PATH !== "/api/plugins/library") throw new Error("packed library base path export missing");
 if (resolvePluginApiPath("machine", "media") !== "/api/plugins/machine/media") throw new Error("packed plugin path resolver missing");
 `;
 

@@ -16,13 +16,23 @@ describe("runtime provider capability matrix", () => {
     ]);
   });
 
-  it("advertises only the registered OpenClaw canonical control plane", () => {
+  it("advertises each gateway provider's own control plane", () => {
     expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX.openclaw.controlPlane.modules).toEqual({
       sessions: true, models: true, usage: true, tasks: true,
       workspace: true, authStatus: true, events: true,
     });
+    // Hermes serves six from its dashboard API plus the kanban plugin it ships.
+    // `workspace` is absent: agent workspace identities have no native Hermes
+    // surface, so an extension supplies them.
+    expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX.hermes.controlPlane.modules).toEqual({
+      sessions: true, models: true, usage: true, tasks: true,
+      authStatus: true, events: true,
+    });
+    // Runtime-only providers have no control plane at all.
     for (const [provider, row] of Object.entries(RUNTIME_PROVIDER_CAPABILITY_MATRIX)) {
-      if (provider !== "openclaw") expect(row.controlPlane).toEqual({});
+      if (provider !== "openclaw" && provider !== "hermes") {
+        expect(row.controlPlane).toEqual({});
+      }
     }
   });
 
@@ -48,7 +58,13 @@ describe("runtime provider capability matrix", () => {
       hermes: {
         runtime: gatewayRuntime,
         transports: { http, sse, websocket: { ...websocket, stability: "experimental" } },
-        controlPlane: {},
+        controlPlane: {
+          transports: { websocket: { ...websocket, stability: "experimental" } },
+          modules: {
+            sessions: true, models: true, usage: true, tasks: true,
+            authStatus: true, events: true,
+          },
+        },
       },
       openclaw: {
         runtime: { ...gatewayRuntime, media: false, wiki: false },

@@ -1,4 +1,6 @@
 export * from "./client.js";
+export * from "./kanban.js";
+export * from "./control-plane/index.js";
 export * from "./agent-config.js";
 export * from "./chat-run.js";
 export * from "./env-config.js";

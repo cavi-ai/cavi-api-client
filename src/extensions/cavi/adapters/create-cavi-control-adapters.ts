@@ -22,23 +22,12 @@ import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 import type { CaviControlAdapterFallbackProvider } from "../fallbacks/provider.js";
 import { createCaviControlAdapterFallbackProvider } from "../fallbacks/provider.js";
 import type {
-  ProjectBoardBacklogDraft,
-  ProjectBoardBacklogItem,
-  ProjectBoardCallRequest,
-  ProjectBoardCallResult,
-  ProjectBoardEmailDraft,
-  ProjectBoardEmailRecipient,
-  ProjectBoardWorkspaceSnapshot,
   FleetLibrarySnapshot,
   OperatorControlSnapshot,
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
-import { projectBoardWorkspaceExpectedContractSummary } from "../contracts/paths.js";
 import { taskDiscourseExpectedContractSummary } from "../discourse/contracts.js";
 import { resolveGatewayHttpBase } from "../runtime/paths.js";
-import { createOpenClawWorkboardRpc } from "../../../providers/openclaw/workboard.js";
-import { createProjectBoardLiveHelpers } from "../project-board/live.js";
-import { createProjectBoardMutations } from "../project-board/mutations.js";
 import { loadTaskDiscourseLive } from "../discourse/live.js";
 import { createGatewayWsLoaders } from "./cavi-control-adapters/gateway-ws-loaders.js";
 import type {
@@ -113,7 +102,6 @@ export type CaviControlAdapters = {
       registryDetail: "websocket" | "http" | "fallback";
     };
   }>;
-  loadProjectBoardWorkspace: () => Promise<DataEnvelope<ProjectBoardWorkspaceSnapshot>>;
   loadTaskDiscourse: (
     taskId: string,
   ) => Promise<DataEnvelope<TaskDiscourseSnapshot>>;
@@ -121,75 +109,7 @@ export type CaviControlAdapters = {
   loadCostHistory: (
     range: CostHistoryRange,
   ) => Promise<DataEnvelope<CostHistorySnapshot>>;
-  createProjectBoardEmail: (
-    draft: ProjectBoardEmailDraft,
-  ) => Promise<MutationResult<ProjectBoardEmailRecipient>>;
-  updateProjectBoardEmail: (
-    emailId: string,
-    draft: ProjectBoardEmailDraft,
-  ) => Promise<MutationResult<ProjectBoardEmailRecipient>>;
-  removeProjectBoardEmail: (emailId: string) => Promise<MutationResult<{ id: string }>>;
-  createProjectBoardBacklogItem: (
-    draft: ProjectBoardBacklogDraft,
-  ) => Promise<MutationResult<ProjectBoardBacklogItem>>;
-  updateProjectBoardBacklogItem: (
-    itemId: string,
-    draft: ProjectBoardBacklogDraft,
-  ) => Promise<MutationResult<ProjectBoardBacklogItem>>;
-  callProjectBoard: (
-    request: ProjectBoardCallRequest,
-  ) => Promise<MutationResult<ProjectBoardCallResult>>;
 };
-
-function createEmptyProjectBoardWorkspace(): ProjectBoardWorkspaceSnapshot {
-  const now = Date.now();
-  const limitations = [
-    "Generic fallback only. Pass caviFallbacks.projectBoardWorkspace to provide product data.",
-  ] as const;
-  return {
-    profile: {
-      name: "Project Board",
-      role: "Project board operator",
-      photoPath: null,
-      photoUrl: null,
-      avatarCandidates: [],
-      emails: [],
-      lastUpdated: now,
-      storage: "json-file",
-      limitations,
-    },
-    emails: [],
-    sprint: {
-      sprint: {
-        id: "default",
-        name: "Default sprint",
-        goal: "",
-        startsOn: null,
-        endsOn: null,
-      },
-      statusMetrics: {
-        total: 0,
-        todo: 0,
-        inProgress: 0,
-        blocked: 0,
-        done: 0,
-        completionRate: 0,
-      },
-      lastUpdated: now,
-      storage: "json-file",
-      limitations,
-    },
-    backlog: {
-      sections: [],
-      priorities: { p0: 0, p1: 0, p2: 0, p3: 0 },
-      statusCounters: { todo: 0, in_progress: 0, blocked: 0, done: 0 },
-      totalItems: 0,
-      lastUpdated: now,
-      storage: "json-file",
-      limitations,
-    },
-  };
-}
 
 function createEmptyTaskDiscourse(taskId: string): TaskDiscourseSnapshot {
   return {
@@ -210,15 +130,6 @@ function createEmptyTaskDiscourse(taskId: string): TaskDiscourseSnapshot {
   };
 }
 
-function resolveProjectBoardWorkspaceFallback(
-  fallbacks: CaviControlAdapterFallbackProvider["cavi"],
-): ProjectBoardWorkspaceSnapshot {
-  const fallback = fallbacks?.projectBoardWorkspace;
-  if (!fallback) {
-    return createEmptyProjectBoardWorkspace();
-  }
-  return typeof fallback === "function" ? fallback() : fallback;
-}
 
 function resolveTaskDiscourseFallback(
   fallbacks: CaviControlAdapterFallbackProvider["cavi"],
@@ -264,10 +175,6 @@ export function createCaviControlAdapters(opts: {
     credentials: sessionMode ? "same-origin" : undefined,
   });
 
-  const projectBoardLive = createProjectBoardLiveHelpers(requestJson, {
-    workboardRpc: opts.client ? createOpenClawWorkboardRpc(opts.client) : null,
-  });
-  const projectBoardMutations = createProjectBoardMutations(requestJson, projectBoardLive);
   const gatewayWs = createGatewayWsLoaders({
     client: opts.client,
     requestJson,
@@ -338,24 +245,6 @@ export function createCaviControlAdapters(opts: {
             await loadTaskDiscourseLive(requestJson, opts.client, taskId),
         }),
       ),
-
-    loadProjectBoardWorkspace: async () =>
-      await shareInFlight("project-board-workspace", async () =>
-        withFallback({
-          area: "project-board-workspace",
-          expectedContract: projectBoardWorkspaceExpectedContractSummary(),
-          note: "Project Board workspace APIs unavailable",
-          fallback: resolveProjectBoardWorkspaceFallback(caviFallbacks),
-          run: async () => await projectBoardLive.loadProjectBoardWorkspaceLive(),
-        }),
-      ),
-
-    createProjectBoardEmail: projectBoardMutations.createProjectBoardEmail,
-    updateProjectBoardEmail: projectBoardMutations.updateProjectBoardEmail,
-    removeProjectBoardEmail: projectBoardMutations.removeProjectBoardEmail,
-    createProjectBoardBacklogItem: projectBoardMutations.createProjectBoardBacklogItem,
-    updateProjectBoardBacklogItem: projectBoardMutations.updateProjectBoardBacklogItem,
-    callProjectBoard: projectBoardMutations.callProjectBoard,
   };
 }
 

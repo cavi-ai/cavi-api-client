@@ -1,7 +1,6 @@
 import type { HttpApiClientOptions } from "../../http/types.js";
 import type { RuntimeSurface } from "../capabilities.js";
 import type { RuntimeClient } from "../client.js";
-import type { RuntimeControlPlane } from "../control-plane/control-plane.js";
 import type { RuntimeControlClient } from "../control-plane/runtime-control-client.js";
 import type { RuntimeTransportCapabilities } from "../control-plane/transports.js";
 import type { TransportAuthResolver, TransportLifecycleEvent, TransportRetryPolicy } from "../../transport/types.js";
@@ -30,7 +29,6 @@ export interface RuntimeProviderModule {
   capabilities?: Partial<Record<RuntimeSurface, boolean>>;
   controlPlane?: RuntimeControlPlaneDeclaration;
   createClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;
-  createControlPlane?: (clientOptions: RuntimeClientOptions) => RuntimeControlPlane;
   createRuntimeControlClient?: RuntimeControlClientFactory;
   /** @deprecated Use createClient for new provider modules. */
   createApiClient?: (clientOptions: RuntimeClientOptions) => RuntimeClient;
