@@ -1,2 +1,2 @@
-export * from "./runtime-control-client.js";
+export * from "./runtime-control.js";
 export { createHermesTeamRegistry } from "./team-registry.js";

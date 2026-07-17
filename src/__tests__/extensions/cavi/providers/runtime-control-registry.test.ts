@@ -18,7 +18,7 @@ const { createHermesExtensionClient, createAdapters } = vi.hoisted(() => ({
   createAdapters: vi.fn((options: unknown) => ({ options })),
 }));
 
-vi.mock("../../../../extensions/cavi/providers/hermes/runtime-control-client.js", () => ({
+vi.mock("../../../../extensions/cavi/providers/hermes/runtime-control.js", () => ({
   createHermesRuntimeControlClient: createHermesExtensionClient,
 }));
 vi.mock("../../../../extensions/cavi/adapters/create-cavi-control-adapters.js", () => ({

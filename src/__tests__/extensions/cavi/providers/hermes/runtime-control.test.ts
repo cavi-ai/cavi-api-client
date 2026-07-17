@@ -11,7 +11,7 @@ vi.mock("../../../../../core/transport/websocket.js", () => ({
   createWebSocketTransport: () => ({ connect: webSocketConnect }),
 }));
 
-import { createHermesRuntimeControlClient } from "../../../../../extensions/cavi/providers/hermes/runtime-control-client.js";
+import { createHermesRuntimeControlClient } from "../../../../../extensions/cavi/providers/hermes/runtime-control.js";
 
 const apiFixture = (name: string): unknown => JSON.parse(readFileSync(fileURLToPath(new URL(
   `../../../../fixtures/hermes/api-server/${name}.json`, import.meta.url,

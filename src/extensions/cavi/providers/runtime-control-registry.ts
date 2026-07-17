@@ -9,7 +9,7 @@ import type {
 import {
   createHermesRuntimeControlClient,
   type HermesCaviRuntimeControlOptions,
-} from "./hermes/runtime-control-client.js";
+} from "./hermes/runtime-control.js";
 import {
   createCaviControlAdapters,
   type CaviControlAdapterOptions,
