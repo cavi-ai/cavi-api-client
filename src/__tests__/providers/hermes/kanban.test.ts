@@ -131,6 +131,27 @@ describe("Hermes kanban client — canonical KanbanClient over the kanban plugin
     expect(calls.at(-1)).toMatchObject({ method: "PATCH", body: { status: "archived" } });
   });
 
+  it("surfaces the plugin's rejection of a direct move to running", async () => {
+    // plugin_api.py: "Cannot set status to 'running' directly; use the
+    // dispatcher/claim path" (400). Unlike OpenClaw, running is dispatcher-only.
+    const { request } = fakePlugin(SEED);
+    const failing: HermesKanbanRequest = async (path, init) => {
+      const body = (init?.body ?? {}) as Record<string, unknown>;
+      if (init?.method === "PATCH" && body.status === "running") {
+        throw new Error("Cannot set status to 'running' directly; use the dispatcher/claim path");
+      }
+      return await request(path, init);
+    };
+    await expect(createHermesKanbanClient(failing).moveCard("t_2", "running")).rejects.toThrow(
+      /dispatcher\/claim path/u,
+    );
+    // every other native status still passes through
+    await expect(createHermesKanbanClient(failing).moveCard("t_2", "done")).resolves.toMatchObject({
+      status: "done",
+      category: "done",
+    });
+  });
+
   it("categorizes ready as todo, matching the OpenClaw adapter", async () => {
     const { request } = fakePlugin([{ id: "t_r", title: "r", status: "ready", priority: 0, created_at: 1 }]);
     const { cards } = await createHermesKanbanClient(request).listCards();
