@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CostHistorySnapshot } from "../../../../../core/gateway/snapshots/contracts.js";
-import type { HermesDashboardRestClient } from "../../../../../extensions/cavi/providers/hermes/dashboard-rest.js";
-import { createHermesUsageClient } from "../../../../../extensions/cavi/providers/hermes/usage.js";
+import type { CostHistorySnapshot } from "../../../../core/gateway/snapshots/contracts.js";
+import type { HermesDashboardRestClient } from "../../../../providers/hermes/control-plane/dashboard-rest";
+import { createHermesUsageClient } from "../../../../providers/hermes/control-plane/usage";
 
 const fixture = JSON.parse(readFileSync(fileURLToPath(new URL(
-  "../../../../fixtures/hermes/dashboard/rest/analytics-usage.json", import.meta.url,
+  "../../../fixtures/hermes/dashboard/rest/analytics-usage.json", import.meta.url,
 )), "utf8")) as unknown;
 
 function rest(): HermesDashboardRestClient {

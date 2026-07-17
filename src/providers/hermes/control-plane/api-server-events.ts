@@ -1,7 +1,7 @@
-import type { RuntimeControlPlaneEvent, RuntimeEventClient, RuntimeEventSubscription } from "../../../../core/runtime/control-plane/events.js";
-import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
-import type { RunStreamEvent } from "../../../../core/runtime/run-stream.js";
-import { HermesSseRunEventProvider } from "../../../../providers/hermes/sse-run-event-provider.js";
+import type { RuntimeControlPlaneEvent, RuntimeEventClient, RuntimeEventSubscription } from "../../../core/runtime/control-plane/events.js";
+import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
+import type { RunStreamEvent } from "../../../core/runtime/run-stream.js";
+import { HermesSseRunEventProvider } from "../sse-run-event-provider.js";
 
 export type HermesApiServerRunEventsOptions = Readonly<{
   runId: string;

@@ -1,9 +1,9 @@
-import { JsonHttpApiClient } from "../../../../core/http/json-client.js";
-import { GatewayHttpError } from "../../../../core/http/gateway-error.js";
-import { HttpApiError } from "../../../../core/http/errors.js";
-import { redactPreviewText, stringifyRedacted } from "../../../../core/http/redaction.js";
-import type { CredentialResolver } from "../../../../core/http/credentials.js";
-import type { HttpApiRequestInit } from "../../../../core/http/types.js";
+import { JsonHttpApiClient } from "../../../core/http/json-client.js";
+import { GatewayHttpError } from "../../../core/http/gateway-error.js";
+import { HttpApiError } from "../../../core/http/errors.js";
+import { redactPreviewText, stringifyRedacted } from "../../../core/http/redaction.js";
+import type { CredentialResolver } from "../../../core/http/credentials.js";
+import type { HttpApiRequestInit } from "../../../core/http/types.js";
 import { HERMES_DASHBOARD_PATHS } from "./dashboard-paths.js";
 
 type JsonRecord = Record<string, unknown>;

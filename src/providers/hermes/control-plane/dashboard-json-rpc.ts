@@ -1,6 +1,6 @@
-import type { TransportMessageChannel } from "../../../../core/transport/channel.js";
-import { TransportError } from "../../../../core/transport/error.js";
-import { createJsonRpcTransport } from "../../../../core/transport/json-rpc.js";
+import type { TransportMessageChannel } from "../../../core/transport/channel.js";
+import { TransportError } from "../../../core/transport/error.js";
+import { createJsonRpcTransport } from "../../../core/transport/json-rpc.js";
 import type {
   HermesDashboardEvent,
   HermesDashboardJsonRpcClient,

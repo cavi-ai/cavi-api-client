@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   HERMES_DASHBOARD_REST_FALLBACKS,
   createHermesDashboardRestClient,
-} from "../../../../../extensions/cavi/providers/hermes/dashboard-rest.js";
+} from "../../../../providers/hermes/control-plane/dashboard-rest";
 
 function fixture(name: string): unknown {
   return JSON.parse(readFileSync(fileURLToPath(
-    new URL(`../../../../fixtures/hermes/dashboard/rest/${name}.json`, import.meta.url),
+    new URL(`../../../fixtures/hermes/dashboard/rest/${name}.json`, import.meta.url),
   ), "utf8")) as unknown;
 }
 

@@ -2,22 +2,22 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import { CapabilityUnavailable } from "../../../../../core/runtime/control-plane/runtime-control-client.js";
-import type { HermesDashboardRestClient } from "../../../../../extensions/cavi/providers/hermes/dashboard-rest.js";
-import { createHermesSessionOperations } from "../../../../../extensions/cavi/providers/hermes/session-operations.js";
-import { createHermesSessionClient } from "../../../../../extensions/cavi/providers/hermes/sessions.js";
-import type { HermesDashboardJsonRpcClient } from "../../../../../extensions/cavi/providers/hermes/types.js";
+import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import type { HermesDashboardRestClient } from "../../../../providers/hermes/control-plane/dashboard-rest";
+import { createHermesSessionOperations } from "../../../../providers/hermes/control-plane/session-operations";
+import { createHermesSessionClient } from "../../../../providers/hermes/control-plane/sessions";
+import type { HermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/types";
 
 function result(name: string): unknown {
   const envelope = JSON.parse(readFileSync(fileURLToPath(new URL(
-    `../../../../fixtures/hermes/dashboard/json-rpc/${name}.json`, import.meta.url,
+    `../../../fixtures/hermes/dashboard/json-rpc/${name}.json`, import.meta.url,
   )), "utf8")) as { result: unknown };
   return envelope.result;
 }
 
 function restFixture(name: string): unknown {
   return JSON.parse(readFileSync(fileURLToPath(new URL(
-    `../../../../fixtures/hermes/dashboard/rest/${name}.json`, import.meta.url,
+    `../../../fixtures/hermes/dashboard/rest/${name}.json`, import.meta.url,
   )), "utf8")) as unknown;
 }
 

@@ -2,7 +2,7 @@ import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
 import type { RuntimeControlPlaneMetadata } from "../../../../core/runtime/control-plane/types.js";
 import type { RuntimeWorkspaceDescriptor, WorkspaceClient } from "../../../../core/runtime/control-plane/workspace.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
-import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
+import { requireHermesSafeJsonRecord } from "../../../../providers/hermes/control-plane/dashboard-rest.js";
 
 const WORKSPACE_SCHEMA_ERROR = "Hermes CAVI workspace response failed schema validation";
 
