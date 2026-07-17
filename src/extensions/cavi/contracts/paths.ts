@@ -18,8 +18,6 @@ export const CAVI_CONTROL_OPERATOR_API = {
   taskDiscourse: (taskId: string) =>
     `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks/${encodeURIComponent(taskId)}/discourse`,
   memory: `${CAVI_CONTROL_OPERATOR_API_BASE}/memory`,
-  workerReady: `${CAVI_CONTROL_OPERATOR_API_BASE}/worker/ready`,
-  workerTasks: `${CAVI_CONTROL_OPERATOR_API_BASE}/worker/tasks`,
 } as const;
 
 /**
@@ -40,8 +38,6 @@ export const CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS = {
   taskDiscourse: (taskId: string) =>
     `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks/${encodeURIComponent(taskId)}/discourse`,
   memory: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/memory`,
-  workerReady: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/worker/ready`,
-  workerTasks: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/worker/tasks`,
 } as const;
 
 // Operator-plane RPC methods only. Harness health lives in core (current
@@ -56,9 +52,6 @@ export const CAVI_CONTROL_OPERATOR_RPC_METHODS = {
   tasksList: "operator.tasks.list",
   tasksGet: "operator.tasks.get",
   discourseTree: "discourse.tree",
-  workerReady: "operator.worker.ready",
-  workerTasksList: "operator.worker.tasks.list",
-  workerTasksGet: "operator.worker.tasks.get",
 } as const;
 
 export const CAVI_CONTROL_OPERATOR_RPC_METHOD_LIST = Object.values(
@@ -221,8 +214,6 @@ export function operatorControlExpectedContractSummary(): string {
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.registry}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.tasksList}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.memoryList}`,
-    `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerReady}`,
-    `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerTasksList}`,
-    `(fallback: GET ${op.snapshot} or ${opAlias.snapshot}; sections: GET ${op.status} + ${op.registry} + ${op.tasks} + ${op.memory} + ${op.workerReady} + ${op.workerTasks} with plugin aliases)`,
+    `(fallback: GET ${op.snapshot} or ${opAlias.snapshot}; sections: GET ${op.status} + ${op.registry} + ${op.tasks} + ${op.memory} with plugin aliases)`,
   ].join(" + ");
 }

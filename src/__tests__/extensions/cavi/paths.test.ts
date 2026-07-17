@@ -19,7 +19,6 @@ describe("api-paths", () => {
   it("keeps operator HTTP routes and RPC methods explicit", () => {
     expect(operator.root).toBe("/cavi-control/api/operator");
     expect(operator.snapshot).toBe(`${operator.root}/snapshot`);
-    expect(operator.workerReady).toBe(`${operator.root}/worker/ready`);
     expect(CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS.snapshot).toBe(
       "/api/plugins/cavi-control/operator/snapshot",
     );

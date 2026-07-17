@@ -265,12 +265,7 @@ describe("agnostic HTTP API client package", () => {
     expect(resolveCaviPath("cavi.operator.memory")).toBe(
       "/cavi-control/api/operator/memory",
     );
-    expect(resolveCaviPath("cavi.operator.workerReady")).toBe(
-      "/cavi-control/api/operator/worker/ready",
-    );
-    expect(resolveCaviPath("cavi.operator.workerTasks")).toBe(
-      "/cavi-control/api/operator/worker/tasks",
-    );
+
     expect(resolveCaviPath("cavi.operator.task", { taskId: "task/a b" })).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b",
     );

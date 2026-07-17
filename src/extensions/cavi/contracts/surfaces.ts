@@ -153,22 +153,6 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     owner: "extensions/cavi/operator-control",
     note: "CAVI Control operator memory endpoint.",
   },
-  "cavi.operator.workerReady": {
-    key: "cavi.operator.workerReady",
-    method: "GET",
-    path: () => CAVI_CONTROL_OPERATOR_API.workerReady,
-    degradation: "gap",
-    owner: "extensions/cavi/operator-control",
-    note: "CAVI Control operator worker readiness endpoint.",
-  },
-  "cavi.operator.workerTasks": {
-    key: "cavi.operator.workerTasks",
-    method: "GET",
-    path: () => CAVI_CONTROL_OPERATOR_API.workerTasks,
-    degradation: "gap",
-    owner: "extensions/cavi/operator-control",
-    note: "CAVI Control operator worker task queue endpoint.",
-  },
   "portalMemory.snapshot": {
     key: "portalMemory.snapshot",
     method: "GET",

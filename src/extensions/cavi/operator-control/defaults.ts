@@ -182,36 +182,6 @@ export function createEmptyOperatorMemory(): OperatorControlSnapshot["memory"] {
   };
 }
 
-export function createEmptyWorkerReady(): OperatorControlSnapshot["workerReady"] {
-  return {
-    status: "not-ready",
-    pending: 0,
-    active: 0,
-    shuttingDown: false,
-    auth: {
-      enabled: false,
-      scheme: "none",
-    },
-    backend: {
-      mode: "memory",
-      persistenceEnabled: false,
-      stateFile: null,
-      recoveredTasks: 0,
-    },
-  };
-}
-
-export function createEmptyWorkerTasks(): OperatorControlSnapshot["workerTasks"] {
-  return {
-    tasks: [],
-    stats: {
-      pending: 0,
-      active: 0,
-      shuttingDown: false,
-    },
-  };
-}
-
 export function createEmptyOperatorSectionStatus(): OperatorControlSnapshot["sectionStatus"] {
   return {
     status: {
@@ -233,18 +203,6 @@ export function createEmptyOperatorSectionStatus(): OperatorControlSnapshot["sec
       sampleLimit: 20,
     },
     memory: {
-      available: false,
-      authoritative: false,
-      error: null,
-      sampleLimit: 20,
-    },
-    workerReady: {
-      available: false,
-      authoritative: true,
-      error: null,
-      sampleLimit: null,
-    },
-    workerTasks: {
       available: false,
       authoritative: false,
       error: null,
