@@ -1,4 +1,5 @@
 import {
+  KANBAN_PLUGIN_API_ENDPOINTS,
   GATEWAY_MEDIA_API_ENDPOINTS,
   GATEWAY_WIKI_API_ENDPOINTS,
 } from "./paths.js";
@@ -222,17 +223,17 @@ export const SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "kanban.tasks": {
     key: "kanban.tasks",
     method: "POST",
-    path: () => "/api/plugins/kanban/tasks",
+    path: () => KANBAN_PLUGIN_API_ENDPOINTS.tasks,
     degradation: "hard",
-    owner: "gateway/kanban owner",
+    owner: "providers/hermes (kanban plugin)",
     note: "Kanban task creation endpoint for workspace and operator surfaces.",
   },
   "kanban.board": {
     key: "kanban.board",
     method: "GET",
-    path: () => "/api/plugins/kanban/board",
+    path: () => KANBAN_PLUGIN_API_ENDPOINTS.board,
     degradation: "hard",
-    owner: "gateway/kanban owner",
+    owner: "providers/hermes (kanban plugin)",
     note: "Unified Kanban board endpoint.",
   },
   "team.kanban": {
