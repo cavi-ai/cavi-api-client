@@ -39,6 +39,7 @@ quarantine/
 # Brainstorm mockups + internal design specs — never committed (public repo)
 .superpowers/
 docs/superpowers/
+docs/plans/
 .agents/
 .codex/
 .worktrees/
