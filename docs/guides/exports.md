@@ -35,6 +35,7 @@ import {
 | `@cavi-ai/api-client/core/errors` | Error types and helpers |
 | `@cavi-ai/api-client/core/memory` | Provider-neutral memory contract |
 | `@cavi-ai/api-client/core/kanban` | Provider-neutral kanban contract |
+| `@cavi-ai/api-client/core/teams` | Provider-neutral team directory |
 | `@cavi-ai/api-client/core/env` | Environment and repository-root helpers |
 | `@cavi-ai/api-client/contracts` | Route, surface, and manifest contracts |
 
