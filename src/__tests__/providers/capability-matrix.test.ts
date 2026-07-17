@@ -61,6 +61,19 @@ describe("runtime provider capability matrix", () => {
     });
   });
 
+  it("resolves a row by the providerKind a client actually reports", () => {
+    expect(getRuntimeProviderCapabilityRow("claude-sdk")).toBe(
+      RUNTIME_PROVIDER_CAPABILITY_MATRIX.claude,
+    );
+    expect(getRuntimeProviderCapabilityRow("codex-responses")).toBe(
+      RUNTIME_PROVIDER_CAPABILITY_MATRIX.codex,
+    );
+    for (const kind of ["gemini", "claude-managed-agents", "hermes", "openclaw"] as const) {
+      expect(getRuntimeProviderCapabilityRow(kind)).toBeDefined();
+    }
+    expect(getRuntimeProviderCapabilityRow("nope")).toBeUndefined();
+  });
+
   it("returns only known frozen rows", () => {
     expect(getRuntimeProviderCapabilityRow("codex")).toBe(
       RUNTIME_PROVIDER_CAPABILITY_MATRIX.codex,
