@@ -227,11 +227,6 @@ describe("agnostic HTTP API client package", () => {
     expect(resolveCaviPath("portal.dashboard", { portal: "martina" })).toBe(
       "/api/plugins/portal/martina/dashboard",
     );
-    expect(resolveCaviPath("cavi.projectBoard.root")).toBe("/api/plugins/cavi-control/kanban");
-    expect(resolveCaviPath("cavi.projectBoard.profile")).toBe("/api/plugins/cavi-control/kanban/profile");
-    expect(resolveCaviPath("cavi.projectBoard.sprint")).toBe("/api/plugins/cavi-control/kanban/sprint");
-    expect(resolveCaviPath("cavi.projectBoard.backlog")).toBe("/api/plugins/cavi-control/kanban/backlog");
-    expect(resolveCaviPath("cavi.projectBoard.call")).toBe("/api/plugins/cavi-control/kanban/call");
     expect(resolveCaviPath("cavi.operator.registry")).toBe(
       "/cavi-control/api/operator/registry",
     );

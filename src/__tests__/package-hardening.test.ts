@@ -533,7 +533,6 @@ describe("package hardening", () => {
     expect(source).toContain("export const CAVI_CONTROL_OPERATOR_API");
     expect(source).toContain("export const LIBRARY_LEGACY_API_BASE_PATH");
     expect(source).toContain("export function resolvePluginApiPath");
-    expect(source).toContain("projectBoard:");
     expect(hiddenFeaturePathOwners).toEqual([]);
   });
 

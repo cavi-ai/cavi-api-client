@@ -68,15 +68,6 @@ export const CAVI_CONTROL_OPERATOR_RPC_METHOD_LIST = Object.values(
 export const CAVI_CONTROL_API_ENDPOINTS = {
   costHistory: "/api/plugins/cavi-control/cost/history",
   scoringModel: "/api/plugins/cavi-control/scoring/model",
-  projectBoard: {
-    root: "/api/plugins/cavi-control/kanban",
-    profile: "/api/plugins/cavi-control/kanban/profile",
-    sprint: "/api/plugins/cavi-control/kanban/sprint",
-    backlog: "/api/plugins/cavi-control/kanban/backlog",
-    call: "/api/plugins/cavi-control/kanban/call",
-    backlogItem: (itemId: string) =>
-      `/api/plugins/cavi-control/kanban/backlog/${encodeURIComponent(itemId)}`,
-  },
   operator: CAVI_CONTROL_OPERATOR_API,
   // Per-agent portal/plugin surfaces are NOT baked in here — they are declared as
   // member actions in the host team manifest and resolved via resolveTeamActionApiPath.
@@ -213,21 +204,6 @@ export const OPERATOR_DISPATCH_ENDPOINTS = {
   operatorEvents: "/operator/events",
   taskReceiptsTemplate: "/cavi-control/api/tasks/{taskId}/receipts",
 } as const;
-
-export function projectBoardBacklogItemPath(itemId: string): string {
-  return CAVI_CONTROL_API_ENDPOINTS.projectBoard.backlogItem(itemId);
-}
-
-export function projectBoardWorkspaceExpectedContractSummary(): string {
-  const pb = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
-  return `GET ${pb.profile} + ${pb.sprint} + ${pb.backlog} (aggregate: GET ${pb.root})`;
-}
-
-/** Operator-facing hint when Project Board workspace load fails (keep in sync with Project Board adapters). */
-export function projectBoardWorkspaceDiagnosticRouteHint(): string {
-  const pb = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
-  return `Project Board routes: ${pb.profile}, ${pb.sprint}, ${pb.backlog}.`;
-}
 
 export function operatorTaskDiscoursePath(taskId: string): string {
   return CAVI_CONTROL_OPERATOR_API.taskDiscourse(taskId);
