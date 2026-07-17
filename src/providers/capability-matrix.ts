@@ -60,7 +60,15 @@ export const RUNTIME_PROVIDER_CAPABILITY_MATRIX = Object.freeze({
   "claude-managed-agents": row({ runs: true, streaming: true }, { http, sse }),
   codex: row({ runs: true, streaming: true, batch: true }, { http, sse }),
   gemini: row({ runs: true, streaming: true, batch: true }, { http, sse }),
-  hermes: row(gatewayRuntime, { http, sse, websocket: experimentalWebsocket }),
+  hermes: row(gatewayRuntime, { http, sse, websocket: experimentalWebsocket }, {
+    transports: Object.freeze({ websocket: experimentalWebsocket }),
+    // No `workspace`: Hermes has no native workspace surface. See
+    // HERMES_PROVIDER_MODULE.
+    modules: Object.freeze({
+      sessions: true, models: true, usage: true, tasks: true,
+      authStatus: true, events: true,
+    }),
+  }),
   openclaw: row({ ...gatewayRuntime, media: false, wiki: false }, {
     http,
     sse,

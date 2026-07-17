@@ -1,34 +1,33 @@
-import type { RuntimeControlClient } from "../../../../core/runtime/control-plane/runtime-control-client.js";
+import type { RuntimeControlClient } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import {
   CapabilityUnavailable,
   createUnavailableRuntimeControlClient,
-} from "../../../../core/runtime/control-plane/runtime-control-client.js";
-import { withRuntimeControlExtensions } from "../../../../core/runtime/control-plane/extensions.js";
+} from "../../../core/runtime/control-plane/runtime-control-client.js";
+import { withRuntimeControlExtensions } from "../../../core/runtime/control-plane/extensions.js";
 import {
   GATEWAY_RAW_EXTENSION,
   type RawGatewayChannel,
   type RawGatewayConnectionState,
-} from "../../../../core/runtime/control-plane/raw-gateway.js";
-import type { RuntimeControlClientOptions } from "../../../../core/runtime/providers/types.js";
-import type { TransportMessageChannel } from "../../../../core/transport/channel.js";
-import { createWebSocketTransport } from "../../../../core/transport/websocket.js";
-import {
-  createCaviControlAdapters,
-  type CaviControlAdapterOptions,
-} from "../../adapters/create-cavi-control-adapters.js";
-import { createHermesAuthStatusClient } from "../../../../providers/hermes/control-plane/auth-status.js";
-import { createHermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/dashboard-json-rpc.js";
-import { createHermesDashboardRestClient } from "../../../../providers/hermes/control-plane/dashboard-rest.js";
-import { createHermesRawGatewayChannel } from "../../../../providers/hermes/control-plane/raw-gateway.js";
-import { createHermesRuntimeEventClient } from "../../../../providers/hermes/control-plane/events.js";
-import { createHermesModelCatalogClient } from "../../../../providers/hermes/control-plane/models.js";
-import { createHermesSessionOperations } from "../../../../providers/hermes/control-plane/session-operations.js";
-import { createHermesSessionClient } from "../../../../providers/hermes/control-plane/sessions.js";
-import { createHermesCaviTaskClient } from "./tasks.js";
-import { createHermesUsageClient } from "../../../../providers/hermes/control-plane/usage.js";
-import { createHermesCaviWorkspaceClient } from "./workspace.js";
-import { createHermesApiServerControlPlane } from "../../../../providers/hermes/control-plane/api-server-rest.js";
-import { createHermesApiServerEventClient } from "../../../../providers/hermes/control-plane/api-server-events.js";
+} from "../../../core/runtime/control-plane/raw-gateway.js";
+import type { RuntimeControlClientOptions } from "../../../core/runtime/providers/types.js";
+import type { TransportMessageChannel } from "../../../core/transport/channel.js";
+import { createWebSocketTransport } from "../../../core/transport/websocket.js";
+import { JsonHttpApiClient } from "../../../core/http/json-client.js";
+import type { TaskClient } from "../../../core/runtime/control-plane/tasks.js";
+import type { WorkspaceClient } from "../../../core/runtime/control-plane/workspace.js";
+import { createHermesTaskClient } from "./tasks.js";
+import type { HermesKanbanRequest } from "../kanban.js";
+import { createHermesAuthStatusClient } from "./auth-status.js";
+import { createHermesDashboardJsonRpcClient } from "./dashboard-json-rpc.js";
+import { createHermesDashboardRestClient } from "./dashboard-rest.js";
+import { createHermesRawGatewayChannel } from "./raw-gateway.js";
+import { createHermesRuntimeEventClient } from "./events.js";
+import { createHermesModelCatalogClient } from "./models.js";
+import { createHermesSessionOperations } from "./session-operations.js";
+import { createHermesSessionClient } from "./sessions.js";
+import { createHermesUsageClient } from "./usage.js";
+import { createHermesApiServerControlPlane } from "./api-server-rest.js";
+import { createHermesApiServerEventClient } from "./api-server-events.js";
 
 export interface HermesApiServerRunEventBinding {
   runId: string;
@@ -36,7 +35,12 @@ export interface HermesApiServerRunEventBinding {
   clientId: string;
 }
 
-export interface HermesCaviRuntimeControlOptions {
+export interface HermesRuntimeControlOverrides {
+  tasks?: TaskClient;
+  workspace?: WorkspaceClient;
+}
+
+export interface HermesRuntimeControlOptions {
   dashboardBaseUrl?: string;
   dashboardWebSocketUrl?: string;
   dashboardToken?: string;
@@ -44,7 +48,12 @@ export interface HermesCaviRuntimeControlOptions {
   channel?: TransportMessageChannel<unknown>;
   ownsChannel?: boolean;
   signal?: AbortSignal;
-  cavi?: CaviControlAdapterOptions;
+  /**
+   * Modules Hermes cannot serve from its own surfaces. An extension that layers
+   * a plugin on the harness supplies them here; nothing about this factory is
+   * extension-specific.
+   */
+  overrides?: HermesRuntimeControlOverrides;
   /** Opt-in SSE binding for a caller-owned, already existing API Server run. */
   apiServerRunEvents?: HermesApiServerRunEventBinding;
 }
@@ -117,7 +126,7 @@ function createCleanupStack(): {
 }
 
 export async function createHermesRuntimeControlClient(
-  options: RuntimeControlClientOptions & HermesCaviRuntimeControlOptions,
+  options: RuntimeControlClientOptions & HermesRuntimeControlOptions,
 ): Promise<RuntimeControlClient> {
   if (options.gatewayReconnect !== undefined) {
     throw new CapabilityUnavailable("hermes", "runtimeControl.gatewayReconnect");
@@ -182,6 +191,25 @@ export async function createHermesRuntimeControlClient(
         defaultHeaders: dashboardHeaders,
         fetchImpl: options.fetch,
       });
+    // The kanban plugin mounts on the dashboard and shares its session-token
+    // auth, so it rides the same base URL and headers as the REST client above.
+    const kanbanHttp = dashboardBaseUrl.length === 0
+      ? undefined
+      : new JsonHttpApiClient("hermes-kanban", {
+        baseUrl: dashboardBaseUrl,
+        allowRelativeBaseUrl: true,
+        includePortalClientIdHeader: false,
+        defaultHeaders: dashboardHeaders,
+        auth: {
+          bearerToken: dashboardHeaders === undefined
+            ? options.dashboardToken ?? options.token ?? null
+            : null,
+        },
+        fetchImpl: options.fetch,
+      });
+    const kanbanRest: HermesKanbanRequest | undefined = kanbanHttp === undefined
+      ? undefined
+      : (path, init) => kanbanHttp.request(path, init);
     if (apiServerBaseUrl.length > 0) {
       const apiServer = createHermesApiServerControlPlane({
         baseUrl: apiServerBaseUrl,
@@ -257,11 +285,9 @@ export async function createHermesRuntimeControlClient(
       events = createHermesRuntimeEventClient(rpc);
       if (rest && apiServerBaseUrl.length === 0) sessions = createHermesSessionClient(createHermesSessionOperations({ rpc, rest }));
     }
-    if (options.cavi) {
-      const adapters = createCaviControlAdapters(options.cavi);
-      tasks = createHermesCaviTaskClient(adapters);
-      workspace = createHermesCaviWorkspaceClient(adapters);
-    }
+    if (kanbanRest) tasks = createHermesTaskClient(kanbanRest);
+    if (options.overrides?.tasks) tasks = options.overrides.tasks;
+    if (options.overrides?.workspace) workspace = options.overrides.workspace;
     throwIfAborted(options.signal);
   } catch (error) {
     try {
