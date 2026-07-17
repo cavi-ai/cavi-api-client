@@ -8,6 +8,7 @@ import { CLAUDE_RUNTIME_SUPPORT } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
+import { SynchronousRunStore, unknownSynchronousRun } from "../../core/runtime/synchronous-run-store.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type {
   RuntimeBatchRequest,
@@ -50,6 +51,7 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
   readonly request: HttpApiTransport;
   private readonly defaultModel?: string;
   private readonly defaultMaxTokens: number;
+  private readonly runStore = new SynchronousRunStore();
 
   constructor(options: ClaudeApiClientOptions) {
     const version = options.anthropicVersion?.trim() || CLAUDE_DEFAULT_ANTHROPIC_VERSION;
@@ -87,7 +89,9 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       method: "POST",
       body: params,
     });
-    return mapAnthropicMessageToRunStatus(message);
+    const status = mapAnthropicMessageToRunStatus(message);
+    this.runStore.remember(status);
+    return status;
   }
 
   /**
@@ -155,13 +159,15 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     }
   }
 
-  // F1: Anthropic /v1/messages is synchronous; there is no run retrieval/cancel.
-  async getRun(_runId: string): Promise<RuntimeRunStatus> {
-    throw this.stateless("getRun");
+  // Anthropic /v1/messages is synchronous — the run is terminal when startRun
+  // returns. getRun/cancelRun therefore degrade to the remembered terminal
+  // result instead of throwing, keeping the RuntimeClient contract uniform.
+  async getRun(runId: string): Promise<RuntimeRunStatus> {
+    return this.runStore.get(runId) ?? unknownSynchronousRun("claude-sdk", runId);
   }
 
-  async cancelRun(_runId: string): Promise<{ status: string }> {
-    throw this.stateless("cancelRun");
+  async cancelRun(runId: string): Promise<{ status: string }> {
+    return { status: this.runStore.get(runId)?.status ?? "completed" };
   }
 
   async submitBatch(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus> {
@@ -208,13 +214,6 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     }
     const text = await response.text();
     return parseMessageBatchResults(text, mapAnthropicMessageToRunStatus);
-  }
-
-  private stateless(method: string): ApiClientError {
-    return new ApiClientError(
-      `claude-sdk: ${method} is unsupported — runs are synchronous request/response`,
-      { code: ApiClientErrorCode.EndpointNotFound },
-    );
   }
 
 }

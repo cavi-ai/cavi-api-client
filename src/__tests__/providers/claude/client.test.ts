@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ClaudeApiClient } from "../../../providers/claude/client";
-import { ApiClientErrorCode, getErrorCode } from "../../../core/errors";
+import { ApiClientErrorCode } from "../../../core/errors";
 
 function mockFetch(json: unknown) {
   return vi.fn(async () =>
@@ -94,16 +94,6 @@ describe("ClaudeApiClient", () => {
     });
   });
 
-  it("F1: getRun and cancelRun throw EndpointNotFound (stateless provider)", async () => {
-    const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: mockFetch(ANTHROPIC_MESSAGE) });
-    await expect(client.getRun("msg_01")).rejects.toSatisfy(
-      (e: unknown) => getErrorCode(e) === ApiClientErrorCode.EndpointNotFound,
-    );
-    await expect(client.cancelRun("msg_01")).rejects.toSatisfy(
-      (e: unknown) => getErrorCode(e) === ApiClientErrorCode.EndpointNotFound,
-    );
-  });
-
   it("dryRun:true short-circuits startRun with zero network calls (A3)", async () => {
     const fetchImpl = mockFetch(ANTHROPIC_MESSAGE);
     const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl });
@@ -121,6 +111,41 @@ describe("ClaudeApiClient", () => {
     const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: mockFetch(ANTHROPIC_MESSAGE) });
     await expect(client.startRun({ input: "hi", dryRun: true })).rejects.toMatchObject({
       code: ApiClientErrorCode.ValidationFailed,
+    });
+  });
+
+  describe("Claude getRun/cancelRun graceful degrade", () => {
+    const okMessage = {
+      id: "msg_run_1", type: "message", role: "assistant", model: "claude-opus-4-8",
+      content: [{ type: "text", text: "ok" }], stop_reason: "end_turn",
+      usage: { input_tokens: 1, output_tokens: 1 },
+    };
+    const fetchImpl = () =>
+      (async () =>
+        new Response(JSON.stringify(okMessage), {
+          status: 200, headers: { "content-type": "application/json" },
+        })) as unknown as typeof fetch;
+
+    it("getRun returns the terminal status for a run started via this client", async () => {
+      const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: fetchImpl() });
+      const started = await client.startRun({ input: "hi", model: "claude-opus-4-8" });
+      const got = await client.getRun(started.run_id);
+      expect(got.run_id).toBe(started.run_id);
+      expect(got.status).toBe(started.status);
+    });
+
+    it("getRun returns an honest unknown status (never throws) for a foreign run id", async () => {
+      const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: fetchImpl() });
+      const got = await client.getRun("msg_not_ours");
+      expect(got.status).toBe("unknown");
+      expect(got.error).toContain("claude-sdk");
+    });
+
+    it("cancelRun is a no-op success that never throws", async () => {
+      const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: fetchImpl() });
+      const started = await client.startRun({ input: "hi", model: "claude-opus-4-8" });
+      await expect(client.cancelRun(started.run_id)).resolves.toEqual({ status: started.status });
+      await expect(client.cancelRun("foreign")).resolves.toEqual({ status: "completed" });
     });
   });
 });

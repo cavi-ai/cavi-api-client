@@ -7,6 +7,7 @@ import { GEMINI_RUNTIME_SUPPORT } from "./capabilities.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
+import { SynchronousRunStore, unknownSynchronousRun } from "../../core/runtime/synchronous-run-store.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type {
   RuntimeBatchRequest,
@@ -62,6 +63,7 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
   readonly request: HttpApiTransport;
   private readonly defaultModel?: string;
   private readonly files: GeminiFilesClient;
+  private readonly runStore = new SynchronousRunStore();
 
   constructor(options: GeminiApiClientOptions) {
     super("gemini", {
@@ -93,7 +95,9 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
       method: "POST",
       body: payload,
     });
-    return mapGeminiGenerateContentToRunStatus(model, response);
+    const status = mapGeminiGenerateContentToRunStatus(model, response);
+    this.runStore.remember(status);
+    return status;
   }
 
   async streamRun(
@@ -157,12 +161,15 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
     }
   }
 
-  async getRun(_runId: string): Promise<RuntimeRunStatus> {
-    throw this.stateless("getRun");
+  // Gemini generateContent is synchronous — the run is terminal when startRun
+  // returns. getRun/cancelRun degrade to the remembered terminal result rather
+  // than throwing, keeping the RuntimeClient contract uniform across providers.
+  async getRun(runId: string): Promise<RuntimeRunStatus> {
+    return this.runStore.get(runId) ?? unknownSynchronousRun("gemini", runId);
   }
 
-  async cancelRun(_runId: string): Promise<{ status: string }> {
-    throw this.stateless("cancelRun");
+  async cancelRun(runId: string): Promise<{ status: string }> {
+    return { status: this.runStore.get(runId)?.status ?? "completed" };
   }
 
   async submitBatch(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus> {
@@ -249,12 +256,5 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
     }
     if (typeof raw.model === "string" && raw.model.length > 0) return raw.model;
     return undefined;
-  }
-
-  private stateless(method: string): ApiClientError {
-    return new ApiClientError(
-      `gemini: ${method} is unsupported — generateContent is synchronous request/response`,
-      { code: ApiClientErrorCode.EndpointNotFound },
-    );
   }
 }
