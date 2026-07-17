@@ -1,0 +1,2329 @@
+{
+  "info": {
+    "_postman_id": "cavi-api-client-surfaces",
+    "name": "@cavi-ai/api-client — surface contracts",
+    "description": "Generated from SURFACE_CONTRACTS + CAVI_SURFACE_CONTRACTS by scripts/postman/generate.mjs. Do not hand-edit. Set {{baseUrl}} and {{token}}, then run to verify every declared endpoint. `hard` requests fail on 404/5xx; `gap` requests report PROVEN vs unproven without failing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "actionId",
+      "value": "action-1",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "analyst",
+      "type": "string"
+    },
+    {
+      "key": "assetId",
+      "value": "asset-1",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "job-1",
+      "type": "string"
+    },
+    {
+      "key": "kind",
+      "value": "image",
+      "type": "string"
+    },
+    {
+      "key": "memberId",
+      "value": "analyst",
+      "type": "string"
+    },
+    {
+      "key": "memoryKey",
+      "value": "scratch",
+      "type": "string"
+    },
+    {
+      "key": "path",
+      "value": "notes/example.md",
+      "type": "string"
+    },
+    {
+      "key": "portal",
+      "value": "martina",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "t_1",
+      "type": "string"
+    },
+    {
+      "key": "teamId",
+      "value": "research",
+      "type": "string"
+    },
+    {
+      "key": "teamSlug",
+      "value": "research",
+      "type": "string"
+    },
+    {
+      "key": "vaultId",
+      "value": "vault-1",
+      "type": "string"
+    },
+    {
+      "key": "workspacePath",
+      "value": "research/complete",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "extensions/cavi",
+      "item": [
+        {
+          "name": "cavi.costHistory — GET /api/plugins/cavi-control/cost/history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/cavi-control/cost/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "cavi-control",
+                "cost",
+                "history"
+              ]
+            },
+            "description": "CAVI cost history extension endpoint.\n\nOwner: extensions/cavi\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.costHistory is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.costHistory — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extensions/cavi/discourse",
+      "item": [
+        {
+          "name": "cavi.operator.taskDiscourse — GET /cavi-control/api/operator/tasks/{{taskId}}/discourse",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cavi-control/api/operator/tasks/{{taskId}}/discourse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cavi-control",
+                "api",
+                "operator",
+                "tasks",
+                "{{taskId}}",
+                "discourse"
+              ]
+            },
+            "description": "CAVI Control operator task discourse endpoint.\n\nOwner: extensions/cavi/discourse\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.operator.taskDiscourse is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.operator.taskDiscourse — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extensions/cavi/library",
+      "item": [
+        {
+          "name": "library.clip — POST /api/plugins/library/clip",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/clip",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "clip"
+              ]
+            },
+            "description": "CaviClip ingest endpoint (URL/text/manual-file capture into the library intake).\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.clip is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.clip — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "library.fleetStatus — GET /api/plugins/library/fleet-status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/fleet-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "fleet-status"
+              ]
+            },
+            "description": "Fleet library status extension endpoint.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.fleetStatus is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.fleetStatus — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "library.inbox — GET /api/plugins/library/inbox",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/inbox",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "inbox"
+              ]
+            },
+            "description": "Library inbox endpoint.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.inbox is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.inbox — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "library.promotable — GET /api/plugins/library/promotable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/promotable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "promotable"
+              ]
+            },
+            "description": "Promotable library rows.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.promotable is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.promotable — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "library.reviewRequests — GET /api/plugins/library/review-requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/review-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "review-requests"
+              ]
+            },
+            "description": "Library review-request rows.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.reviewRequests is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.reviewRequests — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "library.search — GET /api/plugins/library/search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "search"
+              ]
+            },
+            "description": "Library search endpoint.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.search is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.search — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "library.status — GET /api/plugins/library/status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/library/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "library",
+                "status"
+              ]
+            },
+            "description": "Library ingest pipeline counters.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// library.status is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"library.status — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extensions/cavi/operator-control",
+      "item": [
+        {
+          "name": "cavi.operator.memory — GET /cavi-control/api/operator/memory",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cavi-control/api/operator/memory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cavi-control",
+                "api",
+                "operator",
+                "memory"
+              ]
+            },
+            "description": "CAVI Control operator memory endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.operator.memory is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.operator.memory — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cavi.operator.registry — GET /cavi-control/api/operator/registry",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cavi-control/api/operator/registry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cavi-control",
+                "api",
+                "operator",
+                "registry"
+              ]
+            },
+            "description": "CAVI Control operator registry endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.operator.registry is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.operator.registry — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cavi.operator.snapshot — GET /cavi-control/api/operator/snapshot",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cavi-control/api/operator/snapshot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cavi-control",
+                "api",
+                "operator",
+                "snapshot"
+              ]
+            },
+            "description": "CAVI Control operator aggregate snapshot endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.operator.snapshot is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.operator.snapshot — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cavi.operator.status — GET /cavi-control/api/operator/status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cavi-control/api/operator/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cavi-control",
+                "api",
+                "operator",
+                "status"
+              ]
+            },
+            "description": "CAVI Control operator status endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.operator.status is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.operator.status — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cavi.operator.tasks — POST /cavi-control/api/operator/tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cavi-control/api/operator/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cavi-control",
+                "api",
+                "operator",
+                "tasks"
+              ]
+            },
+            "description": "CAVI Control operator task create endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// cavi.operator.tasks is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"cavi.operator.tasks — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extensions/cavi/portal",
+      "item": [
+        {
+          "name": "portal.config — POST /api/plugins/portal/{{portal}}/config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/portal/{{portal}}/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "portal",
+                "{{portal}}",
+                "config"
+              ]
+            },
+            "description": "Portal config patch endpoint.\n\nOwner: extensions/cavi/portal\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"portal.config — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "portal.dashboard — GET /api/plugins/portal/{{portal}}/dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/portal/{{portal}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "portal",
+                "{{portal}}",
+                "dashboard"
+              ]
+            },
+            "description": "Portal dashboard aggregate.\n\nOwner: extensions/cavi/portal\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// portal.dashboard is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"portal.dashboard — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extensions/cavi/portal-memory",
+      "item": [
+        {
+          "name": "portalMemory.snapshot — GET /api/plugins/portal-memory/teams/{{teamSlug}}/members/{{memberId}}/{{memoryKey}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/portal-memory/teams/{{teamSlug}}/members/{{memberId}}/{{memoryKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "portal-memory",
+                "teams",
+                "{{teamSlug}}",
+                "members",
+                "{{memberId}}",
+                "{{memoryKey}}"
+              ]
+            },
+            "description": "Portal memory snapshot endpoint.\n\nOwner: extensions/cavi/portal-memory\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// portalMemory.snapshot is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"portalMemory.snapshot — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "gateway/core contract",
+      "item": [
+        {
+          "name": "gateway.capabilities — GET /v1/capabilities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/capabilities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "capabilities"
+              ]
+            },
+            "description": "Authenticated API-server capability proof for saved bearer tokens.\n\nOwner: gateway/core contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.capabilities — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.health — GET /health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Primary reachability check for the selected gateway API server.\n\nOwner: gateway/core contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.health — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.healthDetailed — GET /health/detailed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/detailed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "detailed"
+              ]
+            },
+            "description": "Detailed gateway health check; absence is a compatibility gap when basic health/capabilities pass.\n\nOwner: gateway/core contract\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// gateway.healthDetailed is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"gateway.healthDetailed — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.websocket — GET /api/ws",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ws",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ws"
+              ]
+            },
+            "description": "Dashboard/TUI JSON-RPC websocket path for chat, sessions, logs, and health snapshots.\n\nOwner: gateway/core contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.websocket — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "gateway/media contract",
+      "item": [
+        {
+          "name": "gateway.mediaAsset — GET /v1/media/assets/{{assetId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "assets",
+                "{{assetId}}"
+              ]
+            },
+            "description": "Gateway-native media asset retrieval and metadata route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaAsset — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaAssetCreate — POST /v1/media/assets?kind={{kind}}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/assets?kind={{kind}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "assets?kind={{kind}}"
+              ]
+            },
+            "description": "Gateway-native media asset creation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaAssetCreate — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaAssetDelete — DELETE /v1/media/assets/{{assetId}}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "assets",
+                "{{assetId}}"
+              ]
+            },
+            "description": "Gateway-native media asset deletion route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaAssetDelete — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaAssets — GET /v1/media/assets?kind={{kind}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/assets?kind={{kind}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "assets?kind={{kind}}"
+              ]
+            },
+            "description": "Gateway-native media asset inventory route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaAssets — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaAudioGenerate — POST /v1/media/audio/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/audio/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "audio",
+                "generate"
+              ]
+            },
+            "description": "Gateway-native audio generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaAudioGenerate — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaImageGenerate — POST /v1/media/image/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/image/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "image",
+                "generate"
+              ]
+            },
+            "description": "Gateway-native image generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaImageGenerate — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaJob — GET /v1/media/{{kind}}/jobs/{{jobId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/{{kind}}/jobs/{{jobId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "{{kind}}",
+                "jobs",
+                "{{jobId}}"
+              ]
+            },
+            "description": "Gateway-native media job status route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaJob — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaMusicGenerate — POST /v1/media/music/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/music/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "music",
+                "generate"
+              ]
+            },
+            "description": "Gateway-native music generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaMusicGenerate — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaProviders — GET /v1/media/providers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/providers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "providers"
+              ]
+            },
+            "description": "Gateway-native media provider inventory shared by audio, image, video, and music generation.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaProviders — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.mediaVideoGenerate — POST /v1/media/video/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/media/video/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "media",
+                "video",
+                "generate"
+              ]
+            },
+            "description": "Gateway-native video generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.mediaVideoGenerate — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "gateway/team contract",
+      "item": [
+        {
+          "name": "team.action — POST /api/teams/{{teamId}}/actions/{{actionId}}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/actions/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "actions",
+                "{{actionId}}"
+              ]
+            },
+            "description": "Agnostic team action route derived from a manifest action contract.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.action — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.agent.action — POST /api/teams/{{teamId}}/agents/{{agentId}}/actions/{{actionId}}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/agents/{{agentId}}/actions/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "agents",
+                "{{agentId}}",
+                "actions",
+                "{{actionId}}"
+              ]
+            },
+            "description": "Agnostic team member action route.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.agent.action — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.agent.config — GET /api/teams/{{teamId}}/agents/{{agentId}}/config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/agents/{{agentId}}/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "agents",
+                "{{agentId}}",
+                "config"
+              ]
+            },
+            "description": "Agnostic team member config route.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.agent.config — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.agent.workspace — GET /api/teams/{{teamId}}/agents/{{agentId}}/workspace/{{workspacePath}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/agents/{{agentId}}/workspace/{{workspacePath}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "agents",
+                "{{agentId}}",
+                "workspace",
+                "{{workspacePath}}"
+              ]
+            },
+            "description": "Agnostic whitelisted team-member workspace route.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.agent.workspace — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.config — GET /api/teams/{{teamId}}/config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "config"
+              ]
+            },
+            "description": "Agnostic team config route derived from the team manifest identity.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.config — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.kanban — GET /api/teams/{{teamId}}/kanban",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/kanban",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "kanban"
+              ]
+            },
+            "description": "Agnostic team Kanban route derived from the team manifest identity.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.kanban — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.runs — GET /api/teams/{{teamId}}/runs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/runs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "runs"
+              ]
+            },
+            "description": "Agnostic team runs route derived from the team manifest identity.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.runs — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "team.workspace — GET /api/teams/{{teamId}}/workspace/{{workspacePath}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/workspace/{{workspacePath}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "workspace",
+                "{{workspacePath}}"
+              ]
+            },
+            "description": "Agnostic whitelisted team workspace route.\n\nOwner: gateway/team contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"team.workspace — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "gateway/wiki contract",
+      "item": [
+        {
+          "name": "gateway.wikiCompile — POST /v1/wiki/vaults/{{vaultId}}/compile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/wiki/vaults/{{vaultId}}/compile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wiki",
+                "vaults",
+                "{{vaultId}}",
+                "compile"
+              ]
+            },
+            "description": "Gateway-native QMD compile route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.wikiCompile — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.wikiIngest — POST /v1/wiki/vaults/{{vaultId}}/ingest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/wiki/vaults/{{vaultId}}/ingest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wiki",
+                "vaults",
+                "{{vaultId}}",
+                "ingest"
+              ]
+            },
+            "description": "Gateway-native wiki ingest route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.wikiIngest — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.wikiPromote — POST /v1/wiki/vaults/{{vaultId}}/promote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/wiki/vaults/{{vaultId}}/promote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wiki",
+                "vaults",
+                "{{vaultId}}",
+                "promote"
+              ]
+            },
+            "description": "Gateway-native wiki promotion route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.wikiPromote — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.wikiRead — GET /v1/wiki/vaults/{{vaultId}}/read?path={{path}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/wiki/vaults/{{vaultId}}/read?path={{path}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wiki",
+                "vaults",
+                "{{vaultId}}",
+                "read?path={{path}}"
+              ]
+            },
+            "description": "Gateway-native wiki page read route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.wikiRead — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.wikiTree — GET /v1/wiki/vaults/{{vaultId}}/tree",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/wiki/vaults/{{vaultId}}/tree",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wiki",
+                "vaults",
+                "{{vaultId}}",
+                "tree"
+              ]
+            },
+            "description": "Gateway-native wiki tree route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.wikiTree — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "gateway.wikiVaults — GET /v1/wiki/vaults",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/wiki/vaults",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wiki",
+                "vaults"
+              ]
+            },
+            "description": "Gateway-native wiki vault inventory for external Obsidian/QMD plugin vaults.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gateway.wikiVaults — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "providers/hermes",
+      "item": [
+        {
+          "name": "hermes.runs — POST /v1/runs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/runs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "runs"
+              ]
+            },
+            "description": "Hermes REST/SSE run creation endpoint.\n\nOwner: providers/hermes\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"hermes.runs — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "providers/hermes (kanban plugin)",
+      "item": [
+        {
+          "name": "kanban.board — GET /api/plugins/kanban/board",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/kanban/board",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "kanban",
+                "board"
+              ]
+            },
+            "description": "Unified Kanban board endpoint.\n\nOwner: providers/hermes (kanban plugin)\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"kanban.board — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "kanban.tasks — POST /api/plugins/kanban/tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/plugins/kanban/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plugins",
+                "kanban",
+                "tasks"
+              ]
+            },
+            "description": "Kanban task creation endpoint for workspace and operator surfaces.\n\nOwner: providers/hermes (kanban plugin)\nDegradation: hard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"kanban.tasks — endpoint exists (hard)\", function () {",
+                  "  var c = pm.response.code;",
+                  "  pm.expect(c, 'status ' + c).to.not.be.oneOf([404]);",
+                  "  pm.expect(c, 'status ' + c).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vault/gateway owner",
+      "item": [
+        {
+          "name": "vault.read — GET /api/obsidian/read",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/obsidian/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "obsidian",
+                "read"
+              ]
+            },
+            "description": "Obsidian file read; query string appended by caller.\n\nOwner: vault/gateway owner\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// vault.read is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"vault.read — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "vault.tree — GET /api/obsidian/tree",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/obsidian/tree",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "obsidian",
+                "tree"
+              ]
+            },
+            "description": "Obsidian vault tree; no native gateway route identified yet.\n\nOwner: vault/gateway owner\nDegradation: gap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// vault.tree is declared \"gap\": it may not exist on this backend yet.",
+                  "var c = pm.response.code;",
+                  "var proven = c >= 200 && c < 300;",
+                  "pm.test(\"vault.tree — \" + (proven ? \"PROVEN (\" + c + \")\" : \"unproven (\" + c + \")\"), function () {",
+                  "  pm.expect(true).to.be.true; // informational: gap surfaces never fail the run",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
