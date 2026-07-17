@@ -13,8 +13,6 @@ export const CAVI_CONTROL_OPERATOR_API = {
   status: `${CAVI_CONTROL_OPERATOR_API_BASE}/status`,
   registry: `${CAVI_CONTROL_OPERATOR_API_BASE}/registry`,
   tasks: `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks`,
-  task: (taskId: string) =>
-    `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks/${encodeURIComponent(taskId)}`,
   taskDiscourse: (taskId: string) =>
     `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks/${encodeURIComponent(taskId)}/discourse`,
   memory: `${CAVI_CONTROL_OPERATOR_API_BASE}/memory`,
@@ -33,8 +31,6 @@ export const CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS = {
   status: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/status`,
   registry: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/registry`,
   tasks: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks`,
-  task: (taskId: string) =>
-    `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks/${encodeURIComponent(taskId)}`,
   taskDiscourse: (taskId: string) =>
     `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks/${encodeURIComponent(taskId)}/discourse`,
   memory: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/memory`,
@@ -50,7 +46,6 @@ export const CAVI_CONTROL_OPERATOR_RPC_METHODS = {
   snapshot: "operator.snapshot",
   memoryList: "operator.memory.list",
   tasksList: "operator.tasks.list",
-  tasksGet: "operator.tasks.get",
   discourseTree: "discourse.tree",
 } as const;
 

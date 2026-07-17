@@ -149,9 +149,6 @@ describe("agnostic HTTP API client package", () => {
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.root).toBe(
       "/cavi-control/api/operator",
     );
-    expect(CAVI_CONTROL_API_ENDPOINTS.operator.task("task/a b")).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b",
-    );
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.taskDiscourse("task/a b")).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
     );
@@ -266,9 +263,6 @@ describe("agnostic HTTP API client package", () => {
       "/cavi-control/api/operator/memory",
     );
 
-    expect(resolveCaviPath("cavi.operator.task", { taskId: "task/a b" })).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b",
-    );
     expect(resolveCaviPath("cavi.operator.taskDiscourse", { taskId: "task/a b" })).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
     );
@@ -758,7 +752,7 @@ describe("agnostic HTTP API client package", () => {
     expect(() => resolveCaviPath("portal.dashboard", { portal: "" })).toThrow(
       'CAVI_SURFACE_CONTRACTS: missing path param "portal"',
     );
-    expect(() => resolveCaviPath("cavi.operator.task")).toThrow(
+    expect(() => resolveCaviPath("cavi.operator.taskDiscourse")).toThrow(
       'CAVI_SURFACE_CONTRACTS: missing path param "taskId"',
     );
     expect(() => resolvePath("team.agent.config", { teamId: "research" })).toThrow(

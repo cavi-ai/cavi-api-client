@@ -120,14 +120,6 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
     owner: "extensions/cavi/operator-control",
     note: "CAVI Control operator task create endpoint.",
   },
-  "cavi.operator.task": {
-    key: "cavi.operator.task",
-    method: "GET",
-    path: (params) => CAVI_CONTROL_OPERATOR_API.task(raw(params, "taskId")),
-    degradation: "gap",
-    owner: "extensions/cavi/operator-control",
-    note: "CAVI Control operator task detail endpoint.",
-  },
   "cavi.operator.taskDiscourse": {
     key: "cavi.operator.taskDiscourse",
     method: "GET",
