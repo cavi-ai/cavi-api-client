@@ -1,5 +1,5 @@
 {
-  "endpoint": "/library/api/clip",
+  "endpoint": "/api/plugins/library/clip",
   "defaultTeam": "library",
   "sourceTag": "caviclip"
 }

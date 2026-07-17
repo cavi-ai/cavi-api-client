@@ -114,6 +114,58 @@ export const GATEWAY_SYSTEM_RPC_METHODS = {
 // `OPENCLAW_DEFAULT_CAPABILITIES` are re-exported from
 // `providers/openclaw/manifest.derive.ts` so consumers see the same identifiers.
 
+// Kanban plugin REST surface. The plugin mounts its router at
+// `/api/plugins/kanban/` on the harness dashboard and writes through the same
+// code paths as the CLI and the gateway `/kanban` command, so the three
+// surfaces share one backing store. Requests carry the dashboard session
+// bearer token like any other `/api/plugins/...` route.
+export const KANBAN_PLUGIN_API_BASE_PATH = "/api/plugins/kanban" as const;
+
+export const KANBAN_PLUGIN_API_ENDPOINTS = {
+  /** Full board grouped into status columns. */
+  board: `${KANBAN_PLUGIN_API_BASE_PATH}/board`,
+  boards: `${KANBAN_PLUGIN_API_BASE_PATH}/boards`,
+  board_: (slug: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/boards/${encodeURIComponent(slug)}`,
+  boardSwitch: (slug: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/boards/${encodeURIComponent(slug)}/switch`,
+  tasks: `${KANBAN_PLUGIN_API_BASE_PATH}/tasks`,
+  task: (taskId: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/tasks/${encodeURIComponent(taskId)}`,
+  tasksBulk: `${KANBAN_PLUGIN_API_BASE_PATH}/tasks/bulk`,
+  taskComments: (taskId: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/tasks/${encodeURIComponent(taskId)}/comments`,
+  taskLog: (taskId: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/tasks/${encodeURIComponent(taskId)}/log`,
+  taskReclaim: (taskId: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/tasks/${encodeURIComponent(taskId)}/reclaim`,
+  taskReassign: (taskId: string) =>
+    `${KANBAN_PLUGIN_API_BASE_PATH}/tasks/${encodeURIComponent(taskId)}/reassign`,
+  links: `${KANBAN_PLUGIN_API_BASE_PATH}/links`,
+  stats: `${KANBAN_PLUGIN_API_BASE_PATH}/stats`,
+  assignees: `${KANBAN_PLUGIN_API_BASE_PATH}/assignees`,
+  diagnostics: `${KANBAN_PLUGIN_API_BASE_PATH}/diagnostics`,
+  config: `${KANBAN_PLUGIN_API_BASE_PATH}/config`,
+  dispatch: `${KANBAN_PLUGIN_API_BASE_PATH}/dispatch`,
+  events: `${KANBAN_PLUGIN_API_BASE_PATH}/events`,
+} as const;
+
+/**
+ * Board columns the plugin renders, left to right. `archived` is a real status
+ * but is filter-gated rather than a visible column, so it is not listed here.
+ */
+export const KANBAN_PLUGIN_BOARD_COLUMNS = [
+  "triage",
+  "todo",
+  "ready",
+  "running",
+  "blocked",
+  "done",
+] as const;
+
+/** Status the plugin uses to retire a card; it has no hard-delete route. */
+export const KANBAN_PLUGIN_ARCHIVED_STATUS = "archived" as const;
+
 export const GATEWAY_MEDIA_API_BASE_PATH = "/v1/media" as const;
 
 export const GATEWAY_MEDIA_API_ENDPOINTS = {

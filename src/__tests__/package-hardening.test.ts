@@ -62,7 +62,6 @@ import {
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   CAVI_SURFACE_CONTRACTS,
-  LIBRARY_LEGACY_API_BASE_PATH,
   TEAM_REGISTRY_CONFIG,
   appendCaviApiPath,
   resolveCaviPath,
@@ -143,6 +142,15 @@ const APPROVED_ROOT_TRANSPORT_ADDITIONS = [
   "TransportLifecycleEvent",
   "getTransportErrorMetadata",
 ] as const;
+// The frozen baseline only expressed additions. A removal from the root
+// surface is a breaking change, so it is listed here explicitly rather than by
+// regenerating the baseline from the working tree.
+const APPROVED_ROOT_REMOVALS = new Set<string>([
+  // RuntimeControlPlane was a second control-plane contract beside
+  // RuntimeControlClient: no provider implemented it, nothing constructed one,
+  // and its provider-module slot (createControlPlane) had no implementers.
+  "RuntimeControlPlane",
+]);
 const APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS = [
   "RuntimeControlClient",
   "RuntimeControlClientFactory",
@@ -531,9 +539,8 @@ describe("package hardening", () => {
       );
 
     expect(source).toContain("export const CAVI_CONTROL_OPERATOR_API");
-    expect(source).toContain("export const LIBRARY_LEGACY_API_BASE_PATH");
+    expect(source).toContain("export const LIBRARY_API_BASE_PATH");
     expect(source).toContain("export function resolvePluginApiPath");
-    expect(source).toContain("projectBoard:");
     expect(hiddenFeaturePathOwners).toEqual([]);
   });
 
@@ -1159,7 +1166,7 @@ describe("package hardening", () => {
     const testingIndex = read(path.join(SRC_ROOT, "testing", "index.ts"));
 
     expect(rootIndex).toContain('from "./core/runtime/control-plane/index.js"');
-    expect(testingIndex).toContain('export * from "./runtime-control-plane-conformance.js"');
+    expect(testingIndex).toContain('export * from "./runtime-control-client-conformance.js"');
     expect(testingIndex).toContain('export * from "./raw-gateway-conformance.js"');
     expect(rootIndex).toContain('from "./providers/capability-matrix.js"');
     expect(rootIndex).toContain("RUNTIME_PROVIDER_CAPABILITY_MATRIX");
@@ -1168,6 +1175,11 @@ describe("package hardening", () => {
     expect(rootIndex).toContain("RuntimeProviderCapabilityRow");
     expect(rootIndex).not.toMatch(/(?:CLAUDE|CODEX|GEMINI|HERMES|OPENCLAW)_PROVIDER_MODULE/u);
     expect(rootIndex).not.toContain("inspectRuntimeControlPlaneConformance");
+    // RuntimeControlPlane was a second, implementer-less control-plane contract
+    // alongside RuntimeControlClient. Neither it, its provider-module factory
+    // slot, nor its conformance suite may return.
+    expect(testingIndex).not.toContain("runtime-control-plane-conformance");
+    expect(rootIndex).not.toMatch(/\bRuntimeControlPlane\b(?!Metadata|Event|Declaration)/u);
   });
 
   it("keeps provider-neutral runtime-control and testing code free of concrete raw transports", () => {
@@ -1198,7 +1210,9 @@ describe("package hardening", () => {
       ...originMainBaseline,
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
       ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
-    ].sort();
+    ]
+      .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
+      .sort();
 
     expect(rootExportNames(path.join(SRC_ROOT, "index.ts"))).toEqual(expectedRootExports);
     for (const factory of [
@@ -1304,9 +1318,10 @@ describe("package hardening", () => {
     expect(resolvePluginApiPath("machine", "dashboard")).toBe(
       "/api/plugins/machine/dashboard",
     );
-    expect(LIBRARY_LEGACY_API_BASE_PATH).toBe("/library/api");
-    expect(resolveLibraryApiPath("status")).toBe("/library/api/status");
-    expect(resolveLibraryApiPath("/library/api/status")).toBe("/library/api/status");
+    expect(resolveLibraryApiPath("status")).toBe("/api/plugins/library/status");
+    expect(resolveLibraryApiPath("/api/plugins/library/status")).toBe(
+      "/api/plugins/library/status",
+    );
     expect(() => appendCaviApiPath("/api/plugins/demo", "../secret")).toThrow(
       /stay within base path/u,
     );

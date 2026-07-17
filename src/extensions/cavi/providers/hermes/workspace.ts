@@ -2,7 +2,7 @@ import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
 import type { RuntimeControlPlaneMetadata } from "../../../../core/runtime/control-plane/types.js";
 import type { RuntimeWorkspaceDescriptor, WorkspaceClient } from "../../../../core/runtime/control-plane/workspace.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
-import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
+import { requireHermesSafeJsonRecord } from "../../../../providers/hermes/control-plane/dashboard-rest.js";
 
 const WORKSPACE_SCHEMA_ERROR = "Hermes CAVI workspace response failed schema validation";
 
@@ -52,12 +52,9 @@ function mapWorkspace(identity: ExplicitWorkspaceIdentity, method: string, trans
 
 export function createHermesCaviWorkspaceClient(adapters: CaviControlAdapters): WorkspaceClient {
   const list = async (): Promise<readonly RuntimeWorkspaceDescriptor[]> => {
-    const [projectBoard, operator] = await Promise.all([adapters.loadProjectBoardWorkspace(), adapters.loadOperatorControl()]);
-    const projectSnapshot = safeSnapshot(projectBoard.data);
+    const operator = await adapters.loadOperatorControl();
     const operatorSnapshot = safeSnapshot(operator.data);
     const candidates: Array<{ identity: ExplicitWorkspaceIdentity; method: string; transport: "http" | "websocket"; providerData?: Record<string, unknown> }> = [];
-    const projectIdentity = workspaceIdentity(projectSnapshot.workspaceIdentity);
-    if (projectIdentity) candidates.push({ identity: projectIdentity, method: "project-board.workspace", transport: "http" });
     const operatorTransport = operator.transports.registryDetail;
     const registry = record(operatorSnapshot.registryDetail);
     const agents = Array.isArray(registry?.agents) ? registry.agents : [];

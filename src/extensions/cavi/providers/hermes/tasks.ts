@@ -3,7 +3,7 @@ import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/ru
 import type { RuntimeTaskState, RuntimeTaskSummary, TaskClient } from "../../../../core/runtime/control-plane/tasks.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
 import type { OperatorTaskRecord, OperatorTaskState } from "../../domain/operator.js";
-import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
+import { requireHermesSafeJsonRecord } from "../../../../providers/hermes/control-plane/dashboard-rest.js";
 
 const TASK_SCHEMA_ERROR = "Hermes CAVI task response failed schema validation";
 const TASK_STATES = new Set<OperatorTaskState>(["accepted", "queued", "started", "retrying", "blocked", "completed", "dead-letter"]);

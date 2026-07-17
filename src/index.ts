@@ -116,7 +116,6 @@ export {
   type RawGatewayEvent,
   type RawGatewayRequestOptions,
   type RuntimeAuthStatus,
-  type RuntimeControlPlane,
   type RuntimeControlPlaneEvent,
   type RuntimeControlPlaneEventName,
   type RuntimeControlPlaneMetadata,

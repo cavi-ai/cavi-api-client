@@ -26,16 +26,4 @@ export const fallbackOperatorControlSectionStatus: OperatorControlSnapshot["sect
       error: null,
       sampleLimit: 20,
     },
-    workerReady: {
-      available: true,
-      authoritative: true,
-      error: null,
-      sampleLimit: null,
-    },
-    workerTasks: {
-      available: true,
-      authoritative: false,
-      error: null,
-      sampleLimit: 20,
-    },
   };

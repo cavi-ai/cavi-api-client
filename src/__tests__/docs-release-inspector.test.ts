@@ -17,6 +17,11 @@ import {
   inspectRelease,
   inspectReleaseFixtureForTest,
 } from "../../scripts/docs/inspect-release.mjs";
+import {
+  DOCUMENTED_PACKAGE,
+  DOCUMENTED_VERSION,
+} from "../../scripts/docs/types.mjs";
+import { UNDOCUMENTED_VERSION } from "./support/documented-release.js";
 
 const execFileAsync = promisify(execFile);
 const fixture = path.resolve("src/__tests__/fixtures/docs-release/package");
@@ -25,6 +30,21 @@ async function inspectFixture(tarball: string) {
   return inspectReleaseFixtureForTest(tarball);
 }
 
+async function writePackageVersion(packageDirectory: string, version: string): Promise<void> {
+  const packageJsonPath = path.join(packageDirectory, "package.json");
+  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
+  packageJson.version = version;
+  await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+}
+
+/**
+ * Pack the synthetic release fixture, stamped with the documented version.
+ *
+ * The fixture's committed package.json cannot import the pins, so the version it
+ * carries is re-stamped here instead — the pin stays the single source of truth
+ * and the fixture's own literal never has to be bumped. `mutate` runs afterwards,
+ * so drift cases can still install a deliberately wrong version.
+ */
 async function packFixture(
   mutate?: (packageDirectory: string) => Promise<void>,
 ): Promise<string> {
@@ -32,6 +52,7 @@ async function packFixture(
   temporaryDirectories.push(directory);
   const packageDirectory = path.join(directory, "package");
   await cp(fixture, packageDirectory, { recursive: true });
+  await writePackageVersion(packageDirectory, DOCUMENTED_VERSION);
   await mutate?.(packageDirectory);
   const tarball = path.join(directory, "release.tgz");
   await execFileAsync("tar", ["-czf", tarball, "package"], { cwd: directory });
@@ -89,8 +110,8 @@ describe("inspectRelease", () => {
   it("inspects public type exports in a stable release tarball", async () => {
     const manifest = await inspectFixture(await packFixture());
 
-    expect(manifest.package).toBe("@cavi-ai/api-client");
-    expect(manifest.version).toBe("0.11.0");
+    expect(manifest.package).toBe(DOCUMENTED_PACKAGE);
+    expect(manifest.version).toBe(DOCUMENTED_VERSION);
     expect(manifest.exports.map((entry) => entry.subpath)).toEqual([
       ".",
       "./core/runtime",
@@ -138,15 +159,13 @@ describe("inspectRelease", () => {
   });
 
   it("rejects release version drift", async () => {
-    const tarball = await packFixture(async (packageDirectory) => {
-      const packageJsonPath = path.join(packageDirectory, "package.json");
-      const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
-      packageJson.version = "0.11.1";
-      await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
-    });
+    const tarball = await packFixture((packageDirectory) =>
+      writePackageVersion(packageDirectory, UNDOCUMENTED_VERSION),
+    );
 
     await expect(inspectFixture(tarball)).rejects.toThrow(
-      "release mismatch: expected @cavi-ai/api-client@0.11.0, observed @cavi-ai/api-client@0.11.1",
+      `release mismatch: expected ${DOCUMENTED_PACKAGE}@${DOCUMENTED_VERSION}, ` +
+        `observed ${DOCUMENTED_PACKAGE}@${UNDOCUMENTED_VERSION}`,
     );
   });
 

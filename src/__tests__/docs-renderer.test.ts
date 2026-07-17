@@ -16,6 +16,16 @@ import {
   subpathSlug,
   validateRenderedDocumentation,
 } from "../../scripts/docs/render.mjs";
+import {
+  DOCUMENTED_OUTPUT_DIRECTORY,
+  DOCUMENTED_PACKAGE,
+  DOCUMENTED_TAG,
+  DOCUMENTED_VERSION,
+} from "../../scripts/docs/types.mjs";
+import {
+  DOCUMENTED_RELEASE_MANIFEST_PATH,
+  escapeForRegExp,
+} from "./support/documented-release.js";
 
 const root = path.resolve(".");
 const execFileAsync = promisify(execFile);
@@ -47,9 +57,7 @@ function navigationPaths(value: unknown): string[] {
 }
 
 beforeAll(async () => {
-  manifest = JSON.parse(
-    await readFile("docs/api-client/source/releases/0.11.0-manifest.json", "utf8"),
-  );
+  manifest = JSON.parse(await readFile(DOCUMENTED_RELEASE_MANIFEST_PATH, "utf8"));
   contracts = await loadContracts(root, manifest);
   navigation = JSON.parse(
     await readFile("docs/api-client/source/navigation.json", "utf8"),
@@ -116,15 +124,15 @@ describe("renderDocumentation", () => {
   });
 
   it("accepts only the canonical versioned public documentation output", () => {
-    expect(resolvePublicDocumentationOutput(root, "docs/api-client/v0.11.0")).toBe(
-      path.join(root, "docs/api-client/v0.11.0"),
+    expect(resolvePublicDocumentationOutput(root, DOCUMENTED_OUTPUT_DIRECTORY)).toBe(
+      path.join(root, DOCUMENTED_OUTPUT_DIRECTORY),
     );
   });
 
   it("rejects an arbitrary public repository root", async () => {
     await expect(buildDocumentation([
       "--tarball", "/tmp/release.tgz",
-      "--output", "docs/api-client/v0.11.0",
+      "--output", DOCUMENTED_OUTPUT_DIRECTORY,
       "--source-date-epoch", "1700000000",
       "--root", tmpdir(),
     ])).rejects.toThrow(/unsafe documentation repository root/u);
@@ -210,9 +218,16 @@ describe("renderDocumentation", () => {
     const output = render();
     const notice = "This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.";
 
+    // The stamp is rendered from the COMMITTED release manifest; the pin is the
+    // independent side, so this still catches a manifest that was never regenerated.
+    const stamp = new RegExp(
+      `^---\\ndocumentedVersion: ${escapeForRegExp(DOCUMENTED_VERSION)}\\n---\\n`,
+      "u",
+    );
+
     for (const pagePath of curatedPaths) {
       const page = output.get(pagePath)!;
-      expect(page, pagePath).toMatch(/^---\ndocumentedVersion: 0\.11\.0\n---\n/u);
+      expect(page, pagePath).toMatch(stamp);
       expect(page, pagePath).toContain(notice);
     }
   });
@@ -226,9 +241,9 @@ describe("renderDocumentation", () => {
     expect(request).toContain("Capability: supported");
     expect(request).toContain("RuntimeRunStartBody");
     expect(metadata).toMatchObject({
-      package: "@cavi-ai/api-client",
-      version: "0.11.0",
-      release: { tag: "v0.11.0" },
+      package: DOCUMENTED_PACKAGE,
+      version: DOCUMENTED_VERSION,
+      release: { tag: DOCUMENTED_TAG },
       sourceTarballSha256: manifest.sha256,
       contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/u),
       publicExports: manifest.exports,

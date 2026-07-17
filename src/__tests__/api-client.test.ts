@@ -149,9 +149,6 @@ describe("agnostic HTTP API client package", () => {
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.root).toBe(
       "/cavi-control/api/operator",
     );
-    expect(CAVI_CONTROL_API_ENDPOINTS.operator.task("task/a b")).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b",
-    );
     expect(CAVI_CONTROL_API_ENDPOINTS.operator.taskDiscourse("task/a b")).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
     );
@@ -205,16 +202,16 @@ describe("agnostic HTTP API client package", () => {
     expect(OPERATOR_DISPATCH_ENDPOINTS.taskReceiptsTemplate).toBe(
       "/cavi-control/api/tasks/{taskId}/receipts",
     );
-    expect(LIBRARY_API_ENDPOINTS.document("doc/1")).toBe("/library/api/documents/doc%2F1");
-    expect(LIBRARY_API_ENDPOINTS.fleetStatus).toBe("/library/api/fleet-status");
-    expect(LIBRARY_API_ENDPOINTS.status).toBe("/library/api/status");
-    expect(LIBRARY_API_ENDPOINTS.inbox).toBe("/library/api/inbox");
-    expect(LIBRARY_API_ENDPOINTS.promotable).toBe("/library/api/promotable");
-    expect(LIBRARY_API_ENDPOINTS.reviewRequests).toBe("/library/api/review-requests");
-    expect(resolveLibraryApiPath("search")).toBe("/library/api/search");
-    expect(resolveLibraryApiPath("/library/api/search")).toBe("/library/api/search");
-    expect(appendHttpQuery("/library/api/search", { q: "top 10", page: 2, skip: undefined })).toBe(
-      "/library/api/search?q=top+10&page=2",
+    expect(LIBRARY_API_ENDPOINTS.document("doc/1")).toBe("/api/plugins/library/documents/doc%2F1");
+    expect(LIBRARY_API_ENDPOINTS.fleetStatus).toBe("/api/plugins/library/fleet-status");
+    expect(LIBRARY_API_ENDPOINTS.status).toBe("/api/plugins/library/status");
+    expect(LIBRARY_API_ENDPOINTS.inbox).toBe("/api/plugins/library/inbox");
+    expect(LIBRARY_API_ENDPOINTS.promotable).toBe("/api/plugins/library/promotable");
+    expect(LIBRARY_API_ENDPOINTS.reviewRequests).toBe("/api/plugins/library/review-requests");
+    expect(resolveLibraryApiPath("search")).toBe("/api/plugins/library/search");
+    expect(resolveLibraryApiPath("/api/plugins/library/search")).toBe("/api/plugins/library/search");
+    expect(appendHttpQuery("/api/plugins/library/search", { q: "top 10", page: 2, skip: undefined })).toBe(
+      "/api/plugins/library/search?q=top+10&page=2",
     );
   });
 
@@ -227,11 +224,6 @@ describe("agnostic HTTP API client package", () => {
     expect(resolveCaviPath("portal.dashboard", { portal: "martina" })).toBe(
       "/api/plugins/portal/martina/dashboard",
     );
-    expect(resolveCaviPath("cavi.projectBoard.root")).toBe("/api/plugins/cavi-control/kanban");
-    expect(resolveCaviPath("cavi.projectBoard.profile")).toBe("/api/plugins/cavi-control/kanban/profile");
-    expect(resolveCaviPath("cavi.projectBoard.sprint")).toBe("/api/plugins/cavi-control/kanban/sprint");
-    expect(resolveCaviPath("cavi.projectBoard.backlog")).toBe("/api/plugins/cavi-control/kanban/backlog");
-    expect(resolveCaviPath("cavi.projectBoard.call")).toBe("/api/plugins/cavi-control/kanban/call");
     expect(resolveCaviPath("cavi.operator.registry")).toBe(
       "/cavi-control/api/operator/registry",
     );
@@ -270,15 +262,7 @@ describe("agnostic HTTP API client package", () => {
     expect(resolveCaviPath("cavi.operator.memory")).toBe(
       "/cavi-control/api/operator/memory",
     );
-    expect(resolveCaviPath("cavi.operator.workerReady")).toBe(
-      "/cavi-control/api/operator/worker/ready",
-    );
-    expect(resolveCaviPath("cavi.operator.workerTasks")).toBe(
-      "/cavi-control/api/operator/worker/tasks",
-    );
-    expect(resolveCaviPath("cavi.operator.task", { taskId: "task/a b" })).toBe(
-      "/cavi-control/api/operator/tasks/task%2Fa%20b",
-    );
+
     expect(resolveCaviPath("cavi.operator.taskDiscourse", { taskId: "task/a b" })).toBe(
       "/cavi-control/api/operator/tasks/task%2Fa%20b/discourse",
     );
@@ -768,7 +752,7 @@ describe("agnostic HTTP API client package", () => {
     expect(() => resolveCaviPath("portal.dashboard", { portal: "" })).toThrow(
       'CAVI_SURFACE_CONTRACTS: missing path param "portal"',
     );
-    expect(() => resolveCaviPath("cavi.operator.task")).toThrow(
+    expect(() => resolveCaviPath("cavi.operator.taskDiscourse")).toThrow(
       'CAVI_SURFACE_CONTRACTS: missing path param "taskId"',
     );
     expect(() => resolvePath("team.agent.config", { teamId: "research" })).toThrow(
@@ -951,7 +935,7 @@ describe("agnostic HTTP API client package", () => {
 
     await expect(client.search({ q: "research", archived: false })).resolves.toEqual({ results: [] });
 
-    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example/library/api/search?q=research&archived=false");
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example/api/plugins/library/search?q=research&archived=false");
   });
 
   it("uses canonical API-first portal routes by default", async () => {

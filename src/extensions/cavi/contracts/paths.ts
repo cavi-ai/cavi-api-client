@@ -13,13 +13,9 @@ export const CAVI_CONTROL_OPERATOR_API = {
   status: `${CAVI_CONTROL_OPERATOR_API_BASE}/status`,
   registry: `${CAVI_CONTROL_OPERATOR_API_BASE}/registry`,
   tasks: `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks`,
-  task: (taskId: string) =>
-    `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks/${encodeURIComponent(taskId)}`,
   taskDiscourse: (taskId: string) =>
     `${CAVI_CONTROL_OPERATOR_API_BASE}/tasks/${encodeURIComponent(taskId)}/discourse`,
   memory: `${CAVI_CONTROL_OPERATOR_API_BASE}/memory`,
-  workerReady: `${CAVI_CONTROL_OPERATOR_API_BASE}/worker/ready`,
-  workerTasks: `${CAVI_CONTROL_OPERATOR_API_BASE}/worker/tasks`,
 } as const;
 
 /**
@@ -35,13 +31,9 @@ export const CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS = {
   status: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/status`,
   registry: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/registry`,
   tasks: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks`,
-  task: (taskId: string) =>
-    `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks/${encodeURIComponent(taskId)}`,
   taskDiscourse: (taskId: string) =>
     `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/tasks/${encodeURIComponent(taskId)}/discourse`,
   memory: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/memory`,
-  workerReady: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/worker/ready`,
-  workerTasks: `${CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS_BASE}/worker/tasks`,
 } as const;
 
 // Operator-plane RPC methods only. Harness health lives in core (current
@@ -54,11 +46,7 @@ export const CAVI_CONTROL_OPERATOR_RPC_METHODS = {
   snapshot: "operator.snapshot",
   memoryList: "operator.memory.list",
   tasksList: "operator.tasks.list",
-  tasksGet: "operator.tasks.get",
   discourseTree: "discourse.tree",
-  workerReady: "operator.worker.ready",
-  workerTasksList: "operator.worker.tasks.list",
-  workerTasksGet: "operator.worker.tasks.get",
 } as const;
 
 export const CAVI_CONTROL_OPERATOR_RPC_METHOD_LIST = Object.values(
@@ -68,15 +56,6 @@ export const CAVI_CONTROL_OPERATOR_RPC_METHOD_LIST = Object.values(
 export const CAVI_CONTROL_API_ENDPOINTS = {
   costHistory: "/api/plugins/cavi-control/cost/history",
   scoringModel: "/api/plugins/cavi-control/scoring/model",
-  projectBoard: {
-    root: "/api/plugins/cavi-control/kanban",
-    profile: "/api/plugins/cavi-control/kanban/profile",
-    sprint: "/api/plugins/cavi-control/kanban/sprint",
-    backlog: "/api/plugins/cavi-control/kanban/backlog",
-    call: "/api/plugins/cavi-control/kanban/call",
-    backlogItem: (itemId: string) =>
-      `/api/plugins/cavi-control/kanban/backlog/${encodeURIComponent(itemId)}`,
-  },
   operator: CAVI_CONTROL_OPERATOR_API,
   // Per-agent portal/plugin surfaces are NOT baked in here — they are declared as
   // member actions in the host team manifest and resolved via resolveTeamActionApiPath.
@@ -179,8 +158,7 @@ export function resolvePluginApiPath(pluginId: string, ...segments: string[]): s
   });
 }
 
-export const LIBRARY_API_BASE_PATH = "/library/api" as const;
-export const LIBRARY_LEGACY_API_BASE_PATH = LIBRARY_API_BASE_PATH;
+export const LIBRARY_API_BASE_PATH = "/api/plugins/library" as const;
 
 export const LIBRARY_API_ENDPOINTS = {
   root: LIBRARY_API_BASE_PATH,
@@ -214,21 +192,6 @@ export const OPERATOR_DISPATCH_ENDPOINTS = {
   taskReceiptsTemplate: "/cavi-control/api/tasks/{taskId}/receipts",
 } as const;
 
-export function projectBoardBacklogItemPath(itemId: string): string {
-  return CAVI_CONTROL_API_ENDPOINTS.projectBoard.backlogItem(itemId);
-}
-
-export function projectBoardWorkspaceExpectedContractSummary(): string {
-  const pb = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
-  return `GET ${pb.profile} + ${pb.sprint} + ${pb.backlog} (aggregate: GET ${pb.root})`;
-}
-
-/** Operator-facing hint when Project Board workspace load fails (keep in sync with Project Board adapters). */
-export function projectBoardWorkspaceDiagnosticRouteHint(): string {
-  const pb = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
-  return `Project Board routes: ${pb.profile}, ${pb.sprint}, ${pb.backlog}.`;
-}
-
 export function operatorTaskDiscoursePath(taskId: string): string {
   return CAVI_CONTROL_OPERATOR_API.taskDiscourse(taskId);
 }
@@ -246,8 +209,6 @@ export function operatorControlExpectedContractSummary(): string {
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.registry}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.tasksList}`,
     `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.memoryList}`,
-    `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerReady}`,
-    `WS ${CAVI_CONTROL_OPERATOR_RPC_METHODS.workerTasksList}`,
-    `(fallback: GET ${op.snapshot} or ${opAlias.snapshot}; sections: GET ${op.status} + ${op.registry} + ${op.tasks} + ${op.memory} + ${op.workerReady} + ${op.workerTasks} with plugin aliases)`,
+    `(fallback: GET ${op.snapshot} or ${opAlias.snapshot}; sections: GET ${op.status} + ${op.registry} + ${op.tasks} + ${op.memory} with plugin aliases)`,
   ].join(" + ");
 }

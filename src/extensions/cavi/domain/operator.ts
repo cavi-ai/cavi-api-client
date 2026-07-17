@@ -66,65 +66,11 @@ export type OperatorTaskListSnapshot = {
   summary: Record<OperatorTaskState, number>;
 };
 
-export type OperatorWorkerTaskState =
-  | "accepted"
-  | "queued"
-  | "started"
-  | "retrying"
-  | "completed"
-  | "dead-letter";
-
-export type OperatorWorkerTaskRecord = {
-  taskId: string;
-  runId: string;
-  type: string;
-  priority: "low" | "normal" | "high";
-  state: OperatorWorkerTaskState;
-  attempt: number;
-  createdAt: number;
-  updatedAt: number;
-  startedAt?: number;
-  finishedAt?: number;
-  callbackUrl?: string;
-  summary?: string;
-  failureCode?: string;
-  output?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
-};
-
-export type OperatorWorkerTaskListSnapshot = {
-  tasks: OperatorWorkerTaskRecord[];
-  stats: {
-    pending: number;
-    active: number;
-    shuttingDown: boolean;
-  };
-};
-
-export type OperatorWorkerReadySnapshot = {
-  status: "ok" | "not-ready";
-  pending: number;
-  active: number;
-  shuttingDown: boolean;
-  auth: {
-    enabled: boolean;
-    scheme: "bearer" | "none";
-  };
-  backend: {
-    mode: "memory" | "filesystem" | "redis";
-    persistenceEnabled: boolean;
-    stateFile: string | null;
-    recoveredTasks: number;
-  };
-};
-
 export type OperatorControlSectionKey =
   | "status"
   | "registryDetail"
   | "tasks"
-  | "memory"
-  | "workerReady"
-  | "workerTasks";
+  | "memory";
 
 export type OperatorControlSectionStatus = {
   available: boolean;
@@ -477,8 +423,6 @@ export type OperatorControlSnapshot = {
   registryDetail: OperatorRegistrySnapshot;
   tasks: OperatorTaskListSnapshot;
   memory: OperatorSharedMemorySnapshot;
-  workerReady: OperatorWorkerReadySnapshot;
-  workerTasks: OperatorWorkerTaskListSnapshot;
   sectionStatus: Record<
     OperatorControlSectionKey,
     OperatorControlSectionStatus

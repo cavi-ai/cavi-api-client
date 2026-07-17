@@ -7,11 +7,11 @@ import type {
 } from "../../core/runtime/control-plane/raw-gateway.js";
 import { GATEWAY_RAW_EXTENSION } from "../../core/runtime/control-plane/raw-gateway.js";
 import { TransportError } from "../../core/transport/error.js";
-import { createHermesRawGatewayChannel } from "../../extensions/cavi/providers/hermes/raw-gateway.js";
+import { createHermesRawGatewayChannel } from "../../providers/hermes/control-plane/raw-gateway.js";
 import type {
   HermesDashboardEvent,
   HermesDashboardJsonRpcClient,
-} from "../../extensions/cavi/providers/hermes/types.js";
+} from "../../providers/hermes/control-plane/types.js";
 import { createOpenClawRawGatewayChannel } from "../../providers/openclaw/control-plane/raw-gateway.js";
 import type { OpenClawRpc, OpenClawRpcEvent } from "../../providers/openclaw/control-plane/rpc.js";
 import {
