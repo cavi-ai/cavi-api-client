@@ -4,12 +4,21 @@ import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { loadContracts } from "../../scripts/docs/contracts.mjs";
+import {
+  APPROVED_RELEASE_SHA256,
+  DOCUMENTED_PACKAGE,
+  DOCUMENTED_VERSION,
+} from "../../scripts/docs/types.mjs";
+import {
+  DOCUMENTED_RELEASE_MANIFEST_PATH,
+  DOCUMENTED_RELEASE_SPECIFIER,
+  UNDOCUMENTED_VERSION,
+  escapeForRegExp,
+} from "./support/documented-release.js";
 
 const root = path.resolve(".");
 const contractsDirectory = "docs/api-client/source/contracts";
-const manifestSnapshotPath = path.resolve(
-  "docs/api-client/source/releases/0.11.0-manifest.json",
-);
+const manifestSnapshotPath = path.resolve(DOCUMENTED_RELEASE_MANIFEST_PATH);
 const temporaryDirectories: string[] = [];
 let manifest: import("../../scripts/docs/types.mjs").ReleaseManifest;
 
@@ -64,9 +73,9 @@ describe("loadContracts", () => {
       "runtime-response",
       "stream-event",
     ]);
-    expect(manifest.sha256).toBe(
-      "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5",
-    );
+    // Independent sides: the COMMITTED manifest snapshot vs the pin. Fails when a
+    // bump lands without re-snapshotting the release the contracts are loaded from.
+    expect(manifest.sha256).toBe(APPROVED_RELEASE_SHA256);
     expect(manifest.symbols).toEqual(expect.arrayContaining([
       expect.objectContaining({
         subpath: "./core/errors",
@@ -81,7 +90,11 @@ describe("loadContracts", () => {
     await expect(
       loadContracts(root, { ...manifest, package: "@cavi-ai/not-the-api-client" }),
     ).rejects.toThrow(
-      /registry: expected manifest package to equal @cavi-ai\/api-client; observed @cavi-ai\/not-the-api-client; fix:/u,
+      new RegExp(
+        `registry: expected manifest package to equal ${escapeForRegExp(DOCUMENTED_PACKAGE)}; ` +
+          "observed @cavi-ai/not-the-api-client; fix:",
+        "u",
+      ),
     );
   });
 
@@ -103,7 +116,11 @@ describe("loadContracts", () => {
     });
 
     await expect(loadContracts(registryRoot, manifest)).rejects.toThrow(
-      /runtime-request: expected public symbol .*CurrentBranchOnlyRequest.* in @cavi-ai\/api-client@0\.11\.0; observed absent; fix:/u,
+      new RegExp(
+        "runtime-request: expected public symbol .*CurrentBranchOnlyRequest.* in " +
+          `${escapeForRegExp(DOCUMENTED_RELEASE_SPECIFIER)}; observed absent; fix:`,
+        "u",
+      ),
     );
   });
 
@@ -157,7 +174,11 @@ describe("loadContracts", () => {
   });
 
   it.each([
-    ["version", "0.11.1", /version to equal 0\.11\.0/u],
+    [
+      "version",
+      UNDOCUMENTED_VERSION,
+      new RegExp(`version to equal ${escapeForRegExp(DOCUMENTED_VERSION)}`, "u"),
+    ],
     ["stability", "experimental", /stability to equal stable/u],
     ["summary", "   ", /summary to be a non-empty string/u],
     ["purpose", "", /purpose to be a non-empty string/u],

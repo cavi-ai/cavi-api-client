@@ -44,16 +44,16 @@
  *   DOCUMENTED_SOURCE_DATE_EPOCH  git log -1 --format=%ct "vX.Y.Z^{}"
  */
 export const DOCUMENTED_PACKAGE = "@cavi-ai/api-client";
-export const DOCUMENTED_VERSION = "0.11.0";
-export const DOCUMENTED_TAG = "v0.11.0";
-export const DOCUMENTED_COMMIT = "48adfa6ba7c3d5e8ffee0a6cf2572574ca630fa0";
-export const APPROVED_RELEASE_SHA256 = "3379cd47b4890d0e00f5949583f90a83367705878b16141e825f66ef5d8819e5";
+export const DOCUMENTED_VERSION = "0.12.0";
+export const DOCUMENTED_TAG = "v0.12.0";
+export const DOCUMENTED_COMMIT = "48635473128501743385230deee6f88e1983a148";
+export const APPROVED_RELEASE_SHA256 = "3327537cf74089970251c1983fa786f95c843fb061f0411fe3ee651939d1638e";
 /**
  * Reproducible-build timestamp: the committer time of DOCUMENTED_COMMIT. Pinned
  * rather than read from git so the build stays reproducible in shallow clones
  * and from the published tarball, where the commit may be absent.
  */
-export const DOCUMENTED_SOURCE_DATE_EPOCH = 1783740944;
+export const DOCUMENTED_SOURCE_DATE_EPOCH = 1784143728;
 /** Canonical output directory for the generated reference, relative to the repo root. */
 export const DOCUMENTED_OUTPUT_DIRECTORY = `docs/api-client/${DOCUMENTED_TAG}`;
 export const CAPABILITY_STATES = Object.freeze([

@@ -3,6 +3,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import {
+  DOCUMENTED_OUTPUT_DIRECTORY,
+  DOCUMENTED_PACKAGE,
+  DOCUMENTED_VERSION,
+} from "../../scripts/docs/types.mjs";
+import {
+  DOCUMENTED_RELEASE_MANIFEST_PATH,
+  DOCUMENTED_RELEASE_SPECIFIER,
+} from "./support/documented-release.js";
+
 // Docs-integrity gate. Runs inside `npm test`, so it is part of `verify` and
 // `prepublishOnly` — the package cannot be published with documentation that has
 // drifted from the shipped version. Keep these checks structural and stable:
@@ -39,18 +49,20 @@ describe("docs integrity", () => {
   });
 
   it("commits the generated reference artifact for the package version", () => {
-    const manifest = JSON.parse(read("docs/api-client/v0.11.0/manifest.json")) as {
+    // Independent sides: the COMMITTED artifact's own contents vs the pin. Fails
+    // when a bump lands without regenerating the reference.
+    const manifest = JSON.parse(read(`${DOCUMENTED_OUTPUT_DIRECTORY}/manifest.json`)) as {
       version: string;
     };
-    expect(manifest.version).toBe("0.11.0");
+    expect(manifest.version).toBe(DOCUMENTED_VERSION);
   });
 
   it("publishes an immutable documentation consumer handoff", () => {
     const consumer = read("docs/api-client/CONSUMER.md");
 
     for (const contract of [
-      "source: docs/api-client/v0.11.0",
-      "publicBasePath: /docs/api-client/v0.11.0",
+      `source: ${DOCUMENTED_OUTPUT_DIRECTORY}`,
+      `publicBasePath: /${DOCUMENTED_OUTPUT_DIRECTORY}`,
       "stableAlias: /docs/api-client",
       "entrypoints: manifest.json, navigation.json",
       "identity: manifest.package",
@@ -61,10 +73,12 @@ describe("docs integrity", () => {
     }
     expect(consumer).toContain("must not edit generated pages");
     expect(consumer).toContain("fail ingestion on a version or digest mismatch");
-    expect(consumer).toContain("already-published npm package `@cavi-ai/api-client@0.11.0` does not contain");
+    expect(consumer).toContain(
+      `already-published npm package \`${DOCUMENTED_RELEASE_SPECIFIER}\` does not contain`,
+    );
 
     expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
-    expect(pkg.files).toContain("docs/api-client/v0.11.0");
+    expect(pkg.files).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
     expect(pkg.files).toContain("!docs/api-client/source");
     expect(pkg.files).toContain("!docs/api-client/source/**");
     expect(pkg.files).toContain("!docs/superpowers");
@@ -72,17 +86,17 @@ describe("docs integrity", () => {
 
     expect(developmentGuide).toContain("pnpm run verify");
     expect(developmentGuide).toContain("CAVI_API_CLIENT_STABLE_TARBALL");
-    expect(readme).toContain("docs/api-client/v0.11.0");
+    expect(readme).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
     expect(api).toContain("pnpm docs:check");
-    expect(api).toContain("docs/api-client/v0.11.0");
+    expect(api).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
     expect(changelog).toContain("versioned documentation consumer contract");
   });
 
   it("maps the exact stable release manifest to generated reference navigation", () => {
-    const stableManifest = JSON.parse(read("docs/api-client/source/releases/0.11.0-manifest.json")) as {
+    const stableManifest = JSON.parse(read(DOCUMENTED_RELEASE_MANIFEST_PATH)) as {
       exports: Array<{ subpath: string; kind: "declaration" | "asset"; types?: string; target?: string }>;
     };
-    const navigation = JSON.parse(read("docs/api-client/v0.11.0/navigation.json")) as {
+    const navigation = JSON.parse(read(`${DOCUMENTED_OUTPUT_DIRECTORY}/navigation.json`)) as {
       reference: Array<{ subpath: string; kind: "declaration" | "asset"; path?: string; target?: string }>;
     };
     expect(navigation.reference.map(({ subpath }) => subpath)).toEqual(
@@ -93,7 +107,7 @@ describe("docs integrity", () => {
       expect(entry.kind).toBe(stableExport.kind);
       if (entry.kind === "declaration") {
         expect(entry.path).toMatch(/^reference\/.+\.md$/u);
-        expect(existsSync(path.join(PACKAGE_ROOT, "docs/api-client/v0.11.0", entry.path!))).toBe(true);
+        expect(existsSync(path.join(PACKAGE_ROOT, DOCUMENTED_OUTPUT_DIRECTORY, entry.path!))).toBe(true);
       } else {
         expect(entry.path).toBeUndefined();
         expect(entry.target).toBe(stableExport.target);
@@ -130,7 +144,7 @@ describe("docs integrity", () => {
     expect(workflow).toContain('echo "CAVI_DOCS_PACKAGE_TGZ=$TARBALL" >> "$GITHUB_ENV"');
     expect(workflow).not.toContain("${{ runner.temp }}");
     // No release-coupled literals may reappear in the workflow.
-    expect(workflow).not.toContain("npm pack @cavi-ai/api-client@");
+    expect(workflow).not.toContain(`npm pack ${DOCUMENTED_PACKAGE}@`);
     expect(workflow).not.toContain("SOURCE_DATE_EPOCH:");
     expect(workflow.indexOf("Provision stable documentation artifact")).toBeLessThan(
       workflow.indexOf(beforeStep),
