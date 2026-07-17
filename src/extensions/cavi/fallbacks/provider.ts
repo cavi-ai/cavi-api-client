@@ -3,7 +3,6 @@ import type {
 } from "../../../core/gateway/snapshots/loaders.js";
 import type {
   OperatorControlSnapshot,
-  ProjectBoardWorkspaceSnapshot,
   TaskDiscourseSnapshot,
 } from "../domain/index.js";
 import {
@@ -12,16 +11,12 @@ import {
   fallbackIncidents,
   fallbackOverview,
   fallbackOperatorControl,
-  fallbackProjectBoardWorkspace,
   fallbackRoutingMatrix,
   fallbackRunDetailForKey,
   fallbackTaskDiscourse,
 } from "./snapshots/index.js";
 
 export type CaviControlAdapterFallbacks = {
-  projectBoardWorkspace?:
-    | ProjectBoardWorkspaceSnapshot
-    | (() => ProjectBoardWorkspaceSnapshot);
   operatorControl?: OperatorControlSnapshot | (() => OperatorControlSnapshot);
   taskDiscourse?:
     | TaskDiscourseSnapshot
@@ -49,7 +44,6 @@ export function createCaviControlAdapterFallbackProvider(): CaviControlAdapterFa
   return {
     ...createCaviSnapshotFallbackProvider(),
     cavi: {
-      projectBoardWorkspace: fallbackProjectBoardWorkspace,
       operatorControl: fallbackOperatorControl,
       taskDiscourse: fallbackTaskDiscourse,
     },

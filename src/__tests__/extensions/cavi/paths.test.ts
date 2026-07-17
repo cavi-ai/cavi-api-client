@@ -5,9 +5,6 @@ import {
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
   CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS,
   LIBRARY_LEGACY_API_BASE_PATH,
-  projectBoardBacklogItemPath,
-  projectBoardWorkspaceDiagnosticRouteHint,
-  projectBoardWorkspaceExpectedContractSummary,
   operatorControlExpectedContractSummary,
   operatorTaskDiscoursePluginAliasPath,
   operatorTaskDiscoursePath,
@@ -17,7 +14,6 @@ import {
 import { describeHttpContract } from "../../../core/http/contracts";
 import { CAVI_COST_HISTORY_API_PATHS } from "../../../extensions/cavi/runtime/paths";
 
-const projectBoard = CAVI_CONTROL_API_ENDPOINTS.projectBoard;
 const operator = CAVI_CONTROL_OPERATOR_API;
 
 describe("api-paths", () => {
@@ -36,13 +32,8 @@ describe("api-paths", () => {
     );
   });
 
-  it("operator and project-board routes resolve from the canonical endpoint owner", () => {
+  it("operator routes resolve from the canonical endpoint owner", () => {
     expect(operator).toBe(CAVI_CONTROL_API_ENDPOINTS.operator);
-    expect(projectBoard.root).toBe("/api/plugins/cavi-control/kanban");
-    expect(projectBoard.profile).toBe(`${projectBoard.root}/profile`);
-    expect(projectBoard.sprint).toBe(`${projectBoard.root}/sprint`);
-    expect(projectBoard.backlog).toBe(`${projectBoard.root}/backlog`);
-    expect(projectBoard.call).toBe(`${projectBoard.root}/call`);
   });
 
   it("exposes cost and scoring path constants", () => {
@@ -56,12 +47,6 @@ describe("api-paths", () => {
       CAVI_CONTROL_API_ENDPOINTS.costHistory,
       "/cavi-control/api/cost/history",
     ]);
-  });
-
-  it("projectBoardBacklogItemPath encodes item ids", () => {
-    expect(projectBoardBacklogItemPath("abc")).toBe(`${projectBoard.backlog}/abc`);
-    expect(projectBoardBacklogItemPath("a b")).toBe(`${projectBoard.backlog}/a%20b`);
-    expect(projectBoardBacklogItemPath("x&y")).toBe(`${projectBoard.backlog}/x%26y`);
   });
 
   it("operatorTaskDiscoursePath encodes task ids", () => {
@@ -120,18 +105,4 @@ describe("api-paths", () => {
     );
   });
 
-  it("projectBoardWorkspaceExpectedContractSummary lists split endpoints and aggregate fallback", () => {
-    const summary = projectBoardWorkspaceExpectedContractSummary();
-    expect(summary).toContain(projectBoard.profile);
-    expect(summary).toContain(projectBoard.sprint);
-    expect(summary).toContain(projectBoard.backlog);
-    expect(summary).toContain(`aggregate: GET ${projectBoard.root}`);
-  });
-
-  it("projectBoardWorkspaceDiagnosticRouteHint lists project board routes", () => {
-    const hint = projectBoardWorkspaceDiagnosticRouteHint();
-    expect(hint).toContain(projectBoard.profile);
-    expect(hint).toContain(projectBoard.sprint);
-    expect(hint).toContain(projectBoard.backlog);
-  });
 });
