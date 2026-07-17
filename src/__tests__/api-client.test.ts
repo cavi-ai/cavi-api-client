@@ -205,16 +205,16 @@ describe("agnostic HTTP API client package", () => {
     expect(OPERATOR_DISPATCH_ENDPOINTS.taskReceiptsTemplate).toBe(
       "/cavi-control/api/tasks/{taskId}/receipts",
     );
-    expect(LIBRARY_API_ENDPOINTS.document("doc/1")).toBe("/library/api/documents/doc%2F1");
-    expect(LIBRARY_API_ENDPOINTS.fleetStatus).toBe("/library/api/fleet-status");
-    expect(LIBRARY_API_ENDPOINTS.status).toBe("/library/api/status");
-    expect(LIBRARY_API_ENDPOINTS.inbox).toBe("/library/api/inbox");
-    expect(LIBRARY_API_ENDPOINTS.promotable).toBe("/library/api/promotable");
-    expect(LIBRARY_API_ENDPOINTS.reviewRequests).toBe("/library/api/review-requests");
-    expect(resolveLibraryApiPath("search")).toBe("/library/api/search");
-    expect(resolveLibraryApiPath("/library/api/search")).toBe("/library/api/search");
-    expect(appendHttpQuery("/library/api/search", { q: "top 10", page: 2, skip: undefined })).toBe(
-      "/library/api/search?q=top+10&page=2",
+    expect(LIBRARY_API_ENDPOINTS.document("doc/1")).toBe("/api/plugins/library/documents/doc%2F1");
+    expect(LIBRARY_API_ENDPOINTS.fleetStatus).toBe("/api/plugins/library/fleet-status");
+    expect(LIBRARY_API_ENDPOINTS.status).toBe("/api/plugins/library/status");
+    expect(LIBRARY_API_ENDPOINTS.inbox).toBe("/api/plugins/library/inbox");
+    expect(LIBRARY_API_ENDPOINTS.promotable).toBe("/api/plugins/library/promotable");
+    expect(LIBRARY_API_ENDPOINTS.reviewRequests).toBe("/api/plugins/library/review-requests");
+    expect(resolveLibraryApiPath("search")).toBe("/api/plugins/library/search");
+    expect(resolveLibraryApiPath("/api/plugins/library/search")).toBe("/api/plugins/library/search");
+    expect(appendHttpQuery("/api/plugins/library/search", { q: "top 10", page: 2, skip: undefined })).toBe(
+      "/api/plugins/library/search?q=top+10&page=2",
     );
   });
 
@@ -946,7 +946,7 @@ describe("agnostic HTTP API client package", () => {
 
     await expect(client.search({ q: "research", archived: false })).resolves.toEqual({ results: [] });
 
-    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example/library/api/search?q=research&archived=false");
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example/api/plugins/library/search?q=research&archived=false");
   });
 
   it("uses canonical API-first portal routes by default", async () => {

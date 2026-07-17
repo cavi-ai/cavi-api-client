@@ -62,7 +62,6 @@ import {
   HTTP_API_CLIENT_ENV_ALIASES,
   HTTP_API_CLIENT_ENV_KEYS,
   CAVI_SURFACE_CONTRACTS,
-  LIBRARY_LEGACY_API_BASE_PATH,
   TEAM_REGISTRY_CONFIG,
   appendCaviApiPath,
   resolveCaviPath,
@@ -531,7 +530,7 @@ describe("package hardening", () => {
       );
 
     expect(source).toContain("export const CAVI_CONTROL_OPERATOR_API");
-    expect(source).toContain("export const LIBRARY_LEGACY_API_BASE_PATH");
+    expect(source).toContain("export const LIBRARY_API_BASE_PATH");
     expect(source).toContain("export function resolvePluginApiPath");
     expect(hiddenFeaturePathOwners).toEqual([]);
   });
@@ -1303,9 +1302,10 @@ describe("package hardening", () => {
     expect(resolvePluginApiPath("machine", "dashboard")).toBe(
       "/api/plugins/machine/dashboard",
     );
-    expect(LIBRARY_LEGACY_API_BASE_PATH).toBe("/library/api");
-    expect(resolveLibraryApiPath("status")).toBe("/library/api/status");
-    expect(resolveLibraryApiPath("/library/api/status")).toBe("/library/api/status");
+    expect(resolveLibraryApiPath("status")).toBe("/api/plugins/library/status");
+    expect(resolveLibraryApiPath("/api/plugins/library/status")).toBe(
+      "/api/plugins/library/status",
+    );
     expect(() => appendCaviApiPath("/api/plugins/demo", "../secret")).toThrow(
       /stay within base path/u,
     );
