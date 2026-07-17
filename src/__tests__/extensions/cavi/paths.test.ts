@@ -4,7 +4,6 @@ import {
   CAVI_CONTROL_OPERATOR_API,
   CAVI_CONTROL_OPERATOR_RPC_METHODS,
   CAVI_CONTROL_OPERATOR_API_PLUGIN_ALIAS,
-  LIBRARY_LEGACY_API_BASE_PATH,
   operatorControlExpectedContractSummary,
   operatorTaskDiscoursePluginAliasPath,
   operatorTaskDiscoursePath,
@@ -76,10 +75,6 @@ describe("api-paths", () => {
     expect(() => resolvePortalApiPath("martina", "../config")).toThrow(/portal root/u);
     expect(() => resolvePortalApiPath("martina", "%2e%2e/config")).toThrow(/portal root/u);
     expect(() => resolvePortalApiPath("martina", "runs\\latest")).toThrow(/backslashes/u);
-  });
-
-  it("exports the released legacy library input base without changing the canonical library route", () => {
-    expect(LIBRARY_LEGACY_API_BASE_PATH).toBe("/library/api");
   });
 
   it("resolvePluginApiPath keeps generic plugin routes distinct from portal routes", () => {

@@ -170,8 +170,7 @@ export function resolvePluginApiPath(pluginId: string, ...segments: string[]): s
   });
 }
 
-export const LIBRARY_API_BASE_PATH = "/library/api" as const;
-export const LIBRARY_LEGACY_API_BASE_PATH = LIBRARY_API_BASE_PATH;
+export const LIBRARY_API_BASE_PATH = "/api/plugins/library" as const;
 
 export const LIBRARY_API_ENDPOINTS = {
   root: LIBRARY_API_BASE_PATH,

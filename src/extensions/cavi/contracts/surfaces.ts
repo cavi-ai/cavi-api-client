@@ -1,5 +1,5 @@
 import type { SurfaceContract } from "../../../contracts/surfaces.js";
-import { CAVI_CONTROL_OPERATOR_API } from "./paths.js";
+import { CAVI_CONTROL_OPERATOR_API, LIBRARY_API_ENDPOINTS } from "./paths.js";
 
 export type { SurfaceContract };
 
@@ -19,7 +19,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.fleetStatus": {
     key: "library.fleetStatus",
     method: "GET",
-    path: () => "/api/plugins/library/fleet-status",
+    path: () => LIBRARY_API_ENDPOINTS.fleetStatus,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "Fleet library status extension endpoint.",
@@ -27,7 +27,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.status": {
     key: "library.status",
     method: "GET",
-    path: () => "/api/plugins/library/status",
+    path: () => LIBRARY_API_ENDPOINTS.status,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "Library ingest pipeline counters.",
@@ -35,7 +35,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.inbox": {
     key: "library.inbox",
     method: "GET",
-    path: () => "/api/plugins/library/inbox",
+    path: () => LIBRARY_API_ENDPOINTS.inbox,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "Library inbox endpoint.",
@@ -43,7 +43,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.promotable": {
     key: "library.promotable",
     method: "GET",
-    path: () => "/api/plugins/library/promotable",
+    path: () => LIBRARY_API_ENDPOINTS.promotable,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "Promotable library rows.",
@@ -51,7 +51,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.reviewRequests": {
     key: "library.reviewRequests",
     method: "GET",
-    path: () => "/api/plugins/library/review-requests",
+    path: () => LIBRARY_API_ENDPOINTS.reviewRequests,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "Library review-request rows.",
@@ -59,7 +59,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.search": {
     key: "library.search",
     method: "GET",
-    path: () => "/api/plugins/library/search",
+    path: () => LIBRARY_API_ENDPOINTS.search,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "Library search endpoint.",
@@ -67,7 +67,7 @@ export const CAVI_SURFACE_CONTRACTS: Record<string, SurfaceContract> = {
   "library.clip": {
     key: "library.clip",
     method: "POST",
-    path: () => "/api/plugins/library/clip",
+    path: () => LIBRARY_API_ENDPOINTS.clip,
     degradation: "gap",
     owner: "extensions/cavi/library",
     note: "CaviClip ingest endpoint (URL/text/manual-file capture into the library intake).",

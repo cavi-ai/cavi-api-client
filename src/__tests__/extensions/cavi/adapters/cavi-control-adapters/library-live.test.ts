@@ -45,7 +45,7 @@ describe("loadFleetLibraryLive", () => {
     const requestedPaths: string[] = [];
     const requestJson = vi.fn(async (path: string) => {
       requestedPaths.push(path);
-      if (path === "/library/api/fleet-status") {
+      if (path === "/api/plugins/library/fleet-status") {
         return {
           status: "ok",
           sigmund_status: "online",
@@ -73,7 +73,7 @@ describe("loadFleetLibraryLive", () => {
       "scout-school",
       "wu-tang",
     ]);
-    expect(requestedPaths).toEqual(["/library/api/fleet-status"]);
+    expect(requestedPaths).toEqual(["/api/plugins/library/fleet-status"]);
     expect(snapshot.sigmund).toEqual({
       status: "online",
       lastIngestAt: 1710000000000,
@@ -87,7 +87,7 @@ describe("loadFleetLibraryLive", () => {
   it("rejects when Grand Library status fails instead of fabricating a zeroed snapshot", async () => {
     configureTeamRegistryConfig(TEST_TEAM_REGISTRY_CONFIG);
     const requestJson = vi.fn(async (path: string) => {
-      if (path === "/library/api/fleet-status") {
+      if (path === "/api/plugins/library/fleet-status") {
         throw new Error("library status offline");
       }
       throw new Error(`unexpected path: ${path}`);
