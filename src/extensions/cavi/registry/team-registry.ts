@@ -8,6 +8,7 @@ import {
   type TeamManifest,
   type ManifestTeam,
 } from "../../../contracts/team-manifest.js";
+import { normalizeTeamLookupValue } from "../../../core/teams/index.js";
 
 export type TeamRegistryProviderKind =
   | "gateway"
@@ -143,9 +144,7 @@ function missingRegistryMessage(identifier: string | null | undefined): string {
   return `Team registry is not configured${suffix}. Load TEAM_REGISTRY_CONFIG from the selected gateway/plugin before using registry-dependent APIs.`;
 }
 
-export function normalizeTeamLookupValue(value: string): string {
-  return value.trim().toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
-}
+export { normalizeTeamLookupValue };
 
 export function getTeamLookupKeys(team: OperatorRegistryTeam): string[] {
   return uniqStrings([
