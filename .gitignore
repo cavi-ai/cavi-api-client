@@ -40,6 +40,7 @@ quarantine/
 .superpowers/
 docs/superpowers/
 docs/plans/
+docs/specs/
 .agents/
 .codex/
 .worktrees/
