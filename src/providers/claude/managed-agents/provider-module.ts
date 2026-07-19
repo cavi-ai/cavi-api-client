@@ -17,16 +17,18 @@ import {
 export function createClaudeManagedAgentProviderModule(
   config: ClaudeManagedAgentClientOptions,
 ): RuntimeProviderModule {
+  const createClient: NonNullable<RuntimeProviderModule["createClient"]> = (clientOptions) =>
+    new ClaudeManagedAgentClient({
+      ...config,
+      ...(clientOptions.baseUrl ? { baseUrl: clientOptions.baseUrl } : {}),
+      ...(clientOptions.fetchImpl ? { fetchImpl: clientOptions.fetchImpl } : {}),
+      ...(clientOptions.onTrace ? { onTrace: clientOptions.onTrace } : {}),
+    });
   return {
     kind: "claude-managed-agents",
     aliases: ["claude-agents", "claude-teams"],
     capabilities: { runs: true, streaming: true },
-    createApiClient: (clientOptions) =>
-      new ClaudeManagedAgentClient({
-        ...config,
-        ...(clientOptions.baseUrl ? { baseUrl: clientOptions.baseUrl } : {}),
-        ...(clientOptions.fetchImpl ? { fetchImpl: clientOptions.fetchImpl } : {}),
-        ...(clientOptions.onTrace ? { onTrace: clientOptions.onTrace } : {}),
-      }),
+    createClient,
+    createApiClient: createClient,
   };
 }

@@ -7,6 +7,12 @@ import { OpenClawWebSocketClient } from "./websocket.js";
 import { OpenClawWikiApiClient } from "./wiki.js";
 import { createOpenClawRuntimeControlClient } from "./control-plane/factory.js";
 
+// One factory serves both the uniform runtime path (`createClient`, consumed by
+// createRuntimeClient) and the gateway path (`createApiClient`, consumed by
+// core/gateway/providers/factory). `createApiClient` is the deprecated alias.
+const createClient: NonNullable<GatewayProviderModule["createApiClient"]> = (clientOptions) =>
+  new OpenClawApiClient(clientOptions);
+
 // The OpenClaw provider module supplies one concrete implementation per
 // unified capability interface (GatewayApiClient, GatewayMediaClient,
 // GatewayWikiClient, GatewayAgentConfigClient). Each dispatcher routes the
@@ -32,7 +38,8 @@ export const OPENCLAW_PROVIDER_MODULE: GatewayProviderModule = {
     },
   },
   createRuntimeControlClient: createOpenClawRuntimeControlClient,
-  createApiClient: (clientOptions) => new OpenClawApiClient(clientOptions),
+  createClient,
+  createApiClient: createClient,
   createWebSocketClient: (wsUrl, authToken, clientOptions) =>
     new OpenClawWebSocketClient(wsUrl, authToken, clientOptions),
   createSseRunEventProvider: (options) => new OpenClawSseRunEventProvider(options),

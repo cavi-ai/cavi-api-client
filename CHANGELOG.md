@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Extended `./testing` `inspectRuntimeProviderConformance` with streaming-path
+  duality (`streamRun` or gateway `createSseRunEventProvider`), required
+  `runLifecycleSemantics` (`omit` | `server` | `sync-store` | `unsupported-throw`)
+  when getRun/cancelRun are present, and a sync-store foreign-`getRun` probe.
+
 - Added a canonical, provider-agnostic `./core/teams` capability: `Team` /
   `TeamMember` value types and a pure `TeamDirectory` resolver (resolve teams and
   members by id/slug/code/alias), plus `createTeamDirectoryFromManifest` in
@@ -22,10 +27,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Documented `RuntimeClient` getRun/cancelRun as three real semantics (omit,
+  server, sync-store) and named `GatewayApiClient` as the gateway implementer
+  (React `GatewayClient*` remains WS-RPC context only). Aligned `CLAUDE.md` /
+  `AGENTS.md` with SynchronousRunStore behavior for Claude Messages and Gemini.
+
+- Hermes and OpenClaw provider modules now expose `createClient` alongside the
+  legacy `createApiClient` alias. Provider `team-registry-config` re-exports are
+  marked `@deprecated` toward `@cavi-ai/api-client/extensions/cavi`.
+
 - Replaced the provider-heavy README with a concise, wiki-first,
   provider-neutral entry point and moved exports, provider selection, Claude
   integrations, development checks, and consumer verification into focused
   linked documents.
+
+### Fixed
+
+- OpenClaw `getTask`/`cancelTask` now send the `taskId` RPC parameter (not
+  `id`) that `tasks.get` / `tasks.cancel` require — consistent with the
+  method-specific param naming already used elsewhere (`sessions.*` → `key`).
+- OpenClaw model wire validation now allowlists the optional `api`,
+  `available`, and `input` catalog fields the gateway forwards, keeping live
+  model payloads forward-compatible instead of rejecting the whole list.
 
 ## [0.12.0] - 2026-07-15
 

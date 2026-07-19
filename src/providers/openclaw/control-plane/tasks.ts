@@ -87,7 +87,8 @@ export function createOpenClawTaskClient(rpc: OpenClawRpc) {
     },
 
     async getTask(id: string): Promise<RuntimeTaskSummary> {
-      const payload = await request(rpc, "tasks.get", { id });
+      // OpenClaw's tasks.get schema requires `taskId` (not `id`).
+      const payload = await request(rpc, "tasks.get", { taskId: id });
       return parseOpenClaw("tasks.get", () => {
         const parsed = parseTasksGet(payload);
         return mapTask(parsed.task as WireTask, "tasks.get");
@@ -95,7 +96,7 @@ export function createOpenClawTaskClient(rpc: OpenClawRpc) {
     },
 
     async cancelTask(id: string, options: CancelOptions = {}): Promise<RuntimeTaskSummary> {
-      const params: Record<string, unknown> = { id };
+      const params: Record<string, unknown> = { taskId: id };
       if (options.reason !== undefined) params.reason = options.reason;
       const payload = await request(rpc, "tasks.cancel", params);
       const parsed = parseOpenClaw("tasks.cancel", () => parseTasksCancel(payload));

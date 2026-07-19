@@ -7,6 +7,12 @@ import { HermesWebSocketClient } from "./websocket.js";
 import { HermesWikiApiClient } from "./wiki.js";
 import { createHermesRuntimeControlClient } from "./control-plane/factory.js";
 
+// One factory serves both the uniform runtime path (`createClient`, consumed by
+// createRuntimeClient) and the gateway path (`createApiClient`, consumed by
+// core/gateway/providers/factory). `createApiClient` is the deprecated alias.
+const createClient: NonNullable<GatewayProviderModule["createApiClient"]> = (clientOptions) =>
+  new HermesApiClient(clientOptions);
+
 export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
   kind: "hermes",
   aliases: ["hermes-api-server"],
@@ -25,7 +31,8 @@ export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
     },
   },
   createRuntimeControlClient: createHermesRuntimeControlClient,
-  createApiClient: (clientOptions) => new HermesApiClient(clientOptions),
+  createClient,
+  createApiClient: createClient,
   createWebSocketClient: (wsUrl, authToken, clientOptions) =>
     new HermesWebSocketClient(wsUrl, authToken, clientOptions),
   createSseRunEventProvider: (options) => {
