@@ -1,4 +1,6 @@
 export * from "./agent-config.js";
+export * from "./capabilities-transform.js";
+export * from "./capability-resolver.js";
 export * from "./client.js";
 export * from "./control-plane/factory.js";
 export * from "./kanban.js";

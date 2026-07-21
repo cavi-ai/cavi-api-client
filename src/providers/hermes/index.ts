@@ -1,3 +1,5 @@
+export * from "./capabilities-transform.js";
+export * from "./capability-resolver.js";
 export * from "./client.js";
 export * from "./kanban.js";
 export * from "./control-plane/index.js";
