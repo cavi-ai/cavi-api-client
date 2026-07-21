@@ -12,6 +12,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Unified capability contract (foundation of the single-client redesign):
+  - `CAPABILITY_TAXONOMY` in `./core/runtime` — one provider-agnostic
+    capability list (the union of the legacy runtime surfaces and
+    control-plane modules, de-duplicated), with `CapabilityKey`,
+    `CapabilityMap`, and `CapabilitySupport` types.
+  - `PROVIDER_CAPABILITIES` — the single static declaration site per provider
+    (conservative fallback), with an equivalence test against the legacy
+    capability matrix.
+  - Runtime capability sourcing in `./contracts`:
+    `ResolvedProviderCapabilities`, `ProviderCapabilityResolver`, and
+    `mergeCapabilitySupport` (runtime authoritative, static fallback).
+  - Provider transforms + resolvers: `transformHermesCapabilities` /
+    `createHermesCapabilityResolver` (live API-server capabilities envelope →
+    unified supports + `TeamManifest` with members/actions built from
+    provider-published paths) and `transformOpenClawHello` /
+    `createOpenClawCapabilityResolver` (hello-ok handshake → unified supports;
+    manifest actions from the provider REST manifest + canonical media/wiki
+    tables). `GatewayRpcClient` now retains the raw handshake payload and
+    exposes `getHelloFrame()`.
+  - The single client surface: `createCapabilityClient` in `./contracts` and
+    the `createApiClient(provider, options)` front door — every capability
+    accessor exists on every provider (sessions, tasks, events, models, usage,
+    authStatus, workspace, kanban, teams, media, wiki, agentConfig plus the
+    universal execution surface); unsupported calls throw one notated
+    `CapabilityUnavailable`; gateway providers auto-wire their resolver and
+    backends from `baseUrl`/`webSocketUrl`. Additive — no existing export
+    changed.
+
 - Added a canonical, provider-agnostic `./core/teams` capability: `Team` /
   `TeamMember` value types and a pure `TeamDirectory` resolver (resolve teams and
   members by id/slug/code/alias), plus `createTeamDirectoryFromManifest` in

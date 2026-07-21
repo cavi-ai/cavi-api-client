@@ -86,6 +86,8 @@ export type CreateCapabilityClientOptions = {
   backends?: CapabilityClientBackends;
   /** Which providers serve a capability — enriches the notated error. */
   availableOn?: (key: CapabilityKey) => readonly string[];
+  /** Extra teardown run by dispose() after the control plane is disposed. */
+  onDispose?: () => Promise<void> | void;
 };
 
 type ControlPlaneCapability =
@@ -369,6 +371,7 @@ export function createCapabilityClient(
         const plane = await controlPlanePromise;
         await plane.dispose();
       }
+      await options.onDispose?.();
     },
 
     // Universal execution surface — delegated, never gated behind a proxy.

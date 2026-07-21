@@ -169,6 +169,31 @@ const APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS = [
   "RawGatewayRequestOptions",
 ] as const;
 
+// The unified capability contract (single-client redesign): the taxonomy, the
+// runtime capability source, the capability client, and the one front door.
+const APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS = [
+  "CAPABILITY_TAXONOMY",
+  "CAPABILITY_GROUPS",
+  "supportsCapability",
+  "isCapabilityKey",
+  "CapabilityKey",
+  "CapabilityGroup",
+  "CapabilityMap",
+  "CapabilitySupport",
+  "mergeCapabilitySupport",
+  "resolvedSupports",
+  "ProviderCapabilityResolver",
+  "ResolvedProviderCapabilities",
+  "createCapabilityClient",
+  "CapabilityClient",
+  "CapabilityClientBackends",
+  "CreateCapabilityClientOptions",
+  "createApiClient",
+  "CreateApiClientOptions",
+  "PROVIDER_CAPABILITIES",
+  "declaredCapabilities",
+] as const;
+
 const FORBIDDEN_PACKAGES = [
   "@cavi/data",
   "@cavi/domain",
@@ -1210,6 +1235,7 @@ describe("package hardening", () => {
       ...originMainBaseline,
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
       ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
+      ...APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS,
     ]
       .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
       .sort();

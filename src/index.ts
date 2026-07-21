@@ -154,6 +154,35 @@ export {
   type RuntimeProviderRegistry,
 } from "./core/runtime/providers/index.js";
 export { createRuntimeControlClient } from "./providers/runtime-control-client-factory.js";
+
+// ── The single capability client (one call, every provider) ──────────────────
+export {
+  CAPABILITY_TAXONOMY,
+  CAPABILITY_GROUPS,
+  supportsCapability,
+  isCapabilityKey,
+  type CapabilityKey,
+  type CapabilityGroup,
+  type CapabilityMap,
+  type CapabilitySupport,
+} from "./core/runtime/capability-taxonomy.js";
+export {
+  mergeCapabilitySupport,
+  resolvedSupports,
+  type ProviderCapabilityResolver,
+  type ResolvedProviderCapabilities,
+} from "./contracts/capability-source.js";
+export {
+  createCapabilityClient,
+  type CapabilityClient,
+  type CapabilityClientBackends,
+  type CreateCapabilityClientOptions,
+} from "./contracts/capability-client.js";
+export {
+  createApiClient,
+  type CreateApiClientOptions,
+} from "./providers/create-api-client.js";
+export { PROVIDER_CAPABILITIES, declaredCapabilities } from "./providers/capability-declarations.js";
 export {
   RUNTIME_PROVIDER_CAPABILITY_MATRIX,
   getRuntimeProviderCapabilityRow,
