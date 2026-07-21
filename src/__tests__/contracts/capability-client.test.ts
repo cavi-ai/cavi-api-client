@@ -228,6 +228,49 @@ describe("capability client — the single surface", () => {
     expect((failure as Error).message).toContain("no control-plane backend is wired");
   });
 
+  it("media/wiki/agentConfig are first-class gated surfaces", async () => {
+    const media = { listMediaProviders: vi.fn(async () => ({ providers: [] })) };
+    const wiki = { listWikiVaults: vi.fn(async () => ({ vaults: [] })) };
+    const agentConfig = { listProfiles: vi.fn(async () => []) };
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { media: true, wiki: true },
+      backends: {
+        media: media as never,
+        wiki: wiki as never,
+        agentConfig: agentConfig as never,
+      },
+    });
+
+    await expect(client.media.listMediaProviders()).resolves.toEqual({ providers: [] });
+    await expect(client.wiki.listWikiVaults()).resolves.toEqual({ vaults: [] });
+    // agentConfig is undeclared — the call exists and fails loud despite a
+    // wired backend (support gating comes first).
+    await expect(client.agentConfig.listProfiles()).rejects.toBeInstanceOf(
+      CapabilityUnavailable,
+    );
+    expect(agentConfig.listProfiles).not.toHaveBeenCalled();
+  });
+
+  it("a runtime resolution can enable a plugin-gated media surface", async () => {
+    const media = { listMediaProviders: vi.fn(async () => ({ providers: ["tts"] })) };
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { media: false },
+      resolver: async () => ({
+        providerKind: "openclaw",
+        supports: { media: true },
+        manifest: normalizeTeamManifest(null),
+      }),
+      backends: { media: media as never },
+    });
+    await expect(client.media.listMediaProviders()).resolves.toEqual({
+      providers: ["tts"],
+    });
+  });
+
   it("disposes an instantiated control plane exactly once", async () => {
     const plane = fakeControlPlane();
     const client = createCapabilityClient({

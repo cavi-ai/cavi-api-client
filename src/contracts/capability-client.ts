@@ -15,6 +15,9 @@ import type { UsageClient } from "../core/runtime/control-plane/usage.js";
 import type { WorkspaceClient } from "../core/runtime/control-plane/workspace.js";
 import type { KanbanClient } from "../core/kanban/client.js";
 import type { TeamDirectory } from "../core/teams/directory.js";
+import type { GatewayMediaClient } from "../core/gateway/resources/media.js";
+import type { GatewayWikiClient } from "../core/gateway/resources/wiki.js";
+import type { GatewayAgentConfigClient } from "../core/gateway/agent/config.js";
 import {
   mergeCapabilitySupport,
   type ProviderCapabilityResolver,
@@ -55,6 +58,9 @@ export interface CapabilityClient extends RuntimeClient {
   readonly workspace: WorkspaceClient;
   readonly kanban: KanbanClient;
   readonly teams: TeamDirectory;
+  readonly media: GatewayMediaClient;
+  readonly wiki: GatewayWikiClient;
+  readonly agentConfig: GatewayAgentConfigClient;
 }
 
 type LazyAsync<T> = T | (() => T | Promise<T>);
@@ -63,6 +69,9 @@ export type CapabilityClientBackends = {
   /** Control-plane backing for sessions/tasks/events/models/usage/authStatus/workspace. */
   controlPlane?: LazyAsync<RuntimeControlClient>;
   kanban?: LazyAsync<KanbanClient>;
+  media?: LazyAsync<GatewayMediaClient>;
+  wiki?: LazyAsync<GatewayWikiClient>;
+  agentConfig?: LazyAsync<GatewayAgentConfigClient>;
   /** Sync surface: supply the directory or a sync factory. */
   teams?: TeamDirectory | (() => TeamDirectory);
 };
@@ -259,6 +268,39 @@ export function createCapabilityClient(
     });
   }
 
+  /** Async surface gated against a directly-supplied backend (media/wiki/…). */
+  function gatedDirect<T extends object>(
+    key: CapabilityKey,
+    backend: LazyAsync<T> | undefined,
+  ): T {
+    let backendPromise: Promise<T> | null = null;
+    const methodCache = new Map<PropertyKey, unknown>();
+    return new Proxy({} as T, {
+      get(_target, prop) {
+        if (typeof prop === "symbol" || prop === "then") return undefined;
+        let method = methodCache.get(prop);
+        if (!method) {
+          method = async (...args: unknown[]) => {
+            const call = `client.${key}.${String(prop)}()`;
+            await guard(key, call);
+            if (!backend) {
+              throw notated(options, key, call, `no ${key} backend is wired for "${options.providerKind}"`);
+            }
+            backendPromise ??= Promise.resolve(resolveLazy(backend));
+            const impl = (await backendPromise) as unknown as Record<PropertyKey, unknown>;
+            const fn = impl[prop];
+            if (typeof fn !== "function") {
+              throw notated(options, key, call, `backend does not implement ${String(prop)}`);
+            }
+            return (fn as (...inner: unknown[]) => unknown).apply(impl, args);
+          };
+          methodCache.set(prop, method);
+        }
+        return method;
+      },
+    });
+  }
+
   function teamsBackend(call: string): TeamDirectory {
     const backend = backends.teams;
     if (!backend) {
@@ -345,5 +387,8 @@ export function createCapabilityClient(
     ...controlPlaneSurfaces,
     kanban: gatedKanban(),
     teams: gatedTeams(),
+    media: gatedDirect<GatewayMediaClient>("media", backends.media),
+    wiki: gatedDirect<GatewayWikiClient>("wiki", backends.wiki),
+    agentConfig: gatedDirect<GatewayAgentConfigClient>("agentConfig", backends.agentConfig),
   };
 }
