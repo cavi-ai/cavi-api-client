@@ -36,12 +36,8 @@ import {
   HERMES_HTTP_API_ENV_ALIASES,
   HERMES_HTTP_API_ENV_KEYS,
   HermesAgentConfigApiClient,
-  HermesApiClient,
-  HermesMediaApiClient,
   HERMES_PROVIDER_MODULE,
   HermesSseRunEventProvider,
-  HermesWebSocketClient,
-  HermesWikiApiClient,
   createHermesTeamRegistry,
 } from "../providers/hermes/index";
 import {
@@ -1515,16 +1511,18 @@ describe("package hardening", () => {
     expect(() => resolveGatewayProviderKind({ provider: "martina" })).toThrow(
       'Unknown gateway provider "martina"',
     );
-    expect(hermes).toBeInstanceOf(HermesApiClient);
+    // Hermes clients are the shared gateway bases configured with Hermes
+    // tables/surfaces — the former Hermes* subclasses were config duplication.
+    expect(hermes).toBeInstanceOf(GatewayApiClient);
     expect(hermes.surface).toBe("hermes-api-server");
     expect(openclaw).toBeInstanceOf(OpenClawApiClient);
     expect(openclaw).toBeInstanceOf(GatewayApiClient);
     expect(openclaw.surface).toBe("openclaw-api");
-    expect(hermesMedia).toBeInstanceOf(HermesMediaApiClient);
+    expect(hermesMedia).toBeInstanceOf(GatewayMediaApiClient);
     expect(hermesMedia.surface).toBe("hermes-media-api");
     expect(openclawMedia).toBeInstanceOf(OpenClawMediaApiClient);
     expect(openclawMedia.surface).toBe("openclaw-media-api");
-    expect(hermesWiki).toBeInstanceOf(HermesWikiApiClient);
+    expect(hermesWiki).toBeInstanceOf(GatewayWikiApiClient);
     expect(hermesWiki.surface).toBe("hermes-wiki-api");
     expect(openclawWiki).toBeInstanceOf(OpenClawWikiApiClient);
     expect(openclawWiki.surface).toBe("openclaw-wiki-api");
@@ -1533,7 +1531,7 @@ describe("package hardening", () => {
     expect(openclawAgentConfig).toBeInstanceOf(OpenClawAgentConfigApiClient);
     expect(openclawAgentConfig.surface).toBe("openclaw-agent-config-api");
     expect(genericWs).toBeInstanceOf(GatewayRpcClient);
-    expect(hermesWs).toBeInstanceOf(HermesWebSocketClient);
+    expect(hermesWs).toBeInstanceOf(GatewayRpcClient);
     expect(openclawWs).toBeInstanceOf(OpenClawWebSocketClient);
     expect(genericSse).toBeInstanceOf(GatewaySseRunEventProvider);
     expect(hermesSse).toBeInstanceOf(HermesSseRunEventProvider);

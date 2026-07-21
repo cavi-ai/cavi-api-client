@@ -48,6 +48,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identifier normalizer from this canonical core. Additive; no runtime behavior
   change to existing consumers.
 
+### Removed
+
+- **Breaking** (`./providers/hermes`): the four pure-config mirror classes —
+  `HermesApiClient`, `HermesMediaApiClient`, `HermesWikiApiClient`,
+  `HermesWebSocketClient` (and the `HermesCapabilities`/`HermesRunStatus`
+  type aliases). They injected only a surface tag and/or endpoint table into
+  the shared gateway bases; the provider module and `createApiClient` now pass
+  that config to `GatewayApiClient` / `GatewayMediaApiClient` /
+  `GatewayWikiApiClient` / `GatewayWebSocketClient` directly. Runtime behavior
+  (including the `hermes-*` surface tags) is unchanged.
+
 ### Changed
 
 - `RUNTIME_PROVIDER_CAPABILITY_MATRIX` (and the per-provider

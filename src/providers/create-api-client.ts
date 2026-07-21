@@ -18,10 +18,14 @@ import { PROVIDER_CAPABILITIES } from "./capability-declarations.js";
 import { createBuiltInRuntimeProviderRegistry } from "./runtime-provider-registry.js";
 import { createRuntimeControlClient } from "./runtime-control-client-factory.js";
 import { JsonHttpApiClient } from "../core/http/json-client.js";
+import { GatewayMediaApiClient } from "../core/gateway/resources/media.js";
+import { GatewayWikiApiClient } from "../core/gateway/resources/wiki.js";
+import {
+  HERMES_MEDIA_API_ENDPOINTS,
+  HERMES_WIKI_API_ENDPOINTS,
+} from "../contracts/paths.js";
 import { createHermesCapabilityResolver } from "./hermes/capability-resolver.js";
 import { createHermesKanbanClient } from "./hermes/kanban.js";
-import { HermesMediaApiClient } from "./hermes/media.js";
-import { HermesWikiApiClient } from "./hermes/wiki.js";
 import { HermesAgentConfigApiClient } from "./hermes/agent-config.js";
 import { createOpenClawCapabilityResolver } from "./openclaw/capability-resolver.js";
 import { createOpenClawRuntimeControlClient } from "./openclaw/control-plane/factory.js";
@@ -130,8 +134,16 @@ function wireHermes(options: CreateApiClientOptions): AutoWiring {
             ...(init?.body !== undefined ? { body: init.body } : {}),
           }),
         ),
-      media: () => new HermesMediaApiClient(httpClientOptions(options)),
-      wiki: () => new HermesWikiApiClient(httpClientOptions(options)),
+      media: () =>
+        new GatewayMediaApiClient(httpClientOptions(options), {
+          endpoints: HERMES_MEDIA_API_ENDPOINTS,
+          surface: "hermes-media-api",
+        }),
+      wiki: () =>
+        new GatewayWikiApiClient(httpClientOptions(options), {
+          endpoints: HERMES_WIKI_API_ENDPOINTS,
+          surface: "hermes-wiki-api",
+        }),
       agentConfig: () => new HermesAgentConfigApiClient(httpClientOptions(options)),
     },
   };

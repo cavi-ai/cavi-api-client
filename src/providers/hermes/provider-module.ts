@@ -1,10 +1,14 @@
 import type { GatewayProviderModule } from "../../core/gateway/providers/index.js";
+import { GatewayApiClient } from "../../core/gateway/client/client.js";
+import { GatewayMediaApiClient } from "../../core/gateway/resources/media.js";
+import { GatewayWikiApiClient } from "../../core/gateway/resources/wiki.js";
+import { GatewayWebSocketClient } from "../../core/ws/index.js";
+import {
+  HERMES_MEDIA_API_ENDPOINTS,
+  HERMES_WIKI_API_ENDPOINTS,
+} from "../../contracts/paths.js";
 import { HermesAgentConfigApiClient } from "./agent-config.js";
-import { HermesApiClient } from "./client.js";
-import { HermesMediaApiClient } from "./media.js";
 import { HermesSseRunEventProvider } from "./sse-run-event-provider.js";
-import { HermesWebSocketClient } from "./websocket.js";
-import { HermesWikiApiClient } from "./wiki.js";
 import { createHermesRuntimeControlClient } from "./control-plane/factory.js";
 
 export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
@@ -24,9 +28,12 @@ export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
     },
   },
   createRuntimeControlClient: createHermesRuntimeControlClient,
-  createApiClient: (clientOptions) => new HermesApiClient(clientOptions),
+  // Hermes differs from the shared gateway bases by CONFIG only (surface tag +
+  // endpoint tables) — the former Hermes* subclasses were pure duplication.
+  createApiClient: (clientOptions) =>
+    new GatewayApiClient(clientOptions, "hermes-api-server"),
   createWebSocketClient: (wsUrl, authToken, clientOptions) =>
-    new HermesWebSocketClient(wsUrl, authToken, clientOptions),
+    new GatewayWebSocketClient(wsUrl, authToken, clientOptions),
   createSseRunEventProvider: (options) => {
     const sessionKey = options.sessionKey?.trim();
     if (!sessionKey) {
@@ -34,8 +41,16 @@ export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
     }
     return new HermesSseRunEventProvider({ ...options, sessionKey });
   },
-  createMediaClient: (clientOptions) => new HermesMediaApiClient(clientOptions),
-  createWikiClient: (clientOptions) => new HermesWikiApiClient(clientOptions),
+  createMediaClient: (clientOptions) =>
+    new GatewayMediaApiClient(clientOptions, {
+      endpoints: HERMES_MEDIA_API_ENDPOINTS,
+      surface: "hermes-media-api",
+    }),
+  createWikiClient: (clientOptions) =>
+    new GatewayWikiApiClient(clientOptions, {
+      endpoints: HERMES_WIKI_API_ENDPOINTS,
+      surface: "hermes-wiki-api",
+    }),
   createAgentConfigClient: (clientOptions) =>
     new HermesAgentConfigApiClient(clientOptions),
 };
