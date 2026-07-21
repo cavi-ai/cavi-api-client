@@ -12,16 +12,15 @@ export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
   aliases: ["hermes-api-server"],
   // Hermes serves its control plane from the dashboard API (sessions, models,
   // usage, provider-auth, JSON-RPC events) and the kanban plugin it ships
-  // (tasks). `workspace` has no native Hermes surface — agent workspace
-  // identities come from the CAVI operator registry — so it is not declared;
-  // calling it throws CapabilityUnavailable until an extension supplies it.
+  // (tasks). `workspace` is served through the CAVI control plugin's member
+  // workspace routes (verified live 2026-07-21; maintainer-confirmed).
   controlPlane: {
     transports: {
       websocket: { kind: "websocket", stability: "experimental", authenticated: true, reconnect: true },
     },
     modules: {
       sessions: true, models: true, usage: true, tasks: true,
-      authStatus: true, events: true,
+      workspace: true, authStatus: true, events: true,
     },
   },
   createRuntimeControlClient: createHermesRuntimeControlClient,

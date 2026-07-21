@@ -36,11 +36,6 @@ function expectedFromLegacy(
   return set;
 }
 
-/** Sanctioned deltas vs the legacy matrix — every one must be justified. */
-const CORRECTIONS: Partial<Record<RuntimeProviderCapabilityMatrixKey, CapabilityKey[]>> = {
-  openclaw: ["media", "wiki"],
-};
-
 const matrixKeys = Object.keys(
   RUNTIME_PROVIDER_CAPABILITY_MATRIX,
 ) as RuntimeProviderCapabilityMatrixKey[];
@@ -50,20 +45,13 @@ describe("single-source provider capabilities", () => {
     expect(new Set(Object.keys(PROVIDER_CAPABILITIES))).toEqual(new Set(matrixKeys));
   });
 
+  // The matrix derives from PROVIDER_CAPABILITIES via projections, so the
+  // round trip (matrix runtime ∪ control-plane modules) must reconstruct the
+  // declaration EXACTLY — zero drift, for every provider, forever. Any failure
+  // here means a derived view was hand-edited.
   for (const key of matrixKeys) {
-    it(`${key}: equals legacy (matrix runtime ∪ control-plane modules) + documented corrections`, () => {
-      const expected = expectedFromLegacy(key);
-      for (const capability of CORRECTIONS[key] ?? []) expected.add(capability);
-      expect(new Set(declaredCapabilities(key))).toEqual(expected);
+    it(`${key}: matrix round-trips the declaration with zero drift`, () => {
+      expect(new Set(declaredCapabilities(key))).toEqual(expectedFromLegacy(key));
     });
   }
-
-  it("the ONLY drift from the matrix is OpenClaw media+wiki", () => {
-    for (const key of matrixKeys) {
-      const declared = new Set(declaredCapabilities(key));
-      const legacy = expectedFromLegacy(key);
-      const added = [...declared].filter((c) => !legacy.has(c)).sort();
-      expect(added).toEqual(key === "openclaw" ? ["media", "wiki"] : []);
-    }
-  });
 });
