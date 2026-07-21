@@ -58,11 +58,17 @@ describe("openclaw hello-ok transform", () => {
       agentConfig: true,
       events: true,
     });
-    // Unmentioned keys stay undefined so the static fallback decides them —
-    // the plugin-gated wiki surface is the canonical example.
+    // Unmentioned keys stay undefined so the static fallback decides them.
     expect(resolved.supports.wiki).toBeUndefined();
     expect(resolved.supports.batch).toBeUndefined();
     expect(resolved.supports.teams).toBeUndefined();
+  });
+
+  it("detects the memory-wiki plugin's wiki.* methods", () => {
+    const resolved = transformOpenClawHello(
+      helloOk([...ADVERTISED, "wiki.status", "wiki.compile", "wiki.ingest"]),
+    );
+    expect(resolved.supports.wiki).toBe(true);
   });
 
   it("detects operator/discourse plugin methods by name", () => {
@@ -79,15 +85,13 @@ describe("openclaw hello-ok transform", () => {
     expect(resolved.supports).toEqual({});
   });
 
-  it("publishes canonical media/wiki routes as tagged manifest actions", () => {
+  it("publishes NO HTTP media/wiki actions — those capabilities are RPC-backed", () => {
     const { manifest } = transformOpenClawHello(helloOk(ADVERTISED));
-    expect(resolveTeamActionApiPath(manifest, "openclaw", "media_root")).toBe("/v1/media");
-    expect(resolveTeamActionApiPath(manifest, "openclaw", "wiki_vaults")).toBe(
-      "/v1/wiki/vaults",
-    );
     const team = findTeamManifestTeam(manifest, "openclaw");
-    const wiki = team?.actions?.find((action) => action.id === "wiki_root");
-    expect(wiki?.capabilities).toEqual(["wiki"]);
+    const ids = team?.actions?.map((action) => action.id) ?? [];
+    expect(ids).not.toContain("media_root");
+    expect(ids).not.toContain("wiki_root");
+    expect(ids).not.toContain("wiki_vaults");
   });
 
   it("converts rest-table param tokens and resolves them with params", () => {

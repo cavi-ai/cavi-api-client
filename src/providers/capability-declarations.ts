@@ -67,8 +67,11 @@ export const PROVIDER_CAPABILITIES = {
     "operator",
     "discourse",
     "agentConfig",
-    // Verified live 2026-07-20 (media + wiki routes 200) — plugin-backed;
-    // instance-level runtime resolution can gate them off where absent.
+    // RPC-backed, not HTTP: media rides the core tts/talk gateway methods;
+    // wiki is the first-party memory-wiki plugin's wiki.* methods (installed
+    // fleet-wide; maintainer-ruled a platform capability). There is no
+    // OpenClaw HTTP media/wiki route — the control-UI SPA catch-all answers
+    // those paths with 200 HTML, which is NOT service.
     "media",
     "wiki",
   ),

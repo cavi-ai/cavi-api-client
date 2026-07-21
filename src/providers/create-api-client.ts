@@ -32,9 +32,9 @@ import { createOpenClawRuntimeControlClient } from "./openclaw/control-plane/fac
 import { createOpenClawKanbanClient } from "./openclaw/kanban.js";
 import { createOpenClawWorkboardRpc } from "./openclaw/workboard.js";
 import { OpenClawWebSocketClient } from "./openclaw/websocket.js";
+import { OpenClawAgentConfigApiClient } from "./openclaw/agent-config.js";
 import { OpenClawMediaApiClient } from "./openclaw/media.js";
 import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
-import { OpenClawAgentConfigApiClient } from "./openclaw/agent-config.js";
 
 /**
  * The ONE front door (the redesign's contract): construct the single client
@@ -176,7 +176,17 @@ function wireOpenClaw(options: CreateApiClientOptions): AutoWiring {
       kanban: () => createOpenClawKanbanClient(createOpenClawWorkboardRpc(rpc())),
       ...(options.baseUrl
         ? {
-            media: () => new OpenClawMediaApiClient({ ...httpClientOptions(options), rpcClient: rpc() }),
+            // OpenClaw media is RPC-dispatched (tts/talk core methods) — the
+            // media client rides the shared socket. Wiki is served by the
+            // first-party memory-wiki plugin's wiki.* RPC methods; until an
+            // RPC wiki adapter exists the legacy client's explicit gate is the
+            // honest backend (there is no OpenClaw HTTP wiki route — the SPA
+            // catch-all answers those paths).
+            media: () =>
+              new OpenClawMediaApiClient({
+                ...httpClientOptions(options),
+                rpcClient: rpc(),
+              }),
             wiki: () => new OpenClawWikiApiClient(httpClientOptions(options)),
             agentConfig: () => new OpenClawAgentConfigApiClient(httpClientOptions(options)),
           }

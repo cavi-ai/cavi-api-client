@@ -147,8 +147,14 @@ function runStatic() {
 }
 
 // ── LIVE: HTTP (GET only) ─────────────────────────────────────────────────────
-function classifyHttp(status) {
-  if (status >= 200 && status < 300) return "live";
+function classifyHttp(status, contentType = "") {
+  if (status >= 200 && status < 300) {
+    // A 2xx that returns the control-UI HTML page is the SPA catch-all
+    // swallowing an unknown path — NOT a served API route. Classifying it
+    // "live" produced false positives (any GET looked served).
+    if (/text\/html/iu.test(contentType)) return "spa-fallback";
+    return "live";
+  }
   if (status === 401 || status === 403) return "auth";
   if (status === 404) return "missing";
   if (status === 405) return "served(other-method)";
@@ -167,7 +173,7 @@ async function probeHttp() {
       const timer = setTimeout(() => ac.abort(), 8000);
       const res = await fetch(url, { method: "GET", headers, signal: ac.signal });
       clearTimeout(timer);
-      const klass = classifyHttp(res.status);
+      const klass = classifyHttp(res.status, res.headers.get("content-type") ?? "");
       results.push({ surface: t.surface, key: t.key, path: t.path, status: res.status, class: klass });
       if (STRICT && (klass === "missing" || klass === "error")) failures += 1;
     } catch (err) {

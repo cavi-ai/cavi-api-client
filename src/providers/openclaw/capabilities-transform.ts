@@ -8,10 +8,6 @@ import {
   TEAM_MANIFEST_VERSION,
   type TeamActionContract,
 } from "../../contracts/team-manifest.js";
-import {
-  GATEWAY_MEDIA_API_ENDPOINTS,
-  GATEWAY_WIKI_API_ENDPOINTS,
-} from "../../contracts/paths.js";
 import { OPENCLAW_MANIFEST } from "./manifest.js";
 
 /**
@@ -23,10 +19,11 @@ import { OPENCLAW_MANIFEST } from "./manifest.js";
  *   positive detections are set; unmentioned keys fall back to the static
  *   declaration during the merge (this is how plugin-gated surfaces stay
  *   honest per instance).
- * - `manifest` actions come from the provider manifest's REST table plus the
- *   canonical gateway media/wiki endpoint tables — imported constants from
- *   path-owner files, never literals. RPC-backed capabilities need no manifest
- *   route; the RPC method table is their resolver.
+ * - `manifest` actions come from the provider manifest's REST table — imported
+ *   constants from the path-owner manifest, never literals. RPC-backed
+ *   capabilities (media via tts/talk, wiki via the first-party memory-wiki
+ *   plugin's wiki.* methods) need no manifest route; the RPC method table is
+ *   their resolver.
  */
 
 type JsonRecord = Record<string, unknown>;
@@ -50,6 +47,8 @@ const METHOD_PREFIX_CAPABILITIES: readonly (readonly [string, readonly Capabilit
   ["agents.", ["workspace"]],
   ["tts.", ["media"]],
   ["talk.", ["media"]],
+  // First-party memory-wiki plugin registers wiki.* gateway methods.
+  ["wiki.", ["wiki"]],
   ["config.", ["agentConfig"]],
 ];
 
@@ -102,26 +101,6 @@ function restActions(): TeamActionContract[] {
   return actions;
 }
 
-function canonicalActions(): TeamActionContract[] {
-  return [
-    {
-      id: "media_root",
-      route: { method: "GET", path: GATEWAY_MEDIA_API_ENDPOINTS.root },
-      capabilities: ["media"],
-    },
-    {
-      id: "wiki_root",
-      route: { method: "GET", path: GATEWAY_WIKI_API_ENDPOINTS.root },
-      capabilities: ["wiki"],
-    },
-    {
-      id: "wiki_vaults",
-      route: { method: "GET", path: GATEWAY_WIKI_API_ENDPOINTS.vaults },
-      capabilities: ["wiki"],
-    },
-  ];
-}
-
 export type TransformOpenClawHelloOptions = {
   /** Manifest team id for this gateway instance. Defaults to the provider kind. */
   teamId?: string;
@@ -140,10 +119,12 @@ export function transformOpenClawHello(
   const supports = supportsFromMethods(methods);
   if (stringArray(features.events).length > 0) supports.events = true;
 
-  // Seen HEAD-only duplicates collapse onto their GET siblings by id order;
-  // dedupe on id to keep the manifest normalizer's uniqueness contract.
+  // OpenClaw media/wiki are RPC-backed (tts/talk core methods; the first-party
+  // memory-wiki plugin's wiki.* methods) — there are no HTTP media/wiki routes
+  // to publish; the RPC method table is their resolver. Dedupe on id to keep
+  // the manifest normalizer's uniqueness contract.
   const seen = new Set<string>();
-  const actions = [...restActions(), ...canonicalActions()].filter((action) => {
+  const actions = restActions().filter((action) => {
     if (seen.has(action.id)) return false;
     seen.add(action.id);
     return true;

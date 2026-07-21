@@ -64,11 +64,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RUNTIME_PROVIDER_CAPABILITY_MATRIX` (and the per-provider
   `*_RUNTIME_SUPPORT` consts) now derive from `PROVIDER_CAPABILITIES` — the
   single declaration site — via runtime-surface / control-plane-module
-  projections. Two declared values were corrected against the live gateways:
-  OpenClaw `media`/`wiki` are now `true` (plugin-backed, verified live;
-  plugin-less instances gate them off via runtime capability resolution), and
-  Hermes gains `controlPlane.modules.workspace` (member workspace routes are
-  served via the CAVI control plugin, verified live).
+  projections. Two declared values were corrected: OpenClaw `media`/`wiki` are
+  now `true` — RPC-backed platform capabilities (media via the core tts/talk
+  gateway methods; wiki via the first-party memory-wiki plugin's `wiki.*`
+  methods), with instance-level presence runtime-resolved from the hello-ok
+  method advertisement — and Hermes gains `controlPlane.modules.workspace`
+  (member workspace routes served via the CAVI control plugin, verified live).
+  The live-diagnose prober now classifies 2xx `text/html` responses as
+  `spa-fallback` instead of `live` (the control-UI catch-all had made any GET
+  look served).
 - Replaced the provider-heavy README with a concise, wiki-first,
   provider-neutral entry point and moved exports, provider selection, Claude
   integrations, development checks, and consumer verification into focused

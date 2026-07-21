@@ -67,8 +67,9 @@ describe("runtime provider capability matrix", () => {
         },
       },
       openclaw: {
-        // media/wiki true: verified live (plugin-backed); a plugin-less
-        // instance gates them off via runtime capability resolution instead.
+        // media/wiki true: RPC-backed platform capabilities (tts/talk core
+        // methods; first-party memory-wiki plugin). Instance-level presence
+        // is runtime-resolved from the hello-ok method advertisement.
         runtime: gatewayRuntime,
         transports: { http, sse, websocket },
         controlPlane: {
