@@ -26,6 +26,13 @@ export type GatewayStreamRunBridge = (
  * events, and settle on the terminal lifecycle event or onComplete
  * (run.failed is an EVENT — the bridge only rejects on validation and
  * transport-level start failures, which the facade classifies into gaps).
+ *
+ * `onError` is treated as TERMINAL (matching the SSE provider's contract:
+ * onError and onComplete are mutually exclusive and either ends the stream), so
+ * a mid-stream transport failure rejects the bridge for the facade to classify.
+ * The bridge has NO internal timeout — a silent contract-violating provider
+ * (one that emits neither a terminal event, onComplete, nor onError) hangs
+ * until the caller's AbortSignal fires.
  */
 export function createGatewayStreamRun(params: {
   runtime: RuntimeClient;
@@ -63,6 +70,7 @@ export function createGatewayStreamRun(params: {
             },
             onError: (error) => {
               handlers.onError?.(error);
+              finish(error);
             },
             onComplete: () => {
               handlers.onComplete?.();

@@ -563,6 +563,22 @@ describe("capability client — unified execution surface", () => {
     expect(bridge).toHaveBeenCalledTimes(1);
   });
 
+  it("streamRun bridge that rejects with a transport error resolves ok:false backend-unavailable", async () => {
+    const bridge = vi.fn(async () => {
+      throw Object.assign(new Error("fetch failed"), {});
+    });
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { runs: true, streaming: true },
+      streamRunBridge: bridge,
+    });
+    const result = await client.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+  });
+
   it("streamRun prefers runtime.streamRun over the bridge when both exist", async () => {
     const runtimeStream = vi.fn(async () => undefined);
     const bridge = vi.fn(async () => undefined);

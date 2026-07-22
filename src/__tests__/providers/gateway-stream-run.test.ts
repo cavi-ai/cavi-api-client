@@ -62,6 +62,22 @@ describe("createGatewayStreamRun", () => {
     expect(seen).toEqual([RUN_STREAM_EVENT_NAMES.RUN_FAILED]);
   });
 
+  it("transport onError is terminal: forwards the error, then rejects the bridge", async () => {
+    const torn = new Error("stream torn down");
+    const provider: RunEventStreamProvider = {
+      subscribe: async (_p, handlers) => {
+        queueMicrotask(() => handlers.onError?.(torn));
+        return { dispose: () => undefined };
+      },
+    };
+    const onError = vi.fn();
+    const stream = createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider });
+    await expect(
+      stream({ input: "hi" }, { onEvent: () => undefined, onError }),
+    ).rejects.toBe(torn);
+    expect(onError).toHaveBeenCalledWith(torn);
+  });
+
   it("onComplete settles even without a terminal event", async () => {
     const provider: RunEventStreamProvider = {
       subscribe: async (_p, handlers) => {
