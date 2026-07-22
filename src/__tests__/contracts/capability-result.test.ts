@@ -5,6 +5,7 @@ import {
   gapResult,
   liveResult,
 } from "../../contracts/capability-result.js";
+import { GatewayHttpError } from "../../core/http/gateway-error.js";
 
 const params = {
   area: "capability:kanban",
@@ -70,5 +71,25 @@ describe("classifyCapabilityFailure", () => {
     expect(() =>
       classifyCapabilityFailure({ ...params, error: new Error("totally novel condition") }),
     ).toThrow("totally novel condition");
+  });
+
+  it("maps GatewayHttpError 429 to request-invalid (diverges from classifyFallbackError)", () => {
+    const gap = classifyCapabilityFailure({
+      ...params,
+      error: new GatewayHttpError("Too Many Requests", 429),
+    });
+    expect(gap.reason).toBe("request-invalid");
+    expect(gap.httpStatus).toBe(429);
+  });
+
+  it("maps status 500 exactly to backend-unavailable", () => {
+    expect(classifyCapabilityFailure({ ...params, error: statusError(500) }).reason).toBe(
+      "backend-unavailable",
+    );
+  });
+
+  it("rethrows null/undefined errors", () => {
+    expect(() => classifyCapabilityFailure({ ...params, error: null })).toThrow();
+    expect(() => classifyCapabilityFailure({ ...params, error: undefined })).toThrow();
   });
 });

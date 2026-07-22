@@ -1,4 +1,4 @@
-import { isAuthError } from "../core/errors.js";
+import { getErrorStatus, isAuthError } from "../core/errors.js";
 import {
   classifyFallbackError,
   fallbackGap,
@@ -40,11 +40,6 @@ export class CapabilityCallRejected extends Error {
   }
 }
 
-function httpStatusOf(error: unknown): number | undefined {
-  const status = (error as { status?: unknown } | null)?.status;
-  return typeof status === "number" ? status : undefined;
-}
-
 function errorMessageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -58,6 +53,10 @@ function errorMessageOf(error: unknown): string {
  * `classifyFallbackError`: that classifier only recognizes `GatewayHttpError`
  * instances via `instanceof`, so a bare `{ status }` error (as thrown by
  * non-gateway transports) would otherwise fall through as `unknown`.
+ * This deliberately diverges from `classifyFallbackError` for the 4xx band
+ * (e.g. it reports `GatewayHttpError` 429 as `request-invalid`, not
+ * `backend-unavailable`) because 4xx other than 401/403/404 is a caller
+ * error, not backend degradation.
  */
 export function classifyCapabilityFailure(params: {
   error: unknown;
@@ -78,7 +77,7 @@ export function classifyCapabilityFailure(params: {
     );
   }
 
-  const status = httpStatusOf(error);
+  const status = getErrorStatus(error);
   if (status !== undefined) {
     if (status === 404) {
       return fallbackGap(
