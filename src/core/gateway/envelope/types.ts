@@ -6,6 +6,8 @@ export type ContractGapReason =
   | "endpoint-not-found"
   | "auth-insufficient"
   | "transport-disconnected"
+  | "capability-unsupported"
+  | "request-invalid"
   | "unknown";
 
 export type ContractGap = {
