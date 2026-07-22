@@ -183,11 +183,18 @@ const APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS = [
   "createCapabilityClient",
   "CapabilityClient",
   "CapabilityClientBackends",
+  "CapabilityGated",
+  "CapabilityGatedMethod",
   "CreateCapabilityClientOptions",
   "createApiClient",
   "CreateApiClientOptions",
   "PROVIDER_CAPABILITIES",
   "declaredCapabilities",
+  "classifyCapabilityFailure",
+  "gapResult",
+  "liveResult",
+  "CapabilityCallRejected",
+  "CapabilityResult",
 ] as const;
 
 const FORBIDDEN_PACKAGES = [

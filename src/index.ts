@@ -173,9 +173,18 @@ export {
   type ResolvedProviderCapabilities,
 } from "./contracts/capability-source.js";
 export {
+  classifyCapabilityFailure,
+  gapResult,
+  liveResult,
+  CapabilityCallRejected,
+  type CapabilityResult,
+} from "./contracts/capability-result.js";
+export {
   createCapabilityClient,
   type CapabilityClient,
   type CapabilityClientBackends,
+  type CapabilityGated,
+  type CapabilityGatedMethod,
   type CreateCapabilityClientOptions,
 } from "./contracts/capability-client.js";
 export {
