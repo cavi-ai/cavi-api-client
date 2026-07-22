@@ -48,10 +48,33 @@ import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
 /**
  * The ONE front door (the redesign's contract): construct the single client
  * for any provider. The returned `CapabilityClient` exposes every capability
- * accessor no matter which provider backs it — unsupported calls throw the
- * notated `CapabilityUnavailable`. Gateway providers get their resolver and
+ * accessor on every provider — `sessions`, `tasks`, `events`, `models`,
+ * `usage`, `authStatus`, `workspace`, `kanban`, `teams`, `media`, `wiki`,
+ * `agentConfig`, plus the universal execution surface (`startRun`/`getRun`/
+ * `cancelRun`/`streamRun`/batch) — no accessor is ever missing, regardless of
+ * provider.
+ *
+ * The facade is fully non-throwing: every call resolves a `CapabilityResult`
+ * — `{ ok: true, data, source: "live" }` on success, or `{ ok: false, data:
+ * null, gap }` with a structured `ContractGap` when the capability is
+ * unsupported, unwired, or the backend call failed. There is no missing
+ * method and no thrown `CapabilityUnavailable` for an unsupported call — the
+ * only throws left are the envelope contract's carve-outs (401/403 auth
+ * errors and unknown-classified errors). Feature-detect ahead of time via
+ * `getCapabilityMap()`, or just call and branch on `result.ok`.
+ *
+ * `streamRun` works on all providers: runtime-only providers (Claude, Codex,
+ * Gemini, Claude Managed Agents) stream directly through their `RuntimeClient`;
+ * gateway providers (Hermes, OpenClaw) have no native `streamRun` and are
+ * bridged over their event transport instead — Hermes over SSE run events
+ * (the run body must carry a `sessionKey`; without one the call resolves
+ * `ok:false` with a `request-invalid` gap and no run is started), OpenClaw
+ * over control-plane WebSocket event frames.
+ *
+ * Gateway providers (`hermes`, `openclaw`) get their capability resolver and
  * backends auto-wired from `baseUrl`/`webSocketUrl`; runtime-only providers
- * (via `registry`) get the execution surface with everything else gated.
+ * (resolved via `registry`) get the execution surface with every other
+ * capability gated off unless a resolver/backends override is supplied.
  */
 
 /** Reported provider kinds that map onto a differently-keyed declaration. */

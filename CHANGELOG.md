@@ -48,6 +48,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identifier normalizer from this canonical core. Additive; no runtime behavior
   change to existing consumers.
 
+- Added `CapabilityResult`, `classifyCapabilityFailure`, `CapabilityCallRejected`,
+  and `CapabilityGated`/`CapabilityGatedMethod` as root exports — the typed
+  vocabulary of the `CapabilityClient` facade's non-throwing contract.
+- Added gateway `streamRun` bridges so the facade's execution surface streams
+  on every provider: Hermes streams over SSE run events (the run body's
+  `sessionKey` selects the session; without one the call resolves `ok: false`
+  with a `request-invalid` gap and starts no run), and OpenClaw streams over
+  control-plane WebSocket event frames. New: `createGatewayStreamRun`,
+  `createRunEventStreamFromControlPlane` (the control-plane → run-stream
+  translator), and `HermesSseRunEventProvider`.
+- `ContractGapReason` gains `capability-unsupported` (an undeclared or unwired
+  capability) and `request-invalid` (a caller mistake the transport can name
+  before any request is made).
+- Added `inspectCapabilityClientConformance` under the `./testing` subpath —
+  probes every `CapabilityClient` surface (execution, control-plane, kanban,
+  teams, media, wiki, agentConfig, events) and reports which calls fail to
+  resolve.
+
 ### Removed
 
 - **Breaking** (`./providers/hermes`): the four pure-config mirror classes —
@@ -77,6 +95,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provider-neutral entry point and moved exports, provider selection, Claude
   integrations, development checks, and consumer verification into focused
   linked documents.
+- `CapabilityClient` (the unreleased single-client facade) is now fully
+  non-throwing: every accessor across every gated surface (`sessions`,
+  `tasks`, `events`, `models`, `usage`, `authStatus`, `workspace`, `kanban`,
+  `teams`, `media`, `wiki`, `agentConfig`) and the universal execution surface
+  (`startRun`/`getRun`/`cancelRun`/`streamRun`/batch) resolves a
+  `CapabilityResult<T>` — `ok: false` carries a structured `ContractGap` for
+  unsupported capabilities and degraded backends, instead of throwing
+  `CapabilityUnavailable`. Auth (401/403) and unknown-classified errors still
+  throw. `CapabilityClient` no longer extends `RuntimeClient`. The execution
+  surface is always present on every provider, gateways included.
 
 ## [0.12.0] - 2026-07-15
 

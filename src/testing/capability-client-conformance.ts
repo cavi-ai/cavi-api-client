@@ -19,8 +19,11 @@ export type CapabilityClientConformanceReport = {
  * of rejecting. Probes run against an undeclared/unwired client — nothing
  * should escalate to the auth/unknown carve-outs.
  *
- * `events.subscribe` is intentionally not probed — its handler-based
- * subscription contract doesn't fit a one-shot resolve/reject probe.
+ * `events.subscribe` is probed like every other gated surface: it resolves a
+ * `CapabilityResult` (`ok:false` on a bare/undeclared client). On the rare
+ * client where it resolves `ok:true` (a live subscription), the probe disposes
+ * the returned `RuntimeEventSubscription` so the inspector never leaks a live
+ * subscription against a real backend.
  */
 export async function inspectCapabilityClientConformance(
   client: CapabilityClient,
@@ -42,6 +45,17 @@ export async function inspectCapabilityClientConformance(
     { call: "models.listModels", run: () => client.models.listModels() },
     { call: "usage.getUsage", run: () => client.usage.getUsage({}) },
     { call: "authStatus.listAuthStatus", run: () => client.authStatus.listAuthStatus() },
+    {
+      call: "events.subscribe",
+      run: async () => {
+        const result = await client.events.subscribe(
+          { operationId: "conformance-probe" },
+          { onEvent: () => undefined },
+        );
+        if (result.ok) await result.data.dispose?.();
+        return result;
+      },
+    },
     // WorkspaceClient.listWorkspaces() takes no arguments.
     { call: "workspace.listWorkspaces", run: () => client.workspace.listWorkspaces() },
     { call: "kanban.listBoards", run: () => client.kanban.listBoards() },
