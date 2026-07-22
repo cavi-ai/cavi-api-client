@@ -92,4 +92,16 @@ describe("classifyCapabilityFailure", () => {
     expect(() => classifyCapabilityFailure({ ...params, error: null })).toThrow();
     expect(() => classifyCapabilityFailure({ ...params, error: undefined })).toThrow();
   });
+
+  it("rethrows non-finite status errors instead of leaking httpStatus: Infinity", () => {
+    expect(() =>
+      classifyCapabilityFailure({ ...params, error: statusError(Infinity) }),
+    ).toThrow();
+    expect(() =>
+      classifyCapabilityFailure({
+        ...params,
+        error: Object.assign(new Error("nan status"), { status: NaN }),
+      }),
+    ).toThrow();
+  });
 });
