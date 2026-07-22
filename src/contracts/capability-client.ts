@@ -44,7 +44,10 @@ export type CapabilityGatedMethod<F> = F extends (
     ? (...args: A) => Promise<CapabilityResult<R>>
     : F extends object
       ? CapabilityGated<F>
-      : never;
+      : // Unreachable while every gated interface is method-only (each member is
+        // a function or a nested object of functions); a bare data field would
+        // land here.
+        never;
 
 export type CapabilityGated<T> = {
   readonly [K in keyof T]-?: CapabilityGatedMethod<NonNullable<T[K]>>;
@@ -212,6 +215,40 @@ export function createCapabilityClient(
     return unsupportedGap(options, key, call, declaredDetail(key));
   }
 
+  /**
+   * Shared invoke tail: look the method up on an already-resolved backend
+   * surface, call it, and shape the outcome. A missing method resolves a
+   * `capability-unsupported` gap; a thrown error routes through
+   * `classifyCapabilityFailure` (auth/unknown still rethrow per the carve-outs).
+   * Backend *resolution* (the lazy factory) is caught by each caller so it can
+   * de-poison its own memo; this helper only owns the invocation.
+   */
+  async function invokeOnSurface(
+    key: CapabilityKey,
+    call: string,
+    surface: Record<PropertyKey, unknown> | undefined,
+    prop: PropertyKey,
+    args: unknown[],
+    missingDetail: string,
+  ): Promise<CapabilityResult<unknown>> {
+    const fn = surface?.[prop];
+    if (typeof fn !== "function") {
+      return gapResult(unsupportedGap(options, key, call, missingDetail));
+    }
+    try {
+      return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(surface, args));
+    } catch (error) {
+      return gapResult(
+        classifyCapabilityFailure({
+          error,
+          area: `capability:${key}`,
+          expectedContract: call,
+          call,
+        }),
+      );
+    }
+  }
+
   function gatedControlPlane<T extends object>(
     key: ControlPlaneCapability,
   ): CapabilityGated<T> {
@@ -236,18 +273,15 @@ export function createCapabilityClient(
                 ),
               );
             }
-            controlPlanePromise ??= Promise.resolve(resolveLazy(backend));
-            const plane = await controlPlanePromise;
-            const surface = plane[key] as unknown as Record<PropertyKey, unknown>;
-            const fn = surface?.[prop];
-            if (typeof fn !== "function") {
-              return gapResult(
-                unsupportedGap(options, key, call, `backend does not implement ${String(prop)}`),
-              );
-            }
+            let plane: RuntimeControlClient;
             try {
-              return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(surface, args));
+              controlPlanePromise ??= Promise.resolve(resolveLazy(backend));
+              plane = await controlPlanePromise;
             } catch (error) {
+              // A rejected lazy factory must degrade to a gap, not reject the
+              // call — and must not poison the memo forever. Reset it so a
+              // later call retries; classify (auth/unknown still rethrow).
+              controlPlanePromise = null;
               return gapResult(
                 classifyCapabilityFailure({
                   error,
@@ -257,6 +291,15 @@ export function createCapabilityClient(
                 }),
               );
             }
+            const surface = plane[key] as unknown as Record<PropertyKey, unknown>;
+            return invokeOnSurface(
+              key,
+              call,
+              surface,
+              prop,
+              args,
+              `backend does not implement ${String(prop)}`,
+            );
           };
           methodCache.set(prop, method);
         }
@@ -285,25 +328,13 @@ export function createCapabilityClient(
             ),
           );
         }
-        kanbanPromise ??= Promise.resolve(resolveLazy(backend));
-        const client = await kanbanPromise;
-        const surface = viaExtended
-          ? (client.extended as Record<PropertyKey, unknown> | undefined)
-          : (client as unknown as Record<PropertyKey, unknown>);
-        const fn = surface?.[prop];
-        if (typeof fn !== "function") {
-          return gapResult(
-            unsupportedGap(
-              options,
-              "kanban",
-              call,
-              `backend does not implement ${viaExtended ? "extended " : ""}${String(prop)}`,
-            ),
-          );
-        }
+        let client: KanbanClient;
         try {
-          return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(surface, args));
+          kanbanPromise ??= Promise.resolve(resolveLazy(backend));
+          client = await kanbanPromise;
         } catch (error) {
+          // De-poison the memo on a rejected factory, then classify.
+          kanbanPromise = null;
           return gapResult(
             classifyCapabilityFailure({
               error,
@@ -313,6 +344,17 @@ export function createCapabilityClient(
             }),
           );
         }
+        const surface = viaExtended
+          ? (client.extended as Record<PropertyKey, unknown> | undefined)
+          : (client as unknown as Record<PropertyKey, unknown>);
+        return invokeOnSurface(
+          "kanban",
+          call,
+          surface,
+          prop,
+          args,
+          `backend does not implement ${viaExtended ? "extended " : ""}${String(prop)}`,
+        );
       };
 
     const extendedProxy = new Proxy({}, {
@@ -370,17 +412,13 @@ export function createCapabilityClient(
                 ),
               );
             }
-            backendPromise ??= Promise.resolve(resolveLazy(backend));
-            const impl = (await backendPromise) as unknown as Record<PropertyKey, unknown>;
-            const fn = impl[prop];
-            if (typeof fn !== "function") {
-              return gapResult(
-                unsupportedGap(options, key, call, `backend does not implement ${String(prop)}`),
-              );
-            }
+            let impl: T;
             try {
-              return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(impl, args));
+              backendPromise ??= Promise.resolve(resolveLazy(backend));
+              impl = await backendPromise;
             } catch (error) {
+              // De-poison the memo on a rejected factory, then classify.
+              backendPromise = null;
               return gapResult(
                 classifyCapabilityFailure({
                   error,
@@ -390,6 +428,14 @@ export function createCapabilityClient(
                 }),
               );
             }
+            return invokeOnSurface(
+              key,
+              call,
+              impl as unknown as Record<PropertyKey, unknown>,
+              prop,
+              args,
+              `backend does not implement ${String(prop)}`,
+            );
           };
           methodCache.set(prop, method);
         }
@@ -425,8 +471,13 @@ export function createCapabilityClient(
 
     async dispose(): Promise<void> {
       if (controlPlanePromise) {
-        const plane = await controlPlanePromise;
-        await plane.dispose();
+        try {
+          const plane = await controlPlanePromise;
+          await plane.dispose();
+        } catch {
+          // A poisoned/rejected control-plane promise (or a failing dispose)
+          // must never block teardown — onDispose still has to run.
+        }
       }
       await options.onDispose?.();
     },

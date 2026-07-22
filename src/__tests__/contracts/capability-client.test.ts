@@ -286,17 +286,29 @@ describe("capability client — non-throwing single surface", () => {
   });
 
   it("teams surface is async and gated without unhandled rejections", async () => {
-    const client = createCapabilityClient({
-      providerKind: "gemini",
-      runtime,
-      fallbackSupports: {},
-      resolver: async () => {
-        throw Object.assign(new Error("unauthorized"), { status: 401 });
-      },
-    });
-    // Unsupported + auth-rejecting resolver: auth surfaces as a rejection of
-    // the CALL (the carve-out), not as an unhandled background rejection.
-    await expect(client.teams.listTeams()).rejects.toThrow();
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const client = createCapabilityClient({
+        providerKind: "gemini",
+        runtime,
+        fallbackSupports: {},
+        resolver: async () => {
+          throw Object.assign(new Error("unauthorized"), { status: 401 });
+        },
+      });
+      // Unsupported + auth-rejecting resolver: auth surfaces as a rejection of
+      // the CALL (the carve-out), not as an unhandled background rejection.
+      await expect(client.teams.listTeams()).rejects.toThrow();
+      // Flush a macrotask so any stray background rejection would surface.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).toHaveLength(0);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
   });
 
   it("media/wiki/agentConfig are first-class gated surfaces", async () => {
@@ -361,6 +373,74 @@ describe("capability client — non-throwing single surface", () => {
     for (const result of results) {
       expect(result.ok).toBe(false);
     }
+  });
+
+  it("a rejected lazy backend factory degrades to a gap and still disposes", async () => {
+    const onDispose = vi.fn(async () => undefined);
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: {
+        controlPlane: async () => {
+          throw Object.assign(new Error("socket connect refused"), { status: 503 });
+        },
+      },
+      onDispose,
+    });
+
+    const result = await client.sessions.listSessions({});
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+
+    // A poisoned control-plane memo must not block teardown.
+    await expect(client.dispose()).resolves.toBeUndefined();
+    expect(onDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("de-poisons a failed backend factory so a later call retries", async () => {
+    let attempts = 0;
+    const kanban = fakeKanban();
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { kanban: true },
+      backends: {
+        kanban: async () => {
+          attempts += 1;
+          if (attempts === 1) {
+            throw Object.assign(new Error("socket connect refused"), { status: 503 });
+          }
+          return kanban;
+        },
+      },
+    });
+
+    const first = await client.kanban.listBoards();
+    expect(first.ok).toBe(false);
+    if (first.ok) throw new Error("unreachable");
+    expect(first.gap.reason).toBe("backend-unavailable");
+
+    const second = await client.kanban.listBoards();
+    expect(second.ok).toBe(true);
+    expect(attempts).toBe(2);
+  });
+
+  it("dispose tolerates a control plane whose teardown rejects", async () => {
+    const plane = fakeControlPlane();
+    (plane.dispose as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("teardown boom"));
+    const onDispose = vi.fn(async () => undefined);
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: { controlPlane: plane },
+      onDispose,
+    });
+    await client.sessions.listSessions({});
+    await expect(client.dispose()).resolves.toBeUndefined();
+    expect(onDispose).toHaveBeenCalledTimes(1);
   });
 
   it("disposes an instantiated control plane exactly once", async () => {
