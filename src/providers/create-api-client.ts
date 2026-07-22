@@ -14,6 +14,13 @@ import {
   type CapabilityClientBackends,
 } from "../contracts/capability-client.js";
 import type { ProviderCapabilityResolver } from "../contracts/capability-source.js";
+import type { RuntimeClient } from "../core/runtime/client.js";
+import {
+  createGatewayStreamRun,
+  requireGatewaySessionKey,
+  type GatewayStreamRunBridge,
+} from "./gateway-stream-run.js";
+import { HermesSseRunEventProvider } from "./hermes/sse-run-event-provider.js";
 import { PROVIDER_CAPABILITIES } from "./capability-declarations.js";
 import { createBuiltInRuntimeProviderRegistry } from "./runtime-provider-registry.js";
 import { createRuntimeControlClient } from "./runtime-control-client-factory.js";
@@ -87,6 +94,8 @@ export type CreateApiClientOptions = {
 type AutoWiring = {
   resolver?: ProviderCapabilityResolver;
   backends: CapabilityClientBackends;
+  /** Gateway streaming transport, wired when the runtime itself cannot stream. */
+  streamRunBridge?: GatewayStreamRunBridge;
   onDispose?: () => Promise<void>;
 };
 
@@ -104,7 +113,7 @@ function httpClientOptions(options: CreateApiClientOptions) {
   };
 }
 
-function wireHermes(options: CreateApiClientOptions): AutoWiring {
+function wireHermes(options: CreateApiClientOptions, runtime: RuntimeClient): AutoWiring {
   if (!options.baseUrl) return { backends: {} };
   const baseUrl = options.baseUrl;
   const http = new JsonHttpApiClient("hermes-api-server", {
@@ -146,10 +155,22 @@ function wireHermes(options: CreateApiClientOptions): AutoWiring {
         }),
       agentConfig: () => new HermesAgentConfigApiClient(httpClientOptions(options)),
     },
+    streamRunBridge: createGatewayStreamRun({
+      runtime,
+      validate: (body) => void requireGatewaySessionKey(body),
+      createProvider: (body) =>
+        new HermesSseRunEventProvider({
+          httpBase: baseUrl,
+          authToken: options.token ?? null,
+          clientId: options.clientId ?? "cavi-api-client",
+          sessionKey: requireGatewaySessionKey(body),
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+        }),
+    }),
   };
 }
 
-function wireOpenClaw(options: CreateApiClientOptions): AutoWiring {
+function wireOpenClaw(options: CreateApiClientOptions, _runtime: RuntimeClient): AutoWiring {
   const wsUrl =
     options.webSocketUrl ?? (options.baseUrl ? deriveWebSocketUrl(options.baseUrl) : null);
   if (!wsUrl) return { backends: {} };
@@ -198,9 +219,13 @@ function wireOpenClaw(options: CreateApiClientOptions): AutoWiring {
   };
 }
 
-function autoWire(kind: string, options: CreateApiClientOptions): AutoWiring {
-  if (kind === "hermes") return wireHermes(options);
-  if (kind === "openclaw") return wireOpenClaw(options);
+function autoWire(
+  kind: string,
+  options: CreateApiClientOptions,
+  runtime: RuntimeClient,
+): AutoWiring {
+  if (kind === "hermes") return wireHermes(options, runtime);
+  if (kind === "openclaw") return wireOpenClaw(options, runtime);
   return { backends: {} };
 }
 
@@ -220,7 +245,7 @@ export function createApiClient(
     registry.resolveProvider(provider)?.kind ??
     normalizeRuntimeProviderToken(provider) ??
     provider;
-  const wiring = autoWire(kind, options);
+  const wiring = autoWire(kind, options, runtime);
   const resolver = options.resolver ?? wiring.resolver;
 
   return createCapabilityClient({
@@ -230,6 +255,7 @@ export function createApiClient(
     ...(resolver ? { resolver } : {}),
     backends: { ...wiring.backends, ...options.backends },
     availableOn,
+    ...(wiring.streamRunBridge ? { streamRunBridge: wiring.streamRunBridge } : {}),
     ...(wiring.onDispose ? { onDispose: wiring.onDispose } : {}),
   });
 }

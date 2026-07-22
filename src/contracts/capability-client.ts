@@ -84,6 +84,8 @@ export interface CapabilityClient {
   dispose(): Promise<void>;
   // execution — always present, result-shaped (the facade does not extend
   // RuntimeClient; an unsupported/unwired call resolves ok:false, never absent).
+  // An execution call requires the capability to be DECLARED (static fallback or
+  // resolver); a working runtime method alone is not enough — gating comes first.
   startRun(body: RuntimeRunStartBody): Promise<CapabilityResult<RuntimeRunStatus>>;
   getRun(runId: string): Promise<CapabilityResult<RuntimeRunStatus>>;
   cancelRun(runId: string): Promise<CapabilityResult<{ status: string }>>;
@@ -173,16 +175,23 @@ const CONTROL_PLANE_CAPABILITIES: readonly ControlPlaneCapability[] = [
  * Build the notated gap for an unsupported/unwired call — the same notation
  * text the throwing gate once put on `CapabilityUnavailable.message`, now
  * carried in `gap.note` under the `capability-unsupported` reason.
+ *
+ * `headline` defaults to the "does not support" line used when the capability
+ * itself is undeclared. Callers where the capability IS declared but the
+ * implementation is missing (a supported-but-unwired runtime/backend method)
+ * pass the "cannot serve … here" headline so the note doesn't misreport a
+ * declared capability as unsupported.
  */
 function unsupportedGap(
   options: CreateCapabilityClientOptions,
   key: CapabilityKey,
   call: string,
   detail: string,
+  headline = `provider "${options.providerKind}" does not support capability "${key}".`,
 ): ContractGap {
   const availableOn = options.availableOn?.(key) ?? [];
   const note = [
-    `provider "${options.providerKind}" does not support capability "${key}".`,
+    headline,
     `  declared support : ${detail}`,
     ...(availableOn.length ? [`  available on     : ${availableOn.join(", ")}`] : []),
     `  call             : ${call}`,
@@ -265,7 +274,17 @@ export function createCapabilityClient(
   ): Promise<CapabilityResult<unknown>> {
     const fn = surface?.[prop];
     if (typeof fn !== "function") {
-      return gapResult(unsupportedGap(options, key, call, missingDetail));
+      // The capability is declared (gating already passed) — only the backend
+      // implementation is missing, so headline it as "cannot serve … here".
+      return gapResult(
+        unsupportedGap(
+          options,
+          key,
+          call,
+          missingDetail,
+          `provider "${options.providerKind}" cannot serve capability "${key}" here.`,
+        ),
+      );
     }
     try {
       return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(surface, args));
@@ -498,12 +517,15 @@ export function createCapabilityClient(
     const gap = await gapFor(key, call);
     if (gap) return gapResult(gap);
     if (!run) {
+      // Declared but the runtime has no method for it — "cannot serve … here",
+      // not "does not support" (which is reserved for undeclared capabilities).
       return gapResult(
         unsupportedGap(
           options,
           key,
           call,
           `runtime client for "${options.providerKind}" does not implement ${call}`,
+          `provider "${options.providerKind}" cannot serve capability "${key}" here.`,
         ),
       );
     }

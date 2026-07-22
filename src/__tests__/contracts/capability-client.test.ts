@@ -562,4 +562,19 @@ describe("capability client — unified execution surface", () => {
     expect(streamed).toEqual({ ok: true, data: undefined, source: "live" });
     expect(bridge).toHaveBeenCalledTimes(1);
   });
+
+  it("streamRun prefers runtime.streamRun over the bridge when both exist", async () => {
+    const runtimeStream = vi.fn(async () => undefined);
+    const bridge = vi.fn(async () => undefined);
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime: { ...runtime, streamRun: runtimeStream },
+      fallbackSupports: { runs: true, streaming: true },
+      streamRunBridge: bridge,
+    });
+    const streamed = await client.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(streamed.ok).toBe(true);
+    expect(runtimeStream).toHaveBeenCalledTimes(1);
+    expect(bridge).not.toHaveBeenCalled();
+  });
 });

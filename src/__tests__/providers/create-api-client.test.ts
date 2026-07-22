@@ -119,4 +119,23 @@ describe("createApiClient — the one front door", () => {
     if (result.ok) throw new Error("unreachable");
     expect(result.gap.note).toContain("no kanban backend is wired");
   });
+
+  it("hermes streamRun without a session key resolves ok:false request-invalid and starts no run", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const client = createApiClient("hermes", {
+      baseUrl: "http://gateway.test",
+      fetchImpl: fetchImpl as never,
+      resolver: async () => {
+        throw new Error("fetch failed"); // degrade to static fallback deterministically
+      },
+    });
+    const result = await client.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-invalid");
+    expect(result.gap.note).toContain("sessionKey");
+    const postedRun = fetchImpl.mock.calls.some(([url, init]) =>
+      String(url).includes("/runs") && (init as RequestInit | undefined)?.method === "POST");
+    expect(postedRun).toBe(false);
+  });
 });
