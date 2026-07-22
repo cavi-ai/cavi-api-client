@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "../../providers/create-api-client.js";
 import { createRuntimeProviderRegistry } from "../../core/runtime/providers/registry.js";
-import { CapabilityUnavailable } from "../../core/runtime/control-plane/runtime-control-client.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 
 const fakeRuntime: RuntimeClient = {
@@ -38,12 +37,13 @@ describe("createApiClient — the one front door", () => {
     const client = createApiClient("gemini", { registry: geminiRegistry });
     await expect(client.startRun({} as never)).resolves.toMatchObject({ id: "run-9" });
 
-    const failure = await client.kanban.listBoards().catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(CapabilityUnavailable);
-    const message = (failure as Error).message;
-    expect(message).toContain('provider "gemini" does not support capability "kanban"');
-    expect(message).toContain("hermes");
-    expect(message).toContain("openclaw");
+    const result = await client.kanban.listBoards();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    const note = result.gap.note;
+    expect(note).toContain('provider "gemini" does not support capability "kanban"');
+    expect(note).toContain("hermes");
+    expect(note).toContain("openclaw");
   });
 
   it("uses the static declarations as the fallback profile", async () => {
@@ -97,7 +97,11 @@ describe("createApiClient — the one front door", () => {
       fallbackSupports: { runs: true, kanban: true },
       backends: { kanban: kanban as never },
     });
-    await expect(client.kanban.listBoards()).resolves.toEqual([{ id: "b9" }]);
+    await expect(client.kanban.listBoards()).resolves.toEqual({
+      ok: true,
+      source: "live",
+      data: [{ id: "b9" }],
+    });
   });
 
   it("openclaw without a socket keeps the surface but fails informatively", async () => {
@@ -107,8 +111,9 @@ describe("createApiClient — the one front door", () => {
       modules: [{ kind: "openclaw", createClient: () => fakeRuntime }],
     });
     const client = createApiClient("openclaw", { registry });
-    const failure = await client.kanban.listBoards().catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(CapabilityUnavailable);
-    expect((failure as Error).message).toContain("no kanban backend is wired");
+    const result = await client.kanban.listBoards();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.note).toContain("no kanban backend is wired");
   });
 });

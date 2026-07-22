@@ -1,9 +1,6 @@
 import { isAuthError } from "../core/errors.js";
 import type { RuntimeClient } from "../core/runtime/client.js";
-import {
-  CapabilityUnavailable,
-  type RuntimeControlClient,
-} from "../core/runtime/control-plane/runtime-control-client.js";
+import type { RuntimeControlClient } from "../core/runtime/control-plane/runtime-control-client.js";
 import type { RuntimeEventClient } from "../core/runtime/control-plane/events.js";
 import type {
   AuthStatusClient,
@@ -19,6 +16,14 @@ import type { GatewayMediaClient } from "../core/gateway/resources/media.js";
 import type { GatewayWikiClient } from "../core/gateway/resources/wiki.js";
 import type { GatewayAgentConfigClient } from "../core/gateway/agent/config.js";
 import {
+  classifyCapabilityFailure,
+  gapResult,
+  liveResult,
+  type CapabilityResult,
+} from "./capability-result.js";
+import { fallbackGap } from "../core/gateway/envelope/envelope.js";
+import type { ContractGap } from "../core/gateway/envelope/types.js";
+import {
   mergeCapabilitySupport,
   type ProviderCapabilityResolver,
   type ResolvedProviderCapabilities,
@@ -30,12 +35,32 @@ import type {
 } from "../core/runtime/capability-taxonomy.js";
 import type { TeamManifest } from "./team-manifest.js";
 
+/** A backend surface re-typed to the non-throwing facade contract. */
+export type CapabilityGatedMethod<F> = F extends (
+  ...args: infer A
+) => Promise<infer R>
+  ? (...args: A) => Promise<CapabilityResult<R>>
+  : F extends (...args: infer A) => infer R
+    ? (...args: A) => Promise<CapabilityResult<R>>
+    : F extends object
+      ? CapabilityGated<F>
+      : never;
+
+export type CapabilityGated<T> = {
+  readonly [K in keyof T]-?: CapabilityGatedMethod<NonNullable<T[K]>>;
+};
+
 /**
  * The single client surface (the redesign's core invariant): every capability
- * accessor exists on every provider. Calling an unsupported capability throws
- * one uniform, notated `CapabilityUnavailable` — never a missing method, never
- * a silent no-op. Support is decided by the runtime-resolved capabilities
- * merged over the static fallback (design decision M1).
+ * accessor exists on every provider. Gated surfaces never throw and never go
+ * missing — an unsupported or failed call resolves `ok: false` with a
+ * structured `ContractGap` (the same notation the throwing gate once carried),
+ * while a supported call resolves `ok: true` with a live result. The only
+ * throws left on a gated call are the envelope contract's carve-outs: auth
+ * errors (401/403) and unknown-classified errors. Feature-detect via
+ * `getCapabilityMap()`, or just call and branch on `result.ok`. Support is
+ * decided by the runtime-resolved capabilities merged over the static fallback
+ * (design decision M1).
  */
 export interface CapabilityClient extends RuntimeClient {
   readonly providerKind: string;
@@ -47,20 +72,20 @@ export interface CapabilityClient extends RuntimeClient {
   refreshCapabilities(): Promise<CapabilityMap>;
   dispose(): Promise<void>;
   // lifecycle
-  readonly sessions: SessionClient;
-  readonly tasks: TaskClient;
-  readonly events: RuntimeEventClient;
+  readonly sessions: CapabilityGated<SessionClient>;
+  readonly tasks: CapabilityGated<TaskClient>;
+  readonly events: CapabilityGated<RuntimeEventClient>;
   // introspection
-  readonly models: ModelCatalogClient;
-  readonly usage: UsageClient;
-  readonly authStatus: AuthStatusClient;
+  readonly models: CapabilityGated<ModelCatalogClient>;
+  readonly usage: CapabilityGated<UsageClient>;
+  readonly authStatus: CapabilityGated<AuthStatusClient>;
   // domain
-  readonly workspace: WorkspaceClient;
-  readonly kanban: KanbanClient;
-  readonly teams: TeamDirectory;
-  readonly media: GatewayMediaClient;
-  readonly wiki: GatewayWikiClient;
-  readonly agentConfig: GatewayAgentConfigClient;
+  readonly workspace: CapabilityGated<WorkspaceClient>;
+  readonly kanban: CapabilityGated<KanbanClient>;
+  readonly teams: CapabilityGated<TeamDirectory>;
+  readonly media: CapabilityGated<GatewayMediaClient>;
+  readonly wiki: CapabilityGated<GatewayWikiClient>;
+  readonly agentConfig: CapabilityGated<GatewayAgentConfigClient>;
 }
 
 type LazyAsync<T> = T | (() => T | Promise<T>);
@@ -72,7 +97,7 @@ export type CapabilityClientBackends = {
   media?: LazyAsync<GatewayMediaClient>;
   wiki?: LazyAsync<GatewayWikiClient>;
   agentConfig?: LazyAsync<GatewayAgentConfigClient>;
-  /** Sync surface: supply the directory or a sync factory. */
+  /** Supply the directory or a sync factory. */
   teams?: TeamDirectory | (() => TeamDirectory);
 };
 
@@ -84,7 +109,7 @@ export type CreateCapabilityClientOptions = {
   /** Runtime-authoritative source; transport failures degrade to the fallback. */
   resolver?: ProviderCapabilityResolver;
   backends?: CapabilityClientBackends;
-  /** Which providers serve a capability — enriches the notated error. */
+  /** Which providers serve a capability — enriches the notated gap. */
   availableOn?: (key: CapabilityKey) => readonly string[];
   /** Extra teardown run by dispose() after the control plane is disposed. */
   onDispose?: () => Promise<void> | void;
@@ -109,21 +134,25 @@ const CONTROL_PLANE_CAPABILITIES: readonly ControlPlaneCapability[] = [
   "workspace",
 ];
 
-function notated(
+/**
+ * Build the notated gap for an unsupported/unwired call — the same notation
+ * text the throwing gate once put on `CapabilityUnavailable.message`, now
+ * carried in `gap.note` under the `capability-unsupported` reason.
+ */
+function unsupportedGap(
   options: CreateCapabilityClientOptions,
   key: CapabilityKey,
   call: string,
   detail: string,
-): CapabilityUnavailable {
-  const error = new CapabilityUnavailable(options.providerKind, key);
+): ContractGap {
   const availableOn = options.availableOn?.(key) ?? [];
-  error.message = [
+  const note = [
     `provider "${options.providerKind}" does not support capability "${key}".`,
     `  declared support : ${detail}`,
     ...(availableOn.length ? [`  available on     : ${availableOn.join(", ")}`] : []),
     `  call             : ${call}`,
   ].join("\n");
-  return error;
+  return fallbackGap(`capability:${key}`, call, note, "capability-unsupported");
 }
 
 async function resolveLazy<T>(value: LazyAsync<T>): Promise<T> {
@@ -140,7 +169,6 @@ export function createCapabilityClient(
   let resolveAttempt: Promise<void> | null = null;
   let controlPlanePromise: Promise<RuntimeControlClient> | null = null;
   let kanbanPromise: Promise<KanbanClient> | null = null;
-  let teamsDirectory: TeamDirectory | null = null;
 
   function ensureResolved(): Promise<void> {
     if (!options.resolver) return Promise.resolve();
@@ -172,39 +200,63 @@ export function createCapabilityClient(
     return `capability "${key}" is not declared`;
   }
 
-  async function guard(key: CapabilityKey, call: string): Promise<void> {
+  /**
+   * Resolve capabilities, then decide gating: `null` means the call may proceed
+   * to its backend; a `ContractGap` means it is unsupported and the method
+   * resolves `gapResult(gap)`. Auth-rejecting resolvers still throw out of
+   * `ensureResolved`, surfacing as a rejection of the call (the carve-out).
+   */
+  async function gapFor(key: CapabilityKey, call: string): Promise<ContractGap | null> {
     await ensureResolved();
-    if (currentSupports()[key] !== true) {
-      throw notated(options, key, call, declaredDetail(key));
-    }
+    if (currentSupports()[key] === true) return null;
+    return unsupportedGap(options, key, call, declaredDetail(key));
   }
 
-  async function controlPlaneBackend(key: CapabilityKey, call: string): Promise<RuntimeControlClient> {
-    const backend = backends.controlPlane;
-    if (!backend) {
-      throw notated(options, key, call, `no control-plane backend is wired for "${options.providerKind}"`);
-    }
-    controlPlanePromise ??= Promise.resolve(resolveLazy(backend));
-    return controlPlanePromise;
-  }
-
-  function gatedControlPlane<T extends object>(key: ControlPlaneCapability): T {
+  function gatedControlPlane<T extends object>(
+    key: ControlPlaneCapability,
+  ): CapabilityGated<T> {
     const methodCache = new Map<PropertyKey, unknown>();
-    return new Proxy({} as T, {
+    return new Proxy({} as CapabilityGated<T>, {
       get(_target, prop) {
         if (typeof prop === "symbol" || prop === "then") return undefined;
         let method = methodCache.get(prop);
         if (!method) {
           method = async (...args: unknown[]) => {
             const call = `client.${key}.${String(prop)}()`;
-            await guard(key, call);
-            const plane = await controlPlaneBackend(key, call);
+            const gap = await gapFor(key, call);
+            if (gap) return gapResult(gap);
+            const backend = backends.controlPlane;
+            if (!backend) {
+              return gapResult(
+                unsupportedGap(
+                  options,
+                  key,
+                  call,
+                  `no control-plane backend is wired for "${options.providerKind}"`,
+                ),
+              );
+            }
+            controlPlanePromise ??= Promise.resolve(resolveLazy(backend));
+            const plane = await controlPlanePromise;
             const surface = plane[key] as unknown as Record<PropertyKey, unknown>;
             const fn = surface?.[prop];
             if (typeof fn !== "function") {
-              throw notated(options, key, call, `backend does not implement ${String(prop)}`);
+              return gapResult(
+                unsupportedGap(options, key, call, `backend does not implement ${String(prop)}`),
+              );
             }
-            return (fn as (...inner: unknown[]) => unknown).apply(surface, args);
+            try {
+              return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(surface, args));
+            } catch (error) {
+              return gapResult(
+                classifyCapabilityFailure({
+                  error,
+                  area: `capability:${key}`,
+                  expectedContract: call,
+                  call,
+                }),
+              );
+            }
           };
           methodCache.set(prop, method);
         }
@@ -213,32 +265,54 @@ export function createCapabilityClient(
     });
   }
 
-  async function kanbanBackend(call: string): Promise<KanbanClient> {
-    const backend = backends.kanban;
-    if (!backend) {
-      throw notated(options, "kanban", call, `no kanban backend is wired for "${options.providerKind}"`);
-    }
-    kanbanPromise ??= Promise.resolve(resolveLazy(backend));
-    return kanbanPromise;
-  }
-
-  function gatedKanban(): KanbanClient {
+  function gatedKanban(): CapabilityGated<KanbanClient> {
     const methodCache = new Map<PropertyKey, unknown>();
     const buildMethod = (prop: PropertyKey, viaExtended: boolean): unknown =>
       async (...args: unknown[]) => {
         const call = viaExtended
           ? `client.kanban.extended.${String(prop)}()`
           : `client.kanban.${String(prop)}()`;
-        await guard("kanban", call);
-        const backend = await kanbanBackend(call);
+        const gap = await gapFor("kanban", call);
+        if (gap) return gapResult(gap);
+        const backend = backends.kanban;
+        if (!backend) {
+          return gapResult(
+            unsupportedGap(
+              options,
+              "kanban",
+              call,
+              `no kanban backend is wired for "${options.providerKind}"`,
+            ),
+          );
+        }
+        kanbanPromise ??= Promise.resolve(resolveLazy(backend));
+        const client = await kanbanPromise;
         const surface = viaExtended
-          ? (backend.extended as Record<PropertyKey, unknown> | undefined)
-          : (backend as unknown as Record<PropertyKey, unknown>);
+          ? (client.extended as Record<PropertyKey, unknown> | undefined)
+          : (client as unknown as Record<PropertyKey, unknown>);
         const fn = surface?.[prop];
         if (typeof fn !== "function") {
-          throw notated(options, "kanban", call, `backend does not implement ${viaExtended ? "extended " : ""}${String(prop)}`);
+          return gapResult(
+            unsupportedGap(
+              options,
+              "kanban",
+              call,
+              `backend does not implement ${viaExtended ? "extended " : ""}${String(prop)}`,
+            ),
+          );
         }
-        return (fn as (...inner: unknown[]) => unknown).apply(surface, args);
+        try {
+          return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(surface, args));
+        } catch (error) {
+          return gapResult(
+            classifyCapabilityFailure({
+              error,
+              area: "capability:kanban",
+              expectedContract: call,
+              call,
+            }),
+          );
+        }
       };
 
     const extendedProxy = new Proxy({}, {
@@ -254,7 +328,7 @@ export function createCapabilityClient(
       },
     });
 
-    return new Proxy({} as KanbanClient, {
+    return new Proxy({} as CapabilityGated<KanbanClient>, {
       get(_target, prop) {
         if (typeof prop === "symbol" || prop === "then") return undefined;
         // The invariant: the surface is always present and absence is loud —
@@ -270,69 +344,52 @@ export function createCapabilityClient(
     });
   }
 
-  /** Async surface gated against a directly-supplied backend (media/wiki/…). */
+  /** Async surface gated against a directly-supplied backend (media/wiki/teams/…). */
   function gatedDirect<T extends object>(
     key: CapabilityKey,
     backend: LazyAsync<T> | undefined,
-  ): T {
+  ): CapabilityGated<T> {
     let backendPromise: Promise<T> | null = null;
     const methodCache = new Map<PropertyKey, unknown>();
-    return new Proxy({} as T, {
+    return new Proxy({} as CapabilityGated<T>, {
       get(_target, prop) {
         if (typeof prop === "symbol" || prop === "then") return undefined;
         let method = methodCache.get(prop);
         if (!method) {
           method = async (...args: unknown[]) => {
             const call = `client.${key}.${String(prop)}()`;
-            await guard(key, call);
+            const gap = await gapFor(key, call);
+            if (gap) return gapResult(gap);
             if (!backend) {
-              throw notated(options, key, call, `no ${key} backend is wired for "${options.providerKind}"`);
+              return gapResult(
+                unsupportedGap(
+                  options,
+                  key,
+                  call,
+                  `no ${key} backend is wired for "${options.providerKind}"`,
+                ),
+              );
             }
             backendPromise ??= Promise.resolve(resolveLazy(backend));
             const impl = (await backendPromise) as unknown as Record<PropertyKey, unknown>;
             const fn = impl[prop];
             if (typeof fn !== "function") {
-              throw notated(options, key, call, `backend does not implement ${String(prop)}`);
+              return gapResult(
+                unsupportedGap(options, key, call, `backend does not implement ${String(prop)}`),
+              );
             }
-            return (fn as (...inner: unknown[]) => unknown).apply(impl, args);
-          };
-          methodCache.set(prop, method);
-        }
-        return method;
-      },
-    });
-  }
-
-  function teamsBackend(call: string): TeamDirectory {
-    const backend = backends.teams;
-    if (!backend) {
-      throw notated(options, "teams", call, `no teams backend is wired for "${options.providerKind}"`);
-    }
-    teamsDirectory ??= typeof backend === "function" ? backend() : backend;
-    return teamsDirectory;
-  }
-
-  function gatedTeams(): TeamDirectory {
-    const methodCache = new Map<PropertyKey, unknown>();
-    return new Proxy({} as TeamDirectory, {
-      get(_target, prop) {
-        if (typeof prop === "symbol" || prop === "then") return undefined;
-        let method = methodCache.get(prop);
-        if (!method) {
-          method = (...args: unknown[]) => {
-            const call = `client.teams.${String(prop)}()`;
-            // Sync surface: gate on the current (fallback or last-resolved)
-            // support state; runtime transforms leave `teams` to the fallback.
-            void ensureResolved();
-            if (currentSupports().teams !== true) {
-              throw notated(options, "teams", call, declaredDetail("teams"));
+            try {
+              return liveResult(await (fn as (...inner: unknown[]) => unknown).apply(impl, args));
+            } catch (error) {
+              return gapResult(
+                classifyCapabilityFailure({
+                  error,
+                  area: `capability:${key}`,
+                  expectedContract: call,
+                  call,
+                }),
+              );
             }
-            const directory = teamsBackend(call) as unknown as Record<PropertyKey, unknown>;
-            const fn = directory[prop];
-            if (typeof fn !== "function") {
-              throw notated(options, "teams", call, `backend does not implement ${String(prop)}`);
-            }
-            return (fn as (...inner: unknown[]) => unknown).apply(directory, args);
           };
           methodCache.set(prop, method);
         }
@@ -389,7 +446,7 @@ export function createCapabilityClient(
 
     ...controlPlaneSurfaces,
     kanban: gatedKanban(),
-    teams: gatedTeams(),
+    teams: gatedDirect<TeamDirectory>("teams", backends.teams),
     media: gatedDirect<GatewayMediaClient>("media", backends.media),
     wiki: gatedDirect<GatewayWikiClient>("wiki", backends.wiki),
     agentConfig: gatedDirect<GatewayAgentConfigClient>("agentConfig", backends.agentConfig),

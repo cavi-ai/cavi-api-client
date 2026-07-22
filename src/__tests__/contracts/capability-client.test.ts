@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { createCapabilityClient } from "../../contracts/capability-client.js";
-import { CapabilityUnavailable } from "../../core/runtime/control-plane/runtime-control-client.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { createTeamDirectory } from "../../core/teams/directory.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
@@ -46,8 +45,8 @@ function fakeKanban(withExtended = false): KanbanClient {
   };
 }
 
-describe("capability client — the single surface", () => {
-  it("every accessor exists; unsupported calls throw one notated error", async () => {
+describe("capability client — non-throwing single surface", () => {
+  it("every accessor exists; unsupported calls resolve ok:false with a notated gap", async () => {
     const client = createCapabilityClient({
       providerKind: "gemini",
       runtime,
@@ -55,17 +54,18 @@ describe("capability client — the single surface", () => {
       availableOn: (key) => (key === "sessions" ? ["hermes", "openclaw"] : []),
     });
 
-    // The accessor is present — the call exists, failure is loud and notated.
-    const failure = await client.sessions.listSessions({}).catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(CapabilityUnavailable);
-    const message = (failure as Error).message;
-    expect(message).toContain('provider "gemini" does not support capability "sessions"');
-    expect(message).toContain("available on     : hermes, openclaw");
-    expect(message).toContain("client.sessions.listSessions()");
-    expect(message).toContain('capability "sessions" is not declared');
+    const result = await client.sessions.listSessions({});
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.data).toBeNull();
+    expect(result.gap.reason).toBe("capability-unsupported");
+    expect(result.gap.note).toContain('provider "gemini" does not support capability "sessions"');
+    expect(result.gap.note).toContain("available on     : hermes, openclaw");
+    expect(result.gap.note).toContain("client.sessions.listSessions()");
+    expect(result.gap.note).toContain('capability "sessions" is not declared');
   });
 
-  it("delegates supported capabilities to their backends", async () => {
+  it("wraps supported backend calls in ok:true live results", async () => {
     const plane = fakeControlPlane();
     const client = createCapabilityClient({
       providerKind: "hermes",
@@ -75,11 +75,67 @@ describe("capability client — the single surface", () => {
     });
 
     await expect(client.sessions.listSessions({})).resolves.toEqual({
-      data: [{ id: "s1" }],
+      ok: true,
+      source: "live",
+      data: { data: [{ id: "s1" }] },
     });
-    await expect(client.kanban.listBoards()).resolves.toEqual([
-      { id: "b1", title: "Board" },
-    ]);
+    const boards = await client.kanban.listBoards();
+    expect(boards).toEqual({ ok: true, source: "live", data: [{ id: "b1", title: "Board" }] });
+  });
+
+  it("classifies supported-but-failing backend calls into gaps instead of throwing", async () => {
+    const plane = fakeControlPlane();
+    (plane.sessions.listSessions as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("fetch failed: ECONNREFUSED"),
+    );
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: { controlPlane: plane },
+    });
+
+    const result = await client.sessions.listSessions({});
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+  });
+
+  it("missing wired backend resolves ok:false, never rejects", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { media: true },
+    });
+    const result = await client.media.listMediaProviders();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("capability-unsupported");
+    expect(result.gap.note).toContain("no media backend is wired");
+  });
+
+  it("a supported control-plane capability without a wired backend resolves informatively", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+    });
+    const result = await client.sessions.listSessions({});
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.note).toContain("no control-plane backend is wired");
+  });
+
+  it("delegates supported control-plane calls to their backend surfaces", async () => {
+    const plane = fakeControlPlane();
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: { controlPlane: plane },
+    });
+    await client.sessions.listSessions({});
+    expect(plane.sessions.listSessions).toHaveBeenCalledTimes(1);
   });
 
   it("runtime resolution is authoritative over the static fallback", async () => {
@@ -95,7 +151,8 @@ describe("capability client — the single surface", () => {
       resolver: async () => resolvedOn,
       backends: { kanban: fakeKanban() },
     });
-    await expect(flipsOn.kanban.listBoards()).resolves.toBeDefined();
+    const onResult = await flipsOn.kanban.listBoards();
+    expect(onResult.ok).toBe(true);
 
     const flipsOff = createCapabilityClient({
       providerKind: "openclaw",
@@ -104,9 +161,10 @@ describe("capability client — the single surface", () => {
       resolver: async () => ({ ...resolvedOn, supports: { kanban: false } }),
       backends: { kanban: fakeKanban() },
     });
-    await expect(flipsOff.kanban.listBoards()).rejects.toBeInstanceOf(
-      CapabilityUnavailable,
-    );
+    const offResult = await flipsOff.kanban.listBoards();
+    expect(offResult.ok).toBe(false);
+    if (offResult.ok) throw new Error("unreachable");
+    expect(offResult.gap.reason).toBe("capability-unsupported");
   });
 
   it("resolver transport failures degrade to the fallback; auth errors surface", async () => {
@@ -119,7 +177,8 @@ describe("capability client — the single surface", () => {
       },
       backends: { kanban: fakeKanban() },
     });
-    await expect(degraded.kanban.listBoards()).resolves.toBeDefined();
+    const degradedResult = await degraded.kanban.listBoards();
+    expect(degradedResult.ok).toBe(true);
 
     const authFailed = createCapabilityClient({
       providerKind: "openclaw",
@@ -130,6 +189,7 @@ describe("capability client — the single surface", () => {
       },
       backends: { kanban: fakeKanban() },
     });
+    // Auth carve-out: the resolver's auth failure rejects the call itself.
     await expect(authFailed.kanban.listBoards()).rejects.toMatchObject({
       code: ApiClientErrorCode.AuthForbidden,
     });
@@ -169,15 +229,17 @@ describe("capability client — the single surface", () => {
     expect(client.submitBatch).toBeUndefined();
   });
 
-  it("kanban.extended is a gated surface — loud, never a silent no-op", async () => {
+  it("kanban.extended is a gated surface — result-shaped, never a silent no-op", async () => {
     const withExtended = createCapabilityClient({
       providerKind: "openclaw",
       runtime,
       fallbackSupports: { kanban: true },
       backends: { kanban: fakeKanban(true) },
     });
-    await expect(withExtended.kanban.extended!.claim!("c1", "agent")).resolves.toEqual({
-      id: "c1",
+    await expect(withExtended.kanban.extended.claim("c1", "agent")).resolves.toEqual({
+      ok: true,
+      source: "live",
+      data: { id: "c1" },
     });
 
     const withoutExtended = createCapabilityClient({
@@ -186,12 +248,14 @@ describe("capability client — the single surface", () => {
       fallbackSupports: { kanban: true },
       backends: { kanban: fakeKanban(false) },
     });
-    await expect(
-      withoutExtended.kanban.extended!.claim!("c1", "agent"),
-    ).rejects.toBeInstanceOf(CapabilityUnavailable);
+    const missing = await withoutExtended.kanban.extended.claim("c1", "agent");
+    expect(missing.ok).toBe(false);
+    if (missing.ok) throw new Error("unreachable");
+    expect(missing.gap.reason).toBe("capability-unsupported");
+    expect(missing.gap.note).toContain("backend does not implement extended claim");
   });
 
-  it("teams is a sync surface gated on declared support", () => {
+  it("teams is an async gated surface resolving results", async () => {
     const directory = createTeamDirectory([
       {
         id: "team-1",
@@ -206,7 +270,10 @@ describe("capability client — the single surface", () => {
       fallbackSupports: { teams: true },
       backends: { teams: directory },
     });
-    expect(supported.teams.listTeams()).toHaveLength(1);
+    const listed = await supported.teams.listTeams();
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) throw new Error("unreachable");
+    expect(listed.data).toHaveLength(1);
 
     const unsupported = createCapabilityClient({
       providerKind: "gemini",
@@ -214,18 +281,22 @@ describe("capability client — the single surface", () => {
       fallbackSupports: {},
       backends: { teams: directory },
     });
-    expect(() => unsupported.teams.listTeams()).toThrow(CapabilityUnavailable);
+    const denied = await unsupported.teams.listTeams();
+    expect(denied.ok).toBe(false);
   });
 
-  it("a supported capability without a wired backend fails informatively", async () => {
+  it("teams surface is async and gated without unhandled rejections", async () => {
     const client = createCapabilityClient({
-      providerKind: "hermes",
+      providerKind: "gemini",
       runtime,
-      fallbackSupports: { sessions: true },
+      fallbackSupports: {},
+      resolver: async () => {
+        throw Object.assign(new Error("unauthorized"), { status: 401 });
+      },
     });
-    const failure = await client.sessions.listSessions({}).catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(CapabilityUnavailable);
-    expect((failure as Error).message).toContain("no control-plane backend is wired");
+    // Unsupported + auth-rejecting resolver: auth surfaces as a rejection of
+    // the CALL (the carve-out), not as an unhandled background rejection.
+    await expect(client.teams.listTeams()).rejects.toThrow();
   });
 
   it("media/wiki/agentConfig are first-class gated surfaces", async () => {
@@ -243,13 +314,20 @@ describe("capability client — the single surface", () => {
       },
     });
 
-    await expect(client.media.listMediaProviders()).resolves.toEqual({ providers: [] });
-    await expect(client.wiki.listWikiVaults()).resolves.toEqual({ vaults: [] });
-    // agentConfig is undeclared — the call exists and fails loud despite a
-    // wired backend (support gating comes first).
-    await expect(client.agentConfig.listProfiles()).rejects.toBeInstanceOf(
-      CapabilityUnavailable,
-    );
+    await expect(client.media.listMediaProviders()).resolves.toEqual({
+      ok: true,
+      source: "live",
+      data: { providers: [] },
+    });
+    await expect(client.wiki.listWikiVaults()).resolves.toEqual({
+      ok: true,
+      source: "live",
+      data: { vaults: [] },
+    });
+    // agentConfig is undeclared — the call exists and resolves ok:false despite
+    // a wired backend (support gating comes first).
+    const denied = await client.agentConfig.listProfiles();
+    expect(denied.ok).toBe(false);
     expect(agentConfig.listProfiles).not.toHaveBeenCalled();
   });
 
@@ -267,8 +345,22 @@ describe("capability client — the single surface", () => {
       backends: { media: media as never },
     });
     await expect(client.media.listMediaProviders()).resolves.toEqual({
-      providers: ["tts"],
+      ok: true,
+      source: "live",
+      data: { providers: ["tts"] },
     });
+  });
+
+  it("the facade never throws CapabilityUnavailable", async () => {
+    const client = createCapabilityClient({ providerKind: "codex", runtime, fallbackSupports: {} });
+    const results = await Promise.all([
+      client.kanban.listBoards(),
+      client.media.listMediaProviders(),
+      client.wiki.listWikiVaults(),
+    ]);
+    for (const result of results) {
+      expect(result.ok).toBe(false);
+    }
   });
 
   it("disposes an instantiated control plane exactly once", async () => {
