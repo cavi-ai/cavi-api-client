@@ -1,5 +1,6 @@
 import type { RuntimeClient, RuntimeRunStartBody } from "../core/runtime/client.js";
 import {
+  isNonTerminalStreamError,
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
   type RunEventStreamProvider,
@@ -27,9 +28,20 @@ export type GatewayStreamRunBridge = (
  * (run.failed is an EVENT — the bridge only rejects on validation and
  * transport-level start failures, which the facade classifies into gaps).
  *
- * `onError` is treated as TERMINAL (matching the SSE provider's contract:
- * onError and onComplete are mutually exclusive and either ends the stream), so
- * a mid-stream transport failure rejects the bridge for the facade to classify.
+ * `onError` is treated as TERMINAL by default (matching the SSE provider's
+ * contract: onError and onComplete are mutually exclusive and either ends the
+ * stream), so a mid-stream transport failure rejects the bridge for the facade
+ * to classify. The ONE exception is an error tagged
+ * `markNonTerminalStreamError` (per-frame protocol errors from the
+ * control-plane→run-stream adapter): those are forwarded to `handlers.onError`
+ * for observability but do NOT settle the stream.
+ *
+ * `handlers.onComplete` fires exactly once (a local once-guard) on the FIRST of
+ * a terminal run event or the provider's own onComplete — so handler-driven
+ * consumers always get an end-of-stream signal even when the provider disposes
+ * before emitting its natural onComplete (the Hermes SSE case). onError does
+ * not fire onComplete (they are mutually exclusive).
+ *
  * The bridge has NO internal timeout — a silent contract-violating provider
  * (one that emits neither a terminal event, onComplete, nor onError) hangs
  * until the caller's AbortSignal fires.
@@ -48,7 +60,15 @@ export function createGatewayStreamRun(params: {
 
     await new Promise<void>((resolve, reject) => {
       let settled = false;
+      let completeFired = false;
       let subscription: RunEventStreamSubscription | null = null;
+      // Fire the consumer's onComplete at most once, whether the end-of-stream
+      // arrives as a terminal event or the provider's own onComplete.
+      const fireComplete = (): void => {
+        if (completeFired) return;
+        completeFired = true;
+        handlers.onComplete?.();
+      };
       const finish = (error?: unknown): void => {
         if (settled) return;
         settled = true;
@@ -66,14 +86,20 @@ export function createGatewayStreamRun(params: {
           {
             onEvent: (event) => {
               handlers.onEvent(event);
-              if (TERMINAL_EVENTS.has(event.event)) finish();
+              if (TERMINAL_EVENTS.has(event.event)) {
+                fireComplete();
+                finish();
+              }
             },
             onError: (error) => {
               handlers.onError?.(error);
+              // Per-frame protocol errors are observability-only; only a
+              // terminal error settles (and rejects) the bridge.
+              if (isNonTerminalStreamError(error)) return;
               finish(error ?? new Error("stream transport error"));
             },
             onComplete: () => {
-              handlers.onComplete?.();
+              fireComplete();
               finish();
             },
           },

@@ -139,6 +139,59 @@ describe("createApiClient — the one front door", () => {
     expect(postedRun).toBe(false);
   });
 
+  it("hermes streamRun: SSE 500 with empty body resolves ok:false backend-unavailable (F4)", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST" && url.includes("/runs")) {
+        return new Response(JSON.stringify({ run_id: "run-1", status: "started", object: "hermes.run" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response("", { status: 500 }); // SSE run-events endpoint, empty body
+    });
+    const client = createApiClient("hermes", {
+      baseUrl: "http://gateway.test",
+      token: "secret",
+      fetchImpl: fetchImpl as typeof fetch,
+      resolver: async () => {
+        throw new Error("fetch failed"); // degrade to the static fallback deterministically
+      },
+    });
+    const result = await client.streamRun(
+      { input: "hi", sessionKey: "k" } as never,
+      { onEvent: () => undefined },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+    expect(result.gap.httpStatus).toBe(500);
+  });
+
+  it("hermes streamRun: SSE 401 rejects as an auth error (F4 carve-out)", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST" && url.includes("/runs")) {
+        return new Response(JSON.stringify({ run_id: "run-1", status: "started", object: "hermes.run" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response("", { status: 401 });
+    });
+    const client = createApiClient("hermes", {
+      baseUrl: "http://gateway.test",
+      token: "secret",
+      fetchImpl: fetchImpl as typeof fetch,
+      resolver: async () => {
+        throw new Error("fetch failed");
+      },
+    });
+    await expect(
+      client.streamRun({ input: "hi", sessionKey: "k" } as never, { onEvent: () => undefined }),
+    ).rejects.toBeTruthy();
+  });
+
   it("openclaw streamRun bridges over the control-plane event client", async () => {
     const client = createApiClient("openclaw", {
       baseUrl: "http://gateway.test",

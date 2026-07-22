@@ -1,4 +1,5 @@
 import {
+  markNonTerminalStreamError,
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
   type RunEventStreamProvider,
@@ -140,6 +141,14 @@ export function createControlPlaneRunStreamTranslator(): (
  * other RunEventStreamProvider in this package honors that contract (see
  * core/gateway/run/sse-run-event-provider.ts and event-stream.ts) and
  * consumers (e.g. hermes/chat-run.ts) rely on it to resolve.
+ *
+ * A control-plane event client reports errors PER FRAME (a malformed frame
+ * leaves the subscription alive), so errors forwarded here are tagged
+ * NON-terminal via {@link markNonTerminalStreamError}: the gateway bridge
+ * surfaces them to `onError` for observability without settling the run. True
+ * stream termination comes from a terminal run event, connection loss (raised
+ * by the provider wrapper), or the caller's AbortSignal — never a single bad
+ * frame.
  */
 export function createRunEventStreamFromControlPlane(
   events: RuntimeEventClient,
@@ -164,7 +173,12 @@ export function createRunEventStreamFromControlPlane(
               handlers.onComplete?.();
             }
           },
-          ...(handlers.onError ? { onError: handlers.onError } : {}),
+          ...(handlers.onError
+            ? {
+                onError: (error: unknown) =>
+                  handlers.onError!(markNonTerminalStreamError(error)),
+              }
+            : {}),
         },
       );
       return { dispose: () => subscription.dispose() };

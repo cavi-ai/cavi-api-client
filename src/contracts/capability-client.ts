@@ -81,6 +81,12 @@ export interface CapabilityClient {
   getManifest(): Promise<TeamManifest | null>;
   /** Drop the memoized runtime resolution and resolve again. */
   refreshCapabilities(): Promise<CapabilityMap>;
+  /**
+   * Tear down the client: dispose the control plane and run provider teardown.
+   * In-flight gateway `streamRun` bridges are settled as part of teardown
+   * (their in-flight calls are aborted, so pending `streamRun` promises resolve
+   * rather than hang), then any transport (SSE/WebSocket) is closed.
+   */
   dispose(): Promise<void>;
   // execution — always present, result-shaped (the facade does not extend
   // RuntimeClient; an unsupported/unwired call resolves ok:false, never absent).

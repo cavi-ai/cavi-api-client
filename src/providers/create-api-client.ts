@@ -20,6 +20,7 @@ import {
   requireGatewaySessionKey,
   type GatewayStreamRunBridge,
 } from "./gateway-stream-run.js";
+import { trackStreamRunBridge } from "./stream-run-lifecycle.js";
 import { HermesSseRunEventProvider } from "./hermes/sse-run-event-provider.js";
 import { PROVIDER_CAPABILITIES } from "./capability-declarations.js";
 import { createBuiltInRuntimeProviderRegistry } from "./runtime-provider-registry.js";
@@ -36,8 +37,7 @@ import { createHermesKanbanClient } from "./hermes/kanban.js";
 import { HermesAgentConfigApiClient } from "./hermes/agent-config.js";
 import { createOpenClawCapabilityResolver } from "./openclaw/capability-resolver.js";
 import { createOpenClawRuntimeControlClient } from "./openclaw/control-plane/factory.js";
-import { createOpenClawRuntimeEventClient } from "./openclaw/control-plane/events.js";
-import { createRunEventStreamFromControlPlane } from "../core/runtime/control-plane/run-stream-bridge.js";
+import { createOpenClawRunEventStreamProvider } from "./openclaw/stream-run-provider.js";
 import { createOpenClawKanbanClient } from "./openclaw/kanban.js";
 import { createOpenClawWorkboardRpc } from "./openclaw/workboard.js";
 import { OpenClawWebSocketClient } from "./openclaw/websocket.js";
@@ -148,6 +148,23 @@ function wireHermes(options: CreateApiClientOptions, runtime: RuntimeClient): Au
     auth: { bearerToken: options.token ?? null },
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
   });
+  // Each Hermes streamRun builds a fresh, untracked SSE provider; wrap the
+  // bridge so dispose() can abort in-flight streams and tear their SSE
+  // connections down (F3).
+  const { bridge: streamRunBridge, disposeAll } = trackStreamRunBridge(
+    createGatewayStreamRun({
+      runtime,
+      validate: (body) => void requireGatewaySessionKey(body),
+      createProvider: (body) =>
+        new HermesSseRunEventProvider({
+          httpBase: baseUrl,
+          authToken: options.token ?? null,
+          clientId: options.clientId ?? "cavi-api-client",
+          sessionKey: requireGatewaySessionKey(body),
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+        }),
+    }),
+  );
   return {
     resolver: createHermesCapabilityResolver({
       baseUrl,
@@ -180,18 +197,8 @@ function wireHermes(options: CreateApiClientOptions, runtime: RuntimeClient): Au
         }),
       agentConfig: () => new HermesAgentConfigApiClient(httpClientOptions(options)),
     },
-    streamRunBridge: createGatewayStreamRun({
-      runtime,
-      validate: (body) => void requireGatewaySessionKey(body),
-      createProvider: (body) =>
-        new HermesSseRunEventProvider({
-          httpBase: baseUrl,
-          authToken: options.token ?? null,
-          clientId: options.clientId ?? "cavi-api-client",
-          sessionKey: requireGatewaySessionKey(body),
-          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-        }),
-    }),
+    streamRunBridge,
+    onDispose: async () => disposeAll(),
   };
 }
 
@@ -207,6 +214,25 @@ function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): 
     });
     return socket;
   };
+
+  // Wrap the bridge for dispose teardown (F3). The OpenClaw provider wrapper
+  // also propagates connection loss (F1) and probes for a fast-terminal run
+  // (F5) — see createOpenClawRunEventStreamProvider.
+  const { bridge: streamRunBridge, disposeAll } = trackStreamRunBridge(
+    createGatewayStreamRun({
+      runtime,
+      createProvider: () => {
+        const rpcClient = rpc();
+        return createOpenClawRunEventStreamProvider({
+          rpc: rpcClient,
+          connect: () => rpcClient.connect(),
+          ...(typeof runtime.getRun === "function"
+            ? { getRun: (id: string) => runtime.getRun!(id) }
+            : {}),
+        });
+      },
+    }),
+  );
 
   return {
     resolver: createOpenClawCapabilityResolver(
@@ -238,21 +264,11 @@ function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): 
           }
         : {}),
     },
-    streamRunBridge: createGatewayStreamRun({
-      runtime,
-      createProvider: () => {
-        const events = createRunEventStreamFromControlPlane(
-          createOpenClawRuntimeEventClient(rpc()),
-        );
-        return {
-          subscribe: async (params, handlers) => {
-            await rpc().connect();
-            return events.subscribe(params, handlers);
-          },
-        };
-      },
-    }),
+    streamRunBridge,
     onDispose: async () => {
+      // Settle in-flight bridges first (abort → each resolves and tears down
+      // its subscription) BEFORE the socket closes, so nothing hangs (F1/F3).
+      disposeAll();
       if (socket) await socket.dispose();
     },
   };

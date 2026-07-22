@@ -4,7 +4,11 @@ import {
   requireGatewaySessionKey,
 } from "../../providers/gateway-stream-run.js";
 import { CapabilityCallRejected } from "../../contracts/capability-result.js";
-import { RUN_STREAM_EVENT_NAMES, type RunStreamEvent } from "../../core/runtime/run-stream.js";
+import {
+  markNonTerminalStreamError,
+  RUN_STREAM_EVENT_NAMES,
+  type RunStreamEvent,
+} from "../../core/runtime/run-stream.js";
 import type { RunEventStreamProvider } from "../../core/runtime/run-stream.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 
@@ -89,6 +93,79 @@ describe("createGatewayStreamRun", () => {
     await expect(
       stream({ input: "hi" }, { onEvent: () => undefined }),
     ).rejects.toThrow("stream transport error");
+  });
+
+  it("a marked non-terminal error is forwarded but does NOT settle the bridge (F2)", async () => {
+    const protocolError = markNonTerminalStreamError(new Error("bad frame"));
+    const provider: RunEventStreamProvider = {
+      subscribe: async (_p, handlers) => {
+        queueMicrotask(() => {
+          handlers.onError?.(protocolError); // non-terminal → observed only
+          handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-7" });
+        });
+        return { dispose: () => undefined };
+      },
+    };
+    const onError = vi.fn();
+    const seen: string[] = [];
+    // Resolves (does not reject): the marked error did not settle; the terminal did.
+    await createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider })(
+      { input: "hi" },
+      { onEvent: (e) => seen.push(e.event), onError },
+    );
+    expect(onError).toHaveBeenCalledWith(protocolError);
+    expect(seen).toEqual([RUN_STREAM_EVENT_NAMES.RUN_COMPLETED]);
+  });
+
+  it("fires onComplete once on a terminal event even without a provider onComplete (F6)", async () => {
+    const provider = scriptedProvider([
+      { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-7" },
+    ]);
+    const onComplete = vi.fn();
+    await createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider })(
+      { input: "hi" },
+      { onEvent: () => undefined, onComplete },
+    );
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires onComplete exactly once when the provider's own onComplete is suppressed after dispose (Hermes F6)", async () => {
+    // Models the Hermes SSE provider: its natural-end onComplete is guarded on
+    // !disposed, and finish() disposes it on the terminal event.
+    const provider: RunEventStreamProvider = {
+      subscribe: async (_p, handlers) => {
+        let disposed = false;
+        queueMicrotask(() => {
+          handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-7" });
+          if (!disposed) handlers.onComplete?.();
+        });
+        return { dispose: () => { disposed = true; } };
+      },
+    };
+    const onComplete = vi.fn();
+    await createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider })(
+      { input: "hi" },
+      { onEvent: () => undefined, onComplete },
+    );
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires onComplete exactly once when the provider emits BOTH a terminal event and onComplete (F6)", async () => {
+    const provider: RunEventStreamProvider = {
+      subscribe: async (_p, handlers) => {
+        queueMicrotask(() => {
+          handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-7" });
+          handlers.onComplete?.();
+        });
+        return { dispose: () => undefined };
+      },
+    };
+    const onComplete = vi.fn();
+    await createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider })(
+      { input: "hi" },
+      { onEvent: () => undefined, onComplete },
+    );
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it("onComplete settles even without a terminal event", async () => {

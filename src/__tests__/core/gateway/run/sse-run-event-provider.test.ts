@@ -75,3 +75,62 @@ describe("GatewaySseRunEventProvider — usage normalization (F6)", () => {
     ]);
   });
 });
+
+describe("GatewaySseRunEventProvider — HTTP failure carries status (F4)", () => {
+  it("attaches the numeric HTTP status to a failed SSE-request error", async () => {
+    const fetchImpl = vi.fn(async () => new Response("", { status: 503 }));
+    const provider = new GatewaySseRunEventProvider({
+      httpBase: "https://gateway.example",
+      authToken: "token",
+      clientId: "client-1",
+      fallbackToPoll: false,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const error = await new Promise<unknown>((resolve) => {
+      void provider.subscribe(
+        { runId: "run_1" },
+        { onEvent: () => undefined, onError: resolve },
+      );
+    });
+    expect(error).toBeInstanceOf(Error);
+    expect((error as { status?: number }).status).toBe(503);
+  });
+
+  it("attaches the numeric HTTP status to a poll-fallback failure error", async () => {
+    const fetchImpl = vi.fn(async (url: unknown) => {
+      if (String(url).endsWith("/events")) return new Response("gone", { status: 404 });
+      return new Response("boom", { status: 500 });
+    });
+    const provider = new GatewaySseRunEventProvider({
+      httpBase: "https://gateway.example",
+      authToken: "token",
+      clientId: "client-1",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const error = await new Promise<unknown>((resolve) => {
+      void provider.subscribe(
+        { runId: "run_2" },
+        { onEvent: () => undefined, onError: resolve },
+      );
+    });
+    expect((error as { status?: number }).status).toBe(500);
+  });
+
+  it("preserves a 401 status so the facade classifier can rethrow it as auth (F4)", async () => {
+    const fetchImpl = vi.fn(async () => new Response("", { status: 401 }));
+    const provider = new GatewaySseRunEventProvider({
+      httpBase: "https://gateway.example",
+      authToken: "token",
+      clientId: "client-1",
+      fallbackToPoll: false,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const error = await new Promise<unknown>((resolve) => {
+      void provider.subscribe(
+        { runId: "run_3" },
+        { onEvent: () => undefined, onError: resolve },
+      );
+    });
+    expect((error as { status?: number }).status).toBe(401);
+  });
+});
