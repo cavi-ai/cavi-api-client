@@ -35,7 +35,10 @@ const HERMES_ENVELOPE = {
 describe("createApiClient — the one front door", () => {
   it("returns the full surface for a runtime-only provider; unsupported is notated", async () => {
     const client = createApiClient("gemini", { registry: geminiRegistry });
-    await expect(client.startRun({} as never)).resolves.toMatchObject({ id: "run-9" });
+    await expect(client.startRun({} as never)).resolves.toMatchObject({
+      ok: true,
+      data: { id: "run-9" },
+    });
 
     const result = await client.kanban.listBoards();
     expect(result.ok).toBe(false);

@@ -1,5 +1,13 @@
 import { isAuthError } from "../core/errors.js";
-import type { RuntimeClient } from "../core/runtime/client.js";
+import type {
+  RuntimeClient,
+  RuntimeRunStartBody,
+  RuntimeRunStatus,
+  RuntimeBatchRequest,
+  RuntimeBatchStatus,
+  RuntimeBatchResult,
+} from "../core/runtime/client.js";
+import type { RunEventStreamHandlers } from "../core/runtime/run-stream.js";
 import type { RuntimeControlClient } from "../core/runtime/control-plane/runtime-control-client.js";
 import type { RuntimeEventClient } from "../core/runtime/control-plane/events.js";
 import type {
@@ -65,7 +73,7 @@ export type CapabilityGated<T> = {
  * decided by the runtime-resolved capabilities merged over the static fallback
  * (design decision M1).
  */
-export interface CapabilityClient extends RuntimeClient {
+export interface CapabilityClient {
   readonly providerKind: string;
   /** Merged (runtime over static) capability profile. */
   getCapabilityMap(): Promise<CapabilityMap>;
@@ -74,6 +82,20 @@ export interface CapabilityClient extends RuntimeClient {
   /** Drop the memoized runtime resolution and resolve again. */
   refreshCapabilities(): Promise<CapabilityMap>;
   dispose(): Promise<void>;
+  // execution — always present, result-shaped (the facade does not extend
+  // RuntimeClient; an unsupported/unwired call resolves ok:false, never absent).
+  startRun(body: RuntimeRunStartBody): Promise<CapabilityResult<RuntimeRunStatus>>;
+  getRun(runId: string): Promise<CapabilityResult<RuntimeRunStatus>>;
+  cancelRun(runId: string): Promise<CapabilityResult<{ status: string }>>;
+  streamRun(
+    body: RuntimeRunStartBody,
+    handlers: RunEventStreamHandlers,
+    options?: { signal?: AbortSignal },
+  ): Promise<CapabilityResult<void>>;
+  submitBatch(requests: RuntimeBatchRequest[]): Promise<CapabilityResult<RuntimeBatchStatus>>;
+  getBatch(batchId: string): Promise<CapabilityResult<RuntimeBatchStatus>>;
+  cancelBatch(batchId: string): Promise<CapabilityResult<RuntimeBatchStatus>>;
+  getBatchResults(batchId: string): Promise<CapabilityResult<RuntimeBatchResult[]>>;
   // lifecycle
   readonly sessions: CapabilityGated<SessionClient>;
   readonly tasks: CapabilityGated<TaskClient>;
@@ -114,6 +136,16 @@ export type CreateCapabilityClientOptions = {
   backends?: CapabilityClientBackends;
   /** Which providers serve a capability — enriches the notated gap. */
   availableOn?: (key: CapabilityKey) => readonly string[];
+  /**
+   * Gateway streaming transport: start the run and pump canonical run-stream
+   * events into the handlers. Used when the runtime client itself has no
+   * `streamRun` (gateways). Wired by `createApiClient`.
+   */
+  streamRunBridge?: (
+    body: RuntimeRunStartBody,
+    handlers: RunEventStreamHandlers,
+    options?: { signal?: AbortSignal },
+  ) => Promise<void>;
   /** Extra teardown run by dispose() after the control plane is disposed. */
   onDispose?: () => Promise<void> | void;
 };
@@ -274,14 +306,16 @@ export function createCapabilityClient(
               );
             }
             let plane: RuntimeControlClient;
+            const pending = (controlPlanePromise ??= Promise.resolve(resolveLazy(backend)));
             try {
-              controlPlanePromise ??= Promise.resolve(resolveLazy(backend));
-              plane = await controlPlanePromise;
+              plane = await pending;
             } catch (error) {
               // A rejected lazy factory must degrade to a gap, not reject the
-              // call — and must not poison the memo forever. Reset it so a
-              // later call retries; classify (auth/unknown still rethrow).
-              controlPlanePromise = null;
+              // call — and must not poison the memo forever. Reset it so a later
+              // call retries (only if it still points at the promise we awaited,
+              // so a newer in-flight resolution isn't nulled); classify
+              // (auth/unknown still rethrow).
+              if (controlPlanePromise === pending) controlPlanePromise = null;
               return gapResult(
                 classifyCapabilityFailure({
                   error,
@@ -329,12 +363,13 @@ export function createCapabilityClient(
           );
         }
         let client: KanbanClient;
+        const pending = (kanbanPromise ??= Promise.resolve(resolveLazy(backend)));
         try {
-          kanbanPromise ??= Promise.resolve(resolveLazy(backend));
-          client = await kanbanPromise;
+          client = await pending;
         } catch (error) {
-          // De-poison the memo on a rejected factory, then classify.
-          kanbanPromise = null;
+          // De-poison the memo on a rejected factory (only if it still points at
+          // the promise we awaited), then classify.
+          if (kanbanPromise === pending) kanbanPromise = null;
           return gapResult(
             classifyCapabilityFailure({
               error,
@@ -413,12 +448,13 @@ export function createCapabilityClient(
               );
             }
             let impl: T;
+            const pending = (backendPromise ??= Promise.resolve(resolveLazy(backend)));
             try {
-              backendPromise ??= Promise.resolve(resolveLazy(backend));
-              impl = await backendPromise;
+              impl = await pending;
             } catch (error) {
-              // De-poison the memo on a rejected factory, then classify.
-              backendPromise = null;
+              // De-poison the memo on a rejected factory (only if it still points
+              // at the promise we awaited), then classify.
+              if (backendPromise === pending) backendPromise = null;
               return gapResult(
                 classifyCapabilityFailure({
                   error,
@@ -445,6 +481,41 @@ export function createCapabilityClient(
   }
 
   const runtime = options.runtime;
+
+  /**
+   * Shared executor for the always-present execution surface. Gates on the
+   * capability first (an unsupported call resolves its notated gap), then
+   * reports a supported-but-unimplemented method as a `capability-unsupported`
+   * gap, and finally invokes — classifying any throw (auth/unknown still
+   * rethrow per the carve-outs). The `run` thunk invokes through `runtime.`
+   * directly, so no `this`-binding is lost.
+   */
+  async function execute<T>(
+    key: CapabilityKey,
+    call: string,
+    run: (() => Promise<T>) | undefined,
+  ): Promise<CapabilityResult<T>> {
+    const gap = await gapFor(key, call);
+    if (gap) return gapResult(gap);
+    if (!run) {
+      return gapResult(
+        unsupportedGap(
+          options,
+          key,
+          call,
+          `runtime client for "${options.providerKind}" does not implement ${call}`,
+        ),
+      );
+    }
+    try {
+      return liveResult(await run());
+    } catch (error) {
+      return gapResult(
+        classifyCapabilityFailure({ error, area: `capability:${key}`, expectedContract: call, call }),
+      );
+    }
+  }
+
   const controlPlaneSurfaces = Object.fromEntries(
     CONTROL_PLANE_CAPABILITIES.map((key) => [key, gatedControlPlane(key)]),
   ) as Pick<CapabilityClient, ControlPlaneCapability>;
@@ -482,18 +553,54 @@ export function createCapabilityClient(
       await options.onDispose?.();
     },
 
-    // Universal execution surface — delegated, never gated behind a proxy.
-    getRuntimeCapabilities: () => runtime.getRuntimeCapabilities(),
-    startRun: (body) => runtime.startRun(body),
-    ...(runtime.getRun ? { getRun: runtime.getRun.bind(runtime) } : {}),
-    ...(runtime.cancelRun ? { cancelRun: runtime.cancelRun.bind(runtime) } : {}),
-    ...(runtime.streamRun ? { streamRun: runtime.streamRun.bind(runtime) } : {}),
-    ...(runtime.submitBatch ? { submitBatch: runtime.submitBatch.bind(runtime) } : {}),
-    ...(runtime.getBatch ? { getBatch: runtime.getBatch.bind(runtime) } : {}),
-    ...(runtime.cancelBatch ? { cancelBatch: runtime.cancelBatch.bind(runtime) } : {}),
-    ...(runtime.getBatchResults
-      ? { getBatchResults: runtime.getBatchResults.bind(runtime) }
-      : {}),
+    // Universal execution surface — always present and result-shaped. Support
+    // gating comes first; a supported-but-unimplemented method resolves a gap;
+    // `getRuntimeCapabilities` is intentionally gone (the facade's vocabulary is
+    // `getCapabilityMap()`).
+    startRun: (body) => execute("runs", "client.startRun()", () => runtime.startRun(body)),
+    getRun: (runId) =>
+      execute("runs", "client.getRun()", runtime.getRun ? () => runtime.getRun!(runId) : undefined),
+    cancelRun: (runId) =>
+      execute(
+        "runs",
+        "client.cancelRun()",
+        runtime.cancelRun ? () => runtime.cancelRun!(runId) : undefined,
+      ),
+    streamRun: (body, handlers, streamOptions) => {
+      const stream = runtime.streamRun
+        ? (b: RuntimeRunStartBody, h: RunEventStreamHandlers, o?: { signal?: AbortSignal }) =>
+            runtime.streamRun!(b, h, o)
+        : options.streamRunBridge;
+      return execute(
+        "streaming",
+        "client.streamRun()",
+        stream ? () => stream(body, handlers, streamOptions) : undefined,
+      );
+    },
+    submitBatch: (requests) =>
+      execute(
+        "batch",
+        "client.submitBatch()",
+        runtime.submitBatch ? () => runtime.submitBatch!(requests) : undefined,
+      ),
+    getBatch: (batchId) =>
+      execute(
+        "batch",
+        "client.getBatch()",
+        runtime.getBatch ? () => runtime.getBatch!(batchId) : undefined,
+      ),
+    cancelBatch: (batchId) =>
+      execute(
+        "batch",
+        "client.cancelBatch()",
+        runtime.cancelBatch ? () => runtime.cancelBatch!(batchId) : undefined,
+      ),
+    getBatchResults: (batchId) =>
+      execute(
+        "batch",
+        "client.getBatchResults()",
+        runtime.getBatchResults ? () => runtime.getBatchResults!(batchId) : undefined,
+      ),
 
     ...controlPlaneSurfaces,
     kanban: gatedKanban(),

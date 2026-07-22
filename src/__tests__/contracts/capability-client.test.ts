@@ -10,7 +10,7 @@ import { normalizeTeamManifest } from "../../contracts/team-manifest.js";
 
 const runtime: RuntimeClient = {
   getRuntimeCapabilities: async () => ({ providerKind: "test", supports: { runs: true } }),
-  startRun: async () => ({ id: "run-1", status: "queued" }) as never,
+  startRun: async () => ({ run_id: "run-1", status: "started" }),
 };
 
 function fakeControlPlane(): RuntimeControlClient {
@@ -216,17 +216,21 @@ describe("capability client — non-throwing single surface", () => {
     await expect(client.getManifest()).resolves.toBe(manifest);
   });
 
-  it("passes the universal execution surface through untouched", async () => {
+  it("exposes the execution surface as always-present, result-shaped methods", async () => {
     const client = createCapabilityClient({
       providerKind: "claude",
       runtime,
       fallbackSupports: { runs: true },
     });
-    await expect(client.startRun({} as never)).resolves.toMatchObject({ id: "run-1" });
-    // Optional methods absent on the runtime stay absent — capability
-    // detection for the execution surface keeps RuntimeClient semantics.
-    expect(client.getRun).toBeUndefined();
-    expect(client.submitBatch).toBeUndefined();
+    await expect(client.startRun({ input: "hi" })).resolves.toEqual({
+      ok: true,
+      source: "live",
+      data: { run_id: "run-1", status: "started" },
+    });
+    // Optional runtime methods stay present as result-shaped facade methods —
+    // they resolve ok:false instead of vanishing.
+    expect(typeof client.getRun).toBe("function");
+    expect(typeof client.submitBatch).toBe("function");
   });
 
   it("kanban.extended is a gated surface — result-shaped, never a silent no-op", async () => {
@@ -454,5 +458,108 @@ describe("capability client — non-throwing single surface", () => {
     await client.sessions.listSessions({});
     await client.dispose();
     expect(plane.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("auth failure from a backend factory propagates (auth carve-out through the factory path)", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: {
+        controlPlane: async () => {
+          throw Object.assign(new Error("unauthorized"), { status: 401 });
+        },
+      },
+    });
+    await expect(client.sessions.listSessions({})).rejects.toThrow();
+  });
+
+  it("a rejecting direct backend factory degrades to a backend-unavailable gap", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { media: true },
+      backends: {
+        media: async () => {
+          throw Object.assign(new Error("socket down"), { status: 503 });
+        },
+      },
+    });
+    const result = await client.media.listMediaProviders();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+  });
+});
+
+describe("capability client — unified execution surface", () => {
+  it("startRun wraps the runtime result; failures classify", async () => {
+    const client = createCapabilityClient({
+      providerKind: "codex",
+      runtime,
+      fallbackSupports: { runs: true },
+    });
+    const started = await client.startRun({ input: "hi" });
+    expect(started.ok).toBe(true);
+
+    const failing = createCapabilityClient({
+      providerKind: "codex",
+      runtime: {
+        ...runtime,
+        startRun: async () => {
+          throw Object.assign(new Error("model not found"), { status: 400 });
+        },
+      },
+      fallbackSupports: { runs: true },
+    });
+    const rejected = await failing.startRun({ input: "hi" });
+    expect(rejected.ok).toBe(false);
+    if (rejected.ok) throw new Error("unreachable");
+    expect(rejected.gap.reason).toBe("request-invalid");
+  });
+
+  it("batch methods always exist; undeclared batch resolves ok:false", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime, // fake has no submitBatch
+      fallbackSupports: { runs: true },
+    });
+    const result = await client.submitBatch([]);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("capability-unsupported");
+  });
+
+  it("declared capability with no runtime method resolves ok:false, never rejects", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime, // fake has no getRun
+      fallbackSupports: { runs: true },
+    });
+    const result = await client.getRun("r-1");
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.note).toContain("does not implement");
+  });
+
+  it("streamRun: unsupported resolves ok:false before starting; bridge is used when the runtime cannot stream", async () => {
+    const unsupported = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { runs: true }, // no streaming
+    });
+    const gated = await unsupported.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(gated.ok).toBe(false);
+
+    const bridge = vi.fn(async () => undefined);
+    const bridged = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { runs: true, streaming: true },
+      streamRunBridge: bridge,
+    });
+    const streamed = await bridged.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(streamed).toEqual({ ok: true, data: undefined, source: "live" });
+    expect(bridge).toHaveBeenCalledTimes(1);
   });
 });
