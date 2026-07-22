@@ -70,7 +70,7 @@ export function createGatewayStreamRun(params: {
             },
             onError: (error) => {
               handlers.onError?.(error);
-              finish(error);
+              finish(error ?? new Error("stream transport error"));
             },
             onComplete: () => {
               handlers.onComplete?.();

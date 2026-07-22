@@ -36,6 +36,8 @@ import { createHermesKanbanClient } from "./hermes/kanban.js";
 import { HermesAgentConfigApiClient } from "./hermes/agent-config.js";
 import { createOpenClawCapabilityResolver } from "./openclaw/capability-resolver.js";
 import { createOpenClawRuntimeControlClient } from "./openclaw/control-plane/factory.js";
+import { createOpenClawRuntimeEventClient } from "./openclaw/control-plane/events.js";
+import { createRunEventStreamFromControlPlane } from "../core/runtime/control-plane/run-stream-bridge.js";
 import { createOpenClawKanbanClient } from "./openclaw/kanban.js";
 import { createOpenClawWorkboardRpc } from "./openclaw/workboard.js";
 import { OpenClawWebSocketClient } from "./openclaw/websocket.js";
@@ -170,7 +172,7 @@ function wireHermes(options: CreateApiClientOptions, runtime: RuntimeClient): Au
   };
 }
 
-function wireOpenClaw(options: CreateApiClientOptions, _runtime: RuntimeClient): AutoWiring {
+function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): AutoWiring {
   const wsUrl =
     options.webSocketUrl ?? (options.baseUrl ? deriveWebSocketUrl(options.baseUrl) : null);
   if (!wsUrl) return { backends: {} };
@@ -213,6 +215,20 @@ function wireOpenClaw(options: CreateApiClientOptions, _runtime: RuntimeClient):
           }
         : {}),
     },
+    streamRunBridge: createGatewayStreamRun({
+      runtime,
+      createProvider: () => {
+        const events = createRunEventStreamFromControlPlane(
+          createOpenClawRuntimeEventClient(rpc()),
+        );
+        return {
+          subscribe: async (params, handlers) => {
+            await rpc().connect();
+            return events.subscribe(params, handlers);
+          },
+        };
+      },
+    }),
     onDispose: async () => {
       if (socket) await socket.dispose();
     },

@@ -138,4 +138,25 @@ describe("createApiClient — the one front door", () => {
       String(url).includes("/runs") && (init as RequestInit | undefined)?.method === "POST");
     expect(postedRun).toBe(false);
   });
+
+  it("openclaw streamRun bridges over the control-plane event client", async () => {
+    const client = createApiClient("openclaw", {
+      baseUrl: "http://gateway.test",
+      fetchImpl: (async () => {
+        throw new TypeError("fetch failed");
+      }) as never,
+      resolver: async () => {
+        throw new Error("fetch failed"); // degrade to static fallback deterministically
+      },
+    });
+    expect(typeof client.streamRun).toBe("function");
+    // The WS is unreachable in tests: the bridge's startRun/subscribe fails as
+    // transport, which the facade classifies — resolves ok:false, never rejects.
+    const result = await client.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    // the bridge was wired and reached (NOT a "does not implement" gap)
+    expect(result.gap.note).not.toContain("does not implement");
+    await client.dispose();
+  });
 });

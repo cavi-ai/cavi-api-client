@@ -78,6 +78,19 @@ describe("createGatewayStreamRun", () => {
     expect(onError).toHaveBeenCalledWith(torn);
   });
 
+  it("onError(undefined) still rejects the bridge (contract-violating provider)", async () => {
+    const provider: RunEventStreamProvider = {
+      subscribe: async (_p, handlers) => {
+        queueMicrotask(() => handlers.onError?.(undefined));
+        return { dispose: () => undefined };
+      },
+    };
+    const stream = createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider });
+    await expect(
+      stream({ input: "hi" }, { onEvent: () => undefined }),
+    ).rejects.toThrow("stream transport error");
+  });
+
   it("onComplete settles even without a terminal event", async () => {
     const provider: RunEventStreamProvider = {
       subscribe: async (_p, handlers) => {
