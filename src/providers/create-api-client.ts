@@ -67,9 +67,11 @@ import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
  * Gemini, Claude Managed Agents) stream directly through their `RuntimeClient`;
  * gateway providers (Hermes, OpenClaw) have no native `streamRun` and are
  * bridged over their event transport instead — Hermes over SSE run events
- * (the run body must carry a `sessionKey`; without one the call resolves
- * `ok:false` with a `request-invalid` gap and no run is started), OpenClaw
- * over control-plane WebSocket event frames.
+ * (the run body must carry a `sessionKey` — pass it on the exported
+ * `StreamRunBody` type, which is `RuntimeRunStartBody` plus the optional
+ * gateway session fields; without one the call resolves `ok:false` with a
+ * `request-invalid` gap and no run is started), OpenClaw over control-plane
+ * WebSocket event frames.
  *
  * Gateway providers (`hermes`, `openclaw`) get their capability resolver and
  * backends auto-wired from `baseUrl`/`webSocketUrl`; runtime-only providers

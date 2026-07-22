@@ -193,6 +193,43 @@ describe("createGatewayStreamRun", () => {
     expect(provider.disposed).toBe(true);
   });
 
+  it("mid-stream abort settles the bridge and disposes via the addEventListener path (F13)", async () => {
+    // Unlike the pre-aborted case above, here the subscription is fully attached
+    // and a first event has flowed BEFORE the abort — so it exercises the
+    // `signal.addEventListener('abort', …)` handler, not the pre-aborted branch.
+    let emit: ((event: RunStreamEvent) => void) | null = null;
+    const provider = {
+      disposed: false,
+      async subscribe(_params: unknown, handlers: { onEvent: (e: RunStreamEvent) => void }) {
+        emit = handlers.onEvent;
+        return {
+          dispose: () => {
+            provider.disposed = true;
+          },
+        };
+      },
+    } as RunEventStreamProvider & { disposed: boolean };
+    const controller = new AbortController();
+    const stream = createGatewayStreamRun({
+      runtime: fakeRuntime(),
+      createProvider: () => provider,
+    });
+    const seen: string[] = [];
+    const pending = stream(
+      { input: "hi" },
+      { onEvent: (e) => seen.push(e.event) },
+      { signal: controller.signal },
+    );
+    // Flush microtasks so startRun resolves, subscribe attaches, and the abort
+    // listener is wired.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    emit?.({ event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "run-7", delta: "hi" });
+    controller.abort();
+    await expect(pending).resolves.toBeUndefined();
+    expect(seen).toEqual([RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA]);
+    expect(provider.disposed).toBe(true);
+  });
+
   it("propagates startRun failures as rejections (facade classifies them)", async () => {
     const runtime = fakeRuntime();
     (runtime.startRun as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("fetch failed"));

@@ -62,6 +62,20 @@ export type CapabilityGated<T> = {
 };
 
 /**
+ * The body accepted by the facade's `streamRun`: the universal
+ * {@link RuntimeRunStartBody} plus the OPTIONAL gateway session-selection
+ * fields. Gateway providers (Hermes) bind the stream to a session via one of
+ * these; runtime-only providers ignore them. Exposing them here is what lets
+ * `client.streamRun({ input, sessionKey })` typecheck at the call site instead
+ * of failing `TS2353` on an excess property.
+ */
+export type StreamRunBody = RuntimeRunStartBody & {
+  sessionKey?: string;
+  session_key?: string;
+  session_id?: string;
+};
+
+/**
  * The single client surface (the redesign's core invariant): every capability
  * accessor exists on every provider. Gated surfaces never throw and never go
  * missing — an unsupported or failed call resolves `ok: false` with a
@@ -96,7 +110,7 @@ export interface CapabilityClient {
   getRun(runId: string): Promise<CapabilityResult<RuntimeRunStatus>>;
   cancelRun(runId: string): Promise<CapabilityResult<{ status: string }>>;
   streamRun(
-    body: RuntimeRunStartBody,
+    body: StreamRunBody,
     handlers: RunEventStreamHandlers,
     options?: { signal?: AbortSignal },
   ): Promise<CapabilityResult<void>>;
@@ -150,7 +164,7 @@ export type CreateCapabilityClientOptions = {
    * `streamRun` (gateways). Wired by `createApiClient`.
    */
   streamRunBridge?: (
-    body: RuntimeRunStartBody,
+    body: StreamRunBody,
     handlers: RunEventStreamHandlers,
     options?: { signal?: AbortSignal },
   ) => Promise<void>;
@@ -596,7 +610,7 @@ export function createCapabilityClient(
       ),
     streamRun: (body, handlers, streamOptions) => {
       const stream = runtime.streamRun
-        ? (b: RuntimeRunStartBody, h: RunEventStreamHandlers, o?: { signal?: AbortSignal }) =>
+        ? (b: StreamRunBody, h: RunEventStreamHandlers, o?: { signal?: AbortSignal }) =>
             runtime.streamRun!(b, h, o)
         : options.streamRunBridge;
       return execute(

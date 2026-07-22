@@ -186,6 +186,7 @@ export {
   type CapabilityGated,
   type CapabilityGatedMethod,
   type CreateCapabilityClientOptions,
+  type StreamRunBody,
 } from "./contracts/capability-client.js";
 export {
   createApiClient,

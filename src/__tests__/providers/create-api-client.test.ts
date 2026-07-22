@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "../../providers/create-api-client.js";
 import { createRuntimeProviderRegistry } from "../../core/runtime/providers/registry.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
+import {
+  RUN_STREAM_EVENT_NAMES,
+  type RunStreamEvent,
+} from "../../core/runtime/run-stream.js";
 
 const fakeRuntime: RuntimeClient = {
   getRuntimeCapabilities: async () => ({
@@ -192,6 +196,67 @@ describe("createApiClient — the one front door", () => {
     ).rejects.toBeTruthy();
   });
 
+  it("hermes streamRun happy path: streams SSE deltas + terminal and sends the session-key header (F12)", async () => {
+    const sseBody = [
+      { event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, run_id: "run-1", delta: "he" },
+      { event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, run_id: "run-1", delta: "llo" },
+      { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, run_id: "run-1", output: "hello" },
+    ]
+      .map((payload) => `data: ${JSON.stringify(payload)}\n\n`)
+      .join("");
+
+    let eventsHeaders: Record<string, string> | undefined;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST" && url.includes("/runs")) {
+        return new Response(
+          JSON.stringify({ run_id: "run-1", status: "started", object: "hermes.run" }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/events")) {
+        eventsHeaders = init?.headers as Record<string, string>;
+        return new Response(sseBody, {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" },
+        });
+      }
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    const client = createApiClient("hermes", {
+      baseUrl: "http://gateway.test",
+      token: "secret",
+      fetchImpl: fetchImpl as typeof fetch,
+      resolver: async () => {
+        throw new Error("fetch failed"); // degrade to the static fallback (streaming: true)
+      },
+    });
+
+    const seen: RunStreamEvent[] = [];
+    // No `as never` cast: the body literal with `sessionKey` typechecks via
+    // StreamRunBody (F7).
+    const result = await client.streamRun(
+      { input: "hi", sessionKey: "sess-9" },
+      { onEvent: (event) => seen.push(event) },
+    );
+
+    expect(result).toEqual({ ok: true, data: undefined, source: "live" });
+    expect(seen.map((event) => event.event)).toEqual([
+      RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+      RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+      RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+    ]);
+    // Pins the wiring: the SSE request carried the session-key header derived
+    // from the run body's `sessionKey`.
+    expect(eventsHeaders?.["X-Hermes-Session-Key"]).toBe("sess-9");
+  });
+
+  // F12(b) — OpenClaw's wired streamRun path is exercised by the test below
+  // (bridge reached, classified without a WS server) and, at the provider level,
+  // by src/__tests__/providers/openclaw/stream-run-provider.test.ts (the R9a
+  // createOpenClawRunEventStreamProvider extraction). Driving a full WS handshake
+  // here would require standing up a socket server, which these tests avoid.
   it("openclaw streamRun bridges over the control-plane event client", async () => {
     const client = createApiClient("openclaw", {
       baseUrl: "http://gateway.test",

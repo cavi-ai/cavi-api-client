@@ -6,6 +6,7 @@ import {
   liveResult,
 } from "../../contracts/capability-result.js";
 import { GatewayHttpError } from "../../core/http/gateway-error.js";
+import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 
 const params = {
   area: "capability:kanban",
@@ -71,6 +72,51 @@ describe("classifyCapabilityFailure", () => {
     expect(() =>
       classifyCapabilityFailure({ ...params, error: new Error("totally novel condition") }),
     ).toThrow("totally novel condition");
+  });
+
+  it("maps a statusless ApiClientError(ValidationFailed) to request-invalid (F9)", () => {
+    const gap = classifyCapabilityFailure({
+      ...params,
+      error: new ApiClientError('team directory: unknown team "nope"', {
+        code: ApiClientErrorCode.ValidationFailed,
+      }),
+    });
+    expect(gap.reason).toBe("request-invalid");
+    expect(gap.note).toContain("unknown team");
+  });
+
+  it("maps a statusless ApiClientError(InvalidRequest) to request-invalid (F9)", () => {
+    const gap = classifyCapabilityFailure({
+      ...params,
+      error: new ApiClientError("bad request shape", {
+        code: ApiClientErrorCode.InvalidRequest,
+      }),
+    });
+    expect(gap.reason).toBe("request-invalid");
+  });
+
+  it("maps a statusless ApiClientError(EndpointNotFound) to endpoint-not-found (F9)", () => {
+    const gap = classifyCapabilityFailure({
+      ...params,
+      error: new ApiClientError("surface unavailable", {
+        code: ApiClientErrorCode.EndpointNotFound,
+      }),
+    });
+    expect(gap.reason).toBe("endpoint-not-found");
+  });
+
+  it("still rethrows a statusless ApiClientError with a non-caller code (F9)", () => {
+    // A code outside the caller-input set is NOT mapped by the new block: it
+    // falls through to classifyFallbackError, and a novel message classifies as
+    // `unknown`, keeping the rethrow carve-out (not a request-invalid gap).
+    expect(() =>
+      classifyCapabilityFailure({
+        ...params,
+        error: new ApiClientError("novel condition xyz", {
+          code: ApiClientErrorCode.Conflict,
+        }),
+      }),
+    ).toThrow("novel condition xyz");
   });
 
   it("maps GatewayHttpError 429 to request-invalid (diverges from classifyFallbackError)", () => {

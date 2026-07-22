@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createCapabilityClient } from "../../contracts/capability-client.js";
+import {
+  createCapabilityClient,
+  type StreamRunBody,
+} from "../../contracts/capability-client.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { createTeamDirectory } from "../../core/teams/directory.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
@@ -490,6 +493,134 @@ describe("capability client — non-throwing single surface", () => {
     if (result.ok) throw new Error("unreachable");
     expect(result.gap.reason).toBe("backend-unavailable");
   });
+
+  it("streamRun accepts a gateway sessionKey on the body literal (F7 compile + wiring)", async () => {
+    let captured: StreamRunBody | undefined;
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { runs: true, streaming: true },
+      streamRunBridge: async (body) => {
+        captured = body;
+      },
+    });
+    // The object literal carries `sessionKey` alongside `input` — this must
+    // typecheck at the call site (was TS2353 before StreamRunBody).
+    const streamed = await client.streamRun(
+      { input: "hi", sessionKey: "sess-1" },
+      { onEvent: () => undefined },
+    );
+    expect(streamed).toEqual({ ok: true, data: undefined, source: "live" });
+    expect(captured?.sessionKey).toBe("sess-1");
+  });
+
+  it("teams.requireTeam on an unknown id resolves ok:false request-invalid, not a rejection (F9)", async () => {
+    const directory = createTeamDirectory([
+      {
+        id: "team-1",
+        identity: { name: "Team One", slug: "team-one", code: "t1", aliases: [] },
+        members: [],
+        capabilities: [],
+      } as never,
+    ]);
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { teams: true },
+      backends: { teams: directory },
+    });
+    // requireTeam throws a statusless ApiClientError(ValidationFailed) — the
+    // facade classifies it as request-invalid instead of rethrowing it.
+    const result = await client.teams.requireTeam("nope");
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-invalid");
+  });
+
+  it("a gated backend method that rejects 401 propagates as a rejection (F11 auth carve-out at invoke site)", async () => {
+    const plane = fakeControlPlane();
+    (plane.sessions.listSessions as ReturnType<typeof vi.fn>).mockRejectedValue(
+      Object.assign(new Error("unauthorized"), { status: 401 }),
+    );
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: { controlPlane: plane },
+    });
+    await expect(client.sessions.listSessions({})).rejects.toThrow();
+  });
+
+  it("a gated backend method that rejects unknown propagates as a rejection (F11 unknown carve-out at invoke site)", async () => {
+    const plane = fakeControlPlane();
+    (plane.sessions.listSessions as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("totally novel condition"),
+    );
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { sessions: true },
+      backends: { controlPlane: plane },
+    });
+    await expect(client.sessions.listSessions({})).rejects.toThrow(
+      "totally novel condition",
+    );
+  });
+
+  it("refreshCapabilities() resets the memo and re-resolves (F16)", async () => {
+    let call = 0;
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: {},
+      resolver: async () => {
+        call += 1;
+        return call === 1
+          ? {
+              providerKind: "openclaw",
+              supports: { kanban: true },
+              manifest: normalizeTeamManifest(null),
+            }
+          : {
+              providerKind: "openclaw",
+              supports: { media: true },
+              manifest: normalizeTeamManifest(null),
+            };
+      },
+    });
+    const first = await client.getCapabilityMap();
+    expect(first.supports).toEqual({ kanban: true });
+    // Memoized — a second read must not re-resolve.
+    await client.getCapabilityMap();
+    expect(call).toBe(1);
+    const refreshed = await client.refreshCapabilities();
+    expect(refreshed.supports).toEqual({ media: true });
+    expect(call).toBe(2);
+  });
+
+  it("refreshCapabilities() recovers from a first-call transport failure (F16)", async () => {
+    let call = 0;
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { kanban: false },
+      resolver: async () => {
+        call += 1;
+        if (call === 1) throw new Error("socket closed");
+        return {
+          providerKind: "openclaw",
+          supports: { kanban: true },
+          manifest: normalizeTeamManifest(null),
+        };
+      },
+    });
+    // First resolution failed (transport) → degrade to the static fallback.
+    const degraded = await client.getCapabilityMap();
+    expect(degraded.supports).toEqual({ kanban: false });
+    // Refresh re-resolves; capabilities flip from fallback to resolved.
+    const recovered = await client.refreshCapabilities();
+    expect(recovered.supports).toEqual({ kanban: true });
+  });
 });
 
 describe("capability client — unified execution surface", () => {
@@ -528,6 +659,44 @@ describe("capability client — unified execution surface", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
     expect(result.gap.reason).toBe("capability-unsupported");
+  });
+
+  it("gates the execution surface on capability before invoking an IMPLEMENTED runtime method (F10)", async () => {
+    const startRun = vi.fn(async () => ({ run_id: "r", status: "started" }));
+    const submitBatch = vi.fn(async () => ({ id: "b", status: "in_progress" }));
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      // Both methods ARE implemented on the runtime — only the capability gate
+      // should stop them (deleting the gate would call them and this fails).
+      runtime: { ...runtime, startRun, submitBatch } as unknown as RuntimeClient,
+      fallbackSupports: { runs: false }, // runs declared-false; batch undeclared
+    });
+
+    const started = await client.startRun({ input: "hi" });
+    expect(started.ok).toBe(false);
+    if (started.ok) throw new Error("unreachable");
+    expect(started.gap.reason).toBe("capability-unsupported");
+    expect(startRun).not.toHaveBeenCalled();
+
+    const batched = await client.submitBatch([]);
+    expect(batched.ok).toBe(false);
+    if (batched.ok) throw new Error("unreachable");
+    expect(batched.gap.reason).toBe("capability-unsupported");
+    expect(submitBatch).not.toHaveBeenCalled();
+  });
+
+  it("an execution method that rejects 401 propagates as a rejection (F11 auth carve-out in execute)", async () => {
+    const client = createCapabilityClient({
+      providerKind: "codex",
+      runtime: {
+        ...runtime,
+        startRun: async () => {
+          throw Object.assign(new Error("unauthorized"), { status: 401 });
+        },
+      },
+      fallbackSupports: { runs: true },
+    });
+    await expect(client.startRun({ input: "hi" })).rejects.toThrow();
   });
 
   it("declared capability with no runtime method resolves ok:false, never rejects", async () => {

@@ -35,10 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     the `createApiClient(provider, options)` front door — every capability
     accessor exists on every provider (sessions, tasks, events, models, usage,
     authStatus, workspace, kanban, teams, media, wiki, agentConfig plus the
-    universal execution surface); unsupported calls throw one notated
-    `CapabilityUnavailable`; gateway providers auto-wire their resolver and
-    backends from `baseUrl`/`webSocketUrl`. Additive — no existing export
-    changed.
+    universal execution surface); unsupported calls resolve a
+    `CapabilityResult` with a notated gap (`ok: false`) rather than throwing;
+    gateway providers auto-wire their resolver and backends from
+    `baseUrl`/`webSocketUrl`. Additive — no existing export changed.
 
 - Added a canonical, provider-agnostic `./core/teams` capability: `Team` /
   `TeamMember` value types and a pure `TeamDirectory` resolver (resolve teams and
@@ -49,15 +49,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   change to existing consumers.
 
 - Added `CapabilityResult`, `classifyCapabilityFailure`, `CapabilityCallRejected`,
-  and `CapabilityGated`/`CapabilityGatedMethod` as root exports — the typed
-  vocabulary of the `CapabilityClient` facade's non-throwing contract.
-- Added gateway `streamRun` bridges so the facade's execution surface streams
+  `CapabilityGated`/`CapabilityGatedMethod`, and `StreamRunBody` as root exports
+  — the typed vocabulary of the `CapabilityClient` facade's non-throwing
+  contract. `StreamRunBody` is `RuntimeRunStartBody` plus the optional gateway
+  session-selection fields (`sessionKey`/`session_key`/`session_id`), so
+  `client.streamRun({ input, sessionKey })` typechecks at the call site.
+- Added gateway `streamRun` bridging so the facade's execution surface streams
   on every provider: Hermes streams over SSE run events (the run body's
-  `sessionKey` selects the session; without one the call resolves `ok: false`
-  with a `request-invalid` gap and starts no run), and OpenClaw streams over
-  control-plane WebSocket event frames. New: `createGatewayStreamRun`,
-  `createRunEventStreamFromControlPlane` (the control-plane → run-stream
-  translator), and `HermesSseRunEventProvider`.
+  `sessionKey` — a `StreamRunBody` field — selects the session; without one the
+  call resolves `ok: false` with a `request-invalid` gap and starts no run), and
+  OpenClaw streams over control-plane WebSocket event frames. The gateway bridge
+  is wired internally by `createApiClient`; consumers assembling their own facade
+  supply it through the `streamRunBridge` option on
+  `CreateCapabilityClientOptions`. The reusable control-plane → run-stream
+  adapter `createRunEventStreamFromControlPlane` (and the underlying
+  `createControlPlaneRunStreamTranslator`) is exported from the `./core/runtime`
+  subpath.
 - `ContractGapReason` gains `capability-unsupported` (an undeclared or unwired
   capability) and `request-invalid` (a caller mistake the transport can name
   before any request is made).

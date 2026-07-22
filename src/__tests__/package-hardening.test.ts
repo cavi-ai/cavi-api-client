@@ -186,6 +186,7 @@ const APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS = [
   "CapabilityGated",
   "CapabilityGatedMethod",
   "CreateCapabilityClientOptions",
+  "StreamRunBody",
   "createApiClient",
   "CreateApiClientOptions",
   "PROVIDER_CAPABILITIES",

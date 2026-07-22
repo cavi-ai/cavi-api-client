@@ -1,4 +1,9 @@
-import { getErrorStatus, isAuthError } from "../core/errors.js";
+import {
+  ApiClientError,
+  ApiClientErrorCode,
+  getErrorStatus,
+  isAuthError,
+} from "../core/errors.js";
 import {
   classifyFallbackError,
   fallbackGap,
@@ -105,6 +110,35 @@ export function classifyCapabilityFailure(params: {
         `${params.call} rejected: ${errorMessageOf(error)}`,
         "request-invalid",
         status,
+      );
+    }
+  }
+
+  // A statusless typed ApiClientError names a caller-input error the transport
+  // caught before (or without) an HTTP round-trip — e.g.
+  // `TeamDirectory.requireTeam` throwing `ValidationFailed`. Map those to their
+  // gap reason instead of letting `classifyFallbackError` treat them as
+  // `unknown` and rethrow. Auth codes already rethrew above via `isAuthError`;
+  // transport/config codes intentionally fall through to `classifyFallbackError`
+  // unchanged (they are not caller-input errors).
+  if (error instanceof ApiClientError) {
+    if (
+      error.code === ApiClientErrorCode.ValidationFailed ||
+      error.code === ApiClientErrorCode.InvalidRequest
+    ) {
+      return fallbackGap(
+        params.area,
+        params.expectedContract,
+        `${params.call} rejected: ${errorMessageOf(error)}`,
+        "request-invalid",
+      );
+    }
+    if (error.code === ApiClientErrorCode.EndpointNotFound) {
+      return fallbackGap(
+        params.area,
+        params.expectedContract,
+        `${params.call} failed: ${errorMessageOf(error)}`,
+        "endpoint-not-found",
       );
     }
   }
