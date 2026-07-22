@@ -56,6 +56,26 @@ describe("createControlPlaneRunStreamTranslator", () => {
     });
   });
 
+  it("falls back to a 'tool' name when tool.completed arrives without a matching tool.started", () => {
+    const translate = createControlPlaneRunStreamTranslator();
+    const completed = translate(cpEvent({ event: "tool.completed", toolCallId: "unknown-1" }));
+    expect(completed).toMatchObject({
+      toolCall: { id: "unknown-1", name: "tool", status: "completed" },
+    });
+  });
+
+  it("stringifies a tool.completed result payload onto toolCall.output", () => {
+    const translate = createControlPlaneRunStreamTranslator();
+    translate(cpEvent({ event: "tool.started", toolCallId: "t1", toolName: "grep" }));
+    const completed = translate(
+      cpEvent({ event: "tool.completed", toolCallId: "t1", result: { matches: 3, ok: true } }),
+    );
+    expect(completed).toMatchObject({
+      event: RUN_STREAM_EVENT_NAMES.TOOL_CALL_COMPLETED,
+      toolCall: { id: "t1", name: "grep", status: "completed", output: JSON.stringify({ matches: 3, ok: true }) },
+    });
+  });
+
   it("maps approval.requested with valid choices filtered", () => {
     const translate = createControlPlaneRunStreamTranslator();
     const approval = translate(
@@ -65,6 +85,44 @@ describe("createControlPlaneRunStreamTranslator", () => {
       event: RUN_STREAM_EVENT_NAMES.APPROVAL_REQUEST,
       runId: "run-1",
       choices: ["once", "deny"],
+    });
+  });
+
+  it("falls back to the full choice set when choices are missing, non-array, or all invalid", () => {
+    const translate = createControlPlaneRunStreamTranslator();
+    const fullSet = ["once", "session", "always", "deny"];
+
+    expect(translate(cpEvent({ event: "approval.requested", approvalId: "a1", request: {} }))).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.APPROVAL_REQUEST,
+      runId: "run-1",
+      choices: fullSet,
+    });
+    expect(
+      translate(cpEvent({ event: "approval.requested", approvalId: "a2", request: { choices: "not-an-array" } })),
+    ).toEqual({ event: RUN_STREAM_EVENT_NAMES.APPROVAL_REQUEST, runId: "run-1", choices: fullSet });
+    expect(
+      translate(
+        cpEvent({ event: "approval.requested", approvalId: "a3", request: { choices: ["bogus", "also-bogus"] } }),
+      ),
+    ).toEqual({ event: RUN_STREAM_EVENT_NAMES.APPROVAL_REQUEST, runId: "run-1", choices: fullSet });
+  });
+
+  it("carries the last-seen usage onto the terminal run.completed event", () => {
+    const translate = createControlPlaneRunStreamTranslator();
+    const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+    expect(translate(cpEvent({ event: "usage.updated", usage }))).toBeNull();
+    expect(translate(cpEvent({ event: "operation.completed" }))).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+      runId: "run-1",
+      usage,
+    });
+  });
+
+  it("omits usage from run.completed when no usage.updated event was seen", () => {
+    const translate = createControlPlaneRunStreamTranslator();
+    expect(translate(cpEvent({ event: "operation.completed" }))).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+      runId: "run-1",
     });
   });
 
@@ -116,5 +174,45 @@ describe("createRunEventStreamFromControlPlane", () => {
     await provider.subscribe({ runId: "run-9" }, { onEvent: () => undefined, onError });
     captured!.onError?.(new Error("ws down"));
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "ws down" }));
+  });
+
+  it("forwards the caller's AbortSignal to the control-plane subscribe call", async () => {
+    let capturedParams: Parameters<RuntimeEventClient["subscribe"]>[0] | null = null;
+    const events: RuntimeEventClient = {
+      subscribe: async (params, _handlers) => {
+        capturedParams = params;
+        return { dispose: () => undefined };
+      },
+    };
+    const provider = createRunEventStreamFromControlPlane(events);
+    const controller = new AbortController();
+    await provider.subscribe({ runId: "run-9", signal: controller.signal }, { onEvent: () => undefined });
+    expect(capturedParams!.signal).toBe(controller.signal);
+  });
+
+  it("fires onComplete exactly once after a terminal event, and not for non-terminal events", async () => {
+    let captured: Parameters<RuntimeEventClient["subscribe"]>[1] | null = null;
+    const events: RuntimeEventClient = {
+      subscribe: async (_params, handlers) => {
+        captured = handlers;
+        return { dispose: () => undefined };
+      },
+    };
+    const provider = createRunEventStreamFromControlPlane(events);
+    const onEvent = vi.fn();
+    const onComplete = vi.fn();
+    await provider.subscribe({ runId: "run-9" }, { onEvent, onComplete });
+
+    captured!.onEvent({ ...cpEvent({ event: "message.delta", delta: "x" }), operationId: "run-9" } as RuntimeControlPlaneEvent);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    captured!.onEvent({ ...cpEvent({ event: "operation.completed" }), operationId: "run-9" } as RuntimeControlPlaneEvent);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+
+    // further frames after terminal are ignored entirely
+    captured!.onEvent({ ...cpEvent({ event: "message.delta", delta: "late" }), operationId: "run-9" } as RuntimeControlPlaneEvent);
+    captured!.onEvent({ ...cpEvent({ event: "operation.cancelled" }), operationId: "run-9" } as RuntimeControlPlaneEvent);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onEvent).toHaveBeenCalledTimes(2); // message.delta + run.completed only
   });
 });
