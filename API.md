@@ -31,8 +31,8 @@ cavi-ai.xyz. It is the canonical operation-level documentation; this file is onl
 an index.
 
 - Source pages: [`docs/api-client/source/pages/operations`](docs/api-client/source/pages/operations)
-- Built artifact: [`docs/api-client/v0.12.0/operations`](docs/api-client/v0.12.0/operations)
-- Start here: [`operations/index.md`](docs/api-client/v0.12.0/operations/index.md)
+- Built artifact: [`docs/api-client/v0.13.0/operations`](docs/api-client/v0.13.0/operations)
+- Start here: [`operations/index.md`](docs/api-client/v0.13.0/operations/index.md)
 
 Every documented HTTP path is validated against the owner `paths.ts` files by
 `scripts/docs/check-operation-endpoints.mjs`, which runs inside `pnpm docs:check`.
@@ -41,24 +41,24 @@ Every documented HTTP path is validated against the owner `paths.ts` files by
 
 | Surface | Operation reference page |
 | ------- | ------------------------ |
-| Universal runtime contract (runs, streaming, batch) | [`operations/runtime.md`](docs/api-client/v0.12.0/operations/runtime.md) |
-| Claude / Codex / Gemini / Hermes / OpenClaw | [`operations/providers/`](docs/api-client/v0.12.0/operations/providers) |
-| Claude Managed Agents (beta) | [`operations/providers/claude-managed-agents.md`](docs/api-client/v0.12.0/operations/providers/claude-managed-agents.md) |
-| Gateway control-plane facade & core gateway | [`operations/gateway/control-plane.md`](docs/api-client/v0.12.0/operations/gateway/control-plane.md) |
-| Gateway media & wiki | [`operations/gateway/media-wiki.md`](docs/api-client/v0.12.0/operations/gateway/media-wiki.md) |
-| Gateway sessions & agent config | [`operations/gateway/sessions.md`](docs/api-client/v0.12.0/operations/gateway/sessions.md) |
-| Gateway teams, kanban & vault | [`operations/gateway/teams.md`](docs/api-client/v0.12.0/operations/gateway/teams.md) |
-| Gateway WebSocket RPC methods | [`operations/gateway/rpc-methods.md`](docs/api-client/v0.12.0/operations/gateway/rpc-methods.md) |
-| CAVI extension surfaces | [`operations/cavi/`](docs/api-client/v0.12.0/operations/cavi) |
-| Runtime concepts, transports, errors | [`concepts/`](docs/api-client/v0.12.0/concepts), [`reference/core-errors.md`](docs/api-client/v0.12.0/reference/core-errors.md) |
-| Exhaustive type declarations (by subpath) | [`reference/`](docs/api-client/v0.12.0/reference) |
+| Universal runtime contract (runs, streaming, batch) | [`operations/runtime.md`](docs/api-client/v0.13.0/operations/runtime.md) |
+| Claude / Codex / Gemini / Hermes / OpenClaw | [`operations/providers/`](docs/api-client/v0.13.0/operations/providers) |
+| Claude Managed Agents (beta) | [`operations/providers/claude-managed-agents.md`](docs/api-client/v0.13.0/operations/providers/claude-managed-agents.md) |
+| Gateway control-plane facade & core gateway | [`operations/gateway/control-plane.md`](docs/api-client/v0.13.0/operations/gateway/control-plane.md) |
+| Gateway media & wiki | [`operations/gateway/media-wiki.md`](docs/api-client/v0.13.0/operations/gateway/media-wiki.md) |
+| Gateway sessions & agent config | [`operations/gateway/sessions.md`](docs/api-client/v0.13.0/operations/gateway/sessions.md) |
+| Gateway teams, kanban & vault | [`operations/gateway/teams.md`](docs/api-client/v0.13.0/operations/gateway/teams.md) |
+| Gateway WebSocket RPC methods | [`operations/gateway/rpc-methods.md`](docs/api-client/v0.13.0/operations/gateway/rpc-methods.md) |
+| CAVI extension surfaces | [`operations/cavi/`](docs/api-client/v0.13.0/operations/cavi) |
+| Runtime concepts, transports, errors | [`concepts/`](docs/api-client/v0.13.0/concepts), [`reference/core-errors.md`](docs/api-client/v0.13.0/reference/core-errors.md) |
+| Exhaustive type declarations (by subpath) | [`reference/`](docs/api-client/v0.13.0/reference) |
 
 ## Versioned Documentation Artifact
 
 The immutable API documentation for package `0.12.0` is generated and shipped at
-[`docs/api-client/v0.12.0`](docs/api-client/v0.12.0). Consumers begin with
-[`manifest.json`](docs/api-client/v0.12.0/manifest.json) for release integrity
-and [`navigation.json`](docs/api-client/v0.12.0/navigation.json) for navigation.
+[`docs/api-client/v0.13.0`](docs/api-client/v0.13.0). Consumers begin with
+[`manifest.json`](docs/api-client/v0.13.0/manifest.json) for release integrity
+and [`navigation.json`](docs/api-client/v0.13.0/navigation.json) for navigation.
 The copy/install and public-path contract is defined in
 [`docs/api-client/CONSUMER.md`](docs/api-client/CONSUMER.md).
 

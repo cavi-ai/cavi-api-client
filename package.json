@@ -60,7 +60,7 @@
     "!docs/release-evidence",
     "!docs/release-evidence/**",
     "docs/api-client/CONSUMER.md",
-    "docs/api-client/v0.12.0",
+    "docs/api-client/v0.13.0",
     "!docs/api-client/source",
     "!docs/api-client/source/**",
     "!docs/superpowers",
