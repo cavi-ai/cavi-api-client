@@ -124,6 +124,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `CapabilityUnavailable`. Auth (401/403) and unknown-classified errors still
   throw. `CapabilityClient` no longer extends `RuntimeClient`. The execution
   surface is always present on every provider, gateways included.
+- `createApiClient("openclaw")` now runs on a single shared WebSocket. The
+  wiring's socket is injected into the OpenClaw runtime client via its
+  `rpcClient` option, so `startRun`/`getRun`/`cancelRun` and the resolver,
+  control plane, kanban, media, and `streamRun` event stream all ride one
+  connection instead of two. The `streamRun` event client and provider are
+  memoized per client, so N concurrent streams share one native socket listener
+  rather than constructing one event client per call. The wiring owns the
+  socket's lifecycle (`dispose()` closes it); the injected runtime client never
+  closes it, so there is no double-close.
+
+### Fixed
+
+- OpenClaw reconnect-gap detection is seeded from the socket's live connection
+  state at (re)attach. An event client subscribing to an already-open socket
+  missed the initial `connection.open`, so its first reconnect was mistaken for
+  the initial connect and skipped the `stream.gap` marker; it now correctly
+  emits `stream.reconnected` (+ a conditional `stream.gap`) on the first
+  post-attach reconnect.
 
 ## [0.12.0] - 2026-07-15
 

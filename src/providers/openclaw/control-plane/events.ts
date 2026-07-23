@@ -158,6 +158,27 @@ export function createOpenClawRuntimeEventClient(rpc: OpenClawRpc): RuntimeEvent
   let connectionGeneration = 0;
   let connected = false;
 
+  // R11 reconnect-gap seed. When this client attaches to a socket that is
+  // ALREADY connected — the common case now that OpenClaw shares one socket
+  // across the control plane, resolver, and every stream — the socket's
+  // generation-1 `connection.open` fired before our native listener existed. So
+  // the first `connection.open` we actually observe is a RECONNECT, not the
+  // initial connect. Seed the generation to 1 (accounting for that missed
+  // initial open) while leaving `connected` false: the next observed open is
+  // processed and becomes generation 2 → `stream.reconnected` + a conditional
+  // `stream.gap`. Sockets that are not yet connected, or rpcs that don't expose
+  // `getConnectionState`, keep the legacy 0/false start (first open is the
+  // initial connect, emitting nothing). Re-run on every (re)attach so a later
+  // stream on the shared client — after an earlier stream reset the generation
+  // on its last unsubscribe — still detects its first reconnect.
+  const seedFromLiveConnection = (): void => {
+    if (rpc.getConnectionState?.() === "connected") {
+      connectionGeneration = 1;
+      connected = false;
+    }
+  };
+  seedFromLiveConnection();
+
   const reportSubscriberError = (subscriber: Subscriber, error: unknown): void => {
     try { subscriber.onError?.(error); } catch { /* subscriber callbacks cannot break fan-out */ }
   };
@@ -248,7 +269,12 @@ export function createOpenClawRuntimeEventClient(rpc: OpenClawRpc): RuntimeEvent
         active: true,
       };
       subscribers.add(subscriber);
-      detachNative ??= rpc.subscribe(onNativeEvent);
+      if (detachNative === undefined) {
+        // Re-seed from the socket's live state before re-attaching: a prior
+        // stream's last unsubscribe reset the generation to 0/false.
+        seedFromLiveConnection();
+        detachNative = rpc.subscribe(onNativeEvent);
+      }
 
       const dispose = (): void => {
         if (!subscriber.active) return;

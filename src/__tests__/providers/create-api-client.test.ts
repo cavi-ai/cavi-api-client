@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createApiClient } from "../../providers/create-api-client.js";
+import { createApiClient, wireOpenClaw } from "../../providers/create-api-client.js";
 import { createRuntimeProviderRegistry } from "../../core/runtime/providers/registry.js";
 import { getErrorStatus } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
@@ -7,6 +7,38 @@ import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
 } from "../../core/runtime/run-stream.js";
+import { OpenClawWebSocketClient } from "../../providers/openclaw/websocket.js";
+import type { OpenClawRpcEvent } from "../../providers/openclaw/control-plane/rpc.js";
+import type { RawGatewayConnectionState } from "../../core/runtime/control-plane/raw-gateway.js";
+
+async function waitFor(predicate: () => boolean, tries = 50): Promise<void> {
+  for (let i = 0; i < tries; i += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  if (!predicate()) throw new Error("waitFor: condition not met in time");
+}
+
+/** A connection-lazy stand-in for the shared OpenClaw socket. */
+class FakeSharedSocket {
+  readonly eventListeners = new Set<(event: OpenClawRpcEvent) => void>();
+  subscribeCalls = 0;
+  request = vi.fn(async () => ({}));
+  dispose = vi.fn(async () => undefined);
+  connect = vi.fn(async () => undefined);
+  getHelloFrame = vi.fn(() => ({}));
+  getConnectionState = vi.fn((): RawGatewayConnectionState => "idle");
+
+  subscribe(listener: (event: OpenClawRpcEvent) => void): () => void {
+    this.subscribeCalls += 1;
+    this.eventListeners.add(listener);
+    return () => this.eventListeners.delete(listener);
+  }
+
+  onConnectionState(): () => void {
+    return () => undefined;
+  }
+}
 
 const fakeRuntime: RuntimeClient = {
   getRuntimeCapabilities: async () => ({
@@ -285,5 +317,68 @@ describe("createApiClient — the one front door", () => {
     // the bridge was wired and reached (NOT a "does not implement" gap)
     expect(result.gap.note).not.toContain("does not implement");
     await client.dispose();
+  });
+
+  it("openclaw runs the runtime client and the wiring on ONE shared socket (R11 piece 1)", async () => {
+    // Capture what the runtime client is constructed with: the shared socket is
+    // injected via `rpcClient` rather than left for the client to lazily open a
+    // second connection.
+    let injected: unknown;
+    const registry = createRuntimeProviderRegistry({
+      modules: [
+        {
+          kind: "openclaw",
+          createClient: (opts) => {
+            injected = (opts as { rpcClient?: unknown }).rpcClient;
+            return fakeRuntime;
+          },
+        },
+      ],
+    });
+    const client = createApiClient("openclaw", {
+      baseUrl: "http://gateway.test",
+      registry,
+    });
+
+    // The runtime client received the real shared OpenClaw socket instance.
+    expect(injected).toBeInstanceOf(OpenClawWebSocketClient);
+
+    // The wiring holds the SAME instance: disposing the client tears down that
+    // exact socket (identity proof — the wiring's onDispose targets the object
+    // the runtime was injected with, so there is only one connection).
+    const socket = injected as OpenClawWebSocketClient;
+    const disposeSpy = vi.spyOn(socket, "dispose");
+    await client.dispose();
+    expect(disposeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("openclaw shares ONE event client across concurrent streamRun calls (R11 piece 2)", async () => {
+    const socket = new FakeSharedSocket();
+    const runtime: RuntimeClient = {
+      getRuntimeCapabilities: async () => ({
+        providerKind: "openclaw",
+        supports: { runs: true, streaming: true },
+      }),
+      startRun: async () => ({ run_id: "run-1", status: "started" }) as never,
+    };
+    const wiring = wireOpenClaw({ baseUrl: "http://gateway.test" }, runtime, socket as never);
+    const bridge = wiring.streamRunBridge;
+    if (!bridge) throw new Error("expected a wired streamRun bridge");
+
+    // Two concurrent streams through the shared provider.
+    const first = bridge({ input: "a" }, { onEvent: () => undefined });
+    const second = bridge({ input: "b" }, { onEvent: () => undefined });
+    await waitFor(() => socket.eventListeners.size > 0);
+
+    // ONE native listener registration for N streams — a single event client,
+    // not one per streamRun call.
+    expect(socket.subscribeCalls).toBe(1);
+    expect(socket.eventListeners.size).toBe(1);
+
+    // Teardown settles both in-flight bridges (abort resolves them) and closes
+    // the one socket.
+    await wiring.onDispose?.();
+    await Promise.all([first, second]);
+    expect(socket.dispose).toHaveBeenCalledTimes(1);
   });
 });

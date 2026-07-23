@@ -38,6 +38,7 @@ import { HermesAgentConfigApiClient } from "./hermes/agent-config.js";
 import { createOpenClawCapabilityResolver } from "./openclaw/capability-resolver.js";
 import { createOpenClawRuntimeControlClient } from "./openclaw/control-plane/factory.js";
 import { createOpenClawRunEventStreamProvider } from "./openclaw/stream-run-provider.js";
+import type { RunEventStreamProvider } from "../core/runtime/run-stream.js";
 import { createOpenClawKanbanClient } from "./openclaw/kanban.js";
 import { createOpenClawWorkboardRpc } from "./openclaw/workboard.js";
 import { OpenClawWebSocketClient } from "./openclaw/websocket.js";
@@ -211,17 +212,49 @@ function wireHermes(options: CreateApiClientOptions, runtime: RuntimeClient): Au
   };
 }
 
-function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): AutoWiring {
+/**
+ * Construct the ONE OpenClaw WebSocket that backs the whole client. Building the
+ * client does not open the socket — `connect()` does — so this is
+ * connection-lazy: the constructed-but-unconnected instance is safe to hand to
+ * both the runtime client (via its `rpcClient` option) and the wiring below, so
+ * startRun/getRun/cancelRun and the resolver / control plane / kanban / media /
+ * streamRun events all ride a single connection. Returns `null` when no
+ * ws/baseUrl is available (the supported-but-unwired path).
+ */
+function createOpenClawSocket(options: CreateApiClientOptions): OpenClawWebSocketClient | null {
   const wsUrl =
     options.webSocketUrl ?? (options.baseUrl ? deriveWebSocketUrl(options.baseUrl) : null);
-  if (!wsUrl) return { backends: {} };
+  if (!wsUrl) return null;
+  return new OpenClawWebSocketClient(wsUrl, options.token ?? null, {
+    clientId: options.clientId ?? "openclaw-control-ui",
+  });
+}
 
-  let socket: OpenClawWebSocketClient | null = null;
-  const rpc = () => {
-    socket ??= new OpenClawWebSocketClient(wsUrl, options.token ?? null, {
-      clientId: options.clientId ?? "openclaw-control-ui",
+export function wireOpenClaw(
+  options: CreateApiClientOptions,
+  runtime: RuntimeClient,
+  socket: OpenClawWebSocketClient | null,
+): AutoWiring {
+  if (!socket) return { backends: {} };
+
+  // One event client + one stream provider per wiring. `createGatewayStreamRun`
+  // calls `createProvider` once per streamRun invocation; memoizing here means N
+  // concurrent streams share a single `createOpenClawRuntimeEventClient` (hence a
+  // single native listener on the socket — the event client's `detachNative`
+  // memo registers `rpc.subscribe` exactly once), instead of one event client
+  // per call. Per-subscription operationId filtering already isolates the
+  // streams, and the control-plane→run-stream translator is created inside each
+  // `subscribe`, so no cross-stream state bleeds across the shared provider.
+  let streamProvider: RunEventStreamProvider | null = null;
+  const sharedStreamProvider = (): RunEventStreamProvider => {
+    streamProvider ??= createOpenClawRunEventStreamProvider({
+      rpc: socket,
+      connect: () => socket.connect(),
+      ...(typeof runtime.getRun === "function"
+        ? { getRun: (id: string) => runtime.getRun!(id) }
+        : {}),
     });
-    return socket;
+    return streamProvider;
   };
 
   // Wrap the bridge for dispose teardown (F3). The OpenClaw provider wrapper
@@ -230,31 +263,22 @@ function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): 
   const { bridge: streamRunBridge, disposeAll } = trackStreamRunBridge(
     createGatewayStreamRun({
       runtime,
-      createProvider: () => {
-        const rpcClient = rpc();
-        return createOpenClawRunEventStreamProvider({
-          rpc: rpcClient,
-          connect: () => rpcClient.connect(),
-          ...(typeof runtime.getRun === "function"
-            ? { getRun: (id: string) => runtime.getRun!(id) }
-            : {}),
-        });
-      },
+      createProvider: () => sharedStreamProvider(),
     }),
   );
 
   return {
     resolver: createOpenClawCapabilityResolver(
       {
-        getHelloFrame: () => rpc().getHelloFrame(),
-        connect: () => rpc().connect(),
+        getHelloFrame: () => socket.getHelloFrame(),
+        connect: () => socket.connect(),
       },
       { ...(options.teamId ? { teamId: options.teamId } : {}) },
     ),
     backends: {
       controlPlane: () =>
-        createOpenClawRuntimeControlClient({ rpc: rpc(), takeRpcOwnership: true }),
-      kanban: () => createOpenClawKanbanClient(createOpenClawWorkboardRpc(rpc())),
+        createOpenClawRuntimeControlClient({ rpc: socket, takeRpcOwnership: true }),
+      kanban: () => createOpenClawKanbanClient(createOpenClawWorkboardRpc(socket)),
       ...(options.baseUrl
         ? {
             // OpenClaw media is RPC-dispatched (tts/talk core methods) — the
@@ -266,7 +290,7 @@ function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): 
             media: () =>
               new OpenClawMediaApiClient({
                 ...httpClientOptions(options),
-                rpcClient: rpc(),
+                rpcClient: socket,
               }),
             wiki: () => new OpenClawWikiApiClient(httpClientOptions(options)),
             agentConfig: () => new OpenClawAgentConfigApiClient(httpClientOptions(options)),
@@ -277,8 +301,11 @@ function wireOpenClaw(options: CreateApiClientOptions, runtime: RuntimeClient): 
     onDispose: async () => {
       // Settle in-flight bridges first (abort → each resolves and tears down
       // its subscription) BEFORE the socket closes, so nothing hangs (F1/F3).
+      // This wiring owns the shared socket's lifecycle — the injected runtime
+      // client never closes it (GatewayApiClient has no dispose), so there is no
+      // double-close.
       disposeAll();
-      if (socket) await socket.dispose();
+      await socket.dispose();
     },
   };
 }
@@ -287,9 +314,10 @@ function autoWire(
   kind: string,
   options: CreateApiClientOptions,
   runtime: RuntimeClient,
+  openClawSocket: OpenClawWebSocketClient | null,
 ): AutoWiring {
   if (kind === "hermes") return wireHermes(options, runtime);
-  if (kind === "openclaw") return wireOpenClaw(options, runtime);
+  if (kind === "openclaw") return wireOpenClaw(options, runtime, openClawSocket);
   return { backends: {} };
 }
 
@@ -298,18 +326,32 @@ export function createApiClient(
   options: CreateApiClientOptions = {},
 ): CapabilityClient {
   const registry = options.registry ?? createBuiltInRuntimeProviderRegistry();
-  const clientOptions = {
-    ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
-    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-    ...(options.token ? { auth: { bearerToken: options.token } } : {}),
-  } as RuntimeClientOptions;
-  const runtime = createRuntimeClient(provider, { registry, clientOptions });
 
   const kind =
     registry.resolveProvider(provider)?.kind ??
     normalizeRuntimeProviderToken(provider) ??
     provider;
-  const wiring = autoWire(kind, options, runtime);
+
+  // OpenClaw runs on ONE socket. Hoist it above runtime construction so the same
+  // instance is injected into the runtime client (via `rpcClient`) AND used by
+  // the wiring — the runtime's startRun/getRun/cancelRun and the wiring's
+  // resolver / control plane / kanban / media / streamRun events then share a
+  // single connection instead of opening two. Construction is connection-lazy.
+  // Non-openclaw providers get `null` and are completely unaffected.
+  const openClawSocket = kind === "openclaw" ? createOpenClawSocket(options) : null;
+
+  const clientOptions = {
+    ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
+    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    ...(options.token ? { auth: { bearerToken: options.token } } : {}),
+    // Provider-specific pass-through (like `auth` above): the OpenClaw runtime
+    // client reads `rpcClient`; core's RuntimeClientOptions stays agnostic, so
+    // this rides the same cast rather than leaking naming into core types.
+    ...(openClawSocket ? { rpcClient: openClawSocket } : {}),
+  } as RuntimeClientOptions;
+  const runtime = createRuntimeClient(provider, { registry, clientOptions });
+
+  const wiring = autoWire(kind, options, runtime, openClawSocket);
   const resolver = options.resolver ?? wiring.resolver;
 
   return createCapabilityClient({
