@@ -8,6 +8,7 @@ import type {
   RuntimeBatchResult,
 } from "../core/runtime/client.js";
 import {
+  isNonTerminalStreamError,
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
 } from "../core/runtime/run-stream.js";
@@ -90,6 +91,12 @@ export type StreamRunBody = RuntimeRunStartBody & {
  * - `outcome` — the terminal lifecycle event seen (`run.completed`→"completed",
  *   `run.failed`→"failed", `run.cancelled`→"cancelled"); `null` when the stream
  *   ended without a terminal event.
+ *
+ * Note the abort asymmetry: a CALLER abort (via `options.signal`) resolves
+ * `ok: false` with a `request-aborted` gap, but `dispose()`-driven teardown of
+ * an in-flight stream aborts an INTERNAL composed signal invisible to the
+ * facade, so the bridge settles cleanly and this resolves
+ * `ok: true, { runId: null, outcome: null }` — teardown is not a caller abort.
  */
 export type RunStreamOutcome = {
   runId: string | null;
@@ -691,8 +698,15 @@ export function createCapabilityClient(
           handlers.onEvent(event);
         },
         onError: (error) => {
-          sawError = true;
-          lastError = error;
+          // A NON-terminal per-frame error (a single malformed frame the lower
+          // layers deliberately forward WITHOUT tearing the stream down — see
+          // gateway-stream-run.ts / the control-plane run-stream bridge) is
+          // observability only: forward it, but do not let it decide the call's
+          // outcome. Only a terminal onError records the failure.
+          if (!isNonTerminalStreamError(error)) {
+            sawError = true;
+            lastError = error;
+          }
           handlers.onError?.(error);
         },
         onComplete: handlers.onComplete,
@@ -703,6 +717,11 @@ export function createCapabilityClient(
       const abortedGap = async (): Promise<CapabilityResult<RunStreamOutcome>> => {
         let cancelNote: string;
         if (runId !== null && runtime.cancelRun) {
+          // Decision: cancel is fire-and-forget cleanup, not a caller-invoked
+          // call — EVERY error is swallowed (auth included). The auth/unknown
+          // rethrow carve-out applies to what the caller asked for (the stream),
+          // never to teardown we initiated on their behalf; a failed cancel must
+          // not turn an abort into a thrown auth error.
           await runtime.cancelRun(runId).catch(() => undefined);
           cancelNote = `cancel requested for run ${runId}`;
         } else {

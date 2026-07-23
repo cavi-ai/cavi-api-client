@@ -6,6 +6,7 @@ import {
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { createTeamDirectory } from "../../core/teams/directory.js";
 import {
+  markNonTerminalStreamError,
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
 } from "../../core/runtime/run-stream.js";
@@ -842,6 +843,16 @@ describe("capability client — unified streamRun semantics (R10)", () => {
     expect(result).toEqual({ ok: true, data: { runId: "run-2", outcome: "failed" }, source: "live" });
   });
 
+  // (a) — run.cancelled event maps to outcome:"cancelled".
+  it("resolves ok:true with outcome:cancelled when the run is cancelled as an event (a)", async () => {
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_CANCELLED, runId: "run-5", reason: "stopped" });
+      handlers.onComplete?.();
+    };
+    const result = await streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result).toEqual({ ok: true, data: { runId: "run-5", outcome: "cancelled" }, source: "live" });
+  });
+
   // (b) — Claude-shaped mid-stream swallow: onError then resolve, no terminal.
   it("resolves ok:false backend-unavailable when onError fires and the stream ends with no terminal (b)", async () => {
     const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
@@ -853,6 +864,35 @@ describe("capability client — unified streamRun semantics (R10)", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
     expect(result.gap.reason).toBe("backend-unavailable");
+  });
+
+  // (a/non-terminal) — a NON-terminal per-frame error the lower layers forward
+  // without settling must NOT decide the call's outcome: a clean onComplete with
+  // no terminal event still resolves ok:true (outcome null).
+  it("ignores a non-terminal onError and resolves ok:true when the stream ends clean (non-terminal)", async () => {
+    const forwarded: unknown[] = [];
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onError?.(markNonTerminalStreamError(new Error("one bad frame")));
+      handlers.onComplete?.();
+    };
+    const result = await streamingClient(stream).streamRun(
+      { input: "hi" },
+      { onEvent: () => undefined, onError: (error) => forwarded.push(error) },
+    );
+    expect(result).toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
+    // still forwarded to the caller for observability.
+    expect(forwarded).toHaveLength(1);
+  });
+
+  // (a/non-terminal) — a non-terminal frame error followed by a real terminal.
+  it("ignores a non-terminal onError and reports the terminal outcome that follows (non-terminal)", async () => {
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onError?.(markNonTerminalStreamError(new Error("one bad frame")));
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-6" });
+      handlers.onComplete?.();
+    };
+    const result = await streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result).toEqual({ ok: true, data: { runId: "run-6", outcome: "completed" }, source: "live" });
   });
 
   // (a) — a transient onError that the stream RECOVERS from (terminal follows).
