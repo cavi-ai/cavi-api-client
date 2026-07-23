@@ -36,12 +36,8 @@ import {
   HERMES_HTTP_API_ENV_ALIASES,
   HERMES_HTTP_API_ENV_KEYS,
   HermesAgentConfigApiClient,
-  HermesApiClient,
-  HermesMediaApiClient,
   HERMES_PROVIDER_MODULE,
   HermesSseRunEventProvider,
-  HermesWebSocketClient,
-  HermesWikiApiClient,
   createHermesTeamRegistry,
 } from "../providers/hermes/index";
 import {
@@ -167,6 +163,40 @@ const APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS = [
   "RawGatewayConnectionState",
   "RawGatewayEvent",
   "RawGatewayRequestOptions",
+] as const;
+
+// The unified capability contract (single-client redesign): the taxonomy, the
+// runtime capability source, the capability client, and the one front door.
+const APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS = [
+  "CAPABILITY_TAXONOMY",
+  "CAPABILITY_GROUPS",
+  "supportsCapability",
+  "isCapabilityKey",
+  "CapabilityKey",
+  "CapabilityGroup",
+  "CapabilityMap",
+  "CapabilitySupport",
+  "mergeCapabilitySupport",
+  "resolvedSupports",
+  "ProviderCapabilityResolver",
+  "ResolvedProviderCapabilities",
+  "createCapabilityClient",
+  "CapabilityClient",
+  "CapabilityClientBackends",
+  "CapabilityGated",
+  "CapabilityGatedMethod",
+  "CreateCapabilityClientOptions",
+  "StreamRunBody",
+  "RunStreamOutcome",
+  "createApiClient",
+  "CreateApiClientOptions",
+  "PROVIDER_CAPABILITIES",
+  "declaredCapabilities",
+  "classifyCapabilityFailure",
+  "gapResult",
+  "liveResult",
+  "CapabilityCallRejected",
+  "CapabilityResult",
 ] as const;
 
 const FORBIDDEN_PACKAGES = [
@@ -620,7 +650,18 @@ describe("package hardening", () => {
     // never in the public docs/ tree. docs/specs/ leaked onto public main once;
     // this fails the build if any internal-docs or private-tooling path is
     // tracked again, and if .gitignore stops covering them.
-    const requiredIgnores = ["docs/specs/", "docs/plans/", ".claude/", ".remember/"];
+    //
+    // The quarantine dirs are here for the same reason: a `git mv` of deleted
+    // source into .quarantine/ force-tracks it despite the ignore rule, which
+    // is how four deleted Hermes mirror classes rode along to public main.
+    const requiredIgnores = [
+      "docs/specs/",
+      "docs/plans/",
+      ".claude/",
+      ".remember/",
+      ".quarantine/",
+      "quarantine/",
+    ];
     const gitignore = read(path.join(PACKAGE_ROOT, ".gitignore")).split(/\r?\n/u);
     expect(gitignore).toEqual(expect.arrayContaining(requiredIgnores));
 
@@ -1227,6 +1268,7 @@ describe("package hardening", () => {
       ...originMainBaseline,
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
       ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
+      ...APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS,
     ]
       .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
       .sort();
@@ -1506,16 +1548,18 @@ describe("package hardening", () => {
     expect(() => resolveGatewayProviderKind({ provider: "martina" })).toThrow(
       'Unknown gateway provider "martina"',
     );
-    expect(hermes).toBeInstanceOf(HermesApiClient);
+    // Hermes clients are the shared gateway bases configured with Hermes
+    // tables/surfaces — the former Hermes* subclasses were config duplication.
+    expect(hermes).toBeInstanceOf(GatewayApiClient);
     expect(hermes.surface).toBe("hermes-api-server");
     expect(openclaw).toBeInstanceOf(OpenClawApiClient);
     expect(openclaw).toBeInstanceOf(GatewayApiClient);
     expect(openclaw.surface).toBe("openclaw-api");
-    expect(hermesMedia).toBeInstanceOf(HermesMediaApiClient);
+    expect(hermesMedia).toBeInstanceOf(GatewayMediaApiClient);
     expect(hermesMedia.surface).toBe("hermes-media-api");
     expect(openclawMedia).toBeInstanceOf(OpenClawMediaApiClient);
     expect(openclawMedia.surface).toBe("openclaw-media-api");
-    expect(hermesWiki).toBeInstanceOf(HermesWikiApiClient);
+    expect(hermesWiki).toBeInstanceOf(GatewayWikiApiClient);
     expect(hermesWiki.surface).toBe("hermes-wiki-api");
     expect(openclawWiki).toBeInstanceOf(OpenClawWikiApiClient);
     expect(openclawWiki.surface).toBe("openclaw-wiki-api");
@@ -1524,7 +1568,7 @@ describe("package hardening", () => {
     expect(openclawAgentConfig).toBeInstanceOf(OpenClawAgentConfigApiClient);
     expect(openclawAgentConfig.surface).toBe("openclaw-agent-config-api");
     expect(genericWs).toBeInstanceOf(GatewayRpcClient);
-    expect(hermesWs).toBeInstanceOf(HermesWebSocketClient);
+    expect(hermesWs).toBeInstanceOf(GatewayRpcClient);
     expect(openclawWs).toBeInstanceOf(OpenClawWebSocketClient);
     expect(genericSse).toBeInstanceOf(GatewaySseRunEventProvider);
     expect(hermesSse).toBeInstanceOf(HermesSseRunEventProvider);

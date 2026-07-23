@@ -484,6 +484,9 @@ export class GatewayRpcClient {
 
   private lastError: Error | null = null;
 
+  /** Raw handshake payload from the most recent successful connect. */
+  private lastHelloFrame: unknown = null;
+
   private intentionalClose = false;
 
   private emitRpcTrace(entry: GatewayRpcTraceEntry): void {
@@ -537,6 +540,15 @@ export class GatewayRpcClient {
 
   getLastError(): Error | null {
     return this.lastError;
+  }
+
+  /**
+   * The raw handshake payload the gateway returned on the most recent
+   * successful connect (null before the first connect). Providers transform
+   * this into their runtime capability snapshot.
+   */
+  getHelloFrame(): unknown {
+    return this.lastHelloFrame;
   }
 
   onEvent(listener: (event: GatewayStreamEvent) => void): () => void {
@@ -731,7 +743,7 @@ export class GatewayRpcClient {
         };
 
         void doConnect()
-          .then(() => {
+          .then((hello) => {
             if (seq !== this.connectAttemptSeq || connectPhase === "settled") {
               return;
             }
@@ -742,6 +754,7 @@ export class GatewayRpcClient {
               return;
             }
             connectPhase = "settled";
+            this.lastHelloFrame = hello;
             this.connected = true;
             this.setState("connected", null);
             resolve();

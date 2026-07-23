@@ -5,3 +5,6 @@ export * from "./team-manifest.js";
 export * from "./team-directory.js";
 export * from "./manifest-source.js";
 export * from "./route-resolver.js";
+export * from "./capability-source.js";
+export * from "./capability-result.js";
+export * from "./capability-client.js";

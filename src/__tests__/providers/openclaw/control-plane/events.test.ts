@@ -9,11 +9,14 @@ import type {
   OpenClawRpc,
   OpenClawRpcEvent,
 } from "../../../../providers/openclaw/control-plane/rpc";
+import type { RawGatewayConnectionState } from "../../../../core/runtime/control-plane/raw-gateway";
 
 class EventRpc implements OpenClawRpc {
   readonly listeners = new Set<(event: OpenClawRpcEvent) => void>();
   request = vi.fn<OpenClawRpc["request"]>();
   dispose = vi.fn(async () => undefined);
+  /** Optional: when set, reports the socket's live connection state (R11 seed). */
+  getConnectionState?: () => RawGatewayConnectionState;
 
   subscribe(listener: (event: OpenClawRpcEvent) => void): () => void {
     this.listeners.add(listener);
@@ -276,6 +279,62 @@ describe("OpenClaw native control-plane events", () => {
     expect(firstEvents).toEqual(["stream.reconnected", "stream.gap"]);
     expect(firstErrors).toHaveLength(2);
     expect(secondEvents).toEqual(["stream.reconnected", "stream.gap"]);
+  });
+
+  it("seeds reconnect-gap detection from a live socket state: the first post-attach connection.open is a reconnect, not the initial connect (R11)", async () => {
+    const rpc = new EventRpc();
+    // Socket is ALREADY connected at construction; its generation-1
+    // connection.open fired before this client attached its native listener.
+    rpc.getConnectionState = () => "connected";
+    const received: RuntimeControlPlaneEvent[] = [];
+    await createOpenClawRuntimeEventClient(rpc).subscribe(
+      { operationId: "run-1" },
+      { onEvent: (event) => received.push(event) },
+    );
+
+    // The first connection.open we observe is therefore a reconnect: emit
+    // stream.reconnected and, since continuity is unproven, stream.gap.
+    rpc.emit("connection.open", { connectionId: "c2", resumed: false });
+
+    expect(received.map((event) => event.event)).toEqual([
+      "stream.reconnected",
+      "stream.gap",
+    ]);
+  });
+
+  it("re-seeds the live socket state on re-attach so a later stream on the shared client still detects the first reconnect (R11)", async () => {
+    const rpc = new EventRpc();
+    rpc.getConnectionState = () => "connected";
+    const client = createOpenClawRuntimeEventClient(rpc);
+
+    // First stream attaches and detaches (resets generation on last unsubscribe).
+    const first = await client.subscribe({ operationId: "run-1" }, { onEvent: () => undefined });
+    await first.dispose();
+    expect(rpc.listeners.size).toBe(0);
+
+    // A later stream re-attaches to the still-open socket: its first
+    // connection.open must again be treated as a reconnect.
+    const received: RuntimeControlPlaneEvent[] = [];
+    await client.subscribe({ operationId: "run-2" }, { onEvent: (event) => received.push(event) });
+    rpc.emit("connection.open", { connectionId: "c9", resumed: false });
+
+    expect(received.map((event) => event.event)).toEqual([
+      "stream.reconnected",
+      "stream.gap",
+    ]);
+  });
+
+  it("without live-state seeding the first connection.open is the initial connect (legacy, no reconnect events)", async () => {
+    const rpc = new EventRpc(); // no getConnectionState — legacy 0/false start
+    const received: RuntimeControlPlaneEvent[] = [];
+    await createOpenClawRuntimeEventClient(rpc).subscribe(
+      { operationId: "run-1" },
+      { onEvent: (event) => received.push(event) },
+    );
+
+    rpc.emit("connection.open", { connectionId: "c1", resumed: false });
+
+    expect(received).toEqual([]);
   });
 
   it("rejects cursor input explicitly", async () => {

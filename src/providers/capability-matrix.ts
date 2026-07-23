@@ -1,6 +1,11 @@
 import type { RuntimeSurface } from "../core/runtime/capabilities.js";
 import type { RuntimeTransportCapabilities } from "../core/runtime/control-plane/transports.js";
 import type { RuntimeControlPlaneDeclaration } from "../core/runtime/providers/types.js";
+import {
+  PROVIDER_CAPABILITIES,
+  projectControlPlaneModules,
+  projectRuntimeSurfaces,
+} from "./capability-declarations.js";
 
 export type RuntimeProviderCapabilityRow = Readonly<{
   runtime: Readonly<Partial<Record<RuntimeSurface, boolean>>>;
@@ -42,44 +47,33 @@ function row(
   });
 }
 
-const gatewayRuntime = {
-  runs: true,
-  streaming: true,
-  teams: true,
-  kanban: true,
-  workspace: true,
-  operator: true,
-  discourse: true,
-  media: true,
-  wiki: true,
-  agentConfig: true,
-} as const;
-
+// Every row DERIVES from PROVIDER_CAPABILITIES (the single declaration site)
+// via the runtime-surface / control-plane-module projections. Do not hand-edit
+// capability values here — edit the declaration.
 export const RUNTIME_PROVIDER_CAPABILITY_MATRIX = Object.freeze({
-  claude: row({ runs: true, streaming: true, batch: true }, { http, sse }),
-  "claude-managed-agents": row({ runs: true, streaming: true }, { http, sse }),
-  codex: row({ runs: true, streaming: true, batch: true }, { http, sse }),
-  gemini: row({ runs: true, streaming: true, batch: true }, { http, sse }),
-  hermes: row(gatewayRuntime, { http, sse, websocket: experimentalWebsocket }, {
-    transports: Object.freeze({ websocket: experimentalWebsocket }),
-    // No `workspace`: Hermes has no native workspace surface. See
-    // HERMES_PROVIDER_MODULE.
-    modules: Object.freeze({
-      sessions: true, models: true, usage: true, tasks: true,
-      authStatus: true, events: true,
-    }),
-  }),
-  openclaw: row({ ...gatewayRuntime, media: false, wiki: false }, {
-    http,
-    sse,
-    websocket,
-  }, {
-    transports: Object.freeze({ websocket }),
-    modules: Object.freeze({
-      sessions: true, models: true, usage: true, tasks: true,
-      workspace: true, authStatus: true, events: true,
-    }),
-  }),
+  claude: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.claude), { http, sse }),
+  "claude-managed-agents": row(
+    projectRuntimeSurfaces(PROVIDER_CAPABILITIES["claude-managed-agents"]),
+    { http, sse },
+  ),
+  codex: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.codex), { http, sse }),
+  gemini: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.gemini), { http, sse }),
+  hermes: row(
+    projectRuntimeSurfaces(PROVIDER_CAPABILITIES.hermes),
+    { http, sse, websocket: experimentalWebsocket },
+    {
+      transports: Object.freeze({ websocket: experimentalWebsocket }),
+      modules: Object.freeze(projectControlPlaneModules(PROVIDER_CAPABILITIES.hermes)),
+    },
+  ),
+  openclaw: row(
+    projectRuntimeSurfaces(PROVIDER_CAPABILITIES.openclaw),
+    { http, sse, websocket },
+    {
+      transports: Object.freeze({ websocket }),
+      modules: Object.freeze(projectControlPlaneModules(PROVIDER_CAPABILITIES.openclaw)),
+    },
+  ),
 });
 
 export type RuntimeProviderCapabilityMatrixKey =

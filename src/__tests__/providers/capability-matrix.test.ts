@@ -21,12 +21,12 @@ describe("runtime provider capability matrix", () => {
       sessions: true, models: true, usage: true, tasks: true,
       workspace: true, authStatus: true, events: true,
     });
-    // Hermes serves six from its dashboard API plus the kanban plugin it ships.
-    // `workspace` is absent: agent workspace identities have no native Hermes
-    // surface, so an extension supplies them.
+    // Hermes serves its dashboard API modules plus the kanban plugin it ships;
+    // `workspace` is served via the CAVI control plugin's member workspace
+    // routes (verified live 2026-07-21; maintainer-confirmed).
     expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX.hermes.controlPlane.modules).toEqual({
       sessions: true, models: true, usage: true, tasks: true,
-      authStatus: true, events: true,
+      workspace: true, authStatus: true, events: true,
     });
     // Runtime-only providers have no control plane at all.
     for (const [provider, row] of Object.entries(RUNTIME_PROVIDER_CAPABILITY_MATRIX)) {
@@ -62,12 +62,15 @@ describe("runtime provider capability matrix", () => {
           transports: { websocket: { ...websocket, stability: "experimental" } },
           modules: {
             sessions: true, models: true, usage: true, tasks: true,
-            authStatus: true, events: true,
+            workspace: true, authStatus: true, events: true,
           },
         },
       },
       openclaw: {
-        runtime: { ...gatewayRuntime, media: false, wiki: false },
+        // media/wiki true: RPC-backed platform capabilities (tts/talk core
+        // methods; first-party memory-wiki plugin). Instance-level presence
+        // is runtime-resolved from the hello-ok method advertisement.
+        runtime: gatewayRuntime,
         transports: { http, sse, websocket },
         controlPlane: {
           modules: { sessions: true, models: true, usage: true, tasks: true, workspace: true, authStatus: true, events: true },

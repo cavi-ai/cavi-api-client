@@ -10,7 +10,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-23
+
 ### Added
+
+- Unified capability contract (foundation of the single-client redesign):
+  - `CAPABILITY_TAXONOMY` in `./core/runtime` — one provider-agnostic
+    capability list (the union of the legacy runtime surfaces and
+    control-plane modules, de-duplicated), with `CapabilityKey`,
+    `CapabilityMap`, and `CapabilitySupport` types.
+  - `PROVIDER_CAPABILITIES` — the single static declaration site per provider
+    (conservative fallback), with an equivalence test against the legacy
+    capability matrix.
+  - Runtime capability sourcing in `./contracts`:
+    `ResolvedProviderCapabilities`, `ProviderCapabilityResolver`, and
+    `mergeCapabilitySupport` (runtime authoritative, static fallback).
+  - Provider transforms + resolvers: `transformHermesCapabilities` /
+    `createHermesCapabilityResolver` (live API-server capabilities envelope →
+    unified supports + `TeamManifest` with members/actions built from
+    provider-published paths) and `transformOpenClawHello` /
+    `createOpenClawCapabilityResolver` (hello-ok handshake → unified supports;
+    manifest actions from the provider REST manifest + canonical media/wiki
+    tables). `GatewayRpcClient` now retains the raw handshake payload and
+    exposes `getHelloFrame()`.
+  - The single client surface: `createCapabilityClient` in `./contracts` and
+    the `createApiClient(provider, options)` front door — every capability
+    accessor exists on every provider (sessions, tasks, events, models, usage,
+    authStatus, workspace, kanban, teams, media, wiki, agentConfig plus the
+    universal execution surface); unsupported calls resolve a
+    `CapabilityResult` with a notated gap (`ok: false`) rather than throwing;
+    gateway providers auto-wire their resolver and backends from
+    `baseUrl`/`webSocketUrl`. Additive — no existing export changed.
 
 - Extended `./testing` `inspectRuntimeProviderConformance` with streaming-path
   duality (`streamRun` or gateway `createSseRunEventProvider`), required
@@ -25,7 +55,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identifier normalizer from this canonical core. Additive; no runtime behavior
   change to existing consumers.
 
+- Added `CapabilityResult`, `classifyCapabilityFailure`, `CapabilityCallRejected`,
+  `CapabilityGated`/`CapabilityGatedMethod`, `StreamRunBody`, and
+  `RunStreamOutcome` as root exports — the typed vocabulary of the
+  `CapabilityClient` facade's non-throwing contract. `StreamRunBody` is
+  `RuntimeRunStartBody` plus the optional gateway session-selection fields
+  (`sessionKey`/`session_key`/`session_id`), so
+  `client.streamRun({ input, sessionKey })` typechecks at the call site.
+- Added gateway `streamRun` bridging so the facade's execution surface streams
+  on every provider: Hermes streams over SSE run events (the run body's
+  `sessionKey` — a `StreamRunBody` field — selects the session; without one the
+  call resolves `ok: false` with a `request-invalid` gap and starts no run), and
+  OpenClaw streams over control-plane WebSocket event frames. The gateway bridge
+  is wired internally by `createApiClient`; consumers assembling their own facade
+  supply it through the `streamRunBridge` option on
+  `CreateCapabilityClientOptions`. The reusable control-plane → run-stream
+  adapter `createRunEventStreamFromControlPlane` (and the underlying
+  `createControlPlaneRunStreamTranslator`) is exported from the `./core/runtime`
+  subpath. `streamRun` resolves a `CapabilityResult<RunStreamOutcome>` with
+  unified per-provider semantics: `ok` reflects the streaming CALL and the
+  payload carries the run's own terminal state as data (`runId` plus
+  `outcome: "completed" | "failed" | "cancelled" | null`), so a run that fails
+  as a `run.failed` EVENT still resolves `ok: true`. A stream torn down by a
+  transport error (even one swallowed into `onError` with no terminal) resolves
+  `ok: false` with a classified gap; a caller-initiated abort (via
+  `options.signal`) or a provider-internal AbortError resolves `ok: false` with
+  a `request-aborted` gap and, when a `runId` is known and the runtime exposes
+  `cancelRun`, issues a best-effort `cancelRun(runId)` so no gateway run is
+  orphaned (the gap note records whether a cancel was requested).
+- `ContractGapReason` gains `capability-unsupported` (an undeclared or unwired
+  capability), `request-invalid` (a caller mistake the transport can name before
+  any request is made), and `request-aborted` (a caller-initiated or
+  provider-internal abort of a streaming call).
+- Added `inspectCapabilityClientConformance` under the `./testing` subpath —
+  probes every `CapabilityClient` surface (execution, control-plane, kanban,
+  teams, media, wiki, agentConfig, events) and reports which calls fail to
+  resolve.
+
+### Removed
+
+- **Breaking** (`./providers/hermes`): the four pure-config mirror classes —
+  `HermesApiClient`, `HermesMediaApiClient`, `HermesWikiApiClient`,
+  `HermesWebSocketClient` (and the `HermesCapabilities`/`HermesRunStatus`
+  type aliases). They injected only a surface tag and/or endpoint table into
+  the shared gateway bases; the provider module and `createApiClient` now pass
+  that config to `GatewayApiClient` / `GatewayMediaApiClient` /
+  `GatewayWikiApiClient` / `GatewayWebSocketClient` directly. Runtime behavior
+  (including the `hermes-*` surface tags) is unchanged.
+
 ### Changed
+
+- `RUNTIME_PROVIDER_CAPABILITY_MATRIX` (and the per-provider
+  `*_RUNTIME_SUPPORT` consts) now derive from `PROVIDER_CAPABILITIES` — the
+  single declaration site — via runtime-surface / control-plane-module
+  projections. Two declared values were corrected: OpenClaw `media`/`wiki` are
+  now `true` — RPC-backed platform capabilities (media via the core tts/talk
+  gateway methods; wiki via the first-party memory-wiki plugin's `wiki.*`
+  methods), with instance-level presence runtime-resolved from the hello-ok
+  method advertisement — and Hermes gains `controlPlane.modules.workspace`
+  (member workspace routes served via the CAVI control plugin, verified live).
+  The live-diagnose prober now classifies 2xx `text/html` responses as
+  `spa-fallback` instead of `live` (the control-UI catch-all had made any GET
+  look served).
 
 - Documented `RuntimeClient` getRun/cancelRun as three real semantics (omit,
   server, sync-store) and named `GatewayApiClient` as the gateway implementer
@@ -40,6 +131,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provider-neutral entry point and moved exports, provider selection, Claude
   integrations, development checks, and consumer verification into focused
   linked documents.
+- `CapabilityClient` (the unreleased single-client facade) is now fully
+  non-throwing: every accessor across every gated surface (`sessions`,
+  `tasks`, `events`, `models`, `usage`, `authStatus`, `workspace`, `kanban`,
+  `teams`, `media`, `wiki`, `agentConfig`) and the universal execution surface
+  (`startRun`/`getRun`/`cancelRun`/`streamRun`/batch) resolves a
+  `CapabilityResult<T>` — `ok: false` carries a structured `ContractGap` for
+  unsupported capabilities and degraded backends, instead of throwing
+  `CapabilityUnavailable`. Auth (401/403) and unknown-classified errors still
+  throw. `CapabilityClient` no longer extends `RuntimeClient`. The execution
+  surface is always present on every provider, gateways included.
+- `createApiClient("openclaw")` now runs on a single shared WebSocket. The
+  wiring's socket is injected into the OpenClaw runtime client via its
+  `rpcClient` option, so `startRun`/`getRun`/`cancelRun` and the resolver,
+  control plane, kanban, media, and `streamRun` event stream all ride one
+  connection instead of two. The `streamRun` event client and provider are
+  memoized per client, so N concurrent streams share one native socket listener
+  rather than constructing one event client per call. The wiring's `onDispose`
+  is the SOLE owner of the shared socket's lifecycle (`dispose()` closes it
+  exactly once): the injected runtime client never closes it (`GatewayApiClient`
+  has no `dispose`), and the control-plane backend is now wired with
+  `takeRpcOwnership: false` so it tears down only its own raw-gateway resources.
+  This keeps facade `dispose()` ordering correct — the control plane is disposed
+  first without touching the socket, then `onDispose` aborts in-flight
+  `streamRun`s cleanly (a clean abort, not an F1 connection-error gap) and closes
+  the one socket.
+
+### Fixed
+
+- OpenClaw reconnect-gap detection is seeded from the socket's live connection
+  state at (re)attach. An event client subscribing to an already-open socket
+  missed the initial `connection.open`, so its first reconnect was mistaken for
+  the initial connect and skipped the `stream.gap` marker; it now correctly
+  emits `stream.reconnected` (+ a conditional `stream.gap`) on the first
+  post-attach reconnect.
 
 ### Fixed
 
@@ -727,7 +852,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.11.0...v0.12.0
 [0.5.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.0...v0.4.1

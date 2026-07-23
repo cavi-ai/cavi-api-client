@@ -73,8 +73,53 @@ Choose and configure a concrete implementation outside this function. See
 [Providers and setup](docs/guides/providers.md) for the available adapters and
 their configuration requirements.
 
+## Use the capability client
+
+`createApiClient(provider, options)` is the single front door. It returns a
+`CapabilityClient` on which **every** capability accessor exists for **every**
+provider — no accessor is ever missing, so there is nothing to feature-detect
+before calling.
+
+The facade is non-throwing. Each call resolves a `CapabilityResult`: either
+`{ ok: true, data, source: "live" }`, or `{ ok: false, data: null, gap }` with a
+structured `ContractGap` explaining why nothing happened — unsupported by the
+provider, supported but unwired, or the backend call failed. Only authentication
+errors (401/403) and unknown-classified errors still throw.
+
+```ts
+import { createApiClient } from "@cavi-ai/api-client";
+
+const client = createApiClient("hermes", {
+  baseUrl: process.env.GATEWAY_URL,
+  token: process.env.GATEWAY_TOKEN,
+});
+
+const sessions = await client.sessions.listSessions();
+if (sessions.ok) {
+  for (const session of sessions.data.data) console.log(session.id);
+} else {
+  console.warn(sessions.gap.reason, sessions.gap.note);
+}
+
+await client.dispose();
+```
+
+`streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
+Gemini) stream through their own `RuntimeClient`; gateway providers are bridged
+over their event transport — Hermes over SSE run events, OpenClaw over
+control-plane WebSocket frames. It resolves a `CapabilityResult<RunStreamOutcome>`
+whose `ok` reflects the streaming *call*, while the payload carries the run's own
+terminal state, so a run that ends as a `run.failed` event is still `ok: true`.
+Aborting via `options.signal` resolves `ok: false` with a `request-aborted` gap
+and issues a best-effort `cancelRun` so no gateway run is orphaned.
+
+Call `getCapabilityMap()` to inspect the merged (runtime over static) profile
+ahead of time, or simply call and branch on `result.ok`.
+
 ## What the package provides
 
+- A single `createApiClient` front door returning a non-throwing
+  `CapabilityClient` whose every accessor exists on every provider.
 - A universal `RuntimeClient` contract for capabilities, runs, streaming, and
   optional batch operations.
 - A `GatewayClient` tier for gateway-owned resources such as teams, kanban,
@@ -115,13 +160,22 @@ describe later released or unreleased work; the versioned artifact does not.
 
 ## Capability-first behavior
 
-Optional methods are only usable when the selected provider both advertises the
-capability and implements the method. Callers should gate optional operations
-with `runtimeSupports` and a method-presence check, as shown above.
+There are two ways to reach a provider, and they gate differently.
 
-Unsupported features fail truthfully or return the documented typed degradation
-shape. The package does not silently claim that every runtime supports every
-surface.
+On the raw `RuntimeClient` contract, optional methods are only usable when the
+selected provider both advertises the capability and implements the method.
+Callers gate optional operations with `runtimeSupports` and a method-presence
+check, as shown above.
+
+On the `CapabilityClient` returned by `createApiClient`, gating moves into the
+return value: every accessor is present, and an unsupported, unwired, or failed
+call resolves `{ ok: false, gap }` instead of being absent or throwing. Branch on
+`result.ok` rather than probing for methods.
+
+Either way, unsupported features fail truthfully or return the documented typed
+degradation shape. The package does not silently claim that every runtime
+supports every surface, and it never substitutes fabricated data for a call that
+did not happen.
 
 ## Security
 

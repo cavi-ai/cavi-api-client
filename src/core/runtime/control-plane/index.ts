@@ -15,3 +15,6 @@ export {
   type RawGatewayRequestOptions,
 } from "./raw-gateway.js";
 export * from "./runtime-control-client.js";
+// The reusable control-plane → run-stream translator/adapter, reachable via the
+// documented `./core/runtime` subpath (announced in the CHANGELOG).
+export * from "./run-stream-bridge.js";

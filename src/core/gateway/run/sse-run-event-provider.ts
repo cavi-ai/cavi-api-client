@@ -179,7 +179,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
       if (this.fallbackToPoll && shouldFallbackToPoll(response.status, body)) {
         return this.pollUntilTerminal(runId, signal, handlers);
       }
-      throw new Error(formatHttpError("run events failed", response.status, body));
+      throw httpStatusError("run events failed", response.status, body);
     }
 
     const contentType = response.headers?.get?.("Content-Type") ?? "";
@@ -222,7 +222,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
       );
       const text = await response.text();
       if (!response.ok) {
-        throw new Error(formatHttpError("run status polling failed", response.status, text));
+        throw httpStatusError("run status polling failed", response.status, text);
       }
       let payload: {
         run_id?: string;
@@ -508,6 +508,16 @@ function shouldFallbackToPoll(status: number, body: string): boolean {
 function formatHttpError(prefix: string, status: number, body: string): string {
   const trimmed = body.trim();
   return `${prefix} with HTTP ${status}${trimmed ? `: ${trimmed.slice(0, 240)}` : ""}`;
+}
+
+/**
+ * An HTTP failure error that carries the numeric `status` alongside the
+ * message, so downstream classifiers (`getErrorStatus` → 5xx backend-unavailable,
+ * 401/403 auth, other 4xx request-invalid) branch on the value rather than
+ * scraping the message string. The message is unchanged from `formatHttpError`.
+ */
+function httpStatusError(prefix: string, status: number, body: string): Error {
+  return Object.assign(new Error(formatHttpError(prefix, status, body)), { status });
 }
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {

@@ -55,6 +55,22 @@ gateway backends, adding teams, kanban, workspace, and operator surfaces. Each
 provider declares a capability profile; calling an unsupported surface returns a
 typed `EndpointNotFound` rather than crashing.
 
+Above those tiers sits a single front door. `createApiClient(provider, options)`
+(`src/providers/create-api-client.ts`) resolves the provider, constructs its
+runtime client, auto-wires the capability resolver and gateway backends from
+`baseUrl`/`webSocketUrl`, and returns a `CapabilityClient` — a facade on which
+every capability accessor exists for every provider. Gating moves from method
+presence into the return value: each call resolves a `CapabilityResult`, either
+`{ ok: true, data, source: "live" }` or `{ ok: false, data: null, gap }` carrying
+the same `ContractGap` vocabulary the degradation envelope uses. This is the
+non-throwing counterpart to the tiered contracts below, which still throw
+`EndpointNotFound`; the facade's only remaining throws are the envelope's
+carve-outs, authentication (401/403) and unknown-classified errors.
+
+Capability declarations have one static source, `PROVIDER_CAPABILITIES`, which a
+runtime resolver may override per instance — the live gateway handshake is
+authoritative, the static table is the conservative fallback.
+
 Consumers build one client and choose a provider through a runtime-owned registry.
 `createGatewayProviderRegistry` holds gateway providers; the generic
 `createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in

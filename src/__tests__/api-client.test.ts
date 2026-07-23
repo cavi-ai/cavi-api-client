@@ -18,6 +18,7 @@ import {
   OPERATOR_DISPATCH_ENDPOINTS,
   resolveLibraryApiPath,
 } from "../extensions/cavi/contracts/paths";
+import { GatewayWebSocketClient } from "../core/ws/index";
 import {
   GatewayApiClient,
   RUN_STREAM_EVENT_NAMES,
@@ -47,11 +48,8 @@ import {
   GATEWAY_WIKI_FORMATS,
 } from "../core/gateway/index";
 import {
-  HermesMediaApiClient,
   HERMES_PROVIDER_MODULE,
   HermesSseRunEventProvider,
-  HermesWebSocketClient,
-  HermesWikiApiClient,
 } from "../providers/hermes/index";
 import {
   OpenClawApiClient,
@@ -1312,7 +1310,9 @@ describe("agnostic HTTP API client package", () => {
 
     expect(generic.surface).toBe("gateway-media-api");
     expect(GATEWAY_MEDIA_KINDS).toContain("image");
-    expect(hermes).toBeInstanceOf(HermesMediaApiClient);
+    // Hermes media is the shared gateway base configured with Hermes tables —
+    // the former subclass was pure config duplication.
+    expect(hermes).toBeInstanceOf(GatewayMediaApiClient);
     expect(hermes.surface).toBe("hermes-media-api");
     expect(openclaw).toBeInstanceOf(OpenClawMediaApiClient);
     expect(openclaw.surface).toBe("openclaw-media-api");
@@ -1545,7 +1545,7 @@ describe("agnostic HTTP API client package", () => {
     );
 
     expect(generic.surface).toBe("gateway-wiki-api");
-    expect(hermes).toBeInstanceOf(HermesWikiApiClient);
+    expect(hermes).toBeInstanceOf(GatewayWikiApiClient);
     expect(hermes.surface).toBe("hermes-wiki-api");
     expect(openclaw).toBeInstanceOf(OpenClawWikiApiClient);
     expect(openclaw.surface).toBe("openclaw-wiki-api");
@@ -1721,7 +1721,7 @@ describe("agnostic HTTP API client package", () => {
 
     expect(hermes).toBeInstanceOf(HermesSseRunEventProvider);
     expect(openclaw).toBeInstanceOf(OpenClawSseRunEventProvider);
-    expect(hermesWs).toBeInstanceOf(HermesWebSocketClient);
+    expect(hermesWs).toBeInstanceOf(GatewayWebSocketClient);
     expect(openclawWs).toBeInstanceOf(OpenClawWebSocketClient);
     expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
       "X-Hermes-Session-Key": "session-1",

@@ -104,11 +104,57 @@ export type RunEventStreamSubscribeParams = {
 
 export type RunEventStreamHandlers = {
   onEvent: (event: RunStreamEvent) => void;
-  /** Transport / parse errors. Lifecycle "run.failed" is delivered via onEvent, not here. */
+  /**
+   * Transport / parse errors. Lifecycle "run.failed" is delivered via onEvent,
+   * not here.
+   *
+   * TERMINALITY: by default an `onError` is TERMINAL — it ends the stream and
+   * (through the gateway bridge) rejects/settles the run. A provider that
+   * surfaces a *per-frame*, NON-terminal error (e.g. a single malformed frame
+   * on a still-live subscription) MUST mark it with
+   * {@link markNonTerminalStreamError} so the bridge forwards it for
+   * observability without tearing the stream down. Connection loss is terminal
+   * and stays unmarked.
+   */
   onError?: (error: unknown) => void;
   /** Fired once after the stream has emitted its last event of the run. */
   onComplete?: () => void;
 };
+
+const NON_TERMINAL_STREAM_ERROR = Symbol("cavi.runStream.nonTerminalError");
+
+/**
+ * Tag an error as a NON-terminal stream error: the gateway bridge forwards it
+ * to `handlers.onError` (observability) but does not settle/reject the stream.
+ * Used at the control-plane→run-stream seam where a single bad frame must not
+ * kill an otherwise-live subscription. Mutates and returns the same error
+ * (non-enumerable marker) so the forwarded value is unchanged for consumers.
+ * Non-object errors can't carry the marker and are treated as terminal.
+ */
+export function markNonTerminalStreamError<E>(error: E): E {
+  if (error !== null && typeof error === "object") {
+    try {
+      Object.defineProperty(error as object, NON_TERMINAL_STREAM_ERROR, {
+        value: true,
+        enumerable: false,
+        configurable: true,
+        writable: false,
+      });
+    } catch {
+      // A frozen/sealed error can't be marked — it falls back to terminal.
+    }
+  }
+  return error;
+}
+
+/** True when an error was tagged by {@link markNonTerminalStreamError}. */
+export function isNonTerminalStreamError(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    (error as Record<PropertyKey, unknown>)[NON_TERMINAL_STREAM_ERROR] === true
+  );
+}
 
 /**
  * Harness-agnostic source of live run events. Implementations bind to a
