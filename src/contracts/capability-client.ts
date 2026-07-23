@@ -731,8 +731,11 @@ export function createCapabilityClient(
       // onError — the streaming call succeeded; report the run's outcome.
       if (outcome !== null || !sawError) return liveResult({ runId, outcome });
       // (b) resolved but an onError with no terminal → the run-stream was torn
-      // down mid-flight; classify that error into a gap (kills the divergence
-      // where a swallowed onError still looked like ok:true).
+      // down mid-flight. An abort reported THROUGH the handler is still an abort,
+      // not an unknown fault, so route an AbortError-class onError to the same
+      // request-aborted gap (with best-effort cancel); otherwise classify the
+      // error (kills the divergence where a swallowed onError looked like ok:true).
+      if (isAbortError(lastError)) return abortedGap();
       return gapResult(
         classifyCapabilityFailure({ error: lastError, area: "capability:streaming", expectedContract: call, call }),
       );

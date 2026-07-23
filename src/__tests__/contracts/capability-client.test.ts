@@ -925,6 +925,27 @@ describe("capability client — unified streamRun semantics (R10)", () => {
     expect(result.gap.note).toContain("no cancel issued");
   });
 
+  // (b→abort) — an AbortError reported THROUGH onError (no caller signal, no
+  // terminal) is an abort, not an unknown fault: request-aborted + best-effort
+  // cancel when the runId is known.
+  it("routes an AbortError delivered via onError to request-aborted with best-effort cancel (b)", async () => {
+    const cancelRun = vi.fn(async () => ({ status: "cancelled" }));
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "run-88", delta: "hi" });
+      handlers.onError?.(Object.assign(new Error("This operation was aborted"), { name: "AbortError" }));
+      // resolves WITHOUT a terminal event and WITHOUT a caller signal.
+    };
+    const result = await streamingClient(stream, { cancelRun }).streamRun(
+      { input: "hi" },
+      { onEvent: () => undefined },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-aborted");
+    expect(result.gap.note).toContain("run-88");
+    expect(cancelRun).toHaveBeenCalledWith("run-88");
+  });
+
   // (e) — auth rejection mid-stream preserves the carve-out (rethrows).
   it("rethrows an auth rejection mid-stream (e carve-out)", async () => {
     const stream: RuntimeClient["streamRun"] = async () => {
