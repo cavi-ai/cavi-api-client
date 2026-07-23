@@ -79,7 +79,7 @@ describe("createOpenClawRunEventStreamProvider", () => {
     expect(result.gap.reason).toBe("transport-disconnected");
   });
 
-  it("a per-frame protocol error is observed but does NOT settle the stream; a later terminal frame does (F2)", async () => {
+  it("an unrecognized frame is ignored and does NOT settle the stream; a later terminal frame does (F2)", async () => {
     const rpc = new FakeOpenClawRpc();
     const runtime = fakeRuntime("run-1");
     const provider = createOpenClawRunEventStreamProvider({
@@ -87,21 +87,21 @@ describe("createOpenClawRunEventStreamProvider", () => {
       connect: async () => undefined,
     });
     const seen: string[] = [];
-    const errors: unknown[] = [];
     const pending = createGatewayStreamRun({ runtime, createProvider: () => provider })(
       { input: "hi" },
-      { onEvent: (e) => seen.push(e.event), onError: (e) => errors.push(e) },
+      { onEvent: (e) => seen.push(e.event) },
     );
 
     await waitFor(() => rpc.eventListeners.size > 0);
-    // An unsafe payload (a Date value) → openClawProtocolError to the
-    // subscriber; per-frame and non-terminal.
-    rpc.emit("plugin.exotic", { operationId: "run-1", value: new Date() });
-    await waitFor(() => errors.length > 0);
-    expect(errors).toHaveLength(1);
+    // Heartbeat/health frames and frames for other runs have no run-stream
+    // projection — ignored, never terminal.
+    rpc.emit("health", { ok: true, ts: 1 });
+    rpc.emit("chat", { runId: "other-run", state: "final", message: {} });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(seen).toHaveLength(0);
 
-    // The subscription is still live: a terminal frame settles it (resolve, not reject).
-    rpc.emit("task.completed", { operationId: "run-1" });
+    // The subscription is still live: a native terminal frame settles it.
+    rpc.emit("agent", { runId: "run-1", stream: "lifecycle", data: { phase: "end" } });
     await pending;
     expect(seen).toContain(RUN_STREAM_EVENT_NAMES.RUN_COMPLETED);
   });
@@ -162,7 +162,7 @@ describe("createOpenClawRunEventStreamProvider", () => {
     await provider.subscribe({ runId: "run-1" }, { onEvent: (e) => seen.push(e) });
 
     // Live terminal wins the race; the probe resolves afterward and is dropped.
-    rpc.emit("task.completed", { operationId: "run-1" });
+    rpc.emit("agent", { runId: "run-1", stream: "lifecycle", data: { phase: "end" } });
     resolveProbe({ run_id: "run-1", status: "completed", output: "from-probe" });
     await waitFor(() => seen.length > 0);
     await new Promise((resolve) => setTimeout(resolve, 0));

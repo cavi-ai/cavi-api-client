@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- OpenClaw `streamRun` now delivers run events. The bridge translated the
+  control-plane `operation.*` vocabulary, but live OpenClaw runs emit native
+  `chat`/`agent` frames keyed by `runId` — so no run event ever reached the
+  consumer and the stream hung. `createOpenClawRunNativeEventStream` translates
+  the real wire shape (`chat` delta/final, `agent` lifecycle), verified against
+  a live gateway. One shared native listener fans out to every in-flight run by
+  id (preserves the single-socket contract).
+
+### Added
+
+- Gateway WebSocket handshake controls on `createApiClient` for headless
+  (non-browser) clients: `clientOrigin` (sends an allowlisted `Origin` for
+  origin-gated gateways; auto-derived from the base origin for non-cli modes),
+  `clientMode` (e.g. `"cli"` so shared-secret auth keeps operator scopes), and
+  `requestedScopes` (request `operator.write` to start runs). Backing
+  `GatewayRpcClientOptions.origin` sets the handshake `Origin` header.
+
 ## [0.13.0] - 2026-07-23
 
 ### Added
