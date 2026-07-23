@@ -645,6 +645,23 @@ describe("package hardening", () => {
     expect(tracked).toBe("");
   });
 
+  it("keeps internal design specs and private tooling dirs out of version control", () => {
+    // Incident guard: design specs belong in .claude/plans/specs (gitignored),
+    // never in the public docs/ tree. docs/specs/ leaked onto public main once;
+    // this fails the build if any internal-docs or private-tooling path is
+    // tracked again, and if .gitignore stops covering them.
+    const requiredIgnores = ["docs/specs/", "docs/plans/", ".claude/", ".remember/"];
+    const gitignore = read(path.join(PACKAGE_ROOT, ".gitignore")).split(/\r?\n/u);
+    expect(gitignore).toEqual(expect.arrayContaining(requiredIgnores));
+
+    const tracked = execFileSync(
+      "git",
+      ["ls-files", ...requiredIgnores.map((dir) => `${dir}**`)],
+      { cwd: PACKAGE_ROOT, encoding: "utf8" },
+    ).trim();
+    expect(tracked).toBe("");
+  });
+
   it("removes legacy package subpath exports", () => {
     const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
       exports: Record<string, unknown>;

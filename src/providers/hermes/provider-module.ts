@@ -11,6 +11,14 @@ import { HermesAgentConfigApiClient } from "./agent-config.js";
 import { HermesSseRunEventProvider } from "./sse-run-event-provider.js";
 import { createHermesRuntimeControlClient } from "./control-plane/factory.js";
 
+// One factory serves both the uniform runtime path (`createClient`, consumed by
+// createRuntimeClient) and the gateway path (`createApiClient`, consumed by
+// core/gateway/providers/factory). `createApiClient` is the deprecated alias.
+// Hermes differs from the shared gateway bases by CONFIG only (surface tag +
+// endpoint tables) — the former Hermes* subclasses were pure duplication.
+const createClient: NonNullable<GatewayProviderModule["createApiClient"]> = (clientOptions) =>
+  new GatewayApiClient(clientOptions, "hermes-api-server");
+
 export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
   kind: "hermes",
   aliases: ["hermes-api-server"],
@@ -28,10 +36,8 @@ export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
     },
   },
   createRuntimeControlClient: createHermesRuntimeControlClient,
-  // Hermes differs from the shared gateway bases by CONFIG only (surface tag +
-  // endpoint tables) — the former Hermes* subclasses were pure duplication.
-  createApiClient: (clientOptions) =>
-    new GatewayApiClient(clientOptions, "hermes-api-server"),
+  createClient,
+  createApiClient: createClient,
   createWebSocketClient: (wsUrl, authToken, clientOptions) =>
     new GatewayWebSocketClient(wsUrl, authToken, clientOptions),
   createSseRunEventProvider: (options) => {

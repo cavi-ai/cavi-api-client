@@ -100,7 +100,12 @@ function sessionDefaults(value: unknown): WireObject {
   return output;
 }
 
-const MODEL_KEYS = ["id", "name", "provider", "alias", "contextWindow", "reasoning"] as const;
+const MODEL_KEYS = [
+  "id", "name", "provider", "alias", "contextWindow", "reasoning",
+  // OpenClaw gateway forwards these catalog fields; keep allowlisted so live
+  // payloads remain forward-compatible without admitting arbitrary extras.
+  "api", "available", "input",
+] as const;
 function model(value: unknown, label: string): WireObject {
   const input = closed(value, label, MODEL_KEYS); const output: WireObject = {
     id: string(input.id, `${label}.id`), name: string(input.name, `${label}.name`), provider: string(input.provider, `${label}.provider`),
@@ -108,6 +113,9 @@ function model(value: unknown, label: string): WireObject {
   assign(output, "alias", string(input.alias, `${label}.alias`, false));
   assign(output, "contextWindow", integer(input.contextWindow, `${label}.contextWindow`, 1));
   assign(output, "reasoning", boolean(input.reasoning, `${label}.reasoning`));
+  assign(output, "api", string(input.api, `${label}.api`, false));
+  assign(output, "available", boolean(input.available, `${label}.available`));
+  if (input.input !== undefined) output.input = strings(input.input, `${label}.input`);
   return output;
 }
 

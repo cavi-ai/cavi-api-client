@@ -27,24 +27,37 @@ export type {
 
 /**
  * The UNIVERSAL agent-runtime contract every provider implements.
- * Gateway-only surfaces (teams/kanban/workspace/operator) live on
- * `GatewayClient`, which extends this.
+ * Gateway backends implement this via `GatewayApiClient` (teams/kanban/
+ * workspace/operator live there). React’s `GatewayClient*` names are the
+ * WebSocket RPC context only — there is no exported `GatewayClient` interface.
  */
 export interface RuntimeClient {
   getRuntimeCapabilities(): Promise<RuntimeCapabilities>;
   startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus>;
   /**
-   * Optional — synchronous/stateless providers (e.g. Claude SDK) omit these.
-   * Consumers should null-check (`client.cancelRun?.(id)`) or gate on
-   * `RuntimeCapabilities`. Providers that expose the method but can't serve it
-   * should throw `ApiClientError(EndpointNotFound)`.
+   * Optional run lifecycle. Three real behaviors exist in this package:
+   *
+   * - **omit** — method absent; consumers null-check (`client.getRun?.(id)`).
+   * - **server** — real backend retrieval/cancel (Codex background responses,
+   *   Claude Managed Agents sessions, `GatewayApiClient` HTTP runs).
+   * - **sync-store** — synchronous providers (Claude Messages, Gemini) keep a
+   *   local `SynchronousRunStore` of terminal statuses from `startRun`;
+   *   `getRun` returns the remembered status or an honest `unknown` status for
+   *   foreign ids and **does not throw**. `cancelRun` is a no-op success on
+   *   an already-terminal run.
+   *
+   * Providers that expose the method but cannot serve it any other way should
+   * throw `ApiClientError(EndpointNotFound)` (`unsupported-throw` semantics).
    */
   getRun?(runId: string): Promise<RuntimeRunStatus>;
   cancelRun?(runId: string): Promise<{ status: string }>;
   /**
-   * Start a run and stream it as canonical RunStreamEvents. Optional: providers
-   * that use a subscribe-by-runId model (gateways) omit this and expose a
-   * RunEventStreamProvider instead.
+   * Start a run and stream it as canonical RunStreamEvents. Optional.
+   *
+   * **Streaming duality (intentional):** runtime-only providers implement
+   * `streamRun(body, handlers)`. Gateway providers typically omit this and
+   * expose subscribe-by-`runId` via `createSseRunEventProvider` /
+   * `RunEventStreamProvider` on the gateway provider module instead.
    */
   streamRun?(
     body: RuntimeRunStartBody,

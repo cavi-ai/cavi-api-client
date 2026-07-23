@@ -51,7 +51,7 @@ describe("OpenClaw task control plane", () => {
     const result = await createOpenClawTaskClient(rpc).getTask("task-1");
 
     expect(rpc.request).toHaveBeenCalledTimes(1);
-    expect(rpc.request).toHaveBeenCalledWith("tasks.get", { id: "task-1" }, { signal: undefined });
+    expect(rpc.request).toHaveBeenCalledWith("tasks.get", { taskId: "task-1" }, { signal: undefined });
     expect(result.state).toBe(state);
   });
 
@@ -68,7 +68,7 @@ describe("OpenClaw task control plane", () => {
     const result = await createOpenClawTaskClient(rpc).cancelTask("task-1", { reason: "operator request" });
 
     expect(rpc.request).toHaveBeenCalledTimes(1);
-    expect(rpc.request).toHaveBeenCalledWith("tasks.cancel", { id: "task-1", reason: "operator request" }, { signal: undefined });
+    expect(rpc.request).toHaveBeenCalledWith("tasks.cancel", { taskId: "task-1", reason: "operator request" }, { signal: undefined });
     expect(result.state).toBe("completed");
     expect(result.metadata.providerData).toMatchObject({ found: true, cancelled: false, reason: "already completed" });
     expect(JSON.stringify(result).match(/already completed/gu)).toHaveLength(1);
