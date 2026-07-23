@@ -130,9 +130,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   control plane, kanban, media, and `streamRun` event stream all ride one
   connection instead of two. The `streamRun` event client and provider are
   memoized per client, so N concurrent streams share one native socket listener
-  rather than constructing one event client per call. The wiring owns the
-  socket's lifecycle (`dispose()` closes it); the injected runtime client never
-  closes it, so there is no double-close.
+  rather than constructing one event client per call. The wiring's `onDispose`
+  is the SOLE owner of the shared socket's lifecycle (`dispose()` closes it
+  exactly once): the injected runtime client never closes it (`GatewayApiClient`
+  has no `dispose`), and the control-plane backend is now wired with
+  `takeRpcOwnership: false` so it tears down only its own raw-gateway resources.
+  This keeps facade `dispose()` ordering correct — the control plane is disposed
+  first without touching the socket, then `onDispose` aborts in-flight
+  `streamRun`s cleanly (a clean abort, not an F1 connection-error gap) and closes
+  the one socket.
 
 ### Fixed
 

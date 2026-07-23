@@ -276,8 +276,15 @@ export function wireOpenClaw(
       { ...(options.teamId ? { teamId: options.teamId } : {}) },
     ),
     backends: {
+      // takeRpcOwnership: false — the wiring's onDispose is the SOLE owner of the
+      // shared socket. The facade disposes the control plane BEFORE onDispose; if
+      // the control client owned the socket it would close it out from under any
+      // in-flight streamRun (settling it via the F1 connection-error path as a
+      // gap instead of a clean abort) and double-close it. The control client
+      // still tears down its own non-socket resources (raw-gateway lifecycle:
+      // reconnect task, state listeners) on dispose.
       controlPlane: () =>
-        createOpenClawRuntimeControlClient({ rpc: socket, takeRpcOwnership: true }),
+        createOpenClawRuntimeControlClient({ rpc: socket, takeRpcOwnership: false }),
       kanban: () => createOpenClawKanbanClient(createOpenClawWorkboardRpc(socket)),
       ...(options.baseUrl
         ? {

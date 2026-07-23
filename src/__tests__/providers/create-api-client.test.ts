@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient, wireOpenClaw } from "../../providers/create-api-client.js";
+import { createCapabilityClient } from "../../contracts/capability-client.js";
 import { createRuntimeProviderRegistry } from "../../core/runtime/providers/registry.js";
 import { getErrorStatus } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
@@ -379,6 +380,55 @@ describe("createApiClient — the one front door", () => {
     // the one socket.
     await wiring.onDispose?.();
     await Promise.all([first, second]);
+    expect(socket.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("openclaw: the wiring solely owns the shared socket — facade dispose aborts in-flight streams cleanly then closes it exactly once (R11)", async () => {
+    const socket = new FakeSharedSocket();
+    const runtime: RuntimeClient = {
+      getRuntimeCapabilities: async () => ({
+        providerKind: "openclaw",
+        supports: { runs: true, streaming: true, sessions: true },
+      }),
+      startRun: async () => ({ run_id: "run-1", status: "started" }) as never,
+    };
+    const wiring = wireOpenClaw({ baseUrl: "http://gateway.test" }, runtime, socket as never);
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { runs: true, streaming: true, sessions: true },
+      backends: wiring.backends,
+      ...(wiring.streamRunBridge ? { streamRunBridge: wiring.streamRunBridge } : {}),
+      ...(wiring.onDispose ? { onDispose: wiring.onDispose } : {}),
+    });
+
+    // Instantiate the control plane (injected rpc → no connect) so facade
+    // dispose() awaits plane.dispose() BEFORE onDispose — the exact window in
+    // which a socket-owning control client would close the shared socket early.
+    // The call's payload parse is irrelevant; resolving the backend (setting the
+    // control-plane memo) is what arms the dispose ordering.
+    await client.sessions.listSessions().catch(() => undefined);
+
+    // An in-flight streamRun: connect + subscribe succeed on the shared socket;
+    // no terminal frame arrives, so it stays open until dispose aborts it.
+    let settled = false;
+    const streaming = client
+      .streamRun({ input: "hi" }, { onEvent: () => undefined })
+      .then((result) => {
+        settled = true;
+        return result;
+      });
+    await waitFor(() => socket.eventListeners.size > 0);
+    expect(settled).toBe(false);
+
+    await client.dispose();
+    const result = await streaming;
+
+    // Clean abort settle (R10 dispose semantics) — NOT an F1 connection-error
+    // gap from the socket being closed out from under the live stream.
+    expect(result).toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
+    // Closed exactly once, by onDispose. The control client (takeRpcOwnership
+    // false) never closes the socket it does not own.
     expect(socket.dispose).toHaveBeenCalledTimes(1);
   });
 });
