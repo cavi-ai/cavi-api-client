@@ -84,11 +84,17 @@ describe("OpenClaw task control plane", () => {
     expect(result.metadata.providerData).not.toHaveProperty("reason");
   });
 
-  it("strictly validates responses and never retries", async () => {
-    const rpc = createRpc({ "tasks.list": { tasks: [{ id: "task-1", status: "running", cwd: "/secret" }] } });
+  it("tolerates benign unknown fields but rejects unsafe ones, and never retries", async () => {
+    // A benign unknown field (`cwd`) is tolerated — a live gateway grows the
+    // payload over time; a read client must not hard-fail. One request, no retry.
+    const ok = createRpc({ "tasks.list": { tasks: [{ id: "task-1", status: "running", cwd: "/work" }] } });
+    await expect(createOpenClawTaskClient(ok).listTasks()).resolves.toMatchObject({ data: [{ id: "task-1" }] });
+    expect(ok.request).toHaveBeenCalledTimes(1);
 
-    await expect(createOpenClawTaskClient(rpc).listTasks()).rejects.toMatchObject({ code: ApiClientErrorCode.TransportProtocolError });
-    expect(rpc.request).toHaveBeenCalledTimes(1);
+    // An unsafe field (a sensitive key) is still rejected, and still no retry.
+    const unsafe = createRpc({ "tasks.list": { tasks: [{ id: "task-1", status: "running", authorization: "secret" }] } });
+    await expect(createOpenClawTaskClient(unsafe).listTasks()).rejects.toMatchObject({ code: ApiClientErrorCode.TransportProtocolError });
+    expect(unsafe.request).toHaveBeenCalledTimes(1);
   });
 
   it("translates request failures without retry", async () => {

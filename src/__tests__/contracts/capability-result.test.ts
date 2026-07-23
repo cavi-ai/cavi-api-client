@@ -6,6 +6,7 @@ import {
   liveResult,
 } from "../../contracts/capability-result.js";
 import { GatewayHttpError } from "../../core/http/gateway-error.js";
+import { GatewayRpcError } from "../../core/gateway/rpc/error.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 
 const params = {
@@ -23,6 +24,28 @@ describe("capability result helpers", () => {
     expect(liveResult(42)).toEqual({ ok: true, data: 42, source: "live" });
     const gap = { area: "a", expectedContract: "b", note: "c" };
     expect(gapResult(gap)).toEqual({ ok: false, data: null, gap });
+  });
+});
+
+describe("classifyCapabilityFailure — gateway RPC wire codes", () => {
+  it("degrades a GatewayRpcError to a gap by its gRPC-style code (never throws a read)", () => {
+    expect(classifyCapabilityFailure({ ...params, error: new GatewayRpcError("catalog replaced", "UNAVAILABLE") }).reason)
+      .toBe("backend-unavailable");
+    expect(classifyCapabilityFailure({ ...params, error: new GatewayRpcError("bad view", "INVALID_REQUEST") }).reason)
+      .toBe("request-invalid");
+    expect(classifyCapabilityFailure({ ...params, error: new GatewayRpcError("no method", "NOT_FOUND") }).reason)
+      .toBe("endpoint-not-found");
+    // Unknown gateway codes still degrade (transient), not throw.
+    expect(classifyCapabilityFailure({ ...params, error: new GatewayRpcError("weird", "INTERNAL") }).reason)
+      .toBe("backend-unavailable");
+  });
+
+  it("rethrows a GatewayRpcError auth code (carve-out)", () => {
+    for (const code of ["UNAUTHENTICATED", "PERMISSION_DENIED"]) {
+      expect(() =>
+        classifyCapabilityFailure({ ...params, error: new GatewayRpcError("nope", code) }),
+      ).toThrow();
+    }
   });
 });
 

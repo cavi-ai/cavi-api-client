@@ -184,10 +184,13 @@ describe("OpenClaw control-plane wire validation", () => {
     expect((parsed.daily as unknown[])[0]).not.toBe((valid.daily as unknown[])[0]);
 
     const row = (valid.daily as Record<string, unknown>[])[0];
+    // Sensitive/unsafe fields are still rejected...
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, authorization: "secret" }] })).toThrow(OpenClawWireError);
-    expect(() => parseUsageCost({ ...valid, daily: [{ ...row, unexpected: true }] })).toThrow(OpenClawWireError);
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, date: new Date() }] })).toThrow(OpenClawWireError);
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, totalCost: new Map() }] })).toThrow(OpenClawWireError);
+    // ...but a benign unknown field is TOLERATED (forward compatibility): a live
+    // gateway adds fields over time and a read client must not hard-fail.
+    expect(() => parseUsageCost({ ...valid, daily: [{ ...row, unexpected: true }] })).not.toThrow();
   });
 
   it.each([

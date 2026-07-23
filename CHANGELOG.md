@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Control-plane reads no longer throw or falsely reject against a live gateway.
+  Two live-verified fixes: (1) the OpenClaw wire parsers are forward-compatible
+  — a benign unknown field is tolerated (a live session grew from ~6 to ~30
+  keys) while unsafe content (sensitive keys, non-plain objects, non-finite
+  numbers, cycles) is still rejected; (2) `classifyCapabilityFailure` now
+  classifies `GatewayRpcError` by its gRPC-style wire code (`UNAVAILABLE` →
+  backend-unavailable, `INVALID_REQUEST` → request-invalid, `NOT_FOUND` →
+  endpoint-not-found, `UNAUTHENTICATED`/`PERMISSION_DENIED` rethrow as auth),
+  so a control-plane RPC failure degrades to a gap instead of throwing out of a
+  read. Verified live: `sessions`/`tasks`/`usage`/`authStatus`/`workspace`/
+  `kanban`/`media` reads succeed; `models` degrades cleanly when the gateway's
+  catalog is mid-reload.
 - `streamRun` abort now cancels a run started microseconds before the abort.
   The best-effort `cancelRun` on a `request-aborted` gap needs the run id;
   gateway bridges now report it via `onRunId` the moment `startRun` returns
