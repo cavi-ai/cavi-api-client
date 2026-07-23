@@ -49,10 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   change to existing consumers.
 
 - Added `CapabilityResult`, `classifyCapabilityFailure`, `CapabilityCallRejected`,
-  `CapabilityGated`/`CapabilityGatedMethod`, and `StreamRunBody` as root exports
-  — the typed vocabulary of the `CapabilityClient` facade's non-throwing
-  contract. `StreamRunBody` is `RuntimeRunStartBody` plus the optional gateway
-  session-selection fields (`sessionKey`/`session_key`/`session_id`), so
+  `CapabilityGated`/`CapabilityGatedMethod`, `StreamRunBody`, and
+  `RunStreamOutcome` as root exports — the typed vocabulary of the
+  `CapabilityClient` facade's non-throwing contract. `StreamRunBody` is
+  `RuntimeRunStartBody` plus the optional gateway session-selection fields
+  (`sessionKey`/`session_key`/`session_id`), so
   `client.streamRun({ input, sessionKey })` typechecks at the call site.
 - Added gateway `streamRun` bridging so the facade's execution surface streams
   on every provider: Hermes streams over SSE run events (the run body's
@@ -64,10 +65,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `CreateCapabilityClientOptions`. The reusable control-plane → run-stream
   adapter `createRunEventStreamFromControlPlane` (and the underlying
   `createControlPlaneRunStreamTranslator`) is exported from the `./core/runtime`
-  subpath.
+  subpath. `streamRun` resolves a `CapabilityResult<RunStreamOutcome>` with
+  unified per-provider semantics: `ok` reflects the streaming CALL and the
+  payload carries the run's own terminal state as data (`runId` plus
+  `outcome: "completed" | "failed" | "cancelled" | null`), so a run that fails
+  as a `run.failed` EVENT still resolves `ok: true`. A stream torn down by a
+  transport error (even one swallowed into `onError` with no terminal) resolves
+  `ok: false` with a classified gap; a caller-initiated abort (via
+  `options.signal`) or a provider-internal AbortError resolves `ok: false` with
+  a `request-aborted` gap and, when a `runId` is known and the runtime exposes
+  `cancelRun`, issues a best-effort `cancelRun(runId)` so no gateway run is
+  orphaned (the gap note records whether a cancel was requested).
 - `ContractGapReason` gains `capability-unsupported` (an undeclared or unwired
-  capability) and `request-invalid` (a caller mistake the transport can name
-  before any request is made).
+  capability), `request-invalid` (a caller mistake the transport can name before
+  any request is made), and `request-aborted` (a caller-initiated or
+  provider-internal abort of a streaming call).
 - Added `inspectCapabilityClientConformance` under the `./testing` subpath —
   probes every `CapabilityClient` surface (execution, control-plane, kanban,
   teams, media, wiki, agentConfig, events) and reports which calls fail to

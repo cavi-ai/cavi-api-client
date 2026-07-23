@@ -7,7 +7,10 @@ import type {
   RuntimeBatchStatus,
   RuntimeBatchResult,
 } from "../core/runtime/client.js";
-import type { RunEventStreamHandlers } from "../core/runtime/run-stream.js";
+import {
+  RUN_STREAM_EVENT_NAMES,
+  type RunEventStreamHandlers,
+} from "../core/runtime/run-stream.js";
 import type { RuntimeControlClient } from "../core/runtime/control-plane/runtime-control-client.js";
 import type { RuntimeEventClient } from "../core/runtime/control-plane/events.js";
 import type {
@@ -76,6 +79,24 @@ export type StreamRunBody = RuntimeRunStartBody & {
 };
 
 /**
+ * What a facade `streamRun` reports once its streaming CALL settles. `ok`
+ * reflects the streaming call (did the stream run without a caller/transport
+ * failure); this payload carries the RUN's own terminal state as data, so
+ * `ok: true` with `outcome: "failed"` is coherent — the stream worked, the run
+ * failed (run.failed is an event, already the contract).
+ *
+ * - `runId` — captured from the first stream event carrying one; `null` when no
+ *   run event with an id was ever seen.
+ * - `outcome` — the terminal lifecycle event seen (`run.completed`→"completed",
+ *   `run.failed`→"failed", `run.cancelled`→"cancelled"); `null` when the stream
+ *   ended without a terminal event.
+ */
+export type RunStreamOutcome = {
+  runId: string | null;
+  outcome: "completed" | "failed" | "cancelled" | null;
+};
+
+/**
  * The single client surface (the redesign's core invariant): every capability
  * accessor exists on every provider. Gated surfaces never throw and never go
  * missing — an unsupported or failed call resolves `ok: false` with a
@@ -109,11 +130,24 @@ export interface CapabilityClient {
   startRun(body: RuntimeRunStartBody): Promise<CapabilityResult<RuntimeRunStatus>>;
   getRun(runId: string): Promise<CapabilityResult<RuntimeRunStatus>>;
   cancelRun(runId: string): Promise<CapabilityResult<{ status: string }>>;
+  /**
+   * Stream a run, unified across providers. The resolved `ok` reflects the
+   * STREAMING CALL, not the run: a clean stream (or one whose run merely failed
+   * as an event) resolves `ok: true` with a {@link RunStreamOutcome} carrying
+   * the captured `runId` and the terminal `outcome` seen. A stream that a
+   * transport error tore down resolves `ok: false` with a classified gap. A
+   * caller-initiated abort (via `options.signal`), or a provider-internal
+   * AbortError, resolves `ok: false` with a `request-aborted` gap — never a
+   * silent `ok: true` — and, when a `runId` is known and the runtime exposes
+   * `cancelRun`, issues a best-effort `cancelRun(runId)` so no gateway run is
+   * orphaned (the gap note records whether a cancel was requested). Auth
+   * (401/403) and unknown-classified errors still throw.
+   */
   streamRun(
     body: StreamRunBody,
     handlers: RunEventStreamHandlers,
     options?: { signal?: AbortSignal },
-  ): Promise<CapabilityResult<void>>;
+  ): Promise<CapabilityResult<RunStreamOutcome>>;
   submitBatch(requests: RuntimeBatchRequest[]): Promise<CapabilityResult<RuntimeBatchStatus>>;
   getBatch(batchId: string): Promise<CapabilityResult<RuntimeBatchStatus>>;
   cancelBatch(batchId: string): Promise<CapabilityResult<RuntimeBatchStatus>>;
@@ -221,6 +255,16 @@ function unsupportedGap(
 
 async function resolveLazy<T>(value: LazyAsync<T>): Promise<T> {
   return typeof value === "function" ? await (value as () => T | Promise<T>)() : value;
+}
+
+/**
+ * True for an AbortError-class rejection — a `DOMException`/`Error` whose
+ * `name` is `"AbortError"` (fetch/`AbortController` and provider-internal
+ * aborts both surface this). Kept local to the streamRun path: abort is a
+ * call-shape concern (see decision-rule (d)), never a global reclassification.
+ */
+function isAbortError(error: unknown): boolean {
+  return (error as { name?: unknown } | null | undefined)?.name === "AbortError";
 }
 
 export function createCapabilityClient(
@@ -608,15 +652,89 @@ export function createCapabilityClient(
         "client.cancelRun()",
         runtime.cancelRun ? () => runtime.cancelRun!(runId) : undefined,
       ),
-    streamRun: (body, handlers, streamOptions) => {
+    async streamRun(body, handlers, streamOptions): Promise<CapabilityResult<RunStreamOutcome>> {
+      const call = "client.streamRun()";
+      // Gate exactly as the shared executor does: unsupported/undeclared →
+      // notated gap; declared-but-unwired → "cannot serve … here".
+      const gap = await gapFor("streaming", call);
+      if (gap) return gapResult(gap);
       const stream = runtime.streamRun
         ? (b: StreamRunBody, h: RunEventStreamHandlers, o?: { signal?: AbortSignal }) =>
             runtime.streamRun!(b, h, o)
         : options.streamRunBridge;
-      return execute(
-        "streaming",
-        "client.streamRun()",
-        stream ? () => stream(body, handlers, streamOptions) : undefined,
+      if (!stream) {
+        return gapResult(
+          unsupportedGap(
+            options,
+            "streaming",
+            call,
+            `runtime client for "${options.providerKind}" does not implement ${call}`,
+            `provider "${options.providerKind}" cannot serve capability "streaming" here.`,
+          ),
+        );
+      }
+
+      // Wrap the caller's handlers to observe the stream while forwarding every
+      // callback unchanged: capture the first runId, remember the terminal
+      // event and the LAST error passed to onError. `ok` will reflect the CALL;
+      // this observation becomes the run's own outcome data.
+      let runId: string | null = null;
+      let outcome: RunStreamOutcome["outcome"] = null;
+      let sawError = false;
+      let lastError: unknown;
+      const wrapped: RunEventStreamHandlers = {
+        onEvent: (event) => {
+          if (runId === null && event.runId) runId = event.runId;
+          if (event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED) outcome = "completed";
+          else if (event.event === RUN_STREAM_EVENT_NAMES.RUN_FAILED) outcome = "failed";
+          else if (event.event === RUN_STREAM_EVENT_NAMES.RUN_CANCELLED) outcome = "cancelled";
+          handlers.onEvent(event);
+        },
+        onError: (error) => {
+          sawError = true;
+          lastError = error;
+          handlers.onError?.(error);
+        },
+        onComplete: handlers.onComplete,
+      };
+
+      // Caller-initiated (or provider-internal) abort → a `request-aborted`
+      // gap, with a best-effort cancel so no gateway run is orphaned.
+      const abortedGap = async (): Promise<CapabilityResult<RunStreamOutcome>> => {
+        let cancelNote: string;
+        if (runId !== null && runtime.cancelRun) {
+          await runtime.cancelRun(runId).catch(() => undefined);
+          cancelNote = `cancel requested for run ${runId}`;
+        } else {
+          cancelNote = "no cancel issued (run id unknown or cancelRun unsupported)";
+        }
+        return gapResult(
+          fallbackGap("capability:streaming", call, `${call} aborted: ${cancelNote}`, "request-aborted"),
+        );
+      };
+
+      try {
+        await stream(body, wrapped, streamOptions);
+      } catch (error) {
+        // (c) caller's signal aborted, on the reject path, and (d) an
+        // AbortError-class rejection even without our signal — both are aborts,
+        // checked BEFORE delegating to the generic classifier.
+        if (streamOptions?.signal?.aborted || isAbortError(error)) return abortedGap();
+        // (e) other rejections → existing classification (auth/unknown rethrow).
+        return gapResult(
+          classifyCapabilityFailure({ error, area: "capability:streaming", expectedContract: call, call }),
+        );
+      }
+      // (c) caller's signal aborted even though the call resolved.
+      if (streamOptions?.signal?.aborted) return abortedGap();
+      // (a) clean resolve: a terminal was seen, or the stream ended without any
+      // onError — the streaming call succeeded; report the run's outcome.
+      if (outcome !== null || !sawError) return liveResult({ runId, outcome });
+      // (b) resolved but an onError with no terminal → the run-stream was torn
+      // down mid-flight; classify that error into a gap (kills the divergence
+      // where a swallowed onError still looked like ok:true).
+      return gapResult(
+        classifyCapabilityFailure({ error: lastError, area: "capability:streaming", expectedContract: call, call }),
       );
     },
     submitBatch: (requests) =>

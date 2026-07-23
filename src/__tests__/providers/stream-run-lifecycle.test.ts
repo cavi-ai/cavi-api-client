@@ -53,7 +53,7 @@ describe("trackStreamRunBridge (F3 dispose teardown)", () => {
     await client.dispose();
     // Abort settles the bridge → the facade resolves ok:true (documented abort
     // semantics), so the pending call never hangs.
-    await expect(pending).resolves.toEqual({ ok: true, data: undefined, source: "live" });
+    await expect(pending).resolves.toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
   });
 
   it("also settles an in-flight OpenClaw-style streamRun on dispose (both wirings share the mechanism)", async () => {
@@ -75,7 +75,7 @@ describe("trackStreamRunBridge (F3 dispose teardown)", () => {
     const pending = client.streamRun({ input: "hi" }, { onEvent: () => undefined });
     await started;
     await client.dispose();
-    await expect(pending).resolves.toEqual({ ok: true, data: undefined, source: "live" });
+    await expect(pending).resolves.toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
   });
 
   it("a settled call removes itself from the live set; disposeAll is then a no-op", async () => {
@@ -148,7 +148,7 @@ describe("trackStreamRunBridge (R9c: dispose latch + listener hygiene)", () => {
     const pending = client.streamRun({ input: "hi" }, { onEvent: () => undefined });
     await client.dispose(); // disposeAll latches disposed while the gate is pending
     releaseResolver(); // gate resolves → the late bridge invocation fires, pre-aborted
-    await expect(pending).resolves.toEqual({ ok: true, data: undefined, source: "live" });
+    await expect(pending).resolves.toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
     expect(startRun).not.toHaveBeenCalled();
   });
 

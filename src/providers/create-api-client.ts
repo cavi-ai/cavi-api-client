@@ -71,7 +71,14 @@ import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
  * `StreamRunBody` type, which is `RuntimeRunStartBody` plus the optional
  * gateway session fields; without one the call resolves `ok:false` with a
  * `request-invalid` gap and no run is started), OpenClaw over control-plane
- * WebSocket event frames.
+ * WebSocket event frames. `streamRun` normalizes these divergent transports to
+ * one contract: it resolves a `CapabilityResult<RunStreamOutcome>` where `ok`
+ * reflects the streaming CALL and the payload carries the run's own terminal
+ * state (`runId` + `outcome`), so a run that fails as a `run.failed` event is
+ * still `ok:true`. A caller-initiated abort (via `options.signal`) or a
+ * provider-internal AbortError resolves `ok:false` with a `request-aborted`
+ * gap — and, when a `runId` is known and the runtime exposes `cancelRun`,
+ * issues a best-effort `cancelRun(runId)` so no gateway run is orphaned.
  *
  * Gateway providers (`hermes`, `openclaw`) get their capability resolver and
  * backends auto-wired from `baseUrl`/`webSocketUrl`; runtime-only providers

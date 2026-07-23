@@ -5,6 +5,10 @@ import {
 } from "../../contracts/capability-client.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { createTeamDirectory } from "../../core/teams/directory.js";
+import {
+  RUN_STREAM_EVENT_NAMES,
+  type RunStreamEvent,
+} from "../../core/runtime/run-stream.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import type { RuntimeControlClient } from "../../core/runtime/control-plane/runtime-control-client.js";
 import type { KanbanClient } from "../../core/kanban/client.js";
@@ -538,7 +542,7 @@ describe("capability client — non-throwing single surface", () => {
       { input: "hi", sessionKey: "sess-1" },
       { onEvent: () => undefined },
     );
-    expect(streamed).toEqual({ ok: true, data: undefined, source: "live" });
+    expect(streamed).toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
     expect(captured?.sessionKey).toBe("sess-1");
   });
 
@@ -756,7 +760,7 @@ describe("capability client — unified execution surface", () => {
       streamRunBridge: bridge,
     });
     const streamed = await bridged.streamRun({ input: "hi" }, { onEvent: () => undefined });
-    expect(streamed).toEqual({ ok: true, data: undefined, source: "live" });
+    expect(streamed).toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
     expect(bridge).toHaveBeenCalledTimes(1);
   });
 
@@ -789,5 +793,156 @@ describe("capability client — unified execution surface", () => {
     expect(streamed.ok).toBe(true);
     expect(runtimeStream).toHaveBeenCalledTimes(1);
     expect(bridge).not.toHaveBeenCalled();
+  });
+});
+
+describe("capability client — unified streamRun semantics (R10)", () => {
+  const streamingClient = (
+    stream: RuntimeClient["streamRun"],
+    extra: Partial<RuntimeClient> = {},
+  ) =>
+    createCapabilityClient({
+      providerKind: "claude-sdk",
+      runtime: { ...runtime, streamRun: stream, ...extra } as RuntimeClient,
+      fallbackSupports: { runs: true, streaming: true },
+    });
+
+  // (a) — happy path: deltas + run.completed → ok:true with the outcome payload.
+  it("resolves ok:true with the run outcome on a clean stream (a)", async () => {
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "run-7", delta: "he" });
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "run-7", delta: "llo" });
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-7", output: "hello" });
+      handlers.onComplete?.();
+    };
+    const seen: RunStreamEvent[] = [];
+    let completed = false;
+    const client = streamingClient(stream);
+    const result = await client.streamRun(
+      { input: "hi" },
+      { onEvent: (event) => seen.push(event), onComplete: () => (completed = true) },
+    );
+    expect(result).toEqual({ ok: true, data: { runId: "run-7", outcome: "completed" }, source: "live" });
+    // handlers forwarded unchanged.
+    expect(seen.map((event) => event.event)).toEqual([
+      RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+      RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+      RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+    ]);
+    expect(completed).toBe(true);
+  });
+
+  // (a) — run.failed is an EVENT: the stream worked, the run failed.
+  it("resolves ok:true with outcome:failed when the run fails as an event (a)", async () => {
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_FAILED, runId: "run-2", error: "boom" });
+      handlers.onComplete?.();
+    };
+    const result = await streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result).toEqual({ ok: true, data: { runId: "run-2", outcome: "failed" }, source: "live" });
+  });
+
+  // (b) — Claude-shaped mid-stream swallow: onError then resolve, no terminal.
+  it("resolves ok:false backend-unavailable when onError fires and the stream ends with no terminal (b)", async () => {
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "run-3", delta: "partial" });
+      handlers.onError?.(new Error("fetch failed"));
+      // resolves WITHOUT a terminal event.
+    };
+    const result = await streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+  });
+
+  // (a) — a transient onError that the stream RECOVERS from (terminal follows).
+  it("resolves ok:true when a transient onError is followed by a terminal (a)", async () => {
+    const seenErrors: unknown[] = [];
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onError?.(new Error("blip"));
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-4" });
+      handlers.onComplete?.();
+    };
+    const result = await streamingClient(stream).streamRun(
+      { input: "hi" },
+      { onEvent: () => undefined, onError: (error) => seenErrors.push(error) },
+    );
+    expect(result).toEqual({ ok: true, data: { runId: "run-4", outcome: "completed" }, source: "live" });
+    // the caller still received the transient error.
+    expect(seenErrors).toHaveLength(1);
+  });
+
+  // (c) — bridge-shaped abort: the underlying call RESOLVES after abort. Gap is
+  // request-aborted, the note carries the runId, and cancelRun is best-efforted.
+  it("resolves ok:false request-aborted and issues a best-effort cancel when the caller signal aborts (c)", async () => {
+    const controller = new AbortController();
+    const cancelRun = vi.fn(async () => ({ status: "cancelled" }));
+    const stream: RuntimeClient["streamRun"] = async (_body, handlers) => {
+      handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "run-42", delta: "hi" });
+      controller.abort();
+      // bridge-shaped: resolve (not reject) once aborted.
+    };
+    const result = await streamingClient(stream, { cancelRun }).streamRun(
+      { input: "hi" },
+      { onEvent: () => undefined },
+      { signal: controller.signal },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-aborted");
+    expect(result.gap.note).toContain("run-42");
+    expect(cancelRun).toHaveBeenCalledWith("run-42");
+  });
+
+  // (c) — abort before any runId is known and with no cancelRun: request-aborted,
+  // note says no cancel issued, nothing thrown.
+  it("resolves ok:false request-aborted with no cancel when runId is unknown and cancelRun is absent (c)", async () => {
+    const controller = new AbortController();
+    const stream: RuntimeClient["streamRun"] = async () => {
+      controller.abort(); // no events emitted before abort
+    };
+    const result = await streamingClient(stream).streamRun(
+      { input: "hi" },
+      { onEvent: () => undefined },
+      { signal: controller.signal },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-aborted");
+    expect(result.gap.note).toContain("no cancel issued");
+  });
+
+  // (d) — provider-internal AbortError rejection WITHOUT our signal (Claude with
+  // no onError handler rethrows AbortError): still request-aborted, not a rethrow.
+  it("resolves ok:false request-aborted on an AbortError rejection with no caller signal (d)", async () => {
+    const stream: RuntimeClient["streamRun"] = async () => {
+      throw Object.assign(new Error("This operation was aborted"), { name: "AbortError" });
+    };
+    const result = await streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-aborted");
+    expect(result.gap.note).toContain("no cancel issued");
+  });
+
+  // (e) — auth rejection mid-stream preserves the carve-out (rethrows).
+  it("rethrows an auth rejection mid-stream (e carve-out)", async () => {
+    const stream: RuntimeClient["streamRun"] = async () => {
+      throw Object.assign(new Error("unauthorized"), { status: 401 });
+    };
+    await expect(
+      streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined }),
+    ).rejects.toThrow();
+  });
+
+  // (e) — an unknown-classified rejection (signal not aborted, not AbortError)
+  // still rethrows.
+  it("rethrows an unknown-classified rejection mid-stream (e carve-out)", async () => {
+    const stream: RuntimeClient["streamRun"] = async () => {
+      throw new Error("totally novel condition");
+    };
+    await expect(
+      streamingClient(stream).streamRun({ input: "hi" }, { onEvent: () => undefined }),
+    ).rejects.toThrow("totally novel condition");
   });
 });

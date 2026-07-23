@@ -250,7 +250,7 @@ describe("createApiClient — the one front door", () => {
       { onEvent: (event) => seen.push(event) },
     );
 
-    expect(result).toEqual({ ok: true, data: undefined, source: "live" });
+    expect(result).toEqual({ ok: true, data: { runId: "run-1", outcome: "completed" }, source: "live" });
     expect(seen.map((event) => event.event)).toEqual([
       RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
       RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
