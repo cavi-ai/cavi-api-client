@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `streamRun` abort now cancels a run started microseconds before the abort.
+  The best-effort `cancelRun` on a `request-aborted` gap needs the run id;
+  gateway bridges now report it via `onRunId` the moment `startRun` returns
+  (forwarded through the dispose tracker), so an abort landing before the first
+  event still issues the cancel instead of orphaning the run. Verified live.
 - OpenClaw `streamRun` now delivers run events. The bridge translated the
   control-plane `operation.*` vocabulary, but live OpenClaw runs emit native
   `chat`/`agent` frames keyed by `runId` — so no run event ever reached the

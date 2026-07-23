@@ -86,8 +86,9 @@ export type StreamRunBody = RuntimeRunStartBody & {
  * `ok: true` with `outcome: "failed"` is coherent — the stream worked, the run
  * failed (run.failed is an event, already the contract).
  *
- * - `runId` — captured from the first stream event carrying one; `null` when no
- *   run event with an id was ever seen.
+ * - `runId` — the run id: reported by a gateway bridge as soon as the run
+ *   starts, otherwise captured from the first stream event carrying one; `null`
+ *   only when no run was started and no event carried an id.
  * - `outcome` — the terminal lifecycle event seen (`run.completed`→"completed",
  *   `run.failed`→"failed", `run.cancelled`→"cancelled"); `null` when the stream
  *   ended without a terminal event.
@@ -96,7 +97,8 @@ export type StreamRunBody = RuntimeRunStartBody & {
  * `ok: false` with a `request-aborted` gap, but `dispose()`-driven teardown of
  * an in-flight stream aborts an INTERNAL composed signal invisible to the
  * facade, so the bridge settles cleanly and this resolves
- * `ok: true, { runId: null, outcome: null }` — teardown is not a caller abort.
+ * `ok: true` with `outcome: null` (the run id may be present if the run had
+ * already started) — teardown is not a caller abort.
  */
 export type RunStreamOutcome = {
   runId: string | null;
@@ -207,7 +209,11 @@ export type CreateCapabilityClientOptions = {
   streamRunBridge?: (
     body: StreamRunBody,
     handlers: RunEventStreamHandlers,
-    options?: { signal?: AbortSignal },
+    options?: {
+      signal?: AbortSignal;
+      /** Invoked with the run id as soon as the run starts (before events). */
+      onRunId?: (runId: string) => void;
+    },
   ) => Promise<void>;
   /** Extra teardown run by dispose() after the control plane is disposed. */
   onDispose?: () => Promise<void> | void;
@@ -666,8 +672,11 @@ export function createCapabilityClient(
       const gap = await gapFor("streaming", call);
       if (gap) return gapResult(gap);
       const stream = runtime.streamRun
-        ? (b: StreamRunBody, h: RunEventStreamHandlers, o?: { signal?: AbortSignal }) =>
-            runtime.streamRun!(b, h, o)
+        ? (
+            b: StreamRunBody,
+            h: RunEventStreamHandlers,
+            o?: { signal?: AbortSignal; onRunId?: (runId: string) => void },
+          ) => runtime.streamRun!(b, h, o)
         : options.streamRunBridge;
       if (!stream) {
         return gapResult(
@@ -732,8 +741,18 @@ export function createCapabilityClient(
         );
       };
 
+      // The gateway bridge knows the run id from `startRun` before any event —
+      // capture it so an abort that lands before the first frame can still issue
+      // a best-effort cancel (otherwise a run started microseconds before abort
+      // would be orphaned).
+      const streamInvokeOptions = {
+        ...streamOptions,
+        onRunId: (id: string) => {
+          if (runId === null && id) runId = id;
+        },
+      };
       try {
-        await stream(body, wrapped, streamOptions);
+        await stream(body, wrapped, streamInvokeOptions);
       } catch (error) {
         // (c) caller's signal aborted, on the reject path, and (d) an
         // AbortError-class rejection even without our signal — both are aborts,

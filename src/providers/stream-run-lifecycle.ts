@@ -74,7 +74,9 @@ export function trackStreamRunBridge(
     else live.add(controller);
     const { signal, cleanup } = composeTrackedSignal(controller.signal, options?.signal);
     try {
-      await bridge(body, handlers, { signal });
+      // Forward every caller option (e.g. `onRunId`) — only `signal` is
+      // replaced with the composed one.
+      await bridge(body, handlers, { ...options, signal });
     } finally {
       cleanup();
       live.delete(controller);
