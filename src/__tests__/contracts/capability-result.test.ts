@@ -105,6 +105,21 @@ describe("classifyCapabilityFailure", () => {
     expect(gap.reason).toBe("endpoint-not-found");
   });
 
+  it("maps a duck-typed code on a plain Error (e.g. GatewayRpcError) to request-invalid (M2)", () => {
+    // GatewayRpcError is a plain Error subclass carrying the server code
+    // verbatim — no `instanceof ApiClientError`. A statusless, neutral-message
+    // error must still map by its `.code` (via getErrorCode), not fall through.
+    const error = Object.assign(new Error("rpc rejected"), { code: "validation_failed" });
+    const gap = classifyCapabilityFailure({ ...params, error });
+    expect(gap.reason).toBe("request-invalid");
+    expect(gap.httpStatus).toBeUndefined();
+  });
+
+  it("maps a duck-typed endpoint_not_found code on a plain Error to endpoint-not-found (M2)", () => {
+    const error = Object.assign(new Error("no such method"), { code: "endpoint_not_found" });
+    expect(classifyCapabilityFailure({ ...params, error }).reason).toBe("endpoint-not-found");
+  });
+
   it("still rethrows a statusless ApiClientError with a non-caller code (F9)", () => {
     // A code outside the caller-input set is NOT mapped by the new block: it
     // falls through to classifyFallbackError, and a novel message classifies as

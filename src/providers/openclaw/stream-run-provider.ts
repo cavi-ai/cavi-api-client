@@ -63,11 +63,26 @@ export function createOpenClawRunEventStreamProvider(
 
   return {
     async subscribe(params, handlers) {
+      // I1: an already-aborted call must not connect or subscribe. `connect()`
+      // would REOPEN the shared socket that dispose just closed (a permanent
+      // leak). Settle silently with a no-op subscription — the gateway bridge
+      // treats abort as a resolve.
+      if (params.signal?.aborted) {
+        return { dispose: async () => undefined };
+      }
       await deps.connect();
 
       // Terminal reached — from a live frame, connection loss, or the probe.
-      // Blocks any later terminal delivery so consumers see exactly one.
+      // Blocks any later terminal delivery so consumers see exactly one. A
+      // dispose/abort (I2) also flips this so a late probe result — the probe
+      // rides the still-alive runtime socket — is dropped after teardown.
       let settled = false;
+      const onSignalAbort = (): void => {
+        settled = true;
+      };
+      if (params.signal) {
+        params.signal.addEventListener("abort", onSignalAbort, { once: true });
+      }
       const guarded: RunEventStreamHandlers = {
         onEvent: (event) => {
           if (settled) return;
@@ -107,6 +122,11 @@ export function createOpenClawRunEventStreamProvider(
 
       return {
         dispose: async () => {
+          // I2: mark settled first so a late probe result (racing this dispose
+          // on the still-alive socket) is dropped rather than synthesizing a
+          // terminal event after teardown.
+          settled = true;
+          params.signal?.removeEventListener("abort", onSignalAbort);
           unsubscribeState?.();
           await subscription.dispose();
         },
@@ -135,7 +155,12 @@ function toTerminalRunStreamEvent(
         runId: resolvedRunId,
         error: status.error ?? "run failed",
       };
+    // OpenClaw passes native statuses through verbatim: "canceled" (one l —
+    // KNOWN_TASK_EVENTS "task.canceled") and "aborted" (stopRun) alias the
+    // canonical cancellation, so map them too or the F5 probe hangs for them.
     case "cancelled":
+    case "canceled":
+    case "aborted":
       return {
         event: RUN_STREAM_EVENT_NAMES.RUN_CANCELLED,
         runId: resolvedRunId,

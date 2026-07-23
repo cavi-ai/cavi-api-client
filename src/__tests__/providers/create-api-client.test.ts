@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "../../providers/create-api-client.js";
 import { createRuntimeProviderRegistry } from "../../core/runtime/providers/registry.js";
+import { getErrorStatus } from "../../core/errors.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import {
   RUN_STREAM_EVENT_NAMES,
@@ -191,9 +192,17 @@ describe("createApiClient — the one front door", () => {
         throw new Error("fetch failed");
       },
     });
-    await expect(
-      client.streamRun({ input: "hi", sessionKey: "k" } as never, { onEvent: () => undefined }),
-    ).rejects.toBeTruthy();
+    // Strengthened (M5): assert the rejection is specifically the 401 auth
+    // carve-out, not merely truthy — a discriminating check on the status.
+    const rejection = await client
+      .streamRun({ input: "hi", sessionKey: "k" } as never, { onEvent: () => undefined })
+      .then(
+        () => {
+          throw new Error("expected streamRun to reject with the auth error");
+        },
+        (error: unknown) => error,
+      );
+    expect(getErrorStatus(rejection)).toBe(401);
   });
 
   it("hermes streamRun happy path: streams SSE deltas + terminal and sends the session-key header (F12)", async () => {

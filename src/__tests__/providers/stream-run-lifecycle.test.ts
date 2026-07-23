@@ -1,8 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { getEventListeners } from "node:events";
+import { describe, expect, it, vi } from "vitest";
 import { trackStreamRunBridge } from "../../providers/stream-run-lifecycle.js";
+import { createGatewayStreamRun } from "../../providers/gateway-stream-run.js";
 import { createCapabilityClient } from "../../contracts/capability-client.js";
+import { normalizeTeamManifest } from "../../contracts/team-manifest.js";
 import type { GatewayStreamRunBridge } from "../../providers/gateway-stream-run.js";
+import type { ResolvedProviderCapabilities } from "../../contracts/capability-source.js";
+import type { RunEventStreamProvider } from "../../core/runtime/run-stream.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
+
+/** A provider that only ever hands back a disposable, never emitting a frame. */
+const inertProvider: RunEventStreamProvider = {
+  subscribe: async () => ({ dispose: async () => undefined }),
+};
 
 const runtime: RuntimeClient = {
   getRuntimeCapabilities: async () => ({ providerKind: "hermes", supports: { runs: true } }),
@@ -86,5 +96,70 @@ describe("trackStreamRunBridge (F3 dispose teardown)", () => {
     );
     controller.abort();
     await expect(pending).resolves.toBeUndefined();
+  });
+});
+
+describe("trackStreamRunBridge (R9c: dispose latch + listener hygiene)", () => {
+  it("a bridge invoked AFTER disposeAll settles immediately without starting a run (I1)", async () => {
+    const startRun = vi.fn(async () => ({ run_id: "run-1", status: "started" }));
+    const gatewayRuntime: RuntimeClient = {
+      getRuntimeCapabilities: async () => ({ providerKind: "hermes", supports: {} }),
+      startRun,
+    };
+    const { bridge, disposeAll } = trackStreamRunBridge(
+      createGatewayStreamRun({ runtime: gatewayRuntime, createProvider: () => inertProvider }),
+    );
+    disposeAll(); // latch disposed BEFORE the bridge is ever invoked
+    await expect(
+      bridge({ input: "hi" }, { onEvent: () => undefined }),
+    ).resolves.toBeUndefined();
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
+  it("dispose during a slow capability gate settles a late streamRun with no run started (I1)", async () => {
+    const startRun = vi.fn(async () => ({ run_id: "run-1", status: "started" }));
+    const gatewayRuntime: RuntimeClient = {
+      getRuntimeCapabilities: async () => ({ providerKind: "hermes", supports: {} }),
+      startRun,
+    };
+    // A resolver that stays pending until released, so dispose() wins the race
+    // while streamRun is still inside its capability gate.
+    let releaseResolver: () => void = () => undefined;
+    const resolver = () =>
+      new Promise<ResolvedProviderCapabilities>((resolve) => {
+        releaseResolver = () =>
+          resolve({
+            providerKind: "hermes",
+            supports: { streaming: true },
+            manifest: normalizeTeamManifest(null),
+          });
+      });
+    const { bridge, disposeAll } = trackStreamRunBridge(
+      createGatewayStreamRun({ runtime: gatewayRuntime, createProvider: () => inertProvider }),
+    );
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime: gatewayRuntime,
+      fallbackSupports: { runs: true, streaming: true },
+      resolver,
+      streamRunBridge: bridge,
+      onDispose: async () => disposeAll(),
+    });
+    const pending = client.streamRun({ input: "hi" }, { onEvent: () => undefined });
+    await client.dispose(); // disposeAll latches disposed while the gate is pending
+    releaseResolver(); // gate resolves → the late bridge invocation fires, pre-aborted
+    await expect(pending).resolves.toEqual({ ok: true, data: undefined, source: "live" });
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
+  it("does not accumulate abort listeners on a reused caller signal across settled calls (M1)", async () => {
+    const noopBridge: GatewayStreamRunBridge = async () => undefined;
+    const { bridge } = trackStreamRunBridge(noopBridge);
+    const controller = new AbortController();
+    for (let i = 0; i < 15; i += 1) {
+      await bridge({ input: "hi" }, { onEvent: () => undefined }, { signal: controller.signal });
+    }
+    // Every settled call detached its listener — no growth on the shared signal.
+    expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
   });
 });

@@ -477,6 +477,34 @@ describe("capability client — non-throwing single surface", () => {
     await expect(client.sessions.listSessions({})).rejects.toThrow();
   });
 
+  it("auth failure from the kanban lazy factory propagates (auth carve-out, factory path) (M4)", async () => {
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { kanban: true },
+      backends: {
+        kanban: async () => {
+          throw Object.assign(new Error("unauthorized"), { status: 401 });
+        },
+      },
+    });
+    await expect(client.kanban.listBoards()).rejects.toThrow();
+  });
+
+  it("auth failure from a gatedDirect (media) lazy factory propagates (auth carve-out, factory path) (M4)", async () => {
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime,
+      fallbackSupports: { media: true },
+      backends: {
+        media: async () => {
+          throw Object.assign(new Error("unauthorized"), { status: 401 });
+        },
+      },
+    });
+    await expect(client.media.listMediaProviders()).rejects.toThrow();
+  });
+
   it("a rejecting direct backend factory degrades to a backend-unavailable gap", async () => {
     const client = createCapabilityClient({
       providerKind: "hermes",

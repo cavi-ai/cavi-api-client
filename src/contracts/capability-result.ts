@@ -1,6 +1,6 @@
 import {
-  ApiClientError,
   ApiClientErrorCode,
+  getErrorCode,
   getErrorStatus,
   isAuthError,
 } from "../core/errors.js";
@@ -114,33 +114,35 @@ export function classifyCapabilityFailure(params: {
     }
   }
 
-  // A statusless typed ApiClientError names a caller-input error the transport
-  // caught before (or without) an HTTP round-trip — e.g.
-  // `TeamDirectory.requireTeam` throwing `ValidationFailed`. Map those to their
-  // gap reason instead of letting `classifyFallbackError` treat them as
-  // `unknown` and rethrow. Auth codes already rethrew above via `isAuthError`;
-  // transport/config codes intentionally fall through to `classifyFallbackError`
-  // unchanged (they are not caller-input errors).
-  if (error instanceof ApiClientError) {
-    if (
-      error.code === ApiClientErrorCode.ValidationFailed ||
-      error.code === ApiClientErrorCode.InvalidRequest
-    ) {
-      return fallbackGap(
-        params.area,
-        params.expectedContract,
-        `${params.call} rejected: ${errorMessageOf(error)}`,
-        "request-invalid",
-      );
-    }
-    if (error.code === ApiClientErrorCode.EndpointNotFound) {
-      return fallbackGap(
-        params.area,
-        params.expectedContract,
-        `${params.call} failed: ${errorMessageOf(error)}`,
-        "endpoint-not-found",
-      );
-    }
+  // A statusless typed error names a caller-input error the transport caught
+  // before (or without) an HTTP round-trip — e.g. `TeamDirectory.requireTeam`
+  // throwing `ValidationFailed`. Map those to their gap reason instead of
+  // letting `classifyFallbackError` treat them as `unknown` and rethrow.
+  // Duck-type the code (as the auth path does via `getErrorCode`) rather than
+  // gating on `instanceof ApiClientError`: `GatewayRpcError` is a plain Error
+  // subclass carrying the server code verbatim, and it must map the same way.
+  // Auth codes already rethrew above via `isAuthError`; transport/config codes
+  // intentionally fall through to `classifyFallbackError` unchanged (they are
+  // not caller-input errors).
+  const code = getErrorCode(error);
+  if (
+    code === ApiClientErrorCode.ValidationFailed ||
+    code === ApiClientErrorCode.InvalidRequest
+  ) {
+    return fallbackGap(
+      params.area,
+      params.expectedContract,
+      `${params.call} rejected: ${errorMessageOf(error)}`,
+      "request-invalid",
+    );
+  }
+  if (code === ApiClientErrorCode.EndpointNotFound) {
+    return fallbackGap(
+      params.area,
+      params.expectedContract,
+      `${params.call} failed: ${errorMessageOf(error)}`,
+      "endpoint-not-found",
+    );
   }
 
   const classified = classifyFallbackError(error);

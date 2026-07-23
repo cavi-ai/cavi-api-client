@@ -189,6 +189,74 @@ describe("createOpenClawRunEventStreamProvider", () => {
     expect(seen).toEqual([]);
   });
 
+  it("an already-aborted call does not connect or subscribe (I1)", async () => {
+    const rpc = new FakeOpenClawRpc();
+    const connect = vi.fn(async () => undefined);
+    const provider = createOpenClawRunEventStreamProvider({
+      rpc: rpc as never,
+      connect,
+    });
+    const controller = new AbortController();
+    controller.abort();
+    const sub = await provider.subscribe(
+      { runId: "run-1", signal: controller.signal },
+      { onEvent: () => undefined },
+    );
+    // No connect (which would REOPEN a disposed socket) and no live listeners.
+    expect(connect).not.toHaveBeenCalled();
+    expect(rpc.stateListeners.size).toBe(0);
+    expect(rpc.eventListeners.size).toBe(0);
+    await expect(sub.dispose()).resolves.toBeUndefined(); // no-op dispose is safe
+  });
+
+  it("drops a late probe result after dispose (I2)", async () => {
+    const rpc = new FakeOpenClawRpc();
+    let resolveProbe: (status: RuntimeRunStatus) => void = () => undefined;
+    const getRun = vi.fn(
+      () => new Promise<RuntimeRunStatus>((resolve) => { resolveProbe = resolve; }),
+    );
+    const provider = createOpenClawRunEventStreamProvider({
+      rpc: rpc as never,
+      connect: async () => undefined,
+      getRun,
+    });
+    const seen: RunStreamEvent[] = [];
+    const onComplete = vi.fn();
+    const sub = await provider.subscribe(
+      { runId: "run-1" },
+      { onEvent: (e) => seen.push(e), onComplete },
+    );
+    await sub.dispose(); // teardown BEFORE the probe resolves
+    resolveProbe({ run_id: "run-1", status: "completed", output: "late" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The probe rides the still-alive socket; after dispose it must synthesize nothing.
+    expect(seen).toEqual([]);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("drops a late probe result after the caller signal aborts (I2)", async () => {
+    const rpc = new FakeOpenClawRpc();
+    let resolveProbe: (status: RuntimeRunStatus) => void = () => undefined;
+    const getRun = vi.fn(
+      () => new Promise<RuntimeRunStatus>((resolve) => { resolveProbe = resolve; }),
+    );
+    const provider = createOpenClawRunEventStreamProvider({
+      rpc: rpc as never,
+      connect: async () => undefined,
+      getRun,
+    });
+    const controller = new AbortController();
+    const seen: RunStreamEvent[] = [];
+    await provider.subscribe(
+      { runId: "run-1", signal: controller.signal },
+      { onEvent: (e) => seen.push(e) },
+    );
+    controller.abort();
+    resolveProbe({ run_id: "run-1", status: "completed", output: "late" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(seen).toEqual([]);
+  });
+
   it("unregisters the connection-state listener on dispose", async () => {
     const rpc = new FakeOpenClawRpc();
     const provider = createOpenClawRunEventStreamProvider({

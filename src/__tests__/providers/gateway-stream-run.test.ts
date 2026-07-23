@@ -237,6 +237,40 @@ describe("createGatewayStreamRun", () => {
     await expect(stream({ input: "hi" }, { onEvent: () => undefined })).rejects.toThrow("fetch failed");
   });
 
+  it("a pre-aborted signal settles without starting a run or subscribing (I1)", async () => {
+    const runtime = fakeRuntime();
+    const provider = scriptedProvider([]);
+    const stream = createGatewayStreamRun({ runtime, createProvider: () => provider });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      stream({ input: "hi" }, { onEvent: () => undefined }, { signal: controller.signal }),
+    ).resolves.toBeUndefined();
+    expect(runtime.startRun).not.toHaveBeenCalled();
+    expect(provider.disposed).toBe(false); // never subscribed → nothing to dispose
+  });
+
+  it("drops a terminal frame that arrives AFTER an error settle (I2)", async () => {
+    let emit: ((event: RunStreamEvent) => void) | null = null;
+    const provider: RunEventStreamProvider = {
+      subscribe: async (_p, handlers) => {
+        emit = handlers.onEvent;
+        queueMicrotask(() => handlers.onError?.(new Error("boom")));
+        return { dispose: () => undefined };
+      },
+    };
+    const seen: string[] = [];
+    const onComplete = vi.fn();
+    const stream = createGatewayStreamRun({ runtime: fakeRuntime(), createProvider: () => provider });
+    await expect(
+      stream({ input: "hi" }, { onEvent: (e) => seen.push(e.event), onComplete }),
+    ).rejects.toThrow("boom");
+    // A terminal frame racing the error settle must not forward or fire onComplete.
+    emit?.({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "run-7" });
+    expect(seen).toEqual([]);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   it("validate rejects before any run starts", async () => {
     const runtime = fakeRuntime();
     const stream = createGatewayStreamRun({

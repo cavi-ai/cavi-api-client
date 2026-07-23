@@ -53,6 +53,12 @@ export function createGatewayStreamRun(params: {
   validate?: (body: RuntimeRunStartBody) => void;
 }): GatewayStreamRunBridge {
   return async (body, handlers, options) => {
+    // An already-aborted call must not start a run or open a subscription. The
+    // bridge treats abort as a resolve (documented abort-settles-ok), so settle
+    // silently: no validate, no startRun, no provider connect (I1). A signal
+    // that aborts LATER (during startRun / after subscribe) is handled by the
+    // onAbort listener and the post-subscribe aborted check below.
+    if (options?.signal?.aborted) return;
     params.validate?.(body);
     const status = await params.runtime.startRun(body);
     const runId = status.run_id;
@@ -65,7 +71,11 @@ export function createGatewayStreamRun(params: {
       // Fire the consumer's onComplete at most once, whether the end-of-stream
       // arrives as a terminal event or the provider's own onComplete.
       const fireComplete = (): void => {
-        if (completeFired) return;
+        // Once (completeFired) and never after settle. onComplete and
+        // onError/abort are mutually exclusive: a terminal event fires
+        // fireComplete BEFORE finish (settled still false), but a provider's
+        // own onComplete arriving AFTER an error/abort settle is dropped.
+        if (settled || completeFired) return;
         completeFired = true;
         handlers.onComplete?.();
       };
@@ -85,6 +95,9 @@ export function createGatewayStreamRun(params: {
           { runId, ...(options?.signal ? { signal: options.signal } : {}) },
           {
             onEvent: (event) => {
+              // Drop everything after settle: a terminal frame racing an
+              // abort/error settle must not forward or fire onComplete (I2).
+              if (settled) return;
               handlers.onEvent(event);
               if (TERMINAL_EVENTS.has(event.event)) {
                 fireComplete();
@@ -92,6 +105,7 @@ export function createGatewayStreamRun(params: {
               }
             },
             onError: (error) => {
+              if (settled) return;
               handlers.onError?.(error);
               // Per-frame protocol errors are observability-only; only a
               // terminal error settles (and rejects) the bridge.
