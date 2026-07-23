@@ -9,13 +9,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm test                 # vitest run — guardrails + behavior (only test command; fast)
+pnpm test                 # vitest run — guardrails + behavior (fast inner loop)
+pnpm run verify           # THE release gate: test + typecheck:docs + build + docs:check + lint:md + pack
 pnpm run build            # tsc → dist/ (run before publishing or linking)
 pnpm run clean            # rm -rf dist
 pnpm exec tsc --noEmit    # typecheck only (strict mode is the lint gate; no separate linter)
 npx vitest run src/__tests__/core/gateway/envelope.test.ts   # single file (tests live in src/__tests__/)
 npx vitest run -t "withFallback"                             # single test by name
 ```
+
+`pnpm test` is the inner loop; `pnpm run verify` is what `prepublishOnly` runs and
+what a PR must pass. `verify` needs the pinned published tarball — run
+`pnpm run docs:stable` first and export its path as `CAVI_API_CLIENT_STABLE_TARBALL`.
 
 ## Layered architecture
 

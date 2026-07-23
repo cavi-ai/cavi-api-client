@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-23
+
 ### Added
 
 - Unified capability contract (foundation of the single-client redesign):
@@ -850,7 +852,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.11.0...v0.12.0
 [0.5.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.0...v0.4.1

@@ -650,7 +650,18 @@ describe("package hardening", () => {
     // never in the public docs/ tree. docs/specs/ leaked onto public main once;
     // this fails the build if any internal-docs or private-tooling path is
     // tracked again, and if .gitignore stops covering them.
-    const requiredIgnores = ["docs/specs/", "docs/plans/", ".claude/", ".remember/"];
+    //
+    // The quarantine dirs are here for the same reason: a `git mv` of deleted
+    // source into .quarantine/ force-tracks it despite the ignore rule, which
+    // is how four deleted Hermes mirror classes rode along to public main.
+    const requiredIgnores = [
+      "docs/specs/",
+      "docs/plans/",
+      ".claude/",
+      ".remember/",
+      ".quarantine/",
+      "quarantine/",
+    ];
     const gitignore = read(path.join(PACKAGE_ROOT, ".gitignore")).split(/\r?\n/u);
     expect(gitignore).toEqual(expect.arrayContaining(requiredIgnores));
 
