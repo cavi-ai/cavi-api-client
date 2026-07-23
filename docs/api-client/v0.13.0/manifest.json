@@ -1,0 +1,179 @@
+{
+  "package": "@cavi-ai/api-client",
+  "version": "0.13.0",
+  "release": {
+    "tag": "v0.13.0",
+    "commit": "453ed07f00dcc94e768ad5546569ec53a3ac60cf"
+  },
+  "sourceTarballSha256": "d5edf6fdedb485faa74bb1432c4b13b14b912e9519a11b7f1867522cc0e9c0d2",
+  "contentSha256": "635fb2214a886e33b013df5d83734b6e13ed88efefa9eeda74027384b0f73d55",
+  "publicExports": [
+    {
+      "subpath": ".",
+      "kind": "declaration",
+      "types": "./dist/index.d.ts"
+    },
+    {
+      "subpath": "./contracts",
+      "kind": "declaration",
+      "types": "./dist/contracts/index.d.ts"
+    },
+    {
+      "subpath": "./core/data",
+      "kind": "declaration",
+      "types": "./dist/core/data/index.d.ts"
+    },
+    {
+      "subpath": "./core/env",
+      "kind": "declaration",
+      "types": "./dist/core/env/index.d.ts"
+    },
+    {
+      "subpath": "./core/errors",
+      "kind": "declaration",
+      "types": "./dist/core/errors.d.ts"
+    },
+    {
+      "subpath": "./core/gateway",
+      "kind": "declaration",
+      "types": "./dist/core/gateway/index.d.ts"
+    },
+    {
+      "subpath": "./core/http",
+      "kind": "declaration",
+      "types": "./dist/core/http/index.d.ts"
+    },
+    {
+      "subpath": "./core/kanban",
+      "kind": "declaration",
+      "types": "./dist/core/kanban/index.d.ts"
+    },
+    {
+      "subpath": "./core/memory",
+      "kind": "declaration",
+      "types": "./dist/core/memory/index.d.ts"
+    },
+    {
+      "subpath": "./core/runtime",
+      "kind": "declaration",
+      "types": "./dist/core/runtime/index.d.ts"
+    },
+    {
+      "subpath": "./core/runtime/providers",
+      "kind": "declaration",
+      "types": "./dist/core/runtime/providers/index.d.ts"
+    },
+    {
+      "subpath": "./core/sse",
+      "kind": "declaration",
+      "types": "./dist/core/sse/index.d.ts"
+    },
+    {
+      "subpath": "./core/teams",
+      "kind": "declaration",
+      "types": "./dist/core/teams/index.d.ts"
+    },
+    {
+      "subpath": "./core/transport",
+      "kind": "declaration",
+      "types": "./dist/core/transport/index.d.ts"
+    },
+    {
+      "subpath": "./core/transport/node",
+      "kind": "declaration",
+      "types": "./dist/core/transport/node/index.d.ts"
+    },
+    {
+      "subpath": "./core/ws",
+      "kind": "declaration",
+      "types": "./dist/core/ws/index.d.ts"
+    },
+    {
+      "subpath": "./extensions/cavi",
+      "kind": "declaration",
+      "types": "./dist/extensions/cavi/index.d.ts"
+    },
+    {
+      "subpath": "./extensions/cavi/library-clip-contract.json",
+      "kind": "asset",
+      "target": "./src/extensions/cavi/library/clip-contract.json"
+    },
+    {
+      "subpath": "./frameworks/react",
+      "kind": "declaration",
+      "types": "./dist/frameworks/react/index.d.ts"
+    },
+    {
+      "subpath": "./providers/claude",
+      "kind": "declaration",
+      "types": "./dist/providers/claude/index.d.ts"
+    },
+    {
+      "subpath": "./providers/claude/managed-agents",
+      "kind": "declaration",
+      "types": "./dist/providers/claude/managed-agents/index.d.ts"
+    },
+    {
+      "subpath": "./providers/claude/messages",
+      "kind": "declaration",
+      "types": "./dist/providers/claude/messages.d.ts"
+    },
+    {
+      "subpath": "./providers/codex",
+      "kind": "declaration",
+      "types": "./dist/providers/codex/index.d.ts"
+    },
+    {
+      "subpath": "./providers/codex/files",
+      "kind": "declaration",
+      "types": "./dist/providers/codex/files-entry.d.ts"
+    },
+    {
+      "subpath": "./providers/codex/runtime",
+      "kind": "declaration",
+      "types": "./dist/providers/codex/runtime.d.ts"
+    },
+    {
+      "subpath": "./providers/gemini",
+      "kind": "declaration",
+      "types": "./dist/providers/gemini/index.d.ts"
+    },
+    {
+      "subpath": "./providers/gemini/files",
+      "kind": "declaration",
+      "types": "./dist/providers/gemini/files-entry.d.ts"
+    },
+    {
+      "subpath": "./providers/gemini/runtime",
+      "kind": "declaration",
+      "types": "./dist/providers/gemini/runtime.d.ts"
+    },
+    {
+      "subpath": "./providers/hermes",
+      "kind": "declaration",
+      "types": "./dist/providers/hermes/index.d.ts"
+    },
+    {
+      "subpath": "./providers/hermes/runtime",
+      "kind": "declaration",
+      "types": "./dist/providers/hermes/runtime.d.ts"
+    },
+    {
+      "subpath": "./providers/openclaw",
+      "kind": "declaration",
+      "types": "./dist/providers/openclaw/index.d.ts"
+    },
+    {
+      "subpath": "./providers/openclaw/runtime",
+      "kind": "declaration",
+      "types": "./dist/providers/openclaw/runtime.d.ts"
+    },
+    {
+      "subpath": "./testing",
+      "kind": "declaration",
+      "types": "./dist/testing/index.d.ts"
+    }
+  ],
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-23T16:19:42.000Z"
+}
