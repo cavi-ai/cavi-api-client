@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-24
+
 ### Added
 
 - OpenClaw `agentConfig.listProfiles` is implemented over the live `agents.list`
