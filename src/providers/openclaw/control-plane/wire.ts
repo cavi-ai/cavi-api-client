@@ -33,7 +33,13 @@ function assertSafeExtras(value: unknown, label: string, seen = new Set<object>(
   if (seen.has(value)) throw new OpenClawWireError(`${label} must not be cyclic`);
   seen.add(value);
   for (const [key, item] of Object.entries(value)) {
-    if (isSensitiveKey(key)) throw new OpenClawWireError(`${label}.${key} is not allowed`);
+    // Reject a sensitive-named key only when it carries a STRING value — that is
+    // a possibly-leaked secret we must never surface. A structured value under a
+    // sensitive name (e.g. `apiKey: { source, envVar }`) is benign metadata, so
+    // recurse into it rather than rejecting the field outright.
+    if (isSensitiveKey(key) && typeof item === "string" && item.length > 0) {
+      throw new OpenClawWireError(`${label}.${key} is not allowed`);
+    }
     assertSafeExtras(item, `${label}.${key}`, seen);
   }
   seen.delete(value);
@@ -47,14 +53,22 @@ function object(value: unknown, label: string): WireObject {
   if (prototype !== Object.prototype && prototype !== null) throw new OpenClawWireError(`${label} must be a plain object`);
   return value as WireObject;
 }
-// Forward-compatible object parse: a plain object whose fields are all safe.
-// Unknown BENIGN keys are tolerated (a live gateway adds fields over time), but
-// sensitive keys and exotic/unsafe values are still rejected (see
-// assertSafeExtras). `keys` documents the fields the caller reads; it is not an
-// allowlist — the caller extracts what it needs from the returned object.
-function closed(value: unknown, label: string, _keys: readonly string[]): WireObject {
+// Forward-compatible object parse. `keys` are the fields the caller reads and
+// validates itself — they pass through untouched (e.g. a benign metadata field
+// legitimately named `apiKey` that carries only `{source, envVar}`). Only
+// UNKNOWN extra keys are safety-checked: a live gateway adds fields over time,
+// so a benign unknown field is tolerated, but an unknown sensitive-named key
+// (a possibly-leaked secret) or an exotic/unsafe value is still rejected.
+function closed(value: unknown, label: string, keys: readonly string[]): WireObject {
   const result = object(value, label);
-  assertSafeExtras(result, label);
+  const known = new Set(keys);
+  for (const [key, item] of Object.entries(result)) {
+    if (known.has(key)) continue;
+    if (isSensitiveKey(key) && typeof item === "string" && item.length > 0) {
+      throw new OpenClawWireError(`${label}.${key} is not allowed`);
+    }
+    assertSafeExtras(item, `${label}.${key}`);
+  }
   return result;
 }
 function array(value: unknown, label: string): unknown[] { if (!Array.isArray(value)) throw new OpenClawWireError(`${label} must be an array`); return value; }

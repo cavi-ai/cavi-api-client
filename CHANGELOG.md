@@ -10,8 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- OpenClaw `agentConfig.listProfiles` is implemented over the live `agents.list`
+  RPC (was a gated stub). The socket is injected by `createApiClient`;
+  `normalizeOpenClawAgentProfiles` maps the live shape (`{ defaultId, agents:
+  [{ id, name, workspace, agentRuntime }] }`) to `AgentProfileSummary[]`.
+
 ### Fixed
 
+- OpenClaw wire parsers no longer reject a benign metadata field that happens to
+  carry a sensitive NAME (e.g. `apiKey: { source, envVar }` on auth-status
+  providers). The sensitive-key guard now rejects only a leaked secret — a
+  sensitive-named key with a STRING value — while a structured value under that
+  name is tolerated (and still recursively scanned). Known fields the parser
+  reads pass through untouched; only unknown extras are safety-checked. Fixes a
+  live `authStatus.listAuthStatus` hard-fail.
 - Control-plane reads no longer throw or falsely reject against a live gateway.
   Two live-verified fixes: (1) the OpenClaw wire parsers are forward-compatible
   — a benign unknown field is tolerated (a live session grew from ~6 to ~30

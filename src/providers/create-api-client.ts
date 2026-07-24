@@ -341,7 +341,11 @@ export function wireOpenClaw(
                 rpcClient: socket,
               }),
             wiki: () => new OpenClawWikiApiClient(httpClientOptions(options)),
-            agentConfig: () => new OpenClawAgentConfigApiClient(httpClientOptions(options)),
+            agentConfig: () =>
+              new OpenClawAgentConfigApiClient({
+                ...httpClientOptions(options),
+                rpcClient: socket,
+              }),
           }
         : {}),
     },
