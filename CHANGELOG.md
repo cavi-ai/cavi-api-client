@@ -14,53 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- OpenClaw `agentConfig.listProfiles` is implemented over the live `agents.list`
-  RPC (was a gated stub). The socket is injected by `createApiClient`;
-  `normalizeOpenClawAgentProfiles` maps the live shape (`{ defaultId, agents:
-  [{ id, name, workspace, agentRuntime }] }`) to `AgentProfileSummary[]`.
+- OpenClaw `agentConfig.listProfiles` over the `agents.list` RPC (was a gated stub). `normalizeOpenClawAgentProfiles` maps `{ defaultId, agents:[{ id, name, workspace, agentRuntime }] }` to `AgentProfileSummary[]`.
+- `createApiClient` handshake options for non-browser clients: `clientOrigin` (WS `Origin`; auto-derived from base origin for non-cli modes), `clientMode` (`"cli"` preserves operator scopes over shared-secret auth), `requestedScopes`. Backed by `GatewayRpcClientOptions.origin`.
+- `streamRun` returns `CapabilityResult<RunStreamOutcome>` (`{ runId, outcome }`); a caller abort resolves `ok:false` with a `request-aborted` gap and a best-effort `cancelRun`.
 
 ### Fixed
 
-- OpenClaw wire parsers no longer reject a benign metadata field that happens to
-  carry a sensitive NAME (e.g. `apiKey: { source, envVar }` on auth-status
-  providers). The sensitive-key guard now rejects only a leaked secret — a
-  sensitive-named key with a STRING value — while a structured value under that
-  name is tolerated (and still recursively scanned). Known fields the parser
-  reads pass through untouched; only unknown extras are safety-checked. Fixes a
-  live `authStatus.listAuthStatus` hard-fail.
-- Control-plane reads no longer throw or falsely reject against a live gateway.
-  Two live-verified fixes: (1) the OpenClaw wire parsers are forward-compatible
-  — a benign unknown field is tolerated (a live session grew from ~6 to ~30
-  keys) while unsafe content (sensitive keys, non-plain objects, non-finite
-  numbers, cycles) is still rejected; (2) `classifyCapabilityFailure` now
-  classifies `GatewayRpcError` by its gRPC-style wire code (`UNAVAILABLE` →
-  backend-unavailable, `INVALID_REQUEST` → request-invalid, `NOT_FOUND` →
-  endpoint-not-found, `UNAUTHENTICATED`/`PERMISSION_DENIED` rethrow as auth),
-  so a control-plane RPC failure degrades to a gap instead of throwing out of a
-  read. Verified live: `sessions`/`tasks`/`usage`/`authStatus`/`workspace`/
-  `kanban`/`media` reads succeed; `models` degrades cleanly when the gateway's
-  catalog is mid-reload.
-- `streamRun` abort now cancels a run started microseconds before the abort.
-  The best-effort `cancelRun` on a `request-aborted` gap needs the run id;
-  gateway bridges now report it via `onRunId` the moment `startRun` returns
-  (forwarded through the dispose tracker), so an abort landing before the first
-  event still issues the cancel instead of orphaning the run. Verified live.
-- OpenClaw `streamRun` now delivers run events. The bridge translated the
-  control-plane `operation.*` vocabulary, but live OpenClaw runs emit native
-  `chat`/`agent` frames keyed by `runId` — so no run event ever reached the
-  consumer and the stream hung. `createOpenClawRunNativeEventStream` translates
-  the real wire shape (`chat` delta/final, `agent` lifecycle), verified against
-  a live gateway. One shared native listener fans out to every in-flight run by
-  id (preserves the single-socket contract).
-
-### Added
-
-- Gateway WebSocket handshake controls on `createApiClient` for headless
-  (non-browser) clients: `clientOrigin` (sends an allowlisted `Origin` for
-  origin-gated gateways; auto-derived from the base origin for non-cli modes),
-  `clientMode` (e.g. `"cli"` so shared-secret auth keeps operator scopes), and
-  `requestedScopes` (request `operator.write` to start runs). Backing
-  `GatewayRpcClientOptions.origin` sets the handshake `Origin` header.
+- OpenClaw `streamRun` delivered no events (stream hung): the bridge decoded control-plane `operation.*` frames, but runs emit native `chat`/`agent` frames keyed by `runId`. Added `createOpenClawRunNativeEventStream` (one shared listener fans out by `runId`).
+- Abort landing before the first event orphaned the run: gateway bridges report the run id via `onRunId` on `startRun` (forwarded through the dispose tracker), so the best-effort `cancelRun` fires.
+- `GatewayRpcError` now classifies by gRPC code (`UNAVAILABLE`→backend-unavailable, `INVALID_REQUEST`→request-invalid, `NOT_FOUND`→endpoint-not-found; `UNAUTHENTICATED`/`PERMISSION_DENIED` rethrow), so a control-plane RPC failure degrades to a gap instead of throwing out of a read.
+- OpenClaw wire parsers are forward-compatible: unknown benign fields are tolerated; unsafe content (non-plain objects, non-finite numbers, cycles) and leaked secrets (a sensitive-named key with a STRING value) are still rejected. A sensitive-named field holding structured metadata (`apiKey: { source, envVar }`) is tolerated. Fixes `authStatus.listAuthStatus` and `sessions.list` failures.
 
 ## [0.13.0] - 2026-07-23
 
