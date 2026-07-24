@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `teams` resolves from the provider manifest: `manifestTeamToTeam` and `teamDirectoryFromManifest` (`./core/teams`); the facade builds a `TeamDirectory` from the resolved manifest when no explicit teams backend is wired.
+
 ## [0.14.0] - 2026-07-24
 
 ### Added
