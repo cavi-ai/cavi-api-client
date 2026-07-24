@@ -12,7 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `teams` resolves from the provider manifest: `manifestTeamToTeam` and `teamDirectoryFromManifest` (`./core/teams`); the facade builds a `TeamDirectory` from the resolved manifest when no explicit teams backend is wired.
+- `teams` resolves from the provider manifest: `manifestTeamToTeam` and `teamDirectoryFromManifest` (`./core/teams`, also root-exported); the facade builds a `TeamDirectory` from the resolved manifest when no explicit teams backend is wired.
+- `classifyCapabilityFailure` maps statusless `BackendUnavailable` errors to a `backend-unavailable` gap by code.
+
+### Fixed
+
+- A manifest the team directory cannot index (ambiguous lookup keys) degrades `teams.*` to a `backend-unavailable` gap instead of throwing.
 
 ## [0.14.0] - 2026-07-24
 

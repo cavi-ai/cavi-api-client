@@ -277,6 +277,43 @@ describe("capability client — non-throwing single surface", () => {
     expect((list.data as Array<{ id: string }>).map((t) => t.id)).toEqual(["explicit"]);
   });
 
+  it("teams degrades to a backend-unavailable gap when the resolver rejects transport", async () => {
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { teams: true },
+      resolver: async () => {
+        throw new Error("fetch failed");
+      },
+    });
+    const result = await client.teams.listTeams();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+    expect(result.gap.note).toContain("teams manifest unavailable");
+  });
+
+  it("teams degrades to a gap when the manifest has ambiguous lookup keys", async () => {
+    const manifest = normalizeTeamManifest({
+      version: 1,
+      teams: [
+        { id: "eng", identity: { aliases: ["shared"] } },
+        { id: "ops", identity: { aliases: ["shared"] } },
+      ],
+    });
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { teams: true },
+      resolver: async () => ({ providerKind: "openclaw", supports: { teams: true }, manifest }),
+    });
+    const result = await client.teams.listTeams();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("backend-unavailable");
+    expect(result.gap.note).toContain("ambiguous lookup key");
+  });
+
   it("exposes the execution surface as always-present, result-shaped methods", async () => {
     const client = createCapabilityClient({
       providerKind: "claude",

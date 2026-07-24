@@ -61,6 +61,15 @@ Gateway providers omit the inline `streamRun` method and expose a
 `HermesSseRunEventProvider` that subscribes to run events by runId. See
 [runtime · streamRun](../runtime.md#streamrun).
 
+## teams
+
+**Capability** `supports.teams`
+
+Not an RPC. `client.teams.*` resolves from the provider manifest: when no explicit
+teams backend is supplied, the facade builds a `TeamDirectory` from the resolved
+manifest via `teamDirectoryFromManifest`. Absent a manifest, `teams.*` returns a
+gap.
+
 ## Batch
 
 Not supported — `supports.batch` is absent; the batch methods are not
