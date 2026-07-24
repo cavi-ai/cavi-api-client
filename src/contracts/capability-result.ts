@@ -8,7 +8,32 @@ import {
   classifyFallbackError,
   fallbackGap,
 } from "../core/gateway/envelope/envelope.js";
-import type { ContractGap } from "../core/gateway/envelope/types.js";
+import type { ContractGap, ContractGapReason } from "../core/gateway/envelope/types.js";
+import { GatewayRpcError } from "../core/gateway/rpc/error.js";
+
+/**
+ * Map a gateway RPC wire code (gRPC-style, e.g. `UNAVAILABLE`) onto a gap
+ * reason. Auth codes return null → the caller rethrows (carve-out). These are
+ * the gateway's own codes, distinct from the `ApiClientErrorCode` enum.
+ */
+function gatewayRpcCodeReason(code: string): ContractGapReason | null {
+  switch (code) {
+    case "UNAUTHENTICATED":
+    case "PERMISSION_DENIED":
+      return null; // auth — rethrow
+    case "INVALID_REQUEST":
+    case "INVALID_ARGUMENT":
+    case "FAILED_PRECONDITION":
+      return "request-invalid";
+    case "NOT_FOUND":
+    case "UNIMPLEMENTED":
+      return "endpoint-not-found";
+    default:
+      // UNAVAILABLE, INTERNAL, DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, ABORTED,
+      // and any unknown gateway code → transient backend degradation.
+      return "backend-unavailable";
+  }
+}
 
 /**
  * The non-throwing capability contract (design decision 2026-07-21): every
@@ -71,6 +96,22 @@ export function classifyCapabilityFailure(params: {
 }): ContractGap {
   const { error } = params;
   if (isAuthError(error)) throw error;
+
+  // Gateway RPC errors carry gRPC-style wire codes (not `ApiClientErrorCode`
+  // enum values), so a control-plane RPC failure must be classified by its
+  // code — otherwise it reaches `classifyFallbackError`, classifies `unknown`,
+  // and THROWS out of a read (violating the non-throwing contract). Auth codes
+  // rethrow (carve-out); everything else degrades to a gap.
+  if (error instanceof GatewayRpcError) {
+    const reason = gatewayRpcCodeReason(error.code);
+    if (reason === null) throw error;
+    return fallbackGap(
+      params.area,
+      params.expectedContract,
+      `${params.call} failed: ${errorMessageOf(error)}`,
+      reason,
+    );
+  }
 
   if (error instanceof CapabilityCallRejected) {
     return fallbackGap(

@@ -1,7 +1,9 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   buildPackageTarball,
@@ -127,15 +129,20 @@ describe("runtime-control release candidate evidence", () => {
   });
 
   it("packs identical bytes twice with the same source epoch and toolchain", () => {
+    const packageRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
+    // Build once, then pack the SAME dist twice with scripts disabled — this
+    // isolates pack determinism (build reproducibility is pinned separately) and
+    // avoids two sequential `tsc` builds that overran CI's per-test timeout.
+    execFileSync("pnpm", ["run", "build"], { cwd: packageRoot, stdio: "ignore" });
     const first = mkdtempSync(path.join(tmpdir(), "runtime-control-pack-a-"));
     const second = mkdtempSync(path.join(tmpdir(), "runtime-control-pack-b-"));
     try {
-      const firstTarball = buildPackageTarball(first);
-      const secondTarball = buildPackageTarball(second);
+      const firstTarball = buildPackageTarball(first, { ignoreScripts: true });
+      const secondTarball = buildPackageTarball(second, { ignoreScripts: true });
       expect(digest(firstTarball)).toBe(digest(secondTarball));
     } finally {
       rmSync(first, { recursive: true, force: true });
       rmSync(second, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, 60_000);
 });

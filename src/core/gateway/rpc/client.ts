@@ -146,6 +146,15 @@ export type GatewayRpcTraceEntry = {
 
 export type GatewayRpcClientOptions = {
   clientId?: string;
+  /**
+   * `Origin` header to present on the WebSocket handshake. Origin-gated
+   * gateways (`gateway.controlUi.allowedOrigins`) reject connections whose
+   * origin is absent or not allowlisted. Node's global WebSocket omits Origin;
+   * set this to an allowlisted origin (typically the gateway's own base origin)
+   * so non-browser clients can connect. Ignored where the WebSocket
+   * implementation forbids custom headers.
+   */
+  origin?: string;
   clientVersion?: string;
   clientMode?: string;
   clientPlatform?: string;
@@ -648,7 +657,13 @@ export class GatewayRpcClient {
 
     this.setState("connecting", null);
     this.connectPromise = new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(this.wsUrl);
+      // Origin-gated gateways require an allowlisted Origin on the handshake.
+      // Node's global (undici) WebSocket accepts a non-standard options bag with
+      // `headers`; browsers ignore it and set Origin themselves.
+      const origin = this.options.origin?.trim();
+      const ws = origin
+        ? new WebSocket(this.wsUrl, { headers: { Origin: origin } } as never)
+        : new WebSocket(this.wsUrl);
       this.socket = ws;
       this.intentionalClose = false;
       this.connectRejected = false;

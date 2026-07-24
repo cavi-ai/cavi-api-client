@@ -53,14 +53,32 @@ Reads run status by id over gateway RPC. Field tables per
 
 Stops a run over gateway RPC. See [runtime · cancelRun](../runtime.md#cancelrun).
 
-## streamRun (RunEventStreamProvider)
+## streamRun
 
 **HTTP** `gateway RPC`
 **Capability** `supports.streaming`
 
-Gateway providers omit the inline `streamRun` method and expose an
-`OpenClawSseRunEventProvider` that subscribes to run events by runId. See
+The low-level `OpenClawApiClient` omits an inline `streamRun`; run events arrive
+over the shared socket as native `chat`/`agent` frames keyed by `runId`. The
+`createApiClient` facade bridges those frames into `streamRun`, which resolves a
+`CapabilityResult<RunStreamOutcome>`. A caller abort resolves `ok:false` with a
+`request-aborted` gap and a best-effort `cancelRun`. See
 [runtime · streamRun](../runtime.md#streamrun).
+
+### Headless connect
+
+Origin-gated gateways reject a client that sends no `Origin` and clear
+device-less operator scopes. Pass `clientOrigin`, `clientMode: "cli"`, and
+`requestedScopes` on `createApiClient` to present an allowlisted origin and
+retain operator scopes over shared-secret auth.
+
+## agentConfig.listProfiles
+
+**HTTP** `gateway RPC` (`agents.list`)
+**Capability** `supports.agentConfig`
+
+Lists agent profiles over `agents.list`, normalized to `AgentProfileSummary[]`.
+Other agent-config methods remain gated pending shape verification.
 
 ## Batch
 

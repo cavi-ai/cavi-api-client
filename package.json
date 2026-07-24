@@ -1,6 +1,6 @@
 {
   "name": "@cavi-ai/api-client",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Gemini, Hermes, and OpenClaw, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
   "type": "module",
   "packageManager": "pnpm@10.32.1",

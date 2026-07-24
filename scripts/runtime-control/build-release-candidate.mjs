@@ -178,9 +178,15 @@ export function parsePackOutput(packOutput) {
   throw new Error("pnpm pack did not emit JSON metadata");
 }
 
-export function buildPackageTarball(destination) {
+export function buildPackageTarball(destination, { ignoreScripts = false } = {}) {
   mkdirSync(destination, { recursive: true });
-  return parsePackOutput(run("pnpm", ["pack", "--json", "--pack-destination", destination]));
+  // `pnpm pack` runs `prepack` (a full `tsc` build) by default. Callers that
+  // have already built `dist/` can skip it with `ignoreScripts` to pack the
+  // existing output directly — the reproducibility check does this so it packs
+  // the SAME dist twice instead of paying for two sequential builds.
+  const args = ["pack", "--json", "--pack-destination", destination];
+  if (ignoreScripts) args.push("--config.ignore-scripts=true");
+  return parsePackOutput(run("pnpm", args));
 }
 
 export function scanArchive(tarball) {

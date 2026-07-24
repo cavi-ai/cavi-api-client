@@ -952,6 +952,37 @@ describe("capability client — unified streamRun semantics (R10)", () => {
     expect(result.gap.note).toContain("no cancel issued");
   });
 
+  // (c) — abort before any EVENT, but the bridge reported the runId via onRunId:
+  // the best-effort cancel still fires (no orphaned gateway run).
+  it("cancels using the bridge-reported runId when abort lands before the first event (c)", async () => {
+    const controller = new AbortController();
+    const cancelRun = vi.fn(async () => ({ status: "cancelled" }));
+    const bridge = async (
+      _body: unknown,
+      _handlers: unknown,
+      options?: { onRunId?: (runId: string) => void },
+    ): Promise<void> => {
+      options?.onRunId?.("run-99"); // run started; id known before any event
+      controller.abort(); // abort before any frame arrives
+    };
+    const client = createCapabilityClient({
+      providerKind: "hermes",
+      runtime: { ...runtime, cancelRun },
+      fallbackSupports: { runs: true, streaming: true },
+      streamRunBridge: bridge as never,
+    });
+    const result = await client.streamRun(
+      { input: "hi" },
+      { onEvent: () => undefined },
+      { signal: controller.signal },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.reason).toBe("request-aborted");
+    expect(result.gap.note).toContain("run-99");
+    expect(cancelRun).toHaveBeenCalledWith("run-99");
+  });
+
   // (d) — provider-internal AbortError rejection WITHOUT our signal (Claude with
   // no onError handler rethrows AbortError): still request-aborted, not a rethrow.
   it("resolves ok:false request-aborted on an AbortError rejection with no caller signal (d)", async () => {

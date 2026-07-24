@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-24
+
+### Added
+
+- OpenClaw `agentConfig.listProfiles` over the `agents.list` RPC (was a gated stub). `normalizeOpenClawAgentProfiles` maps `{ defaultId, agents:[{ id, name, workspace, agentRuntime }] }` to `AgentProfileSummary[]`.
+- `createApiClient` handshake options for non-browser clients: `clientOrigin` (WS `Origin`; auto-derived from base origin for non-cli modes), `clientMode` (`"cli"` preserves operator scopes over shared-secret auth), `requestedScopes`. Backed by `GatewayRpcClientOptions.origin`.
+- `streamRun` returns `CapabilityResult<RunStreamOutcome>` (`{ runId, outcome }`); a caller abort resolves `ok:false` with a `request-aborted` gap and a best-effort `cancelRun`.
+
+### Fixed
+
+- OpenClaw `streamRun` delivered no events (stream hung): the bridge decoded control-plane `operation.*` frames, but runs emit native `chat`/`agent` frames keyed by `runId`. Added `createOpenClawRunNativeEventStream` (one shared listener fans out by `runId`).
+- Abort landing before the first event orphaned the run: gateway bridges report the run id via `onRunId` on `startRun` (forwarded through the dispose tracker), so the best-effort `cancelRun` fires.
+- `GatewayRpcError` now classifies by gRPC code (`UNAVAILABLE`→backend-unavailable, `INVALID_REQUEST`→request-invalid, `NOT_FOUND`→endpoint-not-found; `UNAUTHENTICATED`/`PERMISSION_DENIED` rethrow), so a control-plane RPC failure degrades to a gap instead of throwing out of a read.
+- OpenClaw wire parsers are forward-compatible: unknown benign fields are tolerated; unsafe content (non-plain objects, non-finite numbers, cycles) and leaked secrets (a sensitive-named key with a STRING value) are still rejected. A sensitive-named field holding structured metadata (`apiKey: { source, envVar }`) is tolerated. Fixes `authStatus.listAuthStatus` and `sessions.list` failures.
+
 ## [0.13.0] - 2026-07-23
 
 ### Added

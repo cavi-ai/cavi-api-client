@@ -18,7 +18,11 @@ const TERMINAL_EVENTS: ReadonlySet<string> = new Set([
 export type GatewayStreamRunBridge = (
   body: RuntimeRunStartBody,
   handlers: RunEventStreamHandlers,
-  options?: { signal?: AbortSignal },
+  options?: {
+    signal?: AbortSignal;
+    /** Invoked with the run id as soon as `startRun` returns (before events). */
+    onRunId?: (runId: string) => void;
+  },
 ) => Promise<void>;
 
 /**
@@ -62,6 +66,9 @@ export function createGatewayStreamRun(params: {
     params.validate?.(body);
     const status = await params.runtime.startRun(body);
     const runId = status.run_id;
+    // Report the run id up front so an abort landing before the first event can
+    // still issue a best-effort cancel.
+    options?.onRunId?.(runId);
     const provider = params.createProvider(body, runId);
 
     await new Promise<void>((resolve, reject) => {

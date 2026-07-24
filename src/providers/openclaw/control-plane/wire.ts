@@ -1,8 +1,49 @@
+import { isSensitiveKey } from "../../../core/http/redaction.js";
+
 export class OpenClawWireError extends Error {
   constructor(message: string) { super(message); this.name = "OpenClawWireError"; }
 }
 
 type WireObject = Record<string, unknown>;
+
+/**
+ * Reject dangerous content while tolerating benign unknown fields. A live
+ * gateway routinely grows a payload (a session went from ~6 to ~30 keys), so a
+ * read client must not hard-fail on an unrecognized-but-harmless field. It MUST
+ * still refuse anything unsafe: a sensitive key (a leaked token/secret we
+ * should never surface), a non-plain object (a `Date`, a class instance, a
+ * prototype-polluting shape), a non-finite number, or a cyclic structure.
+ */
+function assertSafeExtras(value: unknown, label: string, seen = new Set<object>()): void {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new OpenClawWireError(`${label} is not a finite number`);
+    return;
+  }
+  if (Array.isArray(value)) {
+    if (seen.has(value)) throw new OpenClawWireError(`${label} must not be cyclic`);
+    seen.add(value);
+    value.forEach((item, index) => assertSafeExtras(item, `${label}[${index}]`, seen));
+    seen.delete(value);
+    return;
+  }
+  if (typeof value !== "object") throw new OpenClawWireError(`${label} has an unsupported value`);
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new OpenClawWireError(`${label} must be a plain object`);
+  if (seen.has(value)) throw new OpenClawWireError(`${label} must not be cyclic`);
+  seen.add(value);
+  for (const [key, item] of Object.entries(value)) {
+    // Reject a sensitive-named key only when it carries a STRING value — that is
+    // a possibly-leaked secret we must never surface. A structured value under a
+    // sensitive name (e.g. `apiKey: { source, envVar }`) is benign metadata, so
+    // recurse into it rather than rejecting the field outright.
+    if (isSensitiveKey(key) && typeof item === "string" && item.length > 0) {
+      throw new OpenClawWireError(`${label}.${key} is not allowed`);
+    }
+    assertSafeExtras(item, `${label}.${key}`, seen);
+  }
+  seen.delete(value);
+}
 const TASK_STATUSES = new Set(["queued", "running", "completed", "failed", "cancelled", "timed_out"]);
 const ABORT_STATUSES = new Set(["aborted", "no-active-run"]);
 
@@ -12,10 +53,22 @@ function object(value: unknown, label: string): WireObject {
   if (prototype !== Object.prototype && prototype !== null) throw new OpenClawWireError(`${label} must be a plain object`);
   return value as WireObject;
 }
+// Forward-compatible object parse. `keys` are the fields the caller reads and
+// validates itself — they pass through untouched (e.g. a benign metadata field
+// legitimately named `apiKey` that carries only `{source, envVar}`). Only
+// UNKNOWN extra keys are safety-checked: a live gateway adds fields over time,
+// so a benign unknown field is tolerated, but an unknown sensitive-named key
+// (a possibly-leaked secret) or an exotic/unsafe value is still rejected.
 function closed(value: unknown, label: string, keys: readonly string[]): WireObject {
   const result = object(value, label);
-  const allowed = new Set(keys);
-  for (const key of Object.keys(result)) if (!allowed.has(key)) throw new OpenClawWireError(`${label}.${key} is not allowed`);
+  const known = new Set(keys);
+  for (const [key, item] of Object.entries(result)) {
+    if (known.has(key)) continue;
+    if (isSensitiveKey(key) && typeof item === "string" && item.length > 0) {
+      throw new OpenClawWireError(`${label}.${key} is not allowed`);
+    }
+    assertSafeExtras(item, `${label}.${key}`);
+  }
   return result;
 }
 function array(value: unknown, label: string): unknown[] { if (!Array.isArray(value)) throw new OpenClawWireError(`${label} must be an array`); return value; }

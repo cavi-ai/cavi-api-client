@@ -159,6 +159,23 @@ describe("OpenClaw control-plane wire validation", () => {
     }
   });
 
+  it("tolerates a benign metadata field under a sensitive name but rejects a leaked secret string", () => {
+    // `apiKey: { source, envVar }` is auth METADATA (no secret value) that the
+    // live gateway attaches to each provider — it must not hard-fail a read.
+    const withMetadata = {
+      ts: 1,
+      providers: [{ provider: "anthropic", displayName: "Claude", status: "static", profiles: [], apiKey: { source: "env", envVar: "ANTHROPIC_API_KEY" } }],
+    };
+    expect(() => parseModelsAuthStatus(withMetadata)).not.toThrow();
+    // But a sensitive-named key carrying a STRING value is a possibly-leaked
+    // secret and is still rejected.
+    const withSecret = {
+      ts: 1,
+      providers: [{ provider: "anthropic", displayName: "Claude", status: "static", profiles: [], apiKey: "sk-live-abc123" }],
+    };
+    expect(() => parseModelsAuthStatus(withSecret)).toThrow(OpenClawWireError);
+  });
+
   it("accepts a task-less cancel result", () => {
     expect(parseTasksCancel({ found: false, cancelled: false })).toEqual({ found: false, cancelled: false });
   });
@@ -184,10 +201,13 @@ describe("OpenClaw control-plane wire validation", () => {
     expect((parsed.daily as unknown[])[0]).not.toBe((valid.daily as unknown[])[0]);
 
     const row = (valid.daily as Record<string, unknown>[])[0];
+    // Sensitive/unsafe fields are still rejected...
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, authorization: "secret" }] })).toThrow(OpenClawWireError);
-    expect(() => parseUsageCost({ ...valid, daily: [{ ...row, unexpected: true }] })).toThrow(OpenClawWireError);
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, date: new Date() }] })).toThrow(OpenClawWireError);
     expect(() => parseUsageCost({ ...valid, daily: [{ ...row, totalCost: new Map() }] })).toThrow(OpenClawWireError);
+    // ...but a benign unknown field is TOLERATED (forward compatibility): a live
+    // gateway adds fields over time and a read client must not hard-fail.
+    expect(() => parseUsageCost({ ...valid, daily: [{ ...row, unexpected: true }] })).not.toThrow();
   });
 
   it.each([

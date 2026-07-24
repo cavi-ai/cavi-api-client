@@ -6,9 +6,8 @@ import {
 } from "../../core/runtime/run-stream.js";
 import type { RuntimeRunStatus } from "../../core/runtime/run.js";
 import type { RawGatewayConnectionState } from "../../core/runtime/control-plane/raw-gateway.js";
-import { createRunEventStreamFromControlPlane } from "../../core/runtime/control-plane/run-stream-bridge.js";
-import { createOpenClawRuntimeEventClient } from "./control-plane/events.js";
 import type { OpenClawRpc } from "./control-plane/rpc.js";
+import { createOpenClawRunNativeEventStream } from "./run-event-stream.js";
 
 const TERMINAL_RUN_STREAM_EVENTS: ReadonlySet<string> = new Set([
   RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
@@ -57,9 +56,9 @@ export type OpenClawRunEventStreamDeps = {
 export function createOpenClawRunEventStreamProvider(
   deps: OpenClawRunEventStreamDeps,
 ): RunEventStreamProvider {
-  const events = createRunEventStreamFromControlPlane(
-    createOpenClawRuntimeEventClient(deps.rpc),
-  );
+  // Run events arrive as native `chat`/`agent` frames keyed by `runId` — NOT
+  // the control-plane `operation.*` vocabulary. Translate them directly.
+  const events = createOpenClawRunNativeEventStream(deps.rpc);
 
   return {
     async subscribe(params, handlers) {

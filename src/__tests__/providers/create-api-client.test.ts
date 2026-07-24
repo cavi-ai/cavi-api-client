@@ -425,8 +425,10 @@ describe("createApiClient — the one front door", () => {
     const result = await streaming;
 
     // Clean abort settle (R10 dispose semantics) — NOT an F1 connection-error
-    // gap from the socket being closed out from under the live stream.
-    expect(result).toEqual({ ok: true, data: { runId: null, outcome: null }, source: "live" });
+    // gap from the socket being closed out from under the live stream. The run
+    // id was reported by the bridge (via onRunId) before teardown; `outcome:
+    // null` still marks that no terminal was observed.
+    expect(result).toEqual({ ok: true, data: { runId: "run-1", outcome: null }, source: "live" });
     // Closed exactly once, by onDispose. The control client (takeRpcOwnership
     // false) never closes the socket it does not own.
     expect(socket.dispose).toHaveBeenCalledTimes(1);

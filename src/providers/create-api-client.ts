@@ -116,6 +116,25 @@ export type CreateApiClientOptions = {
   fetchImpl?: typeof fetch;
   /** Advertised WS client id for gateways that validate it. */
   clientId?: string;
+  /**
+   * `Origin` header for the gateway WebSocket handshake. Origin-gated gateways
+   * reject connections whose origin is absent/not allowlisted; Node clients
+   * send no Origin by default. Defaults to the gateway's own base origin (which
+   * is typically allowlisted). Set explicitly to override.
+   */
+  clientOrigin?: string;
+  /**
+   * Advertised WS client mode (e.g. `"cli"`, `"webchat"`). Gateways bind the
+   * scope-preservation and device-identity policy to the mode: a headless
+   * operator client on loopback uses `"cli"` so shared-secret auth keeps its
+   * operator scopes instead of being downgraded to read-only.
+   */
+  clientMode?: string;
+  /**
+   * Operator scopes to request on the WS connect handshake. Omit for the
+   * gateway default (read-only). Request `operator.write` to start runs.
+   */
+  requestedScopes?: readonly string[];
   /** Manifest team id for this gateway instance. */
   teamId?: string;
   /** Override the auto-wired runtime capability resolver. */
@@ -225,9 +244,31 @@ function createOpenClawSocket(options: CreateApiClientOptions): OpenClawWebSocke
   const wsUrl =
     options.webSocketUrl ?? (options.baseUrl ? deriveWebSocketUrl(options.baseUrl) : null);
   if (!wsUrl) return null;
+  // A browser-context Origin makes the gateway apply control-ui policy (device
+  // identity / scope binding). CLI-mode clients authenticate by shared secret
+  // and must present no Origin, so only auto-derive it for non-cli modes.
+  const origin =
+    options.clientOrigin ??
+    (options.clientMode === "cli"
+      ? undefined
+      : options.baseUrl
+        ? safeOrigin(options.baseUrl)
+        : undefined);
   return new OpenClawWebSocketClient(wsUrl, options.token ?? null, {
     clientId: options.clientId ?? "openclaw-control-ui",
+    ...(origin ? { origin } : {}),
+    ...(options.clientMode ? { clientMode: options.clientMode } : {}),
+    ...(options.requestedScopes ? { requestedScopes: options.requestedScopes } : {}),
   });
+}
+
+/** The scheme+host+port origin of a URL, or undefined if unparseable. */
+function safeOrigin(url: string): string | undefined {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
 }
 
 export function wireOpenClaw(
@@ -300,7 +341,11 @@ export function wireOpenClaw(
                 rpcClient: socket,
               }),
             wiki: () => new OpenClawWikiApiClient(httpClientOptions(options)),
-            agentConfig: () => new OpenClawAgentConfigApiClient(httpClientOptions(options)),
+            agentConfig: () =>
+              new OpenClawAgentConfigApiClient({
+                ...httpClientOptions(options),
+                rpcClient: socket,
+              }),
           }
         : {}),
     },
