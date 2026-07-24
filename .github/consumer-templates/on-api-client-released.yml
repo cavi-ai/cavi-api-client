@@ -1,0 +1,84 @@
+# Drop-in listener for @cavi-ai/api-client releases.
+#
+# Copy to a consumer repo as `.github/workflows/on-api-client-released.yml`.
+# The api-client publish workflow fires `repository_dispatch` with
+# `event_type: api-client-released` and `client_payload.version`; this bumps the
+# dependency to that version and opens a PR. Also runnable manually.
+#
+# Requires nothing beyond the default GITHUB_TOKEN (contents + pull-requests
+# write, granted below). For a repo that pins a local `file:` link instead of a
+# published version, delete the bump step and wire your own sync instead.
+name: on-api-client-released
+
+on:
+  repository_dispatch:
+    types:
+      - api-client-released
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "@cavi-ai/api-client version to pin (e.g. 0.14.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: api-client-bump
+  cancel-in-progress: true
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve version
+        id: v
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${DISPATCH_VERSION:-$INPUT_VERSION}"
+          if [ -z "$VERSION" ]; then echo "no version supplied" >&2; exit 1; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Enable pnpm
+        if: ${{ hashFiles('pnpm-lock.yaml') != '' }}
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Bump @cavi-ai/api-client
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            corepack prepare pnpm@latest --activate
+            pnpm add "@cavi-ai/api-client@${VERSION}"
+          else
+            npm install "@cavi-ai/api-client@${VERSION}" --save
+          fi
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          if git diff --quiet; then
+            echo "::notice::already at @cavi-ai/api-client@${VERSION} — nothing to do."
+            exit 0
+          fi
+          BRANCH="chore/api-client-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git commit -am "chore(deps): @cavi-ai/api-client@${VERSION}"
+          git push -u origin "$BRANCH" --force
+          gh pr create --fill --head "$BRANCH" --title "chore(deps): @cavi-ai/api-client@${VERSION}" \
+            || gh pr edit "$BRANCH" --title "chore(deps): @cavi-ai/api-client@${VERSION}"

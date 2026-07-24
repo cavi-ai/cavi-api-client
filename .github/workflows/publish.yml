@@ -87,3 +87,42 @@ jobs:
           else
             npm publish --access public --provenance
           fi
+
+  # Fan the release out to downstream consumers so they pick up the new version
+  # without manual coordination. Each consumer listens for the
+  # `api-client-released` repository_dispatch and bumps its dependency.
+  #
+  # Config (both required, else this no-ops without failing the release):
+  #   vars.API_CLIENT_CONSUMER_REPOS  — space/newline-separated `owner/repo` list
+  #   secrets.CONSUMER_DISPATCH_TOKEN — PAT with `repo` (or fine-grained
+  #                                     contents:write) on those repos; the
+  #                                     default GITHUB_TOKEN cannot dispatch
+  #                                     cross-repo.
+  notify-consumers:
+    name: Notify consumers
+    needs: npm
+    if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Dispatch api-client-released to consumers
+        env:
+          GH_TOKEN: ${{ secrets.CONSUMER_DISPATCH_TOKEN }}
+          CONSUMERS: ${{ vars.API_CLIENT_CONSUMER_REPOS }}
+        run: |
+          if [ -z "$GH_TOKEN" ] || [ -z "$CONSUMERS" ]; then
+            echo "::notice::CONSUMER_DISPATCH_TOKEN and/or API_CLIENT_CONSUMER_REPOS unset — skipping consumer notification."
+            exit 0
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "Notifying consumers of @cavi-ai/api-client@${VERSION}"
+          for repo in $CONSUMERS; do
+            echo "→ $repo"
+            gh api "repos/${repo}/dispatches" \
+              -f "event_type=api-client-released" \
+              -F "client_payload[version]=${VERSION}" \
+              -F "client_payload[package]=@cavi-ai/api-client" \
+              || echo "::warning::dispatch to ${repo} failed"
+          done
