@@ -1,4 +1,4 @@
-import { isAuthError } from "../core/errors.js";
+import { ApiClientError, ApiClientErrorCode, isAuthError } from "../core/errors.js";
 import type {
   RuntimeClient,
   RuntimeRunStartBody,
@@ -24,6 +24,7 @@ import type { UsageClient } from "../core/runtime/control-plane/usage.js";
 import type { WorkspaceClient } from "../core/runtime/control-plane/workspace.js";
 import type { KanbanClient } from "../core/kanban/client.js";
 import type { TeamDirectory } from "../core/teams/directory.js";
+import { teamDirectoryFromManifest } from "../core/teams/from-manifest.js";
 import type { GatewayMediaClient } from "../core/gateway/resources/media.js";
 import type { GatewayWikiClient } from "../core/gateway/resources/wiki.js";
 import type { GatewayAgentConfigClient } from "../core/gateway/agent/config.js";
@@ -805,7 +806,26 @@ export function createCapabilityClient(
 
     ...controlPlaneSurfaces,
     kanban: gatedKanban(),
-    teams: gatedDirect<TeamDirectory>("teams", backends.teams),
+    // teams is not a gateway RPC: it resolves from the provider manifest. When
+    // no explicit backend is supplied and a resolver exists, build the directory
+    // from the resolved manifest (memoized by gatedDirect); a resolver that
+    // returns no manifest degrades to a gap.
+    teams: gatedDirect<TeamDirectory>(
+      "teams",
+      backends.teams ??
+        (options.resolver
+          ? async () => {
+              await ensureResolved();
+              const manifest = resolved?.manifest;
+              if (!manifest) {
+                throw new ApiClientError("teams manifest unavailable", {
+                  code: ApiClientErrorCode.BackendUnavailable,
+                });
+              }
+              return teamDirectoryFromManifest(manifest);
+            }
+          : undefined),
+    ),
     media: gatedDirect<GatewayMediaClient>("media", backends.media),
     wiki: gatedDirect<GatewayWikiClient>("wiki", backends.wiki),
     agentConfig: gatedDirect<GatewayAgentConfigClient>("agentConfig", backends.agentConfig),
