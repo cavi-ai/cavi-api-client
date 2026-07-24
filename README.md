@@ -154,7 +154,7 @@ configuration, and routing do not make one provider the default.
 - [Changelog](CHANGELOG.md) — released and unreleased changes.
 
 The immutable documentation artifact for the currently committed stable docs is
-under [`docs/api-client/v0.13.0`](docs/api-client/v0.13.0). Its manifest records
+under [`docs/api-client/v0.14.0`](docs/api-client/v0.14.0). Its manifest records
 the exact packed declaration surface used to generate it. Repository docs may
 describe later released or unreleased work; the versioned artifact does not.
 
