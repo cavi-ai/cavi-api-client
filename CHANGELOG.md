@@ -10,9 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-24
+
 ### Added
 
-- `teams` resolves from the provider manifest: `manifestTeamToTeam` and `teamDirectoryFromManifest` (`./core/teams`); the facade builds a `TeamDirectory` from the resolved manifest when no explicit teams backend is wired.
+- `teams` resolves from the provider manifest: `manifestTeamToTeam` and `teamDirectoryFromManifest` (`./core/teams`, also root-exported); the facade builds a `TeamDirectory` from the resolved manifest when no explicit teams backend is wired.
+- `classifyCapabilityFailure` maps statusless `BackendUnavailable` errors to a `backend-unavailable` gap by code.
+
+### Fixed
+
+- A manifest the team directory cannot index (ambiguous lookup keys) degrades `teams.*` to a `backend-unavailable` gap instead of throwing.
 
 ## [0.14.0] - 2026-07-24
 
@@ -871,7 +878,9 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.11.0...v0.12.0
 [0.5.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.4.1...v0.5.0

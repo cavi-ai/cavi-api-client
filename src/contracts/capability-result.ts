@@ -185,6 +185,17 @@ export function classifyCapabilityFailure(params: {
       "endpoint-not-found",
     );
   }
+  // A statusless `BackendUnavailable` names a backend that cannot serve the
+  // call (e.g. the teams manifest factory when resolution yielded no manifest).
+  // Map it by code so degradation never depends on message wording.
+  if (code === ApiClientErrorCode.BackendUnavailable) {
+    return fallbackGap(
+      params.area,
+      params.expectedContract,
+      `${params.call} failed: ${errorMessageOf(error)}`,
+      "backend-unavailable",
+    );
+  }
 
   const classified = classifyFallbackError(error);
   if (classified.reason === "unknown") throw error;

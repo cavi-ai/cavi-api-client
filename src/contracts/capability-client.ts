@@ -822,7 +822,17 @@ export function createCapabilityClient(
                   code: ApiClientErrorCode.BackendUnavailable,
                 });
               }
-              return teamDirectoryFromManifest(manifest);
+              try {
+                return teamDirectoryFromManifest(manifest);
+              } catch (error) {
+                // A manifest the directory cannot index (e.g. ambiguous lookup
+                // keys across teams) is backend data the client cannot serve —
+                // degrade to a gap, never throw out of a read.
+                throw new ApiClientError(
+                  `teams manifest rejected: ${error instanceof Error ? error.message : String(error)}`,
+                  { code: ApiClientErrorCode.BackendUnavailable },
+                );
+              }
             }
           : undefined),
     ),

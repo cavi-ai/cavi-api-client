@@ -356,6 +356,12 @@ export {
   type TeamWorkspacePathEntry,
 } from "./contracts/team-manifest.js";
 
+// ── Teams (manifest-resolved directory) ──────────────────────────────────────
+export {
+  manifestTeamToTeam,
+  teamDirectoryFromManifest,
+} from "./core/teams/from-manifest.js";
+
 // ── Repo root (filesystem integrations) ──────────────────────────────────────
 export {
   GLOBAL_REPO_ROOT_KEY,

@@ -199,6 +199,12 @@ const APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS = [
   "CapabilityResult",
 ] as const;
 
+// Manifest-resolved teams: the core mapper pair backing the teams capability.
+const APPROVED_ROOT_TEAMS_ADDITIONS = [
+  "manifestTeamToTeam",
+  "teamDirectoryFromManifest",
+] as const;
+
 const FORBIDDEN_PACKAGES = [
   "@cavi/data",
   "@cavi/domain",
@@ -1269,6 +1275,7 @@ describe("package hardening", () => {
       ...APPROVED_ROOT_TRANSPORT_ADDITIONS,
       ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
       ...APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS,
+      ...APPROVED_ROOT_TEAMS_ADDITIONS,
     ]
       .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
       .sort();
