@@ -80,6 +80,15 @@ retain operator scopes over shared-secret auth.
 Lists agent profiles over `agents.list`, normalized to `AgentProfileSummary[]`.
 Other agent-config methods remain gated pending shape verification.
 
+## teams
+
+**Capability** `supports.teams`
+
+Not an RPC. `client.teams.*` resolves from the provider manifest: when no explicit
+teams backend is supplied, the facade builds a `TeamDirectory` from the resolved
+manifest via `teamDirectoryFromManifest`. Absent a manifest, `teams.*` returns a
+gap.
+
 ## Batch
 
 Not supported — `supports.batch` is absent; the batch methods are not

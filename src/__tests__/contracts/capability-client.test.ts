@@ -224,6 +224,59 @@ describe("capability client — non-throwing single surface", () => {
     await expect(client.getManifest()).resolves.toBe(manifest);
   });
 
+  it("resolves teams from the provider manifest when no teams backend is wired", async () => {
+    const manifest = normalizeTeamManifest({
+      version: 1,
+      teams: [{ id: "eng", identity: { aliases: ["engineering"] }, members: [{ id: "bob" }] }],
+    });
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { teams: true },
+      resolver: async () => ({ providerKind: "openclaw", supports: { teams: true }, manifest }),
+    });
+
+    const list = await client.teams.listTeams();
+    expect(list.ok).toBe(true);
+    if (!list.ok) throw new Error("unreachable");
+    expect(list.data.map((t) => t.id)).toEqual(["eng"]);
+    const resolved = await client.teams.resolveTeam("engineering");
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error("unreachable");
+    expect(resolved.data?.id).toBe("eng");
+  });
+
+  it("teams gaps when the provider has no resolver and no teams backend", async () => {
+    const client = createCapabilityClient({
+      providerKind: "codex",
+      runtime,
+      fallbackSupports: { teams: true },
+    });
+    const result = await client.teams.listTeams();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.gap.note).toContain("no teams backend is wired");
+  });
+
+  it("an explicit teams backend overrides manifest resolution", async () => {
+    const directory = { listTeams: () => [{ id: "explicit" }] } as never;
+    const client = createCapabilityClient({
+      providerKind: "openclaw",
+      runtime,
+      fallbackSupports: { teams: true },
+      resolver: async () => ({
+        providerKind: "openclaw",
+        supports: { teams: true },
+        manifest: normalizeTeamManifest({ version: 1, teams: [{ id: "from-manifest" }] }),
+      }),
+      backends: { teams: () => directory },
+    });
+    const list = await client.teams.listTeams();
+    expect(list.ok).toBe(true);
+    if (!list.ok) throw new Error("unreachable");
+    expect((list.data as Array<{ id: string }>).map((t) => t.id)).toEqual(["explicit"]);
+  });
+
   it("exposes the execution surface as always-present, result-shaped methods", async () => {
     const client = createCapabilityClient({
       providerKind: "claude",
