@@ -180,7 +180,7 @@ jobs:
           TARBALL="$RUNNER_TEMP/cavi-ai-api-client-${VERSION}.tgz"
           METADATA="$RUNNER_TEMP/npm-release-${VERSION}.json"
           ATTEMPT=1
-          until pnpm run docs:resolve-npm-release -- \
+          until pnpm --silent run docs:resolve-npm-release -- \
               --version "$VERSION" \
               --tag "$TAG" \
               --commit "$COMMIT" \
