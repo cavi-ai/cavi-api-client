@@ -243,7 +243,7 @@ jobs:
              .source.repository == $repository and .source.tag == $tag and .source.commit == $commit and
              (.documentation.contentSha256 | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
           ENVELOPE="$RUNNER_TEMP/cavi-oss-release-${VERSION}.json"
-          pnpm run docs:release-envelope -- \
+          pnpm --silent run docs:release-envelope -- \
             --version "$VERSION" \
             --tag "$TAG" \
             --repository "$GITHUB_REPOSITORY" \
