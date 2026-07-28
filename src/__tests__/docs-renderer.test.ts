@@ -163,9 +163,11 @@ describe("renderDocumentation", () => {
   it("maps the exact stable manifest to typed navigation targets", () => {
     const output = render();
     const renderedNavigation = JSON.parse(output.get("navigation.json")!) as {
+      version: string;
       reference: Array<{ subpath: string; kind: string; path?: string; target?: string }>;
     };
 
+    expect(renderedNavigation.version).toBe(manifest.version);
     expect(renderedNavigation.reference.map(({ subpath }) => subpath)).toEqual(
       manifest.exports.map(({ subpath }) => subpath).sort(),
     );
