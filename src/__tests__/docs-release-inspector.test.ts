@@ -76,13 +76,13 @@ describe("inspectRelease", () => {
     await expect(inspectRelease(invalidArchive)).rejects.toThrow("stable artifact digest mismatch");
   });
 
-  it("keeps production digest verification immutable and ahead of tar invocation", async () => {
+  it("verifies the selected release digest before invoking tar", async () => {
     const inspector = await readFile("scripts/docs/inspect-release.mjs", "utf8");
-    const productionInspector = inspector.slice(inspector.indexOf("export async function inspectRelease(tgzPath)"), inspector.indexOf("/** Test-only"));
-    const digestGuard = productionInspector.indexOf("sha256 !== APPROVED_RELEASE_SHA256");
+    const productionInspector = inspector.slice(inspector.indexOf("async function inspectReleaseWithRelease"), inspector.indexOf("/** @param {string} tgzPath"));
+    const digestGuard = productionInspector.indexOf("sha256 !== release.tarballSha256");
 
     expect(digestGuard).toBeGreaterThan(-1);
-    expect(productionInspector).not.toContain('execFileAsync("tar"');
+    expect(productionInspector.indexOf('execFileAsync("tar"')).toBeGreaterThan(digestGuard);
     expect(inspectRelease.length).toBe(1);
   });
 

@@ -7,20 +7,20 @@ import { loadContracts } from "./contracts.mjs";
 import { inspectRelease } from "./inspect-release.mjs";
 import { renderDocumentation } from "./render.mjs";
 import { containedPath } from "./paths.mjs";
-import { DOCUMENTED_OUTPUT_DIRECTORY, DOCUMENTED_SOURCE_DATE_EPOCH } from "./types.mjs";
+import { DOCUMENTED_SOURCE_DATE_EPOCH, resolveDocumentationRelease } from "./types.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /** @param {string[]} argv */
 function parseArguments(argv) {
-  const allowedOptions = new Set(["tarball", "package", "output", "out", "source-date-epoch", "root"]);
+  const allowedOptions = new Set(["tarball", "package", "output", "out", "output-root", "source-date-epoch", "root", "version", "tag", "repository", "commit", "npm-integrity", "tarball-sha256"]);
   /** @type {Record<string, string>} */
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
     const option = argv[index];
     const value = argv[index + 1];
     if (!option?.startsWith("--") || value === undefined) {
-      throw new Error("usage: build.mjs --tarball <release.tgz> --output <directory> --source-date-epoch <seconds>");
+      throw new Error("usage: build.mjs --tarball <release.tgz> [--output <directory> | --output-root <directory>] [--source-date-epoch <seconds>]");
     }
     const name = option.slice(2);
     if (!allowedOptions.has(name)) throw new Error(`unsupported option --${name}`);
@@ -32,9 +32,8 @@ function parseArguments(argv) {
   // --package (see the docs:build script). Output path and reproducible-build
   // timestamp derive from the release pins (types.mjs) so they cannot drift.
   values.tarball ??= values.package;
-  values.output ??= values.out ?? DOCUMENTED_OUTPUT_DIRECTORY;
   values["source-date-epoch"] ??= String(DOCUMENTED_SOURCE_DATE_EPOCH);
-  for (const required of ["tarball", "output", "source-date-epoch"]) {
+  for (const required of ["tarball", "source-date-epoch"]) {
     if (!values[required]) throw new Error(`missing required option --${required}`);
   }
   return values;
@@ -43,19 +42,24 @@ function parseArguments(argv) {
 /** @param {string[]} argv */
 export async function buildDocumentation(argv) {
   const options = parseArguments(argv);
+  const release = resolveDocumentationRelease({
+    version: options.version, tag: options.tag,
+    tarball: options.tarball, npmIntegrity: options["npm-integrity"], tarballSha256: options["tarball-sha256"],
+    repository: options.repository, commit: options.commit, outputRoot: options["output-root"],
+  });
   if (options.root && path.resolve(options.root) !== REPOSITORY_ROOT) {
     throw new Error(`unsafe documentation repository root: ${path.resolve(options.root)}`);
   }
   const root = await realpath(REPOSITORY_ROOT);
-  const outputDirectory = resolvePublicDocumentationOutput(root, options.output);
-  return buildDocumentationAt({ options, root, outputDirectory, allowedRoot: root });
+  const outputDirectory = resolvePublicDocumentationOutput(root, options.output ?? options.out ?? release.outputDirectory, release);
+  return buildDocumentationAt({ options, root, outputDirectory, allowedRoot: root, release });
 }
 
-/** @param {string} root @param {string} output */
-export function resolvePublicDocumentationOutput(root, output) {
+/** @param {string} root @param {string} output @param {ReturnType<typeof resolveDocumentationRelease>} [release] */
+export function resolvePublicDocumentationOutput(root, output, release = resolveDocumentationRelease()) {
   const resolvedRoot = path.resolve(root);
   const resolvedOutput = path.resolve(resolvedRoot, output);
-  const canonicalOutput = path.join(resolvedRoot, DOCUMENTED_OUTPUT_DIRECTORY);
+  const canonicalOutput = path.join(resolvedRoot, release.outputDirectory);
   if (resolvedOutput !== canonicalOutput) {
     throw new Error(`unsafe documentation output directory: ${resolvedOutput}`);
   }
@@ -70,19 +74,25 @@ export function resolvePublicDocumentationOutput(root, output) {
  */
 export async function buildDocumentationInTemporaryRoot(argv, temporaryRoot) {
   const options = parseArguments(argv);
-  if (options.output !== "generated") {
-    throw new Error(`unsafe temporary documentation output: ${options.output}`);
+  const output = options.output ?? options.out;
+  if (output !== "generated") {
+    throw new Error(`unsafe temporary documentation output: ${output}`);
   }
   const root = path.resolve(options.root ?? ".");
   const resolvedTemporaryRoot = await realpath(temporaryRoot);
   const outputDirectory = path.join(resolvedTemporaryRoot, "generated");
-  return buildDocumentationAt({ options, root, outputDirectory, allowedRoot: resolvedTemporaryRoot });
+  const release = resolveDocumentationRelease({
+    version: options.version, tag: options.tag, tarball: options.tarball,
+    npmIntegrity: options["npm-integrity"], tarballSha256: options["tarball-sha256"],
+    repository: options.repository, commit: options.commit, outputRoot: options["output-root"],
+  });
+  return buildDocumentationAt({ options, root, outputDirectory, allowedRoot: resolvedTemporaryRoot, release });
 }
 
-/** @param {{ options: Record<string, string>, root: string, outputDirectory: string, allowedRoot: string }} input */
-async function buildDocumentationAt({ options, root, outputDirectory, allowedRoot }) {
-  const manifest = await inspectRelease(path.resolve(options.tarball));
-  const contracts = await loadContracts(root, manifest);
+/** @param {{ options: Record<string, string>, root: string, outputDirectory: string, allowedRoot: string, release: ReturnType<typeof resolveDocumentationRelease> }} input */
+async function buildDocumentationAt({ options, root, outputDirectory, allowedRoot, release }) {
+  const manifest = await inspectRelease(path.resolve(options.tarball), release);
+  const contracts = await loadContracts(root, manifest, release);
   const navigation = JSON.parse(
     await readFile(path.join(root, "docs/api-client/source/navigation.json"), "utf8"),
   );
@@ -92,6 +102,7 @@ async function buildDocumentationAt({ options, root, outputDirectory, allowedRoo
     navigation,
     curatedRoot: path.join(root, "docs/api-client/source"),
     sourceDateEpoch: options["source-date-epoch"],
+    release,
   });
   const relativeOutput = path.relative(allowedRoot, outputDirectory);
   if (!relativeOutput || relativeOutput.startsWith("..") || path.isAbsolute(relativeOutput)) {

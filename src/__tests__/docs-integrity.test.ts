@@ -7,6 +7,7 @@ import {
   DOCUMENTED_OUTPUT_DIRECTORY,
   DOCUMENTED_PACKAGE,
   DOCUMENTED_VERSION,
+  resolveDocumentationRelease,
 } from "../../scripts/docs/types.mjs";
 import {
   DOCUMENTED_RELEASE_MANIFEST_PATH,
@@ -51,9 +52,13 @@ describe("docs integrity", () => {
   it("commits the generated reference artifact for the package version", () => {
     // Independent sides: the COMMITTED artifact's own contents vs the pin. Fails
     // when a bump lands without regenerating the reference.
-    const manifest = JSON.parse(read(`${DOCUMENTED_OUTPUT_DIRECTORY}/manifest.json`)) as {
+    const release = resolveDocumentationRelease();
+    const manifest = JSON.parse(read(`${release.outputDirectory}/manifest.json`)) as {
+      package: string;
       version: string;
     };
+    expect(release.outputDirectory).toBe(DOCUMENTED_OUTPUT_DIRECTORY);
+    expect(manifest.package).toBe(DOCUMENTED_PACKAGE);
     expect(manifest.version).toBe(DOCUMENTED_VERSION);
   });
 
@@ -153,6 +158,16 @@ describe("docs integrity", () => {
 
   it("provisions immutable stable docs inputs before publish verification", () => {
     assertProvisionsStableArtifact(read(".github/workflows/publish.yml"), "Verify package");
+  });
+
+  it("does not publish the retired generic consumer-dispatch contract", () => {
+    const publishWorkflow = read(".github/workflows/publish.yml");
+    expect(existsSync(path.join(
+      PACKAGE_ROOT,
+      ".github/consumer-templates/on-api-client-released.yml",
+    ))).toBe(false);
+    expect(publishWorkflow).not.toContain("api-client-released");
+    expect(publishWorkflow).not.toContain("API_CLIENT_CONSUMER_REPOS");
   });
 
   it("provisions immutable stable docs inputs before CI documentation typechecking", () => {

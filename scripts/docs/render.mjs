@@ -2,7 +2,6 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { normalizedRelativePath, safeSlug } from "./paths.mjs";
-import { DOCUMENTED_PACKAGE } from "./types.mjs";
 
 function readContainedFile(root, relativePath, label) {
   normalizedRelativePath(relativePath, label);
@@ -58,15 +57,15 @@ function renderReferencePage(manifest, subpath) {
   return [`# ${title}`, "", `Package subpath: ${subpath}`, "", ...body].join("\n");
 }
 
-/** @param {import("./contracts.mjs").ContractRecord} contract */
-function renderContractPage(contract) {
+/** @param {import("./contracts.mjs").ContractRecord} contract @param {string} packageName */
+function renderContractPage(contract, packageName) {
   const symbols = contract.symbols.map(({ subpath, name }) => `- \`${subpath}:${name}\``).join("\n");
   const evidence = contract.evidence.map((item) => `- ${item.type}: \`${item.path}\``).join("\n");
   const signatures = contract.symbols.map(({ subpath, name, signature }) => `### ${name}\n\n\`\`\`ts\n${signature}\n\`\`\``).join("\n\n");
   return [
     `# ${contract.title}`,
     "",
-    `Package: ${DOCUMENTED_PACKAGE}`,
+    `Package: ${packageName}`,
     "Verified by: declaration + fixture + conformance test",
     `Contract: ${contract.id}`,
     `Version: ${contract.version}`,
@@ -97,7 +96,7 @@ function renderContractPage(contract) {
 }
 
 /**
- * @param {{manifest: ReleaseManifest, contracts: import("./contracts.mjs").ContractRecord[], navigation: unknown, curatedRoot: string, sourceDateEpoch: number|string}} input
+ * @param {{manifest: ReleaseManifest, contracts: import("./contracts.mjs").ContractRecord[], navigation: unknown, curatedRoot: string, sourceDateEpoch: number|string, release?: {packageName:string}}} input
  * @returns {Map<string, string>}
  */
 export function renderDocumentation(input) {
@@ -112,6 +111,7 @@ export function renderDocumentation(input) {
 
   /** @type {Map<string, string>} */
   const output = new Map();
+  const packageName = input.release?.packageName ?? input.manifest.package;
   const navigation = structuredClone(input.navigation);
   if (navigation && typeof navigation === "object" && !Array.isArray(navigation)) {
     navigation.reference = [...input.manifest.exports]
@@ -139,7 +139,7 @@ export function renderDocumentation(input) {
   }
   for (const contract of [...input.contracts].sort((a, b) => a.id.localeCompare(b.id))) {
     safeSlug(contract.id, "contract id");
-    output.set(`contracts/${contract.id}.md`, renderContractPage(contract));
+    output.set(`contracts/${contract.id}.md`, renderContractPage(contract, packageName));
   }
 
   for (const pagePath of navigationPaths(input.navigation)) {
