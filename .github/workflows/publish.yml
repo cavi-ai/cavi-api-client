@@ -6,8 +6,12 @@ on:
       - published
   workflow_dispatch:
     inputs:
+      version:
+        description: Exact stable npm version to validate or backfill with docs only.
+        required: true
+        type: string
       dry_run:
-        description: Run every publish step without publishing to npm.
+        description: Build and verify without uploading assets or dispatching ingestion.
         required: true
         default: "true"
         type: choice
@@ -15,23 +19,27 @@ on:
           - "true"
           - "false"
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
   npm:
     name: Publish to npm
+    if: ${{ github.event_name == 'release' }}
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Enable pnpm
         run: |
@@ -69,60 +77,247 @@ jobs:
       # npmjs.com pointing at this repo + workflow file (publish.yml).
       - name: Publish package
         env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           # Idempotent: if this version is already on npm (e.g. a Release was
           # created/backfilled for an already-published version), skip the
           # publish so the run stays green instead of erroring on
           # "cannot publish over existing version".
           PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$RELEASE_TAG" != "v${PKG_VERSION}" ]; then
+            echo "::error::release tag ${RELEASE_TAG} does not match package version ${PKG_VERSION}"
+            exit 1
+          fi
           if npm view "@cavi-ai/api-client@${PKG_VERSION}" version >/dev/null 2>&1; then
             echo "::notice::@cavi-ai/api-client@${PKG_VERSION} is already published — skipping publish (idempotent)."
             exit 0
           fi
           npm install -g npm@11
           npm --version
-          if [ "$DRY_RUN" = "true" ]; then
-            npm publish --access public --provenance --dry-run
-          else
-            npm publish --access public --provenance
-          fi
+          npm publish --access public --provenance
 
-  # Fan the release out to downstream consumers so they pick up the new version
-  # without manual coordination. Each consumer listens for the
-  # `api-client-released` repository_dispatch and bumps its dependency.
-  #
-  # Config (both required, else this no-ops without failing the release):
-  #   vars.API_CLIENT_CONSUMER_REPOS  — space/newline-separated `owner/repo` list
-  #   secrets.CONSUMER_DISPATCH_TOKEN — PAT with `repo` (or fine-grained
-  #                                     contents:write) on those repos; the
-  #                                     default GITHUB_TOKEN cannot dispatch
-  #                                     cross-repo.
-  notify-consumers:
-    name: Notify consumers
+  docs:
+    name: Publish npm-derived documentation
     needs: npm
-    if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}
+    if: ${{ always() && ((github.event_name == 'release' && needs.npm.result == 'success') || github.event_name == 'workflow_dispatch') }}
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
     steps:
-      - name: Checkout
+      - name: Checkout release tooling
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Dispatch api-client-released to consumers
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.32.1 --activate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve release identity
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          BACKFILL_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            VERSION="$(node -p "require('./package.json').version")"
+            TAG="$RELEASE_TAG"
+          else
+            VERSION="$BACKFILL_VERSION"
+            TAG="v${VERSION}"
+          fi
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::version must be an exact stable semantic version"
+            exit 1
+          fi
+          if [ "$TAG" != "v${VERSION}" ]; then
+            echo "::error::release tag ${TAG} does not match version ${VERSION}"
+            exit 1
+          fi
+          RELEASE_STATE="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease)"
+          if ! printf '%s\n' "$RELEASE_STATE" | jq -e \
+            --arg tag "$TAG" \
+            '.tagName == $tag and .isDraft == false and .isPrerelease == false' >/dev/null; then
+            echo "::error::release ${TAG} must be published and non-prerelease"
+            exit 1
+          fi
+          COMMIT="$(git rev-list -n 1 "$TAG")"
+          if [[ ! "$COMMIT" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "::error::release tag ${TAG} does not resolve to a commit"
+            exit 1
+          fi
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "commit=$COMMIT"
+            echo "source_date_epoch=$SOURCE_DATE_EPOCH"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve and verify exact published npm artifact
+        id: npm-release
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          TAG: ${{ steps.release.outputs.tag }}
+          COMMIT: ${{ steps.release.outputs.commit }}
+        run: |
+          TARBALL="$RUNNER_TEMP/cavi-ai-api-client-${VERSION}.tgz"
+          METADATA="$RUNNER_TEMP/npm-release-${VERSION}.json"
+          ATTEMPT=1
+          until pnpm run docs:resolve-npm-release -- \
+              --version "$VERSION" \
+              --tag "$TAG" \
+              --commit "$COMMIT" \
+              --output "$TARBALL" > "$METADATA"; do
+            if [ "$ATTEMPT" -ge 5 ]; then
+              echo "::error::exact npm artifact was not available after ${ATTEMPT} attempts"
+              exit 1
+            fi
+            echo "::notice::exact npm artifact is not yet available; retrying after registry propagation delay"
+            sleep "$((ATTEMPT * 5))"
+            ATTEMPT="$((ATTEMPT + 1))"
+          done
+          jq . "$METADATA"
+          {
+            echo "tarball=$TARBALL"
+            echo "tarball_url=$(jq -r '.tarballUrl' "$METADATA")"
+            echo "integrity=$(jq -r '.integrity' "$METADATA")"
+            echo "tarball_sha256=$(jq -r '.tarballSha256' "$METADATA")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and verify deterministic docs release
+        id: docs-release
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          TAG: ${{ steps.release.outputs.tag }}
+          COMMIT: ${{ steps.release.outputs.commit }}
+          RELEASE_EPOCH: ${{ steps.release.outputs.source_date_epoch }}
+          NPM_TARBALL: ${{ steps.npm-release.outputs.tarball }}
+          NPM_INTEGRITY: ${{ steps.npm-release.outputs.integrity }}
+          NPM_TARBALL_SHA256: ${{ steps.npm-release.outputs.tarball_sha256 }}
+        run: |
+          OUTPUT_DIRECTORY="$RUNNER_TEMP/docs-release-${VERSION}"
+          pnpm run docs:release-artifact -- \
+            --tarball "$NPM_TARBALL" \
+            --output "$OUTPUT_DIRECTORY" \
+            --source-date-epoch "$RELEASE_EPOCH" \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$COMMIT" \
+            --npm-integrity "$NPM_INTEGRITY" \
+            --tarball-sha256 "$NPM_TARBALL_SHA256"
+          ARTIFACT="$OUTPUT_DIRECTORY/cavi-api-client-docs-${TAG}.tar.gz"
+          SIDECAR="${ARTIFACT}.sha256"
+          ARTIFACT_SHA256="$(tr -d '\n' < "$SIDECAR")"
+          printf '%s  %s\n' "$ARTIFACT_SHA256" "$ARTIFACT" | sha256sum --check --status
+          MANIFEST="$RUNNER_TEMP/cavi-release-${VERSION}.json"
+          tar -xOzf "$ARTIFACT" cavi-release.json > "$MANIFEST"
+          jq -e \
+            --arg version "$VERSION" \
+            --arg tag "$TAG" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg commit "$COMMIT" \
+            --arg integrity "$NPM_INTEGRITY" \
+            --arg tarball_sha256 "$NPM_TARBALL_SHA256" \
+            '.schemaVersion == 1 and
+             .package.name == "@cavi-ai/api-client" and .package.version == $version and
+             .npm.registry == "https://registry.npmjs.org/" and
+             .npm.integrity == $integrity and .npm.tarballSha256 == $tarball_sha256 and
+             .source.repository == $repository and .source.tag == $tag and .source.commit == $commit and
+             (.documentation.contentSha256 | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
+          ENVELOPE="$RUNNER_TEMP/cavi-oss-release-${VERSION}.json"
+          pnpm run docs:release-envelope -- \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$COMMIT" \
+            --artifact-sha256 "$ARTIFACT_SHA256" > "$ENVELOPE"
+          {
+            echo "artifact=$ARTIFACT"
+            echo "artifact_name=$(basename "$ARTIFACT")"
+            echo "sidecar=$SIDECAR"
+            echo "sidecar_name=$(basename "$SIDECAR")"
+            echo "artifact_sha256=$ARTIFACT_SHA256"
+            echo "envelope=$ENVELOPE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Report non-mutating dry run
+        if: ${{ env.DRY_RUN == 'true' }}
+        env:
+          ENVELOPE: ${{ steps.docs-release.outputs.envelope }}
+        run: |
+          echo "::notice::dry run complete; npm publish, GitHub release upload, and repository dispatch were not invoked"
+          jq . "$ENVELOPE"
+
+      - name: Upload immutable release assets
+        if: ${{ env.DRY_RUN == 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          ARTIFACT: ${{ steps.docs-release.outputs.artifact }}
+          SIDECAR: ${{ steps.docs-release.outputs.sidecar }}
+        run: |
+          RELEASE_JSON="$RUNNER_TEMP/github-release.json"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > "$RELEASE_JSON"
+
+          ensure_asset() {
+            local asset_path="$1"
+            local asset_name
+            local asset_count
+            local asset_id
+            local existing
+            asset_name="$(basename "$asset_path")"
+            asset_count="$(jq --arg name "$asset_name" '[.assets[] | select(.name == $name)] | length' "$RELEASE_JSON")"
+            if [ "$asset_count" -gt 1 ]; then
+              echo "::error::release ${TAG} has duplicate assets named ${asset_name}"
+              return 1
+            fi
+            if [ "$asset_count" -eq 1 ]; then
+              asset_id="$(jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .id' "$RELEASE_JSON")"
+              existing="$RUNNER_TEMP/existing-${asset_name}"
+              gh api -H "Accept: application/octet-stream" \
+                "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "$existing"
+              if ! cmp -s "$asset_path" "$existing"; then
+                echo "::error::refusing to replace non-identical release asset ${asset_name}"
+                return 1
+              fi
+              echo "::notice::release asset ${asset_name} already exists with identical bytes"
+              return 0
+            fi
+            gh release upload "$TAG" "$asset_path" --repo "$GITHUB_REPOSITORY"
+          }
+
+          ensure_asset "$ARTIFACT"
+          ensure_asset "$SIDECAR"
+
+      - name: Dispatch required cavi-home ingestion
+        if: ${{ env.DRY_RUN == 'false' }}
         env:
           GH_TOKEN: ${{ secrets.CONSUMER_DISPATCH_TOKEN }}
-          CONSUMERS: ${{ vars.API_CLIENT_CONSUMER_REPOS }}
+          ENVELOPE: ${{ steps.docs-release.outputs.envelope }}
         run: |
-          if [ -z "$GH_TOKEN" ] || [ -z "$CONSUMERS" ]; then
-            echo "::notice::CONSUMER_DISPATCH_TOKEN and/or API_CLIENT_CONSUMER_REPOS unset — skipping consumer notification."
-            exit 0
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::CONSUMER_DISPATCH_TOKEN is required for documentation delivery"
+            exit 1
           fi
-          VERSION="$(node -p "require('./package.json').version")"
-          echo "Notifying consumers of @cavi-ai/api-client@${VERSION}"
-          for repo in $CONSUMERS; do
-            echo "→ $repo"
-            gh api "repos/${repo}/dispatches" \
-              -f "event_type=api-client-released" \
-              -F "client_payload[version]=${VERSION}" \
-              -F "client_payload[package]=@cavi-ai/api-client" \
-              || echo "::warning::dispatch to ${repo} failed"
-          done
+          DISPATCH="$RUNNER_TEMP/cavi-home-dispatch.json"
+          jq -n --slurpfile envelope "$ENVELOPE" \
+            '{event_type: "cavi-oss-release", client_payload: $envelope[0]}' > "$DISPATCH"
+          gh api --method POST repos/cavi-ai/cavi-home/dispatches --input "$DISPATCH"

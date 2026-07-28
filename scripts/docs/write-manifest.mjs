@@ -20,23 +20,44 @@ import path from "node:path";
 
 import { resolveStableTarball } from "./fetch-stable.mjs";
 import { inspectRelease } from "./inspect-release.mjs";
-import { DOCUMENTED_VERSION } from "./types.mjs";
+import { resolveDocumentationRelease } from "./types.mjs";
 
-const tarball = resolveStableTarball(["CAVI_DOCS_PACKAGE_TGZ", "CAVI_API_CLIENT_STABLE_TARBALL"]);
-const manifest = await inspectRelease(tarball);
+function parseArguments(argv) {
+  const values = {};
+  const allowed = new Set(["tarball", "version", "tag", "repository", "commit", "npm-integrity", "tarball-sha256"]);
+  for (let index = 0; index < argv.length; index += 2) {
+    const option = argv[index];
+    const value = argv[index + 1];
+    if (!option?.startsWith("--") || value === undefined) throw new Error("usage: write-manifest.mjs [--tarball <release.tgz> --version <semver> --tag v<semver> --repository owner/repo --commit <sha> --npm-integrity <sha512-base64> --tarball-sha256 <hex>]");
+    const name = option.slice(2);
+    if (!allowed.has(name)) throw new Error(`unsupported option --${name}`);
+    values[name] = value;
+  }
+  values.tarball ??= resolveStableTarball(["CAVI_DOCS_PACKAGE_TGZ", "CAVI_API_CLIENT_STABLE_TARBALL"]);
+  return values;
+}
+
+const options = parseArguments(process.argv.slice(2));
+const release = resolveDocumentationRelease({
+  version: options.version, tag: options.tag, tarball: options.tarball,
+  npmIntegrity: options["npm-integrity"], tarballSha256: options["tarball-sha256"],
+  repository: options.repository, commit: options.commit,
+});
+const tarball = release.tarball;
+const manifest = await inspectRelease(tarball, release);
 
 // inspectRelease reads version + sha256 from the artifact itself while tag and
 // commit come from the pins, so a mismatch here means the pins and the artifact
 // describe different releases — fail rather than write a manifest that lies.
-if (manifest.version !== DOCUMENTED_VERSION) {
+if (manifest.version !== release.version) {
   throw new Error(
     `artifact/pin mismatch: ${tarball} contains ${manifest.package}@${manifest.version}, ` +
-      `but DOCUMENTED_VERSION is ${DOCUMENTED_VERSION}`,
+      `but the selected release is ${release.version}`,
   );
 }
 
 const target = path.resolve(
-  `docs/api-client/source/releases/${DOCUMENTED_VERSION}-manifest.json`,
+  release.sourceManifestPath,
 );
 await writeFile(target, `${JSON.stringify(manifest, null, 2)}\n`);
 process.stdout.write(`${target}\n`);
