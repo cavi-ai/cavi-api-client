@@ -255,16 +255,22 @@ jobs:
             echo "sidecar=$SIDECAR"
             echo "sidecar_name=$(basename "$SIDECAR")"
             echo "artifact_sha256=$ARTIFACT_SHA256"
+            echo "manifest=$MANIFEST"
             echo "envelope=$ENVELOPE"
           } >> "$GITHUB_OUTPUT"
 
       - name: Report non-mutating dry run
         if: ${{ env.DRY_RUN == 'true' }}
         env:
+          ARTIFACT: ${{ steps.docs-release.outputs.artifact }}
+          MANIFEST: ${{ steps.docs-release.outputs.manifest }}
           ENVELOPE: ${{ steps.docs-release.outputs.envelope }}
         run: |
           echo "::notice::dry run complete; npm publish, GitHub release upload, and repository dispatch were not invoked"
-          jq . "$ENVELOPE"
+          pnpm run docs:release-dry-run-report -- \
+            --artifact "$ARTIFACT" \
+            --manifest "$MANIFEST" \
+            --envelope "$ENVELOPE"
 
       - name: Upload immutable release assets
         if: ${{ env.DRY_RUN == 'false' }}

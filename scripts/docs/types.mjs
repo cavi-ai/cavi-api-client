@@ -85,6 +85,7 @@ export function resolveDocumentationRelease(options = {}) {
     sourceDateEpoch: DOCUMENTED_SOURCE_DATE_EPOCH,
   };
   const identityFields = ["packageName", "version", "tag", "npmIntegrity", "tarballSha256", "repository", "commit"];
+  const requiredExplicitFields = ["version", "tag", "npmIntegrity", "tarballSha256", "repository", "commit", "tarball"];
   const releaseMode = identityFields.some((field) => options[field] !== undefined);
   const release = {
     ...stable,
@@ -92,8 +93,8 @@ export function resolveDocumentationRelease(options = {}) {
   };
 
   if (releaseMode) {
-    for (const field of [...identityFields, "tarball"]) {
-      if (typeof release[field] !== "string" || !release[field].trim()) {
+    for (const field of requiredExplicitFields) {
+      if (typeof options[field] !== "string" || !options[field].trim()) {
         throw new Error(`missing required release option ${field}`);
       }
     }

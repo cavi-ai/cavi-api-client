@@ -1,21 +1,26 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { deflateRawSync } from "node:zlib";
 import {
   lstat,
+  link,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   realpath,
   rm,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { buildDocumentationInTemporaryRoot } from "./build.mjs";
+import { createReleaseEnvelope } from "./create-release-envelope.mjs";
 import { normalizedRelativePath } from "./paths.mjs";
 import { resolveDocumentationRelease } from "./types.mjs";
 
@@ -25,11 +30,26 @@ const NPM_REGISTRY_URL = "https://registry.npmjs.org/";
 const MAX_GZIP_TIMESTAMP = 0xffffffff;
 const PROHIBITED_ARCHIVE_SEGMENTS = new Set(["package", "src", "dist"]);
 const SCOPED_NPM_PACKAGE = /^@(?<scope>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)\/(?<name>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)$/u;
+const SHA256 = /^[a-f0-9]{64}$/u;
+const SAFE_ARCHIVE_MEMBER = /^[A-Za-z0-9._/-]+$/u;
 
 /** @param {string} value @param {string} label */
 function requiredString(value, label) {
   if (typeof value !== "string" || !value.trim()) throw new Error(`missing required ${label}`);
   return value;
+}
+
+function requiredRecord(value, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`missing required ${label}`);
+  }
+  return value;
+}
+
+function requiredSha256(value, label) {
+  const digest = requiredString(value, label);
+  if (!SHA256.test(digest)) throw new Error(`invalid ${label}`);
+  return digest;
 }
 
 /** @param {number | string} value */
@@ -196,18 +216,150 @@ async function prepareOutputDirectory(outputDirectory) {
 }
 
 /** @param {string} target @param {Buffer} contents */
-async function writeIfIdenticalOrAbsent(target, contents) {
+export async function writeIfIdenticalOrAbsent(target, contents) {
+  const temporaryTarget = `${target}.${process.pid}.${randomUUID()}.tmp`;
+  let handle;
   try {
-    const existing = await readFile(target);
-    if (!existing.equals(contents)) throw new Error(`refusing to overwrite non-identical release artifact: ${target}`);
-    return;
-  } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-      await writeFile(target, contents, { mode: 0o644 });
-      return;
+    handle = await open(temporaryTarget, "wx", 0o644);
+    await handle.writeFile(contents);
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    try {
+      await link(temporaryTarget, target);
+    } catch (error) {
+      if (
+        !error ||
+        typeof error !== "object" ||
+        !("code" in error) ||
+        error.code !== "EEXIST"
+      ) {
+        throw error;
+      }
+      const existing = await readFile(target);
+      if (!existing.equals(contents)) {
+        throw new Error(`refusing to overwrite non-identical release artifact: ${target}`);
+      }
     }
-    throw error;
+  } finally {
+    if (handle) await handle.close().catch(() => {});
+    try {
+      await unlink(temporaryTarget);
+    } catch (error) {
+      if (
+        !error ||
+        typeof error !== "object" ||
+        !("code" in error) ||
+        error.code !== "ENOENT"
+      ) {
+        throw error;
+      }
+    }
   }
+}
+
+/**
+ * @param {{artifactName:string, artifactSha256:string, members:string[], manifest:Record<string, unknown>, envelope:Record<string, unknown>}} input
+ */
+export function formatDocumentationReleaseDryRunReport(input) {
+  const manifest = requiredRecord(input.manifest, "cavi-release manifest");
+  if (manifest.schemaVersion !== 1) throw new Error("invalid cavi-release schema version");
+  const packageInfo = requiredRecord(manifest.package, "cavi-release package");
+  const npm = requiredRecord(manifest.npm, "cavi-release npm provenance");
+  const source = requiredRecord(manifest.source, "cavi-release source provenance");
+  const documentation = requiredRecord(
+    manifest.documentation,
+    "cavi-release documentation provenance",
+  );
+  if (npm.registry !== NPM_REGISTRY_URL) throw new Error("invalid cavi-release npm registry");
+  const release = resolveDocumentationRelease({
+    packageName: requiredString(packageInfo.name, "cavi-release package name"),
+    version: requiredString(packageInfo.version, "cavi-release package version"),
+    tag: requiredString(source.tag, "cavi-release source tag"),
+    tarball: "validated-npm-release.tgz",
+    npmIntegrity: requiredString(npm.integrity, "cavi-release npm integrity"),
+    tarballSha256: requiredSha256(
+      npm.tarballSha256,
+      "cavi-release npm tarball sha256",
+    ),
+    repository: requiredString(source.repository, "cavi-release source repository"),
+    commit: requiredString(source.commit, "cavi-release source commit"),
+  });
+  if (release.packageName !== "@cavi-ai/api-client") {
+    throw new Error("invalid cavi-release package authority");
+  }
+  const contentSha256 = requiredSha256(
+    documentation.contentSha256,
+    "cavi-release documentation content sha256",
+  );
+  const artifactSha256 = requiredSha256(
+    input.artifactSha256,
+    "documentation artifact sha256",
+  );
+  const artifactName = requiredString(input.artifactName, "documentation artifact name");
+  const expectedArtifactName = `${artifactPackageStem(release.packageName)}-docs-${release.tag}.tar.gz`;
+  if (artifactName !== expectedArtifactName || path.basename(artifactName) !== artifactName) {
+    throw new Error("invalid documentation artifact name");
+  }
+  if (!Array.isArray(input.members)) throw new Error("missing required archive members");
+  const members = [];
+  const seen = new Set();
+  const documentationPrefix = `docs/api-client/${release.tag}/`;
+  for (const value of input.members) {
+    const member = normalizedRelativePath(
+      requiredString(value, "archive member"),
+      "archive member",
+    );
+    if (!SAFE_ARCHIVE_MEMBER.test(member)) {
+      throw new Error(`archive member must be printable and normalized: ${member}`);
+    }
+    if (member !== "cavi-release.json" && !member.startsWith(documentationPrefix)) {
+      throw new Error(`archive member escapes documentation release: ${member}`);
+    }
+    if (seen.has(member)) throw new Error(`duplicate archive member: ${member}`);
+    seen.add(member);
+    members.push(member);
+  }
+  if (
+    !seen.has("cavi-release.json") ||
+    !members.some((member) => member.startsWith(documentationPrefix))
+  ) {
+    throw new Error("archive members must include release provenance and documentation");
+  }
+  members.sort();
+  const canonicalEnvelope = createReleaseEnvelope({
+    version: release.version,
+    tag: release.tag,
+    repository: release.repository,
+    commit: release.commit,
+    artifactSha256,
+  });
+  if (!isDeepStrictEqual(input.envelope, canonicalEnvelope)) {
+    throw new Error("release envelope does not match validated provenance");
+  }
+  const selected = {
+    package: { name: release.packageName, version: release.version },
+    npm: {
+      registry: NPM_REGISTRY_URL,
+      integrity: release.npmIntegrity,
+      tarballSha256: release.tarballSha256,
+    },
+    source: {
+      repository: release.repository,
+      tag: release.tag,
+      commit: release.commit,
+    },
+    documentation: { contentSha256 },
+    artifact: { name: artifactName, sha256: artifactSha256 },
+  };
+  return `${[
+    `validated archive members (${members.length}):`,
+    ...members,
+    "selected cavi-release provenance and digests:",
+    JSON.stringify(selected, null, 2),
+    "release envelope:",
+    JSON.stringify(canonicalEnvelope, null, 2),
+  ].join("\n")}\n`;
 }
 
 /**
@@ -315,6 +467,9 @@ export async function runReleaseArtifactCli(argv = process.argv.slice(2)) {
   if (options.help) {
     process.stdout.write(HELP);
     return;
+  }
+  if (options["dry-run"] && options.output) {
+    throw new Error("--dry-run cannot be combined with --output");
   }
   const sourceDateEpoch = options["source-date-epoch"] ?? process.env.SOURCE_DATE_EPOCH;
   const outputDirectory = options.output ?? (options["dry-run"]

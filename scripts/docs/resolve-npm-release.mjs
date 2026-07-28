@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const NPM_REGISTRY_URL = "https://registry.npmjs.org/";
 const DEFAULT_PACKAGE_NAME = "@cavi-ai/api-client";
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 const STABLE_EXACT_VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
 const COMMIT_SHA = /^[a-f0-9]{40}$/u;
 const SHA512_INTEGRITY = /^sha512-(?<digest>[A-Za-z0-9+/]{86}==)$/u;
@@ -40,11 +41,46 @@ function requireSuccessfulResponse(response, description) {
   return response;
 }
 
+function requestTimeout(value) {
+  const timeoutMs = value ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("npm request timeout must be a positive integer");
+  }
+  return timeoutMs;
+}
+
+async function fetchResponseWithTimeout({
+  fetchImpl,
+  url,
+  headers,
+  description,
+  timeoutMs,
+  timeoutSignalFactory,
+  read,
+}) {
+  const signal = timeoutSignalFactory(timeoutMs);
+  if (!signal || typeof signal !== "object" || typeof signal.aborted !== "boolean") {
+    throw new Error("timeout signal factory must return an AbortSignal");
+  }
+  try {
+    const response = requireSuccessfulResponse(
+      await fetchImpl(url, { headers, signal }),
+      description,
+    );
+    return await read(response);
+  } catch (error) {
+    if (signal.aborted) {
+      throw new Error(`${description} timed out after ${timeoutMs}ms`, { cause: error });
+    }
+    throw error;
+  }
+}
+
 /**
  * Resolve and verify the exact npm artifact for a stable release.
  * Network access is supplied by `fetchImpl`, allowing offline tests and callers.
  *
- * @param {{packageName: string, version: string, tag: string, commit: string, outputFile: string, fetchImpl?: typeof fetch}} input
+ * @param {{packageName: string, version: string, tag: string, commit: string, outputFile: string, fetchImpl?: typeof fetch, requestTimeoutMs?: number, timeoutSignalFactory?: (timeoutMs:number) => AbortSignal}} input
  */
 export async function resolveNpmRelease(input) {
   const packageName = requiredString(input.packageName, "package name");
@@ -57,12 +93,22 @@ export async function resolveNpmRelease(input) {
 
   const fetchImpl = input.fetchImpl ?? globalThis.fetch;
   if (typeof fetchImpl !== "function") throw new Error("fetch implementation is required");
+  const timeoutMs = requestTimeout(input.requestTimeoutMs);
+  const timeoutSignalFactory = input.timeoutSignalFactory ??
+    ((milliseconds) => AbortSignal.timeout(milliseconds));
+  if (typeof timeoutSignalFactory !== "function") {
+    throw new Error("timeout signal factory is required");
+  }
   const metadataUrl = new URL(`${encodeURIComponent(packageName)}/${version}`, NPM_REGISTRY_URL).href;
-  const metadataResponse = requireSuccessfulResponse(
-    await fetchImpl(metadataUrl, { headers: { accept: "application/json" } }),
-    "npm metadata request",
-  );
-  const metadata = await metadataResponse.json();
+  const metadata = await fetchResponseWithTimeout({
+    fetchImpl,
+    url: metadataUrl,
+    headers: { accept: "application/json" },
+    description: "npm metadata request",
+    timeoutMs,
+    timeoutSignalFactory,
+    read: (response) => response.json(),
+  });
   if (!metadata || typeof metadata !== "object") throw new Error("npm metadata must be an object");
   if (metadata.name !== packageName) {
     throw new Error(`npm metadata package mismatch: expected ${packageName}, observed ${String(metadata.name)}`);
@@ -83,11 +129,15 @@ export async function resolveNpmRelease(input) {
     throw new Error(`npm metadata must use the canonical npm tarball URL: expected ${expectedTarballUrl}`);
   }
 
-  const tarballResponse = requireSuccessfulResponse(
-    await fetchImpl(tarballUrl, { headers: { accept: "application/octet-stream" } }),
-    "npm tarball request",
-  );
-  const tarball = Buffer.from(await tarballResponse.arrayBuffer());
+  const tarball = await fetchResponseWithTimeout({
+    fetchImpl,
+    url: tarballUrl,
+    headers: { accept: "application/octet-stream" },
+    description: "npm tarball request",
+    timeoutMs,
+    timeoutSignalFactory,
+    read: async (response) => Buffer.from(await response.arrayBuffer()),
+  });
   const observedIntegrity = `sha512-${createHash("sha512").update(tarball).digest("base64")}`;
   if (observedIntegrity !== integrity) throw new Error("npm tarball integrity mismatch");
   const tarballSha256 = createHash("sha256").update(tarball).digest("hex");

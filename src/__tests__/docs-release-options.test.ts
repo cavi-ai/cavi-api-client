@@ -39,7 +39,10 @@ async function packFixture(version: string): Promise<string> {
   packageJson.version = version;
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
   const tarball = path.join(directory, "release.tgz");
-  await execFileAsync("tar", ["-czf", tarball, "package"], { cwd: directory });
+  await execFileAsync("tar", ["-czf", tarball, "--format=ustar", "package"], {
+    cwd: directory,
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  });
   return tarball;
 }
 
@@ -148,6 +151,20 @@ describe("documentation release options", () => {
     ["tarball digest", { ...release015, tarballSha256: "not-a-sha256" }],
   ])("rejects malformed %s", (_label, options) => {
     expect(() => resolveDocumentationRelease(options)).toThrow(/invalid (npm integrity|tarball sha256)/u);
+  });
+
+  it.each([
+    "version",
+    "tag",
+    "repository",
+    "commit",
+    "npmIntegrity",
+    "tarballSha256",
+  ] as const)("requires explicit release option %s instead of inheriting a stable pin", (field) => {
+    const options: Partial<typeof release015> = { ...release015 };
+    delete options[field];
+
+    expect(() => resolveDocumentationRelease(options)).toThrow(`missing required release option ${field}`);
   });
 
   it("accepts the check command's --out alias for isolated generated output", async () => {
