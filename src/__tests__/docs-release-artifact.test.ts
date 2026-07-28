@@ -164,6 +164,11 @@ describe("buildDocumentationReleaseArtifact", () => {
     const extraction = await makeTemporaryDirectory("cavi-docs-release-artifact-extract-");
     await execFileAsync("tar", ["-xzf", first.artifactPath, "-C", extraction]);
     const manifest = JSON.parse(await readFile(path.join(extraction, "cavi-release.json"), "utf8"));
+    const navigation = JSON.parse(await readFile(
+      path.join(extraction, "docs/api-client/v0.15.0/navigation.json"),
+      "utf8",
+    ));
+    expect(navigation.version).toBe("0.15.0");
     expect(manifest).toMatchObject({
       schemaVersion: 1,
       package: { name: "@cavi-ai/api-client", version: "0.15.0" },

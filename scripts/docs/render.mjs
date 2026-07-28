@@ -114,6 +114,7 @@ export function renderDocumentation(input) {
   const packageName = input.release?.packageName ?? input.manifest.package;
   const navigation = structuredClone(input.navigation);
   if (navigation && typeof navigation === "object" && !Array.isArray(navigation)) {
+    navigation.version = input.manifest.version;
     navigation.reference = [...input.manifest.exports]
       .sort((left, right) => left.subpath.localeCompare(right.subpath))
       .map((releaseExport) => releaseExport.kind === "declaration"
