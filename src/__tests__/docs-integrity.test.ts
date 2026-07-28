@@ -49,6 +49,21 @@ describe("docs integrity", () => {
     expect(pkg.scripts.verify).toContain("docs:check");
   });
 
+  it("reports validated dry-run artifact evidence before the release envelope", () => {
+    const workflow = read(".github/workflows/publish.yml");
+    expect(pkg.scripts["docs:release-dry-run-report"])
+      .toBe("node scripts/docs/report-release-dry-run.mjs");
+    expect(workflow).toContain("manifest=$MANIFEST");
+    const report = workflow.indexOf("pnpm run docs:release-dry-run-report");
+    expect(report).toBeGreaterThan(-1);
+    expect(report).toBeGreaterThan(workflow.indexOf("Report non-mutating dry run"));
+    expect(report).toBeLessThan(workflow.indexOf("Upload immutable release assets"));
+    expect(workflow.slice(
+      workflow.indexOf("Report non-mutating dry run"),
+      workflow.indexOf("Upload immutable release assets"),
+    )).toContain('--manifest "$MANIFEST"');
+  });
+
   it("commits the generated reference artifact for the package version", () => {
     // Independent sides: the COMMITTED artifact's own contents vs the pin. Fails
     // when a bump lands without regenerating the reference.

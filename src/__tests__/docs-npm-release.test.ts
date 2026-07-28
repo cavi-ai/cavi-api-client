@@ -25,6 +25,12 @@ async function temporaryDirectory(): Promise<string> {
   return directory;
 }
 
+function timedOutSignal(): AbortSignal {
+  const controller = new AbortController();
+  controller.abort(new DOMException("deadline exceeded", "TimeoutError"));
+  return controller.signal;
+}
+
 function registryFetch(metadataOverrides: Record<string, unknown> = {}, bytes = tarballBytes) {
   return async (input: string | URL | Request): Promise<Response> => {
     const url = String(input);
@@ -167,5 +173,64 @@ describe("resolveNpmRelease", () => {
       tarballSha256: sha256,
     });
     expect(stdout).not.toContain(outputFile);
+  });
+
+  it("bounds the npm metadata request with an injected abort timeout", async () => {
+    const directory = await temporaryDirectory();
+    const fetchImpl = async (
+      _input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      if (!init?.signal) throw new Error("metadata request did not receive a timeout signal");
+      if (init.signal.aborted) throw init.signal.reason;
+      return await new Promise<Response>((_resolve, reject) =>
+        init.signal!.addEventListener("abort", () => reject(init.signal!.reason), { once: true })
+      );
+    };
+
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      outputFile: path.join(directory, "release.tgz"),
+      fetchImpl,
+      requestTimeoutMs: 25,
+      timeoutSignalFactory: () => timedOutSignal(),
+    })).rejects.toThrow("npm metadata request timed out after 25ms");
+  });
+
+  it("gives the npm tarball request its own injected abort timeout", async () => {
+    const directory = await temporaryDirectory();
+    let signalIndex = 0;
+    const timeoutSignalFactory = () =>
+      signalIndex++ === 0 ? new AbortController().signal : timedOutSignal();
+    const fetchImpl = async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      if (!init?.signal) throw new Error("request did not receive a timeout signal");
+      if (String(input) === TARBALL_URL) {
+        if (init.signal.aborted) throw init.signal.reason;
+        throw new Error("tarball request did not receive its own timeout signal");
+      }
+      return Response.json({
+        name: PACKAGE_NAME,
+        version: VERSION,
+        gitHead: COMMIT,
+        dist: { integrity, tarball: TARBALL_URL },
+      });
+    };
+
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      outputFile: path.join(directory, "release.tgz"),
+      fetchImpl,
+      requestTimeoutMs: 25,
+      timeoutSignalFactory,
+    })).rejects.toThrow("npm tarball request timed out after 25ms");
   });
 });

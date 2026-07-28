@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import ts from "typescript";
 
+import { preflightPackageArchive } from "./package-archive.mjs";
 import {
   resolveDocumentationRelease,
 } from "./types.mjs";
@@ -129,7 +130,7 @@ function normalizePublicExports(exportsField) {
  * @param {string} tgzPath
  * @returns {Promise<import("./types.mjs").ReleaseManifest>}
  */
-async function inspectReleaseWithRelease(tgzPath, release) {
+async function inspectReleaseWithRelease(tgzPath, release, archiveLimits) {
   const archive = await readFile(tgzPath);
   const sha256 = createHash("sha256").update(archive).digest("hex");
   if (sha256 !== release.tarballSha256) {
@@ -139,19 +140,22 @@ async function inspectReleaseWithRelease(tgzPath, release) {
     const integrity = `sha512-${createHash("sha512").update(archive).digest("base64")}`;
     if (integrity !== release.npmIntegrity) throw new Error("npm integrity mismatch");
   }
-  const { stdout: archiveListing } = await execFileAsync("tar", ["-tzf", tgzPath]);
-  for (const rawEntry of archiveListing.split("\n").filter(Boolean)) {
-    const entry = rawEntry.endsWith("/") ? rawEntry.slice(0, -1) : rawEntry;
-    if (path.posix.isAbsolute(entry) || entry.split("/").some((segment) => segment === "." || segment === "..") || (entry !== "package" && !entry.startsWith("package/"))) {
-      throw new Error(`archive entry escapes package root: ${rawEntry}`);
-    }
-  }
+  preflightPackageArchive(archive, archiveLimits);
   const temporaryDirectory = await mkdtemp(
     path.join(tmpdir(), "cavi-docs-release-inspector-"),
   );
 
   try {
-    await execFileAsync("tar", ["-xzf", tgzPath, "-C", temporaryDirectory]);
+    const verifiedArchive = path.join(temporaryDirectory, "verified-release.tgz");
+    await writeFile(verifiedArchive, archive, { flag: "wx", mode: 0o600 });
+    await execFileAsync("tar", [
+      "-xzf",
+      verifiedArchive,
+      "-C",
+      temporaryDirectory,
+      "--no-same-owner",
+      "--no-same-permissions",
+    ]);
     const packageDirectory = path.join(temporaryDirectory, "package");
     const resolvedPackageDirectory = await realpath(packageDirectory);
     const pkg = JSON.parse(
@@ -277,7 +281,7 @@ export async function inspectRelease(tgzPath, release = resolveDocumentationRele
 }
 
 /** Test-only synthetic archive inspection. Never import from production scripts. */
-export async function inspectReleaseFixtureForTest(tgzPath, release) {
+export async function inspectReleaseFixtureForTest(tgzPath, release, archiveLimits) {
   const archive = await readFile(tgzPath);
   const fixtureSha256 = createHash("sha256").update(archive).digest("hex");
   const fixtureIntegrity = `sha512-${createHash("sha512").update(archive).digest("base64")}`;
@@ -285,5 +289,5 @@ export async function inspectReleaseFixtureForTest(tgzPath, release) {
     ...resolveDocumentationRelease(),
     tarballSha256: fixtureSha256,
     npmIntegrity: fixtureIntegrity,
-  });
+  }, archiveLimits);
 }
