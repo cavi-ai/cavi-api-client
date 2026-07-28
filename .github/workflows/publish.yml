@@ -327,3 +327,34 @@ jobs:
           jq -n --slurpfile envelope "$ENVELOPE" \
             '{event_type: "cavi-oss-release", client_payload: $envelope[0]}' > "$DISPATCH"
           gh api --method POST repos/cavi-ai/cavi-home/dispatches --input "$DISPATCH"
+
+  notify-consumers:
+    name: Notify package consumers
+    needs: npm
+    if: ${{ github.event_name == 'release' && needs.npm.result == 'success' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Dispatch api-client-released to consumers
+        env:
+          GH_TOKEN: ${{ secrets.CONSUMER_DISPATCH_TOKEN }}
+          CONSUMERS: ${{ vars.API_CLIENT_CONSUMER_REPOS }}
+          VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ] || [ -z "$CONSUMERS" ]; then
+            echo "::notice::CONSUMER_DISPATCH_TOKEN and/or API_CLIENT_CONSUMER_REPOS unset; skipping dependency notifications"
+            exit 0
+          fi
+          VERSION="${VERSION#v}"
+          for repo in $CONSUMERS; do
+            gh api "repos/${repo}/dispatches" \
+              -f "event_type=api-client-released" \
+              -F "client_payload[version]=${VERSION}" \
+              -F "client_payload[package]=@cavi-ai/api-client" \
+              || echo "::warning::dispatch to ${repo} failed"
+          done

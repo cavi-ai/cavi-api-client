@@ -93,9 +93,11 @@ describe("docs integrity", () => {
     }
     expect(consumer).toContain("must not edit generated pages");
     expect(consumer).toContain("fail ingestion on a version or digest mismatch");
-    expect(consumer).toContain(
-      `already-published npm package \`${DOCUMENTED_RELEASE_SPECIFIER}\` does not contain`,
-    );
+    expect(consumer).toContain("repository source is the editable documentation authority");
+    expect(consumer).toContain("GitHub Release asset is the immutable delivery authority");
+    expect(consumer).toContain("cavi-release.json");
+    expect(consumer).toContain("cavi-oss-release");
+    expect(consumer).toContain("historical backfill");
 
     expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
     expect(pkg.files).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
@@ -175,14 +177,17 @@ describe("docs integrity", () => {
     assertProvisionsStableArtifact(read(".github/workflows/publish.yml"), "Verify package");
   });
 
-  it("does not publish the retired generic consumer-dispatch contract", () => {
+  it("preserves dependency notifications alongside required docs delivery", () => {
     const publishWorkflow = read(".github/workflows/publish.yml");
     expect(existsSync(path.join(
       PACKAGE_ROOT,
       ".github/consumer-templates/on-api-client-released.yml",
-    ))).toBe(false);
-    expect(publishWorkflow).not.toContain("api-client-released");
-    expect(publishWorkflow).not.toContain("API_CLIENT_CONSUMER_REPOS");
+    ))).toBe(true);
+    expect(publishWorkflow).toContain("notify-consumers:");
+    expect(publishWorkflow).toContain('event_type=api-client-released');
+    expect(publishWorkflow).toContain("API_CLIENT_CONSUMER_REPOS");
+    expect(publishWorkflow).toContain("Dispatch required cavi-home ingestion");
+    expect(publishWorkflow).toContain('event_type: "cavi-oss-release"');
   });
 
   it("provisions immutable stable docs inputs before CI documentation typechecking", () => {

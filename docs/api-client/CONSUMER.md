@@ -14,19 +14,27 @@ sourceIntegrity: manifest.sourceTarballSha256
 contentIntegrity: manifest.contentSha256
 ```
 
-## Copy And Install
+## Authority And Delivery
 
-The already-published npm package `@cavi-ai/api-client@0.14.0` does not contain
-this subsequently generated documentation. Until a future package release
-separately publishes it, copy the complete `docs/api-client/v0.14.0` directory
-from this repository checkout or its CI documentation artifact to the host's
-`/docs/api-client/v0.14.0` public base path. Serve `/docs/api-client` as an
-alias to that immutable version only after validation succeeds. Do not merge
-files from another package version into this directory.
+The repository source is the editable documentation authority. A documentation
+release is built from that source and the exact published npm artifact; the
+GitHub Release asset is the immutable delivery authority consumed by
+documentation hosts.
 
-Use `manifest.json` to validate the artifact and `navigation.json` as the
-navigation entry point. Paths in `navigation.json` are relative to the public
-base path.
+The release asset is named `cavi-api-client-docs-vX.Y.Z.tar.gz`. Its root
+contains `cavi-release.json` and `docs/`; a matching `.sha256` sidecar records
+the archive digest. The producer sends a schema-version-1 `cavi-oss-release`
+envelope to the host only after the asset has been verified and uploaded.
+
+Extract and validate the complete version directory before serving
+`/docs/api-client` as its stable alias. Use `manifest.json` as the documentation
+manifest and `navigation.json` as the navigation entry point. Paths in
+`navigation.json` are relative to the public base path.
+
+The release workflow also supports a historical backfill for an existing,
+published, non-prerelease version. A backfill rebuilds from the exact npm
+artifact and release commit; it accepts an existing asset only when the bytes
+are identical and never republishes the npm package.
 
 ## Integrity And Immutability
 

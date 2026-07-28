@@ -1,0 +1,80 @@
+# Drop-in listener for @cavi-ai/api-client releases.
+#
+# Copy to a consumer repo as `.github/workflows/on-api-client-released.yml`.
+# The API Client publish workflow sends `api-client-released` after npm publish.
+name: on-api-client-released
+
+on:
+  repository_dispatch:
+    types: [api-client-released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "@cavi-ai/api-client version to pin"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: api-client-bump
+  cancel-in-progress: true
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve version
+        id: version
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${DISPATCH_VERSION:-$INPUT_VERSION}"
+          if [ -z "$VERSION" ]; then
+            echo "no version supplied" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Enable pnpm
+        if: ${{ hashFiles('pnpm-lock.yaml') != '' }}
+        run: corepack enable
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Bump dependency
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            corepack prepare pnpm@10.32.1 --activate
+            pnpm add "@cavi-ai/api-client@${VERSION}"
+          else
+            npm install "@cavi-ai/api-client@${VERSION}" --save
+          fi
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git diff --quiet; then
+            echo "::notice::already at @cavi-ai/api-client@${VERSION}"
+            exit 0
+          fi
+          BRANCH="chore/api-client-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git commit -am "chore(deps): @cavi-ai/api-client@${VERSION}"
+          git push -u origin "$BRANCH" --force
+          gh pr create --fill --head "$BRANCH" --title "chore(deps): @cavi-ai/api-client@${VERSION}" \
+            || gh pr edit "$BRANCH" --title "chore(deps): @cavi-ai/api-client@${VERSION}"
+
