@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -26,8 +27,11 @@ import { UNDOCUMENTED_VERSION } from "./support/documented-release.js";
 const execFileAsync = promisify(execFile);
 const fixture = path.resolve("src/__tests__/fixtures/docs-release/package");
 const temporaryDirectories: string[] = [];
-async function inspectFixture(tarball: string) {
-  return inspectReleaseFixtureForTest(tarball);
+async function inspectFixture(
+  tarball: string,
+  limits?: { maxFileCount?: number; maxExpandedBytes?: number },
+) {
+  return inspectReleaseFixtureForTest(tarball, undefined, limits);
 }
 
 async function writePackageVersion(packageDirectory: string, version: string): Promise<void> {
@@ -35,6 +39,73 @@ async function writePackageVersion(packageDirectory: string, version: string): P
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
   packageJson.version = version;
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+}
+
+type TarFixtureEntry = {
+  name: string;
+  type?: string;
+  contents?: Buffer;
+  linkName?: string;
+};
+
+function tarString(header: Buffer, offset: number, length: number, value: string) {
+  Buffer.from(value).copy(header, offset, 0, length);
+}
+
+function tarOctal(header: Buffer, offset: number, length: number, value: number) {
+  tarString(header, offset, length - 1, value.toString(8).padStart(length - 1, "0"));
+  header[offset + length - 1] = 0;
+}
+
+function tarFixtureEntry({
+  name,
+  type = "0",
+  contents = Buffer.alloc(0),
+  linkName = "",
+}: TarFixtureEntry): Buffer {
+  const header = Buffer.alloc(512);
+  tarString(header, 0, 100, name);
+  tarOctal(header, 100, 8, type === "5" ? 0o755 : 0o644);
+  tarOctal(header, 108, 8, 0);
+  tarOctal(header, 116, 8, 0);
+  tarOctal(header, 124, 12, contents.length);
+  tarOctal(header, 136, 12, 0);
+  header.fill(0x20, 148, 156);
+  header[156] = type.charCodeAt(0);
+  tarString(header, 157, 100, linkName);
+  tarString(header, 257, 6, "ustar\0");
+  tarString(header, 263, 2, "00");
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  tarString(header, 148, 6, checksum.toString(8).padStart(6, "0"));
+  header[154] = 0;
+  header[155] = 0x20;
+  return Buffer.concat([
+    header,
+    contents,
+    Buffer.alloc((512 - (contents.length % 512)) % 512),
+  ]);
+}
+
+function minimalPackageEntries(): TarFixtureEntry[] {
+  return [
+    { name: "package/", type: "5" },
+    {
+      name: "package/package.json",
+      contents: Buffer.from(`${JSON.stringify({
+        name: DOCUMENTED_PACKAGE,
+        version: DOCUMENTED_VERSION,
+      })}\n`),
+    },
+  ];
+}
+
+async function packRawFixture(entries: TarFixtureEntry[]): Promise<string> {
+  const directory = await mkdtemp(path.join(tmpdir(), "cavi-docs-release-test-"));
+  temporaryDirectories.push(directory);
+  const tarball = path.join(directory, "release.tgz");
+  const tar = Buffer.concat([...entries.map(tarFixtureEntry), Buffer.alloc(1024)]);
+  await writeFile(tarball, gzipSync(tar));
+  return tarball;
 }
 
 /**
@@ -55,7 +126,10 @@ async function packFixture(
   await writePackageVersion(packageDirectory, DOCUMENTED_VERSION);
   await mutate?.(packageDirectory);
   const tarball = path.join(directory, "release.tgz");
-  await execFileAsync("tar", ["-czf", tarball, "package"], { cwd: directory });
+  await execFileAsync("tar", ["-czf", tarball, "--format=ustar", "package"], {
+    cwd: directory,
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  });
   return tarball;
 }
 
@@ -76,13 +150,13 @@ describe("inspectRelease", () => {
     await expect(inspectRelease(invalidArchive)).rejects.toThrow("stable artifact digest mismatch");
   });
 
-  it("keeps production digest verification immutable and ahead of tar invocation", async () => {
+  it("verifies the selected release digest before invoking tar", async () => {
     const inspector = await readFile("scripts/docs/inspect-release.mjs", "utf8");
-    const productionInspector = inspector.slice(inspector.indexOf("export async function inspectRelease(tgzPath)"), inspector.indexOf("/** Test-only"));
-    const digestGuard = productionInspector.indexOf("sha256 !== APPROVED_RELEASE_SHA256");
+    const productionInspector = inspector.slice(inspector.indexOf("async function inspectReleaseWithRelease"), inspector.indexOf("/** @param {string} tgzPath"));
+    const digestGuard = productionInspector.indexOf("sha256 !== release.tarballSha256");
 
     expect(digestGuard).toBeGreaterThan(-1);
-    expect(productionInspector).not.toContain('execFileAsync("tar"');
+    expect(productionInspector.indexOf('execFileAsync("tar"')).toBeGreaterThan(digestGuard);
     expect(inspectRelease.length).toBe(1);
   });
 
@@ -234,7 +308,7 @@ describe("inspectRelease", () => {
     ]);
   });
 
-  it("rejects a declaration symlink that escapes the extracted package", async () => {
+  it("rejects a declaration symlink during archive preflight", async () => {
     const tarball = await packFixture(async (packageDirectory) => {
       const declarationPath = path.join(packageDirectory, "dist/index.d.ts");
       const externalDeclaration = path.join(
@@ -246,8 +320,61 @@ describe("inspectRelease", () => {
       await symlink(externalDeclaration, declarationPath);
     });
 
-    await expect(inspectFixture(tarball)).rejects.toThrow(
-      /declaration target escapes package.*\.\/dist\/index\.d\.ts/u,
-    );
+    await expect(inspectFixture(tarball)).rejects.toThrow(/regular file or directory/u);
+  });
+
+  it.each([
+    ["symbolic link", "2", "../../outside"],
+    ["hard link", "1", "package/package.json"],
+    ["special member", "6", ""],
+  ] as const)("rejects a %s archive member before extraction", async (_label, type, linkName) => {
+    const tarball = await packRawFixture([
+      ...minimalPackageEntries(),
+      { name: "package/hostile", type, linkName },
+    ]);
+
+    await expect(inspectFixture(tarball)).rejects.toThrow(/regular file or directory/u);
+  });
+
+  it("rejects a symlink pivot before extracting its descendant", async () => {
+    const tarball = await packRawFixture([
+      ...minimalPackageEntries(),
+      { name: "package/pivot", type: "2", linkName: "../outside" },
+      { name: "package/pivot/escaped.txt", contents: Buffer.from("escaped\n") },
+    ]);
+
+    await expect(inspectFixture(tarball)).rejects.toThrow(/regular file or directory/u);
+  });
+
+  it("rejects duplicate normalized archive members", async () => {
+    const entries = minimalPackageEntries();
+    const tarball = await packRawFixture([...entries, entries[1]!]);
+
+    await expect(inspectFixture(tarball)).rejects.toThrow(/duplicate archive entry/u);
+  });
+
+  it("rejects archive member names that are not normalized", async () => {
+    const tarball = await packRawFixture([
+      ...minimalPackageEntries(),
+      { name: "package//nested.txt", contents: Buffer.from("unsafe\n") },
+    ]);
+
+    await expect(inspectFixture(tarball)).rejects.toThrow(/normalized/u);
+  });
+
+  it("enforces the archive file-count limit before extraction", async () => {
+    const tarball = await packRawFixture([
+      ...minimalPackageEntries(),
+      { name: "package/one.txt", contents: Buffer.from("1") },
+      { name: "package/two.txt", contents: Buffer.from("2") },
+    ]);
+
+    await expect(inspectFixture(tarball, { maxFileCount: 2 })).rejects.toThrow(/file count limit/u);
+  });
+
+  it("enforces the expanded archive size limit before extraction", async () => {
+    const tarball = await packRawFixture(minimalPackageEntries());
+
+    await expect(inspectFixture(tarball, { maxExpandedBytes: 16 })).rejects.toThrow(/expanded size limit/u);
   });
 });

@@ -7,10 +7,10 @@ import { createHash } from "node:crypto";
 
 import { buildDocumentationInTemporaryRoot } from "./build.mjs";
 import { resolveStableTarball } from "./fetch-stable.mjs";
-import { DOCUMENTED_OUTPUT_DIRECTORY, DOCUMENTED_SOURCE_DATE_EPOCH } from "./types.mjs";
+import { DOCUMENTED_SOURCE_DATE_EPOCH, resolveDocumentationRelease } from "./types.mjs";
 
 function parseArguments(argv) {
-  const allowedOptions = new Set(["package", "out", "source-date-epoch", "root"]);
+  const allowedOptions = new Set(["package", "out", "output-root", "source-date-epoch", "root", "version", "tag", "repository", "commit", "npm-integrity", "tarball-sha256"]);
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
     const option = argv[index];
@@ -25,7 +25,6 @@ function parseArguments(argv) {
   // Defaults come from the release pins (types.mjs) so a bare `pnpm docs:check`
   // works locally; an explicit flag or env var still wins (CI supplies both).
   values.package ??= resolveStableTarball(["CAVI_DOCS_PACKAGE_TGZ", "CAVI_API_CLIENT_STABLE_TARBALL"]);
-  values.out ??= DOCUMENTED_OUTPUT_DIRECTORY;
   values["source-date-epoch"] ??= process.env.SOURCE_DATE_EPOCH ?? String(DOCUMENTED_SOURCE_DATE_EPOCH);
   values.root ??= ".";
   return values;
@@ -68,15 +67,21 @@ async function validateContentIntegrity(directory, files) {
 
 export async function checkDocumentation(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
+  const release = resolveDocumentationRelease({
+    version: options.version, tag: options.tag, tarball: options.package,
+    npmIntegrity: options["npm-integrity"], tarballSha256: options["tarball-sha256"],
+    repository: options.repository, commit: options.commit, outputRoot: options["output-root"],
+  });
   const temporaryRoot = await mkdtemp(path.join(tmpdir(), "cavi-docs-check-"));
   const generated = path.join(temporaryRoot, "generated");
-  const committed = path.resolve(options.out);
+  const committed = path.resolve(options.out ?? release.outputDirectory);
   try {
     await buildDocumentationInTemporaryRoot([
       "--package", path.resolve(options.package),
       "--out", "generated",
       "--source-date-epoch", options["source-date-epoch"],
       "--root", path.resolve(options.root),
+      ...releaseArguments(options, release),
     ], temporaryRoot);
     const [generatedFiles, committedFiles] = await Promise.all([
       filePaths(generated),
@@ -98,6 +103,19 @@ export async function checkDocumentation(argv = process.argv.slice(2)) {
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }
+}
+
+function releaseArguments(options, release) {
+  if (options.version === undefined && options.tag === undefined && options.repository === undefined && options.commit === undefined && options["npm-integrity"] === undefined && options["tarball-sha256"] === undefined) return [];
+  return [
+    "--version", release.version,
+    "--tag", release.tag,
+    "--repository", release.repository,
+    "--commit", release.commit,
+    "--npm-integrity", release.npmIntegrity,
+    "--tarball-sha256", release.tarballSha256,
+    ...(options["output-root"] === undefined ? [] : ["--output-root", release.outputRoot]),
+  ];
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

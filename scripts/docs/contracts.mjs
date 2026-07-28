@@ -1,7 +1,7 @@
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { CAPABILITY_STATES, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+import { CAPABILITY_STATES, resolveDocumentationRelease } from "./types.mjs";
 import { normalizedRelativePath, safeSlug } from "./paths.mjs";
 
 const CONTRACTS_DIRECTORY = "docs/api-client/source/contracts";
@@ -30,6 +30,11 @@ function nonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/** @param {unknown} value */
+function semver(value) {
+  return typeof value === "string" && /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u.test(value);
+}
+
 /** @param {string} root @param {string} relativePath */
 function repositoryPath(root, relativePath) {
   try { normalizedRelativePath(relativePath, "evidence path"); } catch { return undefined; }
@@ -39,8 +44,8 @@ function repositoryPath(root, relativePath) {
   return relative.startsWith("..") || path.isAbsolute(relative) ? undefined : resolved;
 }
 
-/** @param {string} root @param {import("./types.mjs").ReleaseManifest} manifest @returns {Promise<ContractRecord[]>} */
-export async function loadContracts(root, manifest) {
+/** @param {string} root @param {import("./types.mjs").ReleaseManifest} manifest @param {ReturnType<typeof resolveDocumentationRelease>} [release] @returns {Promise<ContractRecord[]>} */
+export async function loadContracts(root, manifest, release = resolveDocumentationRelease()) {
   const resolvedRoot = await realpath(root);
   const directory = path.join(root, CONTRACTS_DIRECTORY);
   const filenames = (await readdir(directory)).filter((name) => name.endsWith(".json")).sort();
@@ -49,8 +54,8 @@ export async function loadContracts(root, manifest) {
   /** @type {ContractRecord[]} */
   const records = [];
 
-  if (manifest.package !== DOCUMENTED_PACKAGE) {
-    diagnostics.push({ contractId: "registry", requirement: `manifest package to equal ${DOCUMENTED_PACKAGE}`, observed: shown(manifest.package), action: `use the ${DOCUMENTED_PACKAGE} release manifest` });
+  if (manifest.package !== release.packageName) {
+    diagnostics.push({ contractId: "registry", requirement: `manifest package to equal ${release.packageName}`, observed: shown(manifest.package), action: `use the ${release.packageName} release manifest` });
   }
 
   for (const filename of filenames) {
@@ -74,7 +79,11 @@ export async function loadContracts(root, manifest) {
     for (const key of ["id", "title", "summary", "purpose", "lifecycle", "compatibilityNotes"]) {
       if (!nonEmptyString(record[key])) diagnostics.push({ contractId: id, requirement: `${key} to be a non-empty string`, observed: shown(record[key]), action: `provide a non-empty ${key}` });
     }
-    if (record.version !== DOCUMENTED_VERSION || record.version !== manifest.version) diagnostics.push({ contractId: id, requirement: `version to equal ${DOCUMENTED_VERSION}`, observed: shown(record.version), action: `document only ${DOCUMENTED_VERSION} release contracts` });
+    if (!semver(record.version)) {
+      diagnostics.push({ contractId: id, requirement: "version to be a valid semantic version", observed: shown(record.version), action: "use a released semantic version" });
+    } else if (!release.isExplicitRelease && (record.version !== release.version || record.version !== manifest.version)) {
+      diagnostics.push({ contractId: id, requirement: `version to equal ${release.version}`, observed: shown(record.version), action: `document only ${release.version} release contracts` });
+    }
     if (record.stability !== "stable") diagnostics.push({ contractId: id, requirement: "stability to equal stable", observed: shown(record.stability), action: "mark only stable contracts in this registry" });
     if (record.sourceOfTruth !== SOURCE_OF_TRUTH) diagnostics.push({ contractId: id, requirement: `sourceOfTruth to equal ${SOURCE_OF_TRUTH}`, observed: shown(record.sourceOfTruth), action: "describe this follower package as an upstream-compatible mirror" });
     if (!CAPABILITY_STATES.includes(/** @type {never} */ (record.capability))) diagnostics.push({ contractId: id, requirement: `capability to be one of ${CAPABILITY_STATES.join(", ")}`, observed: shown(record.capability), action: "use a supported capability state" });
@@ -144,6 +153,7 @@ export async function loadContracts(root, manifest) {
         if (!evidenceTypes.has(requiredType)) diagnostics.push({ contractId: id, requirement: `evidence to include ${requiredType}`, observed: "missing", action: `add repository-backed ${requiredType} evidence` });
       }
     }
+    if (release.isExplicitRelease) record.version = manifest.version;
     if (Array.isArray(record.symbols)) record.symbols = record.symbols.map((symbol) => ({ ...symbol, signature: manifest.symbols.find((item) => item.subpath === symbol.subpath && item.name === symbol.name)?.signature ?? "" }));
     records.push(/** @type {ContractRecord} */ (record));
   }
