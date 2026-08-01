@@ -47,3 +47,6 @@ docs/specs/
 
 # Fetched, digest-verified stable release artifacts (scripts/docs/fetch-stable.mjs)
 .cache
+
+# Local maintainer evidence (never commit)
+evidence/

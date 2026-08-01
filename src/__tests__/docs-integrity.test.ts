@@ -51,10 +51,10 @@ describe("docs integrity", () => {
 
   it("reports validated dry-run artifact evidence before the release envelope", () => {
     const workflow = read(".github/workflows/publish.yml");
-    expect(pkg.scripts["docs:release-dry-run-report"])
-      .toBe("node scripts/docs/report-release-dry-run.mjs");
+    expect(pkg.scripts["release:dry-run-report"])
+      .toBe("node scripts/release/report-release-dry-run.mjs");
     expect(workflow).toContain("manifest=$MANIFEST");
-    const report = workflow.indexOf("pnpm run docs:release-dry-run-report");
+    const report = workflow.indexOf("pnpm run release:dry-run-report");
     expect(report).toBeGreaterThan(-1);
     expect(report).toBeGreaterThan(workflow.indexOf("Report non-mutating dry run"));
     expect(report).toBeLessThan(workflow.indexOf("Upload immutable release assets"));
@@ -98,11 +98,11 @@ describe("docs integrity", () => {
     );
 
     expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
-    expect(pkg.files).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
+    expect(pkg.files).toContain("docs/api-client/v*");
     expect(pkg.files).toContain("!docs/api-client/source");
     expect(pkg.files).toContain("!docs/api-client/source/**");
-    expect(pkg.files).toContain("!docs/superpowers");
-    expect(pkg.files).toContain("!docs/superpowers/**");
+    expect(pkg.files).not.toContain("docs");
+    expect(pkg.files).not.toContain("!docs/release-evidence");
 
     expect(developmentGuide).toContain("pnpm run verify");
     expect(developmentGuide).toContain("CAVI_API_CLIENT_STABLE_TARBALL");
@@ -139,7 +139,7 @@ describe("docs integrity", () => {
   // artifact must exist before any documentation gate runs. What changed is where
   // it is enforced: the version and sha256 used to be duplicated as literals in
   // both workflows (and four other files), which is exactly how the 0.12.0 release
-  // drifted. They now live once in scripts/docs/types.mjs, and fetch-stable.mjs
+  // drifted. Version comes from package.json; digest pins load via scripts/docs/types.mjs, and fetch-stable.mjs
   // performs the fetch + digest check for CI and local runs alike. These tests
   // assert the guarantee at its new home rather than string-matching YAML.
   it("enforces an immutable, digest-verified stable artifact in one shared place", () => {

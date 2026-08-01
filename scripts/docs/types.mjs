@@ -27,39 +27,89 @@
  * @property {ReleaseSymbol[]} symbols
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const packageJson = require(path.join(PACKAGE_ROOT, "package.json"));
+
 /**
- * The documented release — the last PUBLISHED version, whose real `.d.ts` the
- * documentation gates type-check the published examples against.
- *
- * THESE PINS MOVE TOGETHER, ONCE PER RELEASE, AND ONLY HERE. Everything else
- * (build output path, check output path, stable-typecheck includes, the `files`
- * allowlist, and both workflows) derives from them. `docs-pins.test.ts` fails
- * the build if they drift out of sync.
- *
- * To bump after publishing X.Y.Z:
- *   DOCUMENTED_VERSION            X.Y.Z
- *   DOCUMENTED_TAG                vX.Y.Z
- *   DOCUMENTED_COMMIT             git rev-parse "vX.Y.Z^{}"
- *   APPROVED_RELEASE_SHA256       shasum -a 256 "$(npm pack @cavi-ai/api-client@X.Y.Z)"
- *   DOCUMENTED_SOURCE_DATE_EPOCH  git log -1 --format=%ct "vX.Y.Z^{}"
+ * Canonical package identity comes from package.json. Commit + tarball digest
+ * come from the checked-in source manifest for that version so verify stays
+ * hermetic. `docs-pins` / drift tests fail if these disagree.
  */
-export const DOCUMENTED_PACKAGE = "@cavi-ai/api-client";
-export const DOCUMENTED_VERSION = "0.14.0";
-export const DOCUMENTED_TAG = "v0.14.0";
-export const DOCUMENTED_COMMIT = "372269713d5140092d489299bbceffc65b92a8bb";
-export const APPROVED_RELEASE_SHA256 = "8ead1d95c5973a94822536cd922bb8282a4509d339f459384ef494135a5f4adb";
-/**
- * Reproducible-build timestamp: the committer time of DOCUMENTED_COMMIT. Pinned
- * rather than read from git so the build stays reproducible in shallow clones
- * and from the published tarball, where the commit may be absent.
- */
-export const DOCUMENTED_SOURCE_DATE_EPOCH = 1784861423;
+export const DOCUMENTED_PACKAGE = packageJson.name;
+export const DOCUMENTED_VERSION = packageJson.version;
+export const DOCUMENTED_TAG = `v${DOCUMENTED_VERSION}`;
+export const DOCUMENTED_REPOSITORY = "cavi-ai/cavi-api-client";
 /** Canonical output directory for the generated reference, relative to the repo root. */
 export const DOCUMENTED_OUTPUT_DIRECTORY = `docs/api-client/${DOCUMENTED_TAG}`;
 
-export const DOCUMENTED_REPOSITORY = "cavi-ai/cavi-api-client";
+const SOURCE_MANIFEST_PATH = path.join(
+  PACKAGE_ROOT,
+  "docs/api-client/source/releases",
+  `${DOCUMENTED_VERSION}-manifest.json`,
+);
 
-const SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+function loadSourceManifestIdentity() {
+  if (!existsSync(SOURCE_MANIFEST_PATH)) {
+    throw new Error(
+      `missing source release manifest for package.json version ${DOCUMENTED_VERSION}: ${path.relative(PACKAGE_ROOT, SOURCE_MANIFEST_PATH)}`,
+    );
+  }
+  const manifest = JSON.parse(readFileSync(SOURCE_MANIFEST_PATH, "utf8"));
+  if (manifest.package !== DOCUMENTED_PACKAGE) {
+    throw new Error(
+      `source manifest package mismatch: expected ${DOCUMENTED_PACKAGE}; observed ${manifest.package}`,
+    );
+  }
+  if (manifest.version !== DOCUMENTED_VERSION) {
+    throw new Error(
+      `source manifest version mismatch: expected ${DOCUMENTED_VERSION}; observed ${manifest.version}`,
+    );
+  }
+  if (manifest.tag !== DOCUMENTED_TAG) {
+    throw new Error(
+      `source manifest tag mismatch: expected ${DOCUMENTED_TAG}; observed ${manifest.tag}`,
+    );
+  }
+  if (typeof manifest.commit !== "string" || !/^[0-9a-f]{40}$/u.test(manifest.commit)) {
+    throw new Error(`source manifest commit invalid: ${String(manifest.commit)}`);
+  }
+  if (typeof manifest.sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(manifest.sha256)) {
+    throw new Error(`source manifest sha256 invalid: ${String(manifest.sha256)}`);
+  }
+  const sourceDateEpoch = Number(manifest.sourceDateEpoch);
+  if (!Number.isSafeInteger(sourceDateEpoch) || sourceDateEpoch <= 0) {
+    throw new Error(`source manifest sourceDateEpoch invalid: ${String(manifest.sourceDateEpoch)}`);
+  }
+  return {
+    commit: manifest.commit,
+    sha256: manifest.sha256,
+    sourceDateEpoch,
+  };
+}
+
+const identity = loadSourceManifestIdentity();
+export const DOCUMENTED_COMMIT = identity.commit;
+export const APPROVED_RELEASE_SHA256 = identity.sha256;
+/**
+ * Reproducible-build timestamp. Prefer an explicit sourceDateEpoch on the
+ * source manifest; otherwise fall back to the committer time of DOCUMENTED_COMMIT
+ * when git is available at load time is intentionally avoided so shallow clones
+ * and packed consumers stay hermetic. Pin it on the source manifest instead.
+ */
+if (!Number.isSafeInteger(identity.sourceDateEpoch) || identity.sourceDateEpoch <= 0) {
+  throw new Error(
+    `source manifest sourceDateEpoch missing/invalid for ${DOCUMENTED_VERSION}; set it to the committer time of ${DOCUMENTED_TAG}`,
+  );
+}
+export const DOCUMENTED_SOURCE_DATE_EPOCH = identity.sourceDateEpoch;
+
+const SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;

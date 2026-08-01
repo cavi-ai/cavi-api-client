@@ -13,12 +13,20 @@ import {
 } from "../../../scripts/docs/types.mjs";
 
 /**
- * The documentation release pins move together, once per release, and only in
- * types.mjs. Release 0.12.0 bumped package.json but left every pin at 0.11.0 —
- * the drift went unnoticed because the version literal was duplicated across
- * six files and nothing asserted they agreed. These checks are that assertion.
+ * Documentation identity: package.json version is canonical. Commit digest and
+ * sourceDateEpoch live on the versioned source manifest and are loaded by
+ * scripts/docs/types.mjs. These checks fail if that identity drifts.
  */
 describe("documentation release pins", () => {
+  it("derives package identity from package.json", () => {
+    const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+      name: string;
+      version: string;
+    };
+    expect(DOCUMENTED_PACKAGE).toBe(pkg.name);
+    expect(DOCUMENTED_VERSION).toBe(pkg.version);
+  });
+
   it("keeps the tag in lockstep with the version", () => {
     expect(DOCUMENTED_TAG).toBe(`v${DOCUMENTED_VERSION}`);
   });
@@ -45,7 +53,7 @@ describe("documentation release pins", () => {
     expect(manifest.name).toBe(DOCUMENTED_PACKAGE);
     // Guards the exact miss from 0.12.0: pins bumped, `files` left behind, so the
     // published tarball would carry a reference directory for the wrong version.
-    expect(manifest.files).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
+    expect(manifest.files).toContain("docs/api-client/v*");
   });
 
   it("has the documented reference and release manifest present on disk", () => {

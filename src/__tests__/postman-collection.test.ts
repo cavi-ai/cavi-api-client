@@ -7,6 +7,10 @@ import { CAVI_SURFACE_CONTRACTS } from "../extensions/cavi/contracts/surfaces.js
 
 const ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const COLLECTION = path.join(ROOT, "docs", "postman", "cavi-api-client.postman_collection.json");
+const ENVIRONMENT = path.join(ROOT, "docs", "postman", "cavi-api-client.postman_environment.json");
+const FORBIDDEN_SAMPLE_RE =
+  /\b(?:martina|scout|angela|machine|trading|wu-tang|front-door|deb|tony|method-man|franco|mirza)\b/iu;
+
 
 // Must match scripts/postman/generate.mjs. Kept here so the guard needs no
 // build step and runs in the fast suite.
@@ -88,5 +92,26 @@ describe("postman collection stays in sync with the surface contracts", () => {
     }
     expect(declared).toContain("baseUrl");
     expect(declared).toContain("token");
+  });
+
+  it("keeps collection and environment free of private/fleet sample identifiers", () => {
+    const env = readFileSync(ENVIRONMENT, "utf8");
+    const col = readFileSync(COLLECTION, "utf8");
+    expect(col).not.toMatch(FORBIDDEN_SAMPLE_RE);
+    expect(env).not.toMatch(FORBIDDEN_SAMPLE_RE);
+  });
+
+  it("mirrors path-param defaults on the environment with secret token", () => {
+    const env = JSON.parse(readFileSync(ENVIRONMENT, "utf8")) as {
+      values: Array<{ key: string; value: string; type?: string }>;
+    };
+    const byKey = new Map(env.values.map((v) => [v.key, v]));
+    expect(byKey.get("token")?.type).toBe("secret");
+    expect(byKey.get("token")?.value).toBe("");
+    expect(byKey.has("baseUrl")).toBe(true);
+    for (const variable of collection.variable) {
+      if (variable.key === "baseUrl" || variable.key === "token") continue;
+      expect(byKey.has(variable.key), `env missing {{${variable.key}}}`).toBe(true);
+    }
   });
 });

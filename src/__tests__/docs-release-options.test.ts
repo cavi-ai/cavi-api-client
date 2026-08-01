@@ -6,7 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { inspectReleaseFixtureForTest } from "../../scripts/docs/inspect-release.mjs";
+import { inspectReleaseFixtureForTest } from "../../scripts/release/inspect-release.mjs";
 import { buildDocumentationInTemporaryRoot } from "../../scripts/docs/build.mjs";
 import { renderDocumentation } from "../../scripts/docs/render.mjs";
 import {

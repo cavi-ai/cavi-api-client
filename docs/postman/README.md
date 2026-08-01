@@ -1,51 +1,72 @@
-# Postman collection — surface verification
+# Postman — gateway surface verification
 
-`cavi-api-client.postman_collection.json` is **generated** from this package's
-own surface contracts (`SURFACE_CONTRACTS` + `CAVI_SURFACE_CONTRACTS`) by
-[`scripts/postman/generate.mjs`](../../scripts/postman/generate.mjs). It exists
-to answer one question against a live backend: **does every endpoint this
-package declares actually exist?**
+Importable Postman collection and environment for proving that every **gateway /
+CAVI surface contract** this package declares exists on a live backend.
 
-Do not hand-edit the collection. Change the contracts and regenerate:
+| File | Role |
+| --- | --- |
+| `cavi-api-client.postman_collection.json` | Requests + tests (generated) |
+| `cavi-api-client.postman_environment.json` | Host, secrets, path params (generated defaults; edit locally) |
+
+Both JSON files are **generated** by [`scripts/postman/generate.mjs`](../../scripts/postman/generate.mjs)
+from `SURFACE_CONTRACTS` + `CAVI_SURFACE_CONTRACTS`. Do not hand-edit them.
 
 ```bash
-pnpm run build          # the generator reads the compiled dist/ surfaces
+pnpm run build
 pnpm run postman:generate
 ```
 
-`postman:check` (run in CI, not in `pnpm test`) fails if the committed
-collection has drifted from the contracts.
+`pnpm run postman:check` fails if either file drifts from the contracts.
+
+## Setup (Postman app)
+
+1. **Import** both files from this folder.
+2. Select environment **cavi-api-client — local gateway**.
+3. Set:
+   - `baseUrl` — gateway origin only (example default `http://localhost:18789`)
+   - `token` — bearer credential (**secret**; never commit a real value)
+4. Override path params as needed (`example-team`, `example-portal`, … are placeholders).
+5. **Run collection**.
+
+Environment values override collection defaults. Keep host-specific ids and
+tokens on the environment only.
+
+## Variables (first-class)
+
+| Variable | Scope | Notes |
+| --- | --- | --- |
+| `baseUrl` | Environment | Origin, no trailing slash |
+| `token` | Environment (secret) | Bearer auth for the whole collection |
+| `teamId`, `agentId`, `portal`, … | Environment (override) | Agnostic samples in git; substitute real ids locally |
+
+Every path parameter used by a surface contract is declared as a collection
+variable **and** an environment value, with a short description in Postman.
 
 ## What a run proves
 
-Every request carries a test derived from the contract's `degradation`:
+| Contract `degradation` | Request test | Meaning |
+| --- | --- | --- |
+| `hard` | Fails on `404` / `5xx` | Endpoint must exist |
+| `gap` | Never fails; reports `PROVEN (2xx)` vs `unproven` | May be missing; run records reality |
 
-| degradation | request test | meaning |
-| ----------- | ------------ | ------- |
-| `hard` | fails on `404` or `5xx` | the endpoint MUST exist; a failure is a real contract break |
-| `gap` | never fails; reports `PROVEN (2xx)` vs `unproven (Nxx)` | the endpoint may not be served yet — the run records which are real |
-
-16 of 17 CAVI surfaces are `gap` today. A green `hard` run plus a
-`PROVEN`/`unproven` tally for the `gap` surfaces is exactly the evidence needed
-to promote a surface from `gap` to `hard` (or to delete an unproven one).
-
-## Running it
-
-**Postman app:** import both files, select the environment, set `token`, Run
-Collection.
-
-**CLI (no repo dependency added):**
+## CLI (Newman)
 
 ```bash
 npx newman run docs/postman/cavi-api-client.postman_collection.json \
   -e docs/postman/cavi-api-client.postman_environment.json \
   --env-var token="$GATEWAY_TOKEN" \
-  --env-var baseUrl="https://your-gateway.example"
+  --env-var baseUrl="https://gateway.example"
 ```
+
+## Privacy / agnostic defaults
+
+Defaults are placeholders (`example-team`, `example-portal`, …). They must not
+encode private fleet names, personal names, or production hosts. The generator
+rejects a known denylist of fleet/personal tokens.
 
 ## Scope
 
-The collection covers the 50 gateway/CAVI **surface contracts** — one host,
-bearer auth. Provider runtime APIs (Anthropic / OpenAI / Google) are external
-services with their own hosts, auth, and request bodies; they are exercised by
-the provider conformance tests in `src/__tests__/providers/**`, not here.
+Covers gateway + CAVI **surface contracts** on one host with bearer auth.
+
+**Not included:** Anthropic / OpenAI / Google runtime HTTP APIs (separate hosts
+and auth). Those are covered by `src/__tests__/providers/**`.

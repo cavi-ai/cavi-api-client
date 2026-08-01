@@ -8,7 +8,7 @@ import { generateProductionSbom } from "./generate-production-sbom.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const artifactDirectory = path.join(packageRoot, ".artifacts/runtime-control");
-const evidencePath = path.join(packageRoot, "docs/release-evidence/runtime-control-release-candidate.json");
+const evidencePath = path.join(packageRoot, ".artifacts/runtime-control/runtime-control-release-candidate.json");
 const expectedScannerVersion = "2.4.0";
 
 const blockedPathPatterns = [

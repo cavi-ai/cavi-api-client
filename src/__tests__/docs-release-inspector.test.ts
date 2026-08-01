@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   inspectRelease,
   inspectReleaseFixtureForTest,
-} from "../../scripts/docs/inspect-release.mjs";
+} from "../../scripts/release/inspect-release.mjs";
 import {
   DOCUMENTED_PACKAGE,
   DOCUMENTED_VERSION,
@@ -151,7 +151,7 @@ describe("inspectRelease", () => {
   });
 
   it("verifies the selected release digest before invoking tar", async () => {
-    const inspector = await readFile("scripts/docs/inspect-release.mjs", "utf8");
+    const inspector = await readFile("scripts/release/inspect-release.mjs", "utf8");
     const productionInspector = inspector.slice(inspector.indexOf("async function inspectReleaseWithRelease"), inspector.indexOf("/** @param {string} tgzPath"));
     const digestGuard = productionInspector.indexOf("sha256 !== release.tarballSha256");
 
@@ -163,7 +163,7 @@ describe("inspectRelease", () => {
   it.each([
     "scripts/docs/build.mjs",
     "scripts/docs/check.mjs",
-    "scripts/docs/snapshot-release.mjs",
+    "scripts/release/snapshot-release.mjs",
   ])("does not let production CLI %s accept or forward an arbitrary digest", async (script) => {
     const source = await readFile(script, "utf8");
 
@@ -178,7 +178,7 @@ describe("inspectRelease", () => {
       .rejects.toMatchObject({ stderr: expect.stringContaining("unsupported option --expected-sha256") });
     await expect(execFileAsync(process.execPath, ["scripts/docs/check.mjs", ...override]))
       .rejects.toMatchObject({ stderr: expect.stringContaining("unsupported option --expected-sha256") });
-    await expect(execFileAsync(process.execPath, ["scripts/docs/snapshot-release.mjs", "archive.tgz", "manifest.json", "0".repeat(64)]))
+    await expect(execFileAsync(process.execPath, ["scripts/release/snapshot-release.mjs", "archive.tgz", "manifest.json", "0".repeat(64)]))
       .rejects.toMatchObject({ stderr: expect.stringContaining("usage:") });
   });
   it("inspects public type exports in a stable release tarball", async () => {
