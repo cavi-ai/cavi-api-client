@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   resolveNpmRelease,
   runResolveNpmReleaseCli,
-} from "../../scripts/docs/resolve-npm-release.mjs";
+} from "../../scripts/release/resolve-npm-release.mjs";
 
 const PACKAGE_NAME = "@cavi-ai/api-client";
 const VERSION = "0.15.0";

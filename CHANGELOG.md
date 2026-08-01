@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Regenerated Postman collection/environment: agnostic placeholders, variable descriptions, example bodies, setup docs; removed private fleet sample (`martina`).
+- Split release orchestration into `scripts/release/`; `scripts/docs/` is docs build/check only.
+- npm scripts `release:artifact`, `release:resolve-npm`, `release:envelope`, and `release:dry-run-report` replace `docs:release-*` (hard cut).
+- Documentation identity derives from `package.json` `version`; commit/digest/`sourceDateEpoch` come from the versioned source manifest.
+- Runtime-control release evidence stays local under `.artifacts/runtime-control/` (gitignored); removed from the docs tree and the repo.
+- npm `files` allowlist for docs (no broad `docs` entry); pack ships `docs/api-client/v*` plus brand/assets/team-manifest templates.
+- Backfilled committed docs artifact to `docs/api-client/v0.15.0`.
+
 ## [0.15.0] - 2026-07-24
 
 ### Added

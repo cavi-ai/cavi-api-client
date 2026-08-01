@@ -180,7 +180,7 @@ jobs:
           TARBALL="$RUNNER_TEMP/cavi-ai-api-client-${VERSION}.tgz"
           METADATA="$RUNNER_TEMP/npm-release-${VERSION}.json"
           ATTEMPT=1
-          until pnpm --silent run docs:resolve-npm-release -- \
+          until pnpm --silent run release:resolve-npm -- \
               --version "$VERSION" \
               --tag "$TAG" \
               --commit "$COMMIT" \
@@ -213,7 +213,7 @@ jobs:
           NPM_TARBALL_SHA256: ${{ steps.npm-release.outputs.tarball_sha256 }}
         run: |
           OUTPUT_DIRECTORY="$RUNNER_TEMP/docs-release-${VERSION}"
-          pnpm run docs:release-artifact -- \
+          pnpm run release:artifact -- \
             --tarball "$NPM_TARBALL" \
             --output "$OUTPUT_DIRECTORY" \
             --source-date-epoch "$RELEASE_EPOCH" \
@@ -243,7 +243,7 @@ jobs:
              .source.repository == $repository and .source.tag == $tag and .source.commit == $commit and
              (.documentation.contentSha256 | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
           ENVELOPE="$RUNNER_TEMP/cavi-oss-release-${VERSION}.json"
-          pnpm --silent run docs:release-envelope -- \
+          pnpm --silent run release:envelope -- \
             --version "$VERSION" \
             --tag "$TAG" \
             --repository "$GITHUB_REPOSITORY" \
@@ -267,7 +267,7 @@ jobs:
           ENVELOPE: ${{ steps.docs-release.outputs.envelope }}
         run: |
           echo "::notice::dry run complete; npm publish, GitHub release upload, and repository dispatch were not invoked"
-          pnpm run docs:release-dry-run-report -- \
+          pnpm run release:dry-run-report -- \
             --artifact "$ARTIFACT" \
             --manifest "$MANIFEST" \
             --envelope "$ENVELOPE"

@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "cavi-api-client-surfaces",
-    "name": "@cavi-ai/api-client — surface contracts",
-    "description": "Generated from SURFACE_CONTRACTS + CAVI_SURFACE_CONTRACTS by scripts/postman/generate.mjs. Do not hand-edit. Set {{baseUrl}} and {{token}}, then run to verify every declared endpoint. `hard` requests fail on 404/5xx; `gap` requests report PROVEN vs unproven without failing.",
+    "name": "@cavi-ai/api-client — gateway surfaces",
+    "description": "# @cavi-ai/api-client — gateway surface verification\n\nGenerated from `SURFACE_CONTRACTS` + `CAVI_SURFACE_CONTRACTS`. **Do not hand-edit** this file.\n\n## Quick start\n\n1. Import `cavi-api-client.postman_collection.json` and `cavi-api-client.postman_environment.json`.\n2. Select the **cavi-api-client — local gateway** environment.\n3. Set `baseUrl` to your gateway origin and `token` to a bearer credential (environment only).\n4. Replace example path params (`example-team`, `example-portal`, …) with ids your backend knows.\n5. Run Collection.\n\n## Variables\n\n| Variable | Where to set | Purpose |\n| --- | --- | --- |\n| `baseUrl` | Environment | Gateway origin |\n| `token` | Environment (secret) | Bearer auth |\n| path params | Environment (override collection defaults) | Agnostic placeholders until you substitute real ids |\n\nCollection variables ship safe example defaults. **Environment values win** in Postman — keep secrets and host-specific ids there, never in the committed collection.\n\n## Degradation\n\n| Kind | Test behavior |\n| --- | --- |\n| `hard` | Fails on 404 or 5xx |\n| `gap` | Never fails; reports PROVEN (2xx) vs unproven |\n\n## Out of scope\n\nClaude / Codex / Gemini HTTP APIs are not included (separate hosts and auth). Use the package provider conformance tests for those.\n\nRegenerate: `pnpm run build && pnpm run postman:generate`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -18,88 +18,105 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080",
-      "type": "string"
+      "value": "http://localhost:18789",
+      "type": "string",
+      "description": "Gateway origin only (scheme + host + port). No trailing slash. Prefer setting this on the environment."
     },
     {
       "key": "token",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Bearer token for the gateway. Leave empty in git; set on the environment (secret)."
     },
     {
       "key": "actionId",
       "value": "action-1",
-      "type": "string"
+      "type": "string",
+      "description": "Pending action id for approval flows."
     },
     {
       "key": "agentId",
-      "value": "analyst",
-      "type": "string"
+      "value": "example-agent",
+      "type": "string",
+      "description": "Agent id within a team."
     },
     {
       "key": "assetId",
       "value": "asset-1",
-      "type": "string"
+      "type": "string",
+      "description": "Media asset id."
     },
     {
       "key": "jobId",
       "value": "job-1",
-      "type": "string"
+      "type": "string",
+      "description": "Async media / generation job id."
     },
     {
       "key": "kind",
       "value": "image",
-      "type": "string"
+      "type": "string",
+      "description": "Media kind query value (for example: image, audio, video)."
     },
     {
       "key": "memberId",
-      "value": "analyst",
-      "type": "string"
+      "value": "example-member",
+      "type": "string",
+      "description": "Team member id."
     },
     {
       "key": "memoryKey",
-      "value": "scratch",
-      "type": "string"
+      "value": "example-key",
+      "type": "string",
+      "description": "Memory entry key for portal-memory surfaces."
     },
     {
       "key": "path",
       "value": "notes/example.md",
-      "type": "string"
+      "type": "string",
+      "description": "Relative wiki / workspace path."
     },
     {
       "key": "portal",
-      "value": "martina",
-      "type": "string"
+      "value": "example-portal",
+      "type": "string",
+      "description": "Portal slug for CAVI portal surfaces. Replace with a portal your gateway serves."
     },
     {
       "key": "taskId",
-      "value": "t_1",
-      "type": "string"
+      "value": "task-1",
+      "type": "string",
+      "description": "Operator / kanban task id."
     },
     {
       "key": "teamId",
-      "value": "research",
-      "type": "string"
+      "value": "example-team",
+      "type": "string",
+      "description": "Team id for gateway team routes."
     },
     {
       "key": "teamSlug",
-      "value": "research",
-      "type": "string"
+      "value": "example-team",
+      "type": "string",
+      "description": "URL slug for a team (often same as teamId)."
     },
     {
       "key": "vaultId",
       "value": "vault-1",
-      "type": "string"
+      "type": "string",
+      "description": "Vault id."
     },
     {
       "key": "workspacePath",
-      "value": "research/complete",
-      "type": "string"
+      "value": "docs/readme.md",
+      "type": "string",
+      "description": "Relative workspace file path (no leading slash)."
     }
   ],
   "item": [
     {
       "name": "extensions/cavi",
+      "description": "CAVI extension surfaces (cost, control adapters).",
       "item": [
         {
           "name": "cavi.costHistory — GET /api/plugins/cavi-control/cost/history",
@@ -124,7 +141,7 @@
                 "history"
               ]
             },
-            "description": "CAVI cost history extension endpoint.\n\nOwner: extensions/cavi\nDegradation: gap"
+            "description": "CAVI cost history extension endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.costHistory` |\n| Owner | `extensions/cavi` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -147,6 +164,7 @@
     },
     {
       "name": "extensions/cavi/discourse",
+      "description": "Task discourse threads for operator control.",
       "item": [
         {
           "name": "cavi.operator.taskDiscourse — GET /cavi-control/api/operator/tasks/{{taskId}}/discourse",
@@ -172,7 +190,7 @@
                 "discourse"
               ]
             },
-            "description": "CAVI Control operator task discourse endpoint.\n\nOwner: extensions/cavi/discourse\nDegradation: gap"
+            "description": "CAVI Control operator task discourse endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.operator.taskDiscourse` |\n| Owner | `extensions/cavi/discourse` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -195,6 +213,7 @@
     },
     {
       "name": "extensions/cavi/library",
+      "description": "Library clip / catalog surfaces.",
       "item": [
         {
           "name": "library.clip — POST /api/plugins/library/clip",
@@ -204,11 +223,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"url\": \"https://example.com/resource\",\n  \"title\": \"Example clip\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -227,7 +250,7 @@
                 "clip"
               ]
             },
-            "description": "CaviClip ingest endpoint (URL/text/manual-file capture into the library intake).\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "CaviClip ingest endpoint (URL/text/manual-file capture into the library intake).\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.clip` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -268,7 +291,7 @@
                 "fleet-status"
               ]
             },
-            "description": "Fleet library status extension endpoint.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "Fleet library status extension endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.fleetStatus` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -309,7 +332,7 @@
                 "inbox"
               ]
             },
-            "description": "Library inbox endpoint.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "Library inbox endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.inbox` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -350,7 +373,7 @@
                 "promotable"
               ]
             },
-            "description": "Promotable library rows.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "Promotable library rows.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.promotable` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -391,7 +414,7 @@
                 "review-requests"
               ]
             },
-            "description": "Library review-request rows.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "Library review-request rows.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.reviewRequests` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -432,7 +455,7 @@
                 "search"
               ]
             },
-            "description": "Library search endpoint.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "Library search endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.search` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -473,7 +496,7 @@
                 "status"
               ]
             },
-            "description": "Library ingest pipeline counters.\n\nOwner: extensions/cavi/library\nDegradation: gap"
+            "description": "Library ingest pipeline counters.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `library.status` |\n| Owner | `extensions/cavi/library` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -496,6 +519,7 @@
     },
     {
       "name": "extensions/cavi/operator-control",
+      "description": "Operator control plane (tasks, memory, registry, status).",
       "item": [
         {
           "name": "cavi.operator.memory — GET /cavi-control/api/operator/memory",
@@ -519,7 +543,7 @@
                 "memory"
               ]
             },
-            "description": "CAVI Control operator memory endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+            "description": "CAVI Control operator memory endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.operator.memory` |\n| Owner | `extensions/cavi/operator-control` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -560,7 +584,7 @@
                 "registry"
               ]
             },
-            "description": "CAVI Control operator registry endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+            "description": "CAVI Control operator registry endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.operator.registry` |\n| Owner | `extensions/cavi/operator-control` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -601,7 +625,7 @@
                 "snapshot"
               ]
             },
-            "description": "CAVI Control operator aggregate snapshot endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+            "description": "CAVI Control operator aggregate snapshot endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.operator.snapshot` |\n| Owner | `extensions/cavi/operator-control` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -642,7 +666,7 @@
                 "status"
               ]
             },
-            "description": "CAVI Control operator status endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+            "description": "CAVI Control operator status endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.operator.status` |\n| Owner | `extensions/cavi/operator-control` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -669,11 +693,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"title\": \"Example task\",\n  \"body\": \"Replace with your task payload.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -692,7 +720,7 @@
                 "tasks"
               ]
             },
-            "description": "CAVI Control operator task create endpoint.\n\nOwner: extensions/cavi/operator-control\nDegradation: gap"
+            "description": "CAVI Control operator task create endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `cavi.operator.tasks` |\n| Owner | `extensions/cavi/operator-control` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -715,6 +743,7 @@
     },
     {
       "name": "extensions/cavi/portal",
+      "description": "Portal config and dashboard surfaces.",
       "item": [
         {
           "name": "portal.config — POST /api/plugins/portal/{{portal}}/config",
@@ -724,11 +753,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"patch\": {}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -748,7 +781,7 @@
                 "config"
               ]
             },
-            "description": "Portal config patch endpoint.\n\nOwner: extensions/cavi/portal\nDegradation: hard"
+            "description": "Portal config patch endpoint.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `portal.config` |\n| Owner | `extensions/cavi/portal` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -789,7 +822,7 @@
                 "dashboard"
               ]
             },
-            "description": "Portal dashboard aggregate.\n\nOwner: extensions/cavi/portal\nDegradation: gap"
+            "description": "Portal dashboard aggregate.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `portal.dashboard` |\n| Owner | `extensions/cavi/portal` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -812,6 +845,7 @@
     },
     {
       "name": "extensions/cavi/portal-memory",
+      "description": "Portal-scoped memory surfaces.",
       "item": [
         {
           "name": "portalMemory.snapshot — GET /api/plugins/portal-memory/teams/{{teamSlug}}/members/{{memberId}}/{{memoryKey}}",
@@ -839,7 +873,7 @@
                 "{{memoryKey}}"
               ]
             },
-            "description": "Portal memory snapshot endpoint.\n\nOwner: extensions/cavi/portal-memory\nDegradation: gap"
+            "description": "Portal memory snapshot endpoint.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `portalMemory.snapshot` |\n| Owner | `extensions/cavi/portal-memory` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -862,6 +896,7 @@
     },
     {
       "name": "gateway/core contract",
+      "description": "Core gateway HTTP surfaces (auth proof, sessions, agents).",
       "item": [
         {
           "name": "gateway.capabilities — GET /v1/capabilities",
@@ -883,7 +918,7 @@
                 "capabilities"
               ]
             },
-            "description": "Authenticated API-server capability proof for saved bearer tokens.\n\nOwner: gateway/core contract\nDegradation: hard"
+            "description": "Authenticated API-server capability proof for saved bearer tokens.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.capabilities` |\n| Owner | `gateway/core contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -920,7 +955,7 @@
                 "health"
               ]
             },
-            "description": "Primary reachability check for the selected gateway API server.\n\nOwner: gateway/core contract\nDegradation: hard"
+            "description": "Primary reachability check for the selected gateway API server.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.health` |\n| Owner | `gateway/core contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -958,7 +993,7 @@
                 "detailed"
               ]
             },
-            "description": "Detailed gateway health check; absence is a compatibility gap when basic health/capabilities pass.\n\nOwner: gateway/core contract\nDegradation: gap"
+            "description": "Detailed gateway health check; absence is a compatibility gap when basic health/capabilities pass.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.healthDetailed` |\n| Owner | `gateway/core contract` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -997,7 +1032,7 @@
                 "ws"
               ]
             },
-            "description": "Dashboard/TUI JSON-RPC websocket path for chat, sessions, logs, and health snapshots.\n\nOwner: gateway/core contract\nDegradation: hard"
+            "description": "Dashboard/TUI JSON-RPC websocket path for chat, sessions, logs, and health snapshots.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.websocket` |\n| Owner | `gateway/core contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1019,6 +1054,7 @@
     },
     {
       "name": "gateway/media contract",
+      "description": "Gateway media generate / asset surfaces.",
       "item": [
         {
           "name": "gateway.mediaAsset — GET /v1/media/assets/{{assetId}}",
@@ -1042,7 +1078,7 @@
                 "{{assetId}}"
               ]
             },
-            "description": "Gateway-native media asset retrieval and metadata route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native media asset retrieval and metadata route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaAsset` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1068,11 +1104,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"prompt\": \"Example generation prompt\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1090,7 +1130,7 @@
                 "assets?kind={{kind}}"
               ]
             },
-            "description": "Gateway-native media asset creation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native media asset creation route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaAssetCreate` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1130,7 +1170,7 @@
                 "{{assetId}}"
               ]
             },
-            "description": "Gateway-native media asset deletion route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native media asset deletion route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaAssetDelete` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1169,7 +1209,7 @@
                 "assets?kind={{kind}}"
               ]
             },
-            "description": "Gateway-native media asset inventory route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native media asset inventory route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaAssets` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1195,11 +1235,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"prompt\": \"Example generation prompt\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1218,7 +1262,7 @@
                 "generate"
               ]
             },
-            "description": "Gateway-native audio generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native audio generation route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaAudioGenerate` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1244,11 +1288,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"prompt\": \"Example generation prompt\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1267,7 +1315,7 @@
                 "generate"
               ]
             },
-            "description": "Gateway-native image generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native image generation route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaImageGenerate` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1308,7 +1356,7 @@
                 "{{jobId}}"
               ]
             },
-            "description": "Gateway-native media job status route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native media job status route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaJob` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1334,11 +1382,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"prompt\": \"Example generation prompt\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1357,7 +1409,7 @@
                 "generate"
               ]
             },
-            "description": "Gateway-native music generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native music generation route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaMusicGenerate` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1396,7 +1448,7 @@
                 "providers"
               ]
             },
-            "description": "Gateway-native media provider inventory shared by audio, image, video, and music generation.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native media provider inventory shared by audio, image, video, and music generation.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaProviders` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1422,11 +1474,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"prompt\": \"Example generation prompt\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1445,7 +1501,7 @@
                 "generate"
               ]
             },
-            "description": "Gateway-native video generation route.\n\nOwner: gateway/media contract\nDegradation: hard"
+            "description": "Gateway-native video generation route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.mediaVideoGenerate` |\n| Owner | `gateway/media contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1467,6 +1523,7 @@
     },
     {
       "name": "gateway/team contract",
+      "description": "Team, member, and workspace surfaces.",
       "item": [
         {
           "name": "team.action — POST /api/teams/{{teamId}}/actions/{{actionId}}",
@@ -1476,11 +1533,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"example\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1500,7 +1561,7 @@
                 "{{actionId}}"
               ]
             },
-            "description": "Agnostic team action route derived from a manifest action contract.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic team action route derived from a manifest action contract.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.action` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1526,11 +1587,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"example\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1552,7 +1617,7 @@
                 "{{actionId}}"
               ]
             },
-            "description": "Agnostic team member action route.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic team member action route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.agent.action` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1594,7 +1659,7 @@
                 "config"
               ]
             },
-            "description": "Agnostic team member config route.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic team member config route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.agent.config` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1637,7 +1702,7 @@
                 "{{workspacePath}}"
               ]
             },
-            "description": "Agnostic whitelisted team-member workspace route.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic whitelisted team-member workspace route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.agent.workspace` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1677,7 +1742,7 @@
                 "config"
               ]
             },
-            "description": "Agnostic team config route derived from the team manifest identity.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic team config route derived from the team manifest identity.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.config` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1717,7 +1782,7 @@
                 "kanban"
               ]
             },
-            "description": "Agnostic team Kanban route derived from the team manifest identity.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic team Kanban route derived from the team manifest identity.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.kanban` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1757,7 +1822,7 @@
                 "runs"
               ]
             },
-            "description": "Agnostic team runs route derived from the team manifest identity.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic team runs route derived from the team manifest identity.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.runs` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1798,7 +1863,7 @@
                 "{{workspacePath}}"
               ]
             },
-            "description": "Agnostic whitelisted team workspace route.\n\nOwner: gateway/team contract\nDegradation: hard"
+            "description": "Agnostic whitelisted team workspace route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `team.workspace` |\n| Owner | `gateway/team contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1820,6 +1885,7 @@
     },
     {
       "name": "gateway/wiki contract",
+      "description": "Wiki read/write surfaces.",
       "item": [
         {
           "name": "gateway.wikiCompile — POST /v1/wiki/vaults/{{vaultId}}/compile",
@@ -1829,11 +1895,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"content\": \"# Example\\n\\nReplace with wiki markdown.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1853,7 +1923,7 @@
                 "compile"
               ]
             },
-            "description": "Gateway-native QMD compile route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+            "description": "Gateway-native QMD compile route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.wikiCompile` |\n| Owner | `gateway/wiki contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1879,11 +1949,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"content\": \"# Example\\n\\nReplace with wiki markdown.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1903,7 +1977,7 @@
                 "ingest"
               ]
             },
-            "description": "Gateway-native wiki ingest route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+            "description": "Gateway-native wiki ingest route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.wikiIngest` |\n| Owner | `gateway/wiki contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1929,11 +2003,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"content\": \"# Example\\n\\nReplace with wiki markdown.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1953,7 +2031,7 @@
                 "promote"
               ]
             },
-            "description": "Gateway-native wiki promotion route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+            "description": "Gateway-native wiki promotion route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.wikiPromote` |\n| Owner | `gateway/wiki contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -1994,7 +2072,7 @@
                 "read?path={{path}}"
               ]
             },
-            "description": "Gateway-native wiki page read route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+            "description": "Gateway-native wiki page read route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.wikiRead` |\n| Owner | `gateway/wiki contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2035,7 +2113,7 @@
                 "tree"
               ]
             },
-            "description": "Gateway-native wiki tree route.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+            "description": "Gateway-native wiki tree route.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.wikiTree` |\n| Owner | `gateway/wiki contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2074,7 +2152,7 @@
                 "vaults"
               ]
             },
-            "description": "Gateway-native wiki vault inventory for external Obsidian/QMD plugin vaults.\n\nOwner: gateway/wiki contract\nDegradation: hard"
+            "description": "Gateway-native wiki vault inventory for external Obsidian/QMD plugin vaults.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `gateway.wikiVaults` |\n| Owner | `gateway/wiki contract` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2096,6 +2174,7 @@
     },
     {
       "name": "providers/hermes",
+      "description": "Hermes-owned gateway plugin surfaces.",
       "item": [
         {
           "name": "hermes.runs — POST /v1/runs",
@@ -2105,11 +2184,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"example\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2126,7 +2209,7 @@
                 "runs"
               ]
             },
-            "description": "Hermes REST/SSE run creation endpoint.\n\nOwner: providers/hermes\nDegradation: hard"
+            "description": "Hermes REST/SSE run creation endpoint.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `hermes.runs` |\n| Owner | `providers/hermes` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2148,6 +2231,7 @@
     },
     {
       "name": "providers/hermes (kanban plugin)",
+      "description": "Hermes kanban plugin surfaces.",
       "item": [
         {
           "name": "kanban.board — GET /api/plugins/kanban/board",
@@ -2171,7 +2255,7 @@
                 "board"
               ]
             },
-            "description": "Unified Kanban board endpoint.\n\nOwner: providers/hermes (kanban plugin)\nDegradation: hard"
+            "description": "Unified Kanban board endpoint.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `kanban.board` |\n| Owner | `providers/hermes (kanban plugin)` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2197,11 +2281,15 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"title\": \"Example task\",\n  \"body\": \"Replace with your task payload.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2220,7 +2308,7 @@
                 "tasks"
               ]
             },
-            "description": "Kanban task creation endpoint for workspace and operator surfaces.\n\nOwner: providers/hermes (kanban plugin)\nDegradation: hard"
+            "description": "Kanban task creation endpoint for workspace and operator surfaces.\n\nThis surface is **hard**: 404/5xx fail the collection run.\n\n| | |\n| --- | --- |\n| Contract key | `kanban.tasks` |\n| Owner | `providers/hermes (kanban plugin)` |\n| Degradation | `hard` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2242,6 +2330,7 @@
     },
     {
       "name": "vault/gateway owner",
+      "description": "Vault surfaces owned by the gateway.",
       "item": [
         {
           "name": "vault.read — GET /api/obsidian/read",
@@ -2264,7 +2353,7 @@
                 "read"
               ]
             },
-            "description": "Obsidian file read; query string appended by caller.\n\nOwner: vault/gateway owner\nDegradation: gap"
+            "description": "Obsidian file read; query string appended by caller.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `vault.read` |\n| Owner | `vault/gateway owner` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {
@@ -2304,7 +2393,7 @@
                 "tree"
               ]
             },
-            "description": "Obsidian vault tree; no native gateway route identified yet.\n\nOwner: vault/gateway owner\nDegradation: gap"
+            "description": "Obsidian vault tree; no native gateway route identified yet.\n\nThis surface is **gap**: missing endpoints are reported as unproven and do not fail the run.\n\n| | |\n| --- | --- |\n| Contract key | `vault.tree` |\n| Owner | `vault/gateway owner` |\n| Degradation | `gap` |\n\nAuth: collection-level Bearer `{{token}}`. Override path params on the **environment** (preferred) or collection variables."
           },
           "event": [
             {

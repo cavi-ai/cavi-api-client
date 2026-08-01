@@ -14,9 +14,9 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createReleaseEnvelope } from "../../scripts/docs/create-release-envelope.mjs";
-import { buildDocumentationReleaseArtifact } from "../../scripts/docs/release-artifact.mjs";
-import * as releaseArtifactModule from "../../scripts/docs/release-artifact.mjs";
+import { createReleaseEnvelope } from "../../scripts/release/create-release-envelope.mjs";
+import { buildDocumentationReleaseArtifact } from "../../scripts/release/release-artifact.mjs";
+import * as releaseArtifactModule from "../../scripts/release/release-artifact.mjs";
 
 const execFileAsync = promisify(execFile);
 const fixture = path.resolve("src/__tests__/fixtures/docs-release/package");
@@ -130,7 +130,7 @@ afterEach(async () => {
 
 describe("buildDocumentationReleaseArtifact", () => {
   it("documents the required release inputs through the package command", async () => {
-    const { stdout } = await execFileAsync("pnpm", ["run", "docs:release-artifact", "--", "--help"]);
+    const { stdout } = await execFileAsync("pnpm", ["run", "release:artifact", "--", "--help"]);
 
     expect(stdout).toContain("--tarball <release.tgz>");
     expect(stdout).toContain("--output <directory>");
@@ -236,7 +236,7 @@ describe("buildDocumentationReleaseArtifact", () => {
     const input = await artifactInput(output);
 
     await expect(execFileAsync(process.execPath, [
-      "scripts/docs/release-artifact.mjs",
+      "scripts/release/release-artifact.mjs",
       "--tarball", input.tarball,
       "--output", output,
       "--source-date-epoch", String(input.sourceDateEpoch),
@@ -260,7 +260,7 @@ describe("buildDocumentationReleaseArtifact", () => {
     const input = await artifactInput(output);
 
     await expect(execFileAsync(process.execPath, [
-      "scripts/docs/release-artifact.mjs",
+      "scripts/release/release-artifact.mjs",
       "--tarball", input.tarball,
       "--source-date-epoch", String(input.sourceDateEpoch),
       "--tag", input.release.tag,

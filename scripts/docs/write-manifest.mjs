@@ -15,11 +15,12 @@
  * Usage: provision the artifact first (`pnpm run docs:stable`), then
  * `pnpm run docs:manifest`.
  */
-import { writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { resolveStableTarball } from "./fetch-stable.mjs";
-import { inspectRelease } from "./inspect-release.mjs";
+import { inspectRelease } from "../release/inspect-release.mjs";
 import { resolveDocumentationRelease } from "./types.mjs";
 
 function parseArguments(argv) {
@@ -59,5 +60,9 @@ if (manifest.version !== release.version) {
 const target = path.resolve(
   release.sourceManifestPath,
 );
-await writeFile(target, `${JSON.stringify(manifest, null, 2)}\n`);
+const previous = existsSync(target) ? JSON.parse(await readFile(target, "utf8")) : {};
+const sourceDateEpoch = Number.isSafeInteger(Number(previous.sourceDateEpoch)) && Number(previous.sourceDateEpoch) > 0
+  ? Number(previous.sourceDateEpoch)
+  : release.sourceDateEpoch;
+await writeFile(target, `${JSON.stringify({ ...manifest, sourceDateEpoch }, null, 2)}\n`);
 process.stdout.write(`${target}\n`);

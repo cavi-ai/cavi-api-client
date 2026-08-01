@@ -24,44 +24,6 @@ describe("runtime-control release candidate evidence", () => {
     expect(parsePackOutput(`lifecycle output\n${payload}`)).toBe("/tmp/cavi-ai-api-client-0.11.0.tgz");
   });
 
-  it("records the deterministic package artifact and pinned upstreams", () => {
-    const manifest = JSON.parse(readFileSync(
-      "docs/release-evidence/runtime-control-release-candidate.json",
-      "utf8",
-    ));
-
-    expect(manifest.schemaVersion).toBe(1);
-    expect(manifest.packageVersion).toBe("0.11.0");
-    expect(manifest.tarball.sha256).toMatch(/^[0-9a-f]{64}$/u);
-    expect(manifest.upstream.openclaw).toMatch(/^[0-9a-f]{40}$/u);
-    expect(manifest.upstream.hermes).toMatch(/^[0-9a-f]{40}$/u);
-    expect(manifest.upstream.codex).toMatch(/^[0-9a-f]{40}$/u);
-    expect(manifest.privateFiles).toEqual([]);
-    expect(manifest.coverage).toMatchObject({
-      command: "pnpm run coverage",
-      status: "passed",
-    });
-    expect(manifest.audit).toMatchObject({
-      command: "pnpm audit --prod --registry=https://registry.npmjs.org/",
-      category: "service-unavailable",
-      exitCode: 1,
-      status: "unavailable",
-    });
-    expect(manifest.audit.summary).toMatch(/HTTP 410/u);
-    expect(manifest.audit.replacement).toMatchObject({
-      command: expect.stringContaining("osv-scanner scan source --offline --offline-vulnerabilities --sbom"),
-      componentCount: expect.any(Number),
-      database: expect.objectContaining({ acquisitionStatus: expect.any(String) }),
-      exitCode: 0,
-      mode: "offline-sbom",
-      scanner: "osv-scanner 2.4.0",
-      status: "passed",
-      vulnerabilities: 0,
-    });
-    expect(manifest.audit.replacement.sbomSha256).toMatch(/^[0-9a-f]{64}$/u);
-    expect(manifest.audit.replacement.observedVersionOutput).toContain("osv-scanner version: 2.4.0");
-  });
-
   it("rejects vulnerability-bearing or malformed replacement audits", () => {
     const clean = { exitCode: 0, status: "passed", vulnerabilities: 0 };
     expect(requireCleanReplacementAudit(clean)).toBe(clean);

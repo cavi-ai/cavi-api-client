@@ -51,21 +51,23 @@ export function assertApprovedDigest(tarball) {
 
 /**
  * Ensure the pinned stable tarball exists in the cache and matches its digest.
- * Re-uses a cached copy when it already verifies; otherwise packs it from the
- * registry. Returns the absolute path.
+ * Re-uses a cached copy when it already verifies; otherwise downloads it from the
+ * public npm registry over HTTPS. Returns the absolute path.
  */
 export function ensureStableTarball() {
   const target = stableTarballPath();
   if (existsSync(target) && sha256(target) === APPROVED_RELEASE_SHA256) return target;
   mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
+  // Public registry HTTPS fetch — no npm CLI / credential helpers.
+  const match = /^@(?<scope>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)\/(?<name>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)$/u.exec(DOCUMENTED_PACKAGE);
+  if (!match?.groups) {
+    throw new Error(`invalid scoped package name: ${DOCUMENTED_PACKAGE}`);
+  }
+  const tarballUrl = `https://registry.npmjs.org/${DOCUMENTED_PACKAGE}/-/${match.groups.name}-${DOCUMENTED_VERSION}.tgz`;
   // stdout stays clean so callers can consume the printed path via `$(...)`.
-  execFileSync(
-    "npm",
-    ["pack", `${DOCUMENTED_PACKAGE}@${DOCUMENTED_VERSION}`, "--pack-destination", STABLE_CACHE_DIRECTORY],
-    { stdio: ["ignore", "ignore", "inherit"] },
-  );
+  execFileSync("curl", ["-fsSL", tarballUrl, "-o", target], { stdio: ["ignore", "ignore", "inherit"] });
   if (!existsSync(target)) {
-    throw new Error(`npm pack did not produce the expected artifact at ${target}`);
+    throw new Error(`curl did not produce the expected artifact at ${target}`);
   }
   return assertApprovedDigest(target);
 }

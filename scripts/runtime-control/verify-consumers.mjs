@@ -18,7 +18,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { isolatedGitEnvironment, verifyConsumerSnapshotBundle } from "./build-consumer-snapshot.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const evidencePath = path.join(packageRoot, "docs/release-evidence/runtime-control-release-candidate.json");
+const evidencePath = path.join(packageRoot, ".artifacts/runtime-control/runtime-control-release-candidate.json");
 const sourceImportPattern = /(?:\.\.\/)+(?:packages\/)?cavi-api-client\/src(?:\/|["'])|cavi-api-client\/\.\.\/src(?:\/|["'])/u;
 
 function digest(file) {

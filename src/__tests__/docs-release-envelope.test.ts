@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createReleaseEnvelope,
   runCreateReleaseEnvelopeCli,
-} from "../../scripts/docs/create-release-envelope.mjs";
+} from "../../scripts/release/create-release-envelope.mjs";
 
 const VERSION = "0.15.0";
 const TAG = `v${VERSION}`;

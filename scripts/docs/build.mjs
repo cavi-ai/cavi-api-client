@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadContracts } from "./contracts.mjs";
-import { inspectRelease } from "./inspect-release.mjs";
+import { inspectRelease } from "../release/inspect-release.mjs";
 import { renderDocumentation } from "./render.mjs";
 import { containedPath } from "./paths.mjs";
 import { DOCUMENTED_SOURCE_DATE_EPOCH, resolveDocumentationRelease } from "./types.mjs";
