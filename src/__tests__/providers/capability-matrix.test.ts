@@ -7,6 +7,7 @@ import {
 describe("runtime provider capability matrix", () => {
   it("contains every shipped provider entry", () => {
     expect(Object.keys(RUNTIME_PROVIDER_CAPABILITY_MATRIX).sort()).toEqual([
+      "agy",
       "claude",
       "claude-managed-agents",
       "codex",
@@ -51,6 +52,7 @@ describe("runtime provider capability matrix", () => {
     };
 
     expect(RUNTIME_PROVIDER_CAPABILITY_MATRIX).toEqual({
+      agy: { runtime: { runs: true, streaming: true }, transports: { http, sse }, controlPlane: {} },
       claude: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
       "claude-managed-agents": { runtime: { runs: true, streaming: true }, transports: { http, sse }, controlPlane: {} },
       codex: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
@@ -87,7 +89,7 @@ describe("runtime provider capability matrix", () => {
     expect(getRuntimeProviderCapabilityRow("codex-responses")).toBe(
       RUNTIME_PROVIDER_CAPABILITY_MATRIX.codex,
     );
-    for (const kind of ["gemini", "claude-managed-agents", "hermes", "openclaw"] as const) {
+    for (const kind of ["agy", "gemini", "claude-managed-agents", "hermes", "openclaw"] as const) {
       expect(getRuntimeProviderCapabilityRow(kind)).toBeDefined();
     }
     expect(getRuntimeProviderCapabilityRow("nope")).toBeUndefined();

@@ -14,6 +14,7 @@ There is no package-wide API key and no default provider.
 | Claude Managed Agents | yes | yes | capability-gated | no |
 | Codex | yes | yes | yes | no |
 | Gemini | yes | yes | yes | no |
+| Antigravity (AGY) | yes | yes | no | no |
 | Hermes | yes | yes | no | yes |
 | OpenClaw | yes | yes | no | yes |
 
@@ -46,6 +47,7 @@ details into reusable workflow code.
 ## Provider references
 
 - [Claude integrations](claude.md)
+- [Antigravity (AGY) integrations](agy.md)
 - [Claude operation reference](../api-client/v0.11.0/operations/providers/claude-anthropic.md)
 - [Claude Managed Agents operation reference](../api-client/v0.11.0/operations/providers/claude-managed-agents.md)
 - [Codex operation reference](../api-client/v0.11.0/operations/providers/codex.md)

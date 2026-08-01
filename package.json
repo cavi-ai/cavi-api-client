@@ -202,6 +202,11 @@
       "import": "./dist/providers/codex/files-entry.js",
       "default": "./dist/providers/codex/files-entry.js"
     },
+    "./providers/agy": {
+      "types": "./dist/providers/agy/index.d.ts",
+      "import": "./dist/providers/agy/index.js",
+      "default": "./dist/providers/agy/index.js"
+    },
     "./providers/gemini": {
       "types": "./dist/providers/gemini/index.d.ts",
       "import": "./dist/providers/gemini/index.js",

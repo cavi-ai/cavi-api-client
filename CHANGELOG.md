@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **First-Class Google Antigravity (AGY) Integration**: Introduced the `agy` provider to support orchestration against Antigravity (`agy`) APIs. Supports `runs` and `streaming` capabilities. Exposed via `./providers/agy`.
+
 ### Changed
 
 - Regenerated Postman collection/environment: agnostic placeholders, variable descriptions, example bodies, setup docs; removed private fleet sample (`martina`).
