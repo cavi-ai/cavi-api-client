@@ -33,15 +33,19 @@ under `scripts/docs/`. Maintainer release evidence is local-only under
 
 ## Documentation model
 
-Repository guides describe how to work with the current checkout. Immutable
-release documentation lives in a versioned directory under `docs/api-client/`
-and is generated from an exact packed artifact. Do not manually reinterpret a
-development declaration as a released contract.
+| Tree | Audience | Role |
+| --- | --- | --- |
+| `docs/api-client/source` → `docs/api-client/v*` | Product docs / docs host | Generated immutable set; site ingest is the GitHub release docs artifact |
+| `docs/guides`, `docs/examples` | Contributors | Checkout-only how-to; not host IA |
+| `docs/postman` | Integrators | Generated gateway surface verification |
+| `docs/maintainers`, `docs/compatibility` | Maintainers | Process / ledgers; not packed for the host |
+| `docs/brand`, `docs/assets` | Packaging / site chrome | Logos and assets |
 
-The current committed artifact is `docs/api-client/v0.15.0`. Its
-`manifest.json` records the package digest and content digest, while
-`navigation.json` defines the published page order. Hosts copying that artifact
-must follow [the consumer contract](../api-client/CONSUMER.md).
+Do not manually reinterpret a development declaration as a released contract.
+Hosts follow [the consumer contract](../api-client/CONSUMER.md) and validate with
+`pnpm run docs:host-ingest-check`.
+
+The current committed artifact is `docs/api-client/v0.15.0`.
 
 ## Guardrails
 

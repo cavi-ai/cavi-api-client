@@ -11,7 +11,6 @@ import {
 } from "../../scripts/docs/types.mjs";
 import {
   DOCUMENTED_RELEASE_MANIFEST_PATH,
-  DOCUMENTED_RELEASE_SPECIFIER,
 } from "./support/documented-release.js";
 
 // Docs-integrity gate. Runs inside `npm test`, so it is part of `verify` and
@@ -81,8 +80,8 @@ describe("docs integrity", () => {
     const consumer = read("docs/api-client/CONSUMER.md");
 
     for (const contract of [
-      `source: ${DOCUMENTED_OUTPUT_DIRECTORY}`,
-      `publicBasePath: /${DOCUMENTED_OUTPUT_DIRECTORY}`,
+      "source: docs/api-client/v{VERSION}",
+      "publicBasePath: /docs/api-client/v{VERSION}",
       "stableAlias: /docs/api-client",
       "entrypoints: manifest.json, navigation.json",
       "identity: manifest.package",
@@ -92,10 +91,12 @@ describe("docs integrity", () => {
       expect(consumer).toContain(contract);
     }
     expect(consumer).toContain("must not edit generated pages");
-    expect(consumer).toContain("fail ingestion on a version or digest mismatch");
-    expect(consumer).toContain(
-      `already-published npm package \`${DOCUMENTED_RELEASE_SPECIFIER}\` does not contain`,
-    );
+    expect(consumer).toContain("Fail ingestion on version or digest mismatch");
+    expect(consumer).toContain("cavi-api-client-docs-v");
+    expect(consumer).toContain("Canonical ingest source");
+    expect(consumer).toContain("GitHub Release asset");
+    expect(consumer).toContain("fail closed");
+    expect(consumer).toContain("docs:host-ingest-check");
 
     expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
     expect(pkg.files).toContain("docs/api-client/v*");

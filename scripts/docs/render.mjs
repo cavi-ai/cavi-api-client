@@ -128,6 +128,22 @@ export function renderDocumentation(input) {
             kind: "asset",
             target: releaseExport.target,
           });
+    // Expand the Type reference section so hosts get a full page list, not an empty shell.
+    if (Array.isArray(navigation.sections)) {
+      for (const section of navigation.sections) {
+        if (!section || typeof section !== "object") continue;
+        const isTypeReference =
+          section.id === "type-reference" ||
+          (typeof section.title === "string" && /^type reference$/iu.test(section.title));
+        if (!isTypeReference) continue;
+        section.pages = navigation.reference
+          .filter((entry) => entry.kind === "declaration" && typeof entry.path === "string")
+          .map((entry) => ({
+            title: entry.subpath === "." ? "Package root (.)" : entry.subpath,
+            path: entry.path,
+          }));
+      }
+    }
   }
   output.set("navigation.json", `${JSON.stringify(navigation, null, 2)}\n`);
 

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- First-class docs host contract: GitHub release docs artifact is canonical ingest; npm tree is a convenience mirror (`CONSUMER.md`, `API.md`, README).
+- Navigation IA: Operations vs Type reference (no empty API reference section); Postman guide in product docs; host ingest checker (`docs:host-ingest-check`).
+
 ### Added
 
 - **First-Class Google Antigravity (AGY) Integration**: Introduced the `agy` provider to support orchestration against Antigravity (`agy`) APIs. Supports `runs` and `streaming` capabilities. Exposed via `./providers/agy`.

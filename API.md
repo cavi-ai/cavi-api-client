@@ -53,24 +53,26 @@ Every documented HTTP path is validated against the owner `paths.ts` files by
 | Runtime concepts, transports, errors | [`concepts/`](docs/api-client/v0.15.0/concepts), [`reference/core-errors.md`](docs/api-client/v0.15.0/reference/core-errors.md) |
 | Exhaustive type declarations (by subpath) | [`reference/`](docs/api-client/v0.15.0/reference) |
 
-## Versioned Documentation Artifact
+## Versioned documentation artifact
 
-The immutable API documentation for package `0.12.0` is generated and shipped at
-[`docs/api-client/v0.15.0`](docs/api-client/v0.15.0). Consumers begin with
-[`manifest.json`](docs/api-client/v0.15.0/manifest.json) for release integrity
-and [`navigation.json`](docs/api-client/v0.15.0/navigation.json) for navigation.
-The copy/install and public-path contract is defined in
-[`docs/api-client/CONSUMER.md`](docs/api-client/CONSUMER.md).
+Immutable product docs for the current package version live at
+[`docs/api-client/v0.15.0`](docs/api-client/v0.15.0) (`manifest.json`,
+`navigation.json`, pages).
 
-This versioned directory describes the packed `0.12.0` declaration surface. It
-is not the documentation for the current repository version. Current guides
-live in [`docs/guides`](docs/guides), and newer release artifacts must be added
-under their own version rather than rewriting this snapshot.
+**Docs site ingest (canonical):** GitHub release asset
+`cavi-api-client-docs-v{VERSION}.tar.gz`. Contract:
+[`docs/api-client/CONSUMER.md`](docs/api-client/CONSUMER.md). Validate with
+`pnpm run docs:host-ingest-check -- --dir docs/api-client/v0.15.0`.
 
-Verify the stable artifact before consumption:
+**npm:** the same versioned tree may ship in the package for offline reading; it
+is not the site ingest authority.
+
+**Contributor guides** (repo checkout): [`docs/guides`](docs/guides),
+[`docs/examples`](docs/examples). Not part of the host navigation IA.
 
 ```sh
 pnpm docs:check
+pnpm run docs:host-ingest-check -- --dir docs/api-client/v0.15.0
 ```
 
 ## Conventions
