@@ -5,79 +5,221 @@
     {
       "title": "Introduction",
       "pages": [
-        { "title": "Overview", "path": "introduction/overview.md" },
-        { "title": "Installation", "path": "introduction/installation.md" },
-        { "title": "Quickstart", "path": "introduction/quickstart.md" }
+        {
+          "title": "Overview",
+          "path": "introduction/overview.md"
+        },
+        {
+          "title": "Installation",
+          "path": "introduction/installation.md"
+        },
+        {
+          "title": "Quickstart",
+          "path": "introduction/quickstart.md"
+        }
       ]
     },
     {
       "title": "Concepts",
       "pages": [
-        { "title": "Runtime client", "path": "concepts/runtime-client.md" },
-        { "title": "Providers and transports", "path": "concepts/providers-and-transports.md" },
-        { "title": "Routing and capabilities", "path": "concepts/routing-and-capabilities.md" },
-        { "title": "Compatibility", "path": "concepts/compatibility.md" }
+        {
+          "title": "Runtime client",
+          "path": "concepts/runtime-client.md"
+        },
+        {
+          "title": "Providers and transports",
+          "path": "concepts/providers-and-transports.md"
+        },
+        {
+          "title": "Routing and capabilities",
+          "path": "concepts/routing-and-capabilities.md"
+        },
+        {
+          "title": "Compatibility",
+          "path": "concepts/compatibility.md"
+        }
       ]
     },
     {
       "title": "Guides",
       "pages": [
-        { "title": "Requests", "path": "guides/requests.md" },
-        { "title": "Streaming", "path": "guides/streaming.md" },
-        { "title": "Files", "path": "guides/files.md" },
-        { "title": "Batching", "path": "guides/batching.md" },
-        { "title": "Manifests", "path": "guides/manifests.md" },
-        { "title": "React", "path": "guides/react.md" },
-        { "title": "Testing", "path": "guides/testing.md" }
+        {
+          "title": "Requests",
+          "path": "guides/requests.md"
+        },
+        {
+          "title": "Streaming",
+          "path": "guides/streaming.md"
+        },
+        {
+          "title": "Files",
+          "path": "guides/files.md"
+        },
+        {
+          "title": "Batching",
+          "path": "guides/batching.md"
+        },
+        {
+          "title": "Manifests",
+          "path": "guides/manifests.md"
+        },
+        {
+          "title": "React",
+          "path": "guides/react.md"
+        },
+        {
+          "title": "Testing",
+          "path": "guides/testing.md"
+        },
+        {
+          "title": "Postman",
+          "path": "guides/postman.md"
+        }
       ]
     },
     {
-      "title": "API Reference",
+      "title": "Operations",
       "pages": [
-        { "title": "Reading an operation", "path": "operations/index.md" },
-        { "title": "Runtime operations", "path": "operations/runtime.md" },
-        { "title": "Claude (Anthropic)", "path": "operations/providers/claude-anthropic.md" },
-        { "title": "Codex (OpenAI)", "path": "operations/providers/codex.md" },
-        { "title": "Gemini (Google)", "path": "operations/providers/gemini.md" },
-        { "title": "Hermes", "path": "operations/providers/hermes.md" },
-        { "title": "OpenClaw", "path": "operations/providers/openclaw.md" },
-        { "title": "Claude Managed Agents (beta)", "path": "operations/providers/claude-managed-agents.md" },
-        { "title": "Gateway · Control plane", "path": "operations/gateway/control-plane.md" },
-        { "title": "Gateway · Media & wiki", "path": "operations/gateway/media-wiki.md" },
-        { "title": "Gateway · Sessions & agent config", "path": "operations/gateway/sessions.md" },
-        { "title": "Gateway · Teams, kanban & vault", "path": "operations/gateway/teams.md" },
-        { "title": "Gateway · WebSocket RPC methods", "path": "operations/gateway/rpc-methods.md" },
-        { "title": "CAVI · Project board", "path": "operations/cavi/project-board.md" },
-        { "title": "CAVI · Discourse", "path": "operations/cavi/discourse.md" },
-        { "title": "CAVI · Operator control", "path": "operations/cavi/operator-control.md" },
-        { "title": "CAVI · Library", "path": "operations/cavi/library.md" },
-        { "title": "CAVI · Registry", "path": "operations/cavi/registry.md" },
-        { "title": "CAVI · Portal", "path": "operations/cavi/portal.md" },
-        { "title": "CAVI · Memory", "path": "operations/cavi/memory.md" },
-        { "title": "Removal candidates", "path": "operations/removal-candidates.md" }
+        {
+          "title": "Reading an operation",
+          "path": "operations/index.md"
+        },
+        {
+          "title": "Runtime operations",
+          "path": "operations/runtime.md"
+        },
+        {
+          "title": "Claude (Anthropic)",
+          "path": "operations/providers/claude-anthropic.md"
+        },
+        {
+          "title": "Codex (OpenAI)",
+          "path": "operations/providers/codex.md"
+        },
+        {
+          "title": "Gemini (Google)",
+          "path": "operations/providers/gemini.md"
+        },
+        {
+          "title": "Hermes",
+          "path": "operations/providers/hermes.md"
+        },
+        {
+          "title": "OpenClaw",
+          "path": "operations/providers/openclaw.md"
+        },
+        {
+          "title": "Claude Managed Agents (beta)",
+          "path": "operations/providers/claude-managed-agents.md"
+        },
+        {
+          "title": "Gateway \u00b7 Control plane",
+          "path": "operations/gateway/control-plane.md"
+        },
+        {
+          "title": "Gateway \u00b7 Media & wiki",
+          "path": "operations/gateway/media-wiki.md"
+        },
+        {
+          "title": "Gateway \u00b7 Sessions & agent config",
+          "path": "operations/gateway/sessions.md"
+        },
+        {
+          "title": "Gateway \u00b7 Teams, kanban & vault",
+          "path": "operations/gateway/teams.md"
+        },
+        {
+          "title": "Gateway \u00b7 WebSocket RPC methods",
+          "path": "operations/gateway/rpc-methods.md"
+        },
+        {
+          "title": "CAVI \u00b7 Project board",
+          "path": "operations/cavi/project-board.md"
+        },
+        {
+          "title": "CAVI \u00b7 Discourse",
+          "path": "operations/cavi/discourse.md"
+        },
+        {
+          "title": "CAVI \u00b7 Operator control",
+          "path": "operations/cavi/operator-control.md"
+        },
+        {
+          "title": "CAVI \u00b7 Library",
+          "path": "operations/cavi/library.md"
+        },
+        {
+          "title": "CAVI \u00b7 Registry",
+          "path": "operations/cavi/registry.md"
+        },
+        {
+          "title": "CAVI \u00b7 Portal",
+          "path": "operations/cavi/portal.md"
+        },
+        {
+          "title": "CAVI \u00b7 Memory",
+          "path": "operations/cavi/memory.md"
+        },
+        {
+          "title": "Removal candidates",
+          "path": "operations/removal-candidates.md"
+        }
       ]
     },
     {
-      "title": "API reference",
-      "path": "reference/index.md"
+      "title": "Type reference",
+      "id": "type-reference",
+      "pages": [
+        {
+          "title": "Package root (.)",
+          "path": "reference/index.md"
+        }
+      ]
     },
     {
       "title": "Contracts",
       "pages": [
-        { "title": "Runtime request", "path": "contracts/runtime-request.md" },
-        { "title": "Runtime response", "path": "contracts/runtime-response.md" },
-        { "title": "Stream event", "path": "contracts/stream-event.md" },
-        { "title": "Runtime error", "path": "contracts/runtime-error.md" },
-        { "title": "Routes", "path": "contracts/routes.md" },
-        { "title": "Capabilities", "path": "contracts/capabilities.md" }
+        {
+          "title": "Runtime request",
+          "path": "contracts/runtime-request.md"
+        },
+        {
+          "title": "Runtime response",
+          "path": "contracts/runtime-response.md"
+        },
+        {
+          "title": "Stream event",
+          "path": "contracts/stream-event.md"
+        },
+        {
+          "title": "Runtime error",
+          "path": "contracts/runtime-error.md"
+        },
+        {
+          "title": "Routes",
+          "path": "contracts/routes.md"
+        },
+        {
+          "title": "Capabilities",
+          "path": "contracts/capabilities.md"
+        }
       ]
     },
     {
       "title": "Release information",
       "pages": [
-        { "title": "Changelog", "path": "release/changelog.md" },
-        { "title": "Migration and version support", "path": "release/migration-and-support.md" },
-        { "title": "MIT license", "path": "release/license.md" }
+        {
+          "title": "Changelog",
+          "path": "release/changelog.md"
+        },
+        {
+          "title": "Migration and version support",
+          "path": "release/migration-and-support.md"
+        },
+        {
+          "title": "MIT license",
+          "path": "release/license.md"
+        }
       ]
     }
   ]

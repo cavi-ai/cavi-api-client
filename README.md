@@ -153,10 +153,12 @@ configuration, and routing do not make one provider the default.
   checks and documentation artifacts.
 - [Changelog](CHANGELOG.md) — released and unreleased changes.
 
-The immutable documentation artifact for the currently committed stable docs is
-under [`docs/api-client/v0.15.0`](docs/api-client/v0.15.0). Its manifest records
-the exact packed declaration surface used to generate it. Repository docs may
-describe later released or unreleased work; the versioned artifact does not.
+Product docs for the committed version live under
+[`docs/api-client/v0.15.0`](docs/api-client/v0.15.0). The **docs site** ingests the
+GitHub release asset `cavi-api-client-docs-vX.Y.Z.tar.gz` ([consumer
+contract](docs/api-client/CONSUMER.md)). The npm package may include the same
+tree for offline reading. Repo guides under [`docs/guides`](docs/guides) are for
+contributors and are not the host navigation IA.
 
 ## Capability-first behavior
 

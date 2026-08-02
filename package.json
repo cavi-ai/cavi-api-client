@@ -276,7 +276,8 @@
     "release:artifact": "node scripts/release/release-artifact.mjs",
     "release:dry-run-report": "node scripts/release/report-release-dry-run.mjs",
     "release:resolve-npm": "node scripts/release/resolve-npm-release.mjs",
-    "release:envelope": "node scripts/release/create-release-envelope.mjs"
+    "release:envelope": "node scripts/release/create-release-envelope.mjs",
+    "docs:host-ingest-check": "node scripts/docs/check-host-ingest.mjs"
   },
   "pnpm": {
     "overrides": {
