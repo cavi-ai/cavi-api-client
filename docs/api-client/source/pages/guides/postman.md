@@ -2,13 +2,12 @@
 documentedVersion: 0.15.0
 ---
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
-
 # Verify gateway surfaces with Postman
 
 Use the generated Postman collection to prove that every **gateway / CAVI surface
 contract** this package declares exists on a live backend.
+
+This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
 
 ## Files
 

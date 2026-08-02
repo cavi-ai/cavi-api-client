@@ -2,9 +2,6 @@
 documentedVersion: 0.15.0
 ---
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
-
 # API client overview
 
 `@cavi-ai/api-client` is a provider-agnostic TypeScript client for AI agent
@@ -15,6 +12,8 @@ RPC, SSE, and optional React bindings.
 This documentation set is the **immutable product docs** for a published package
 version. Upstream runtimes remain the protocol owners; this client mirrors and
 verifies compatible behavior.
+
+This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
 
 ## Start here
 
