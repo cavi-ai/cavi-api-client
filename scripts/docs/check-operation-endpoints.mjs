@@ -12,6 +12,7 @@ const OWNER_PATHS_GLOBS = [
   "src/providers/claude/managed-agents/paths.ts",
   "src/providers/codex/paths.ts",
   "src/providers/gemini/paths.ts",
+  "src/providers/agy/paths.ts",
 ];
 
 /** Extract owner-checkable static path prefixes from a page's `**HTTP**` lines. */

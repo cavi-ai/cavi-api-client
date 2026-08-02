@@ -10,24 +10,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- First-class docs host contract: GitHub release docs artifact is canonical ingest; npm tree is a convenience mirror (`CONSUMER.md`, `API.md`, README).
-- Navigation IA: Operations vs Type reference (no empty API reference section); Postman guide in product docs; host ingest checker (`docs:host-ingest-check`).
+## [0.16.0] - 2026-08-02
 
 ### Added
 
 - **First-Class Google Antigravity (AGY) Integration**: Introduced the `agy` provider to support orchestration against Antigravity (`agy`) APIs. Supports `runs` and `streaming` capabilities. Exposed via `./providers/agy`.
+- Antigravity (AGY) operations page and navigation entry; capability matrix includes AGY.
+- Host ingest checker (`docs:host-ingest-check`) and first-class docs host consumer contract.
 
 ### Changed
 
+- Rewrote `API.md` as an enterprise API index (audience paths, entry points, surface map including AGY, contract ownership, ingest channels).
+- Fixed stale exports guide link to the `v0.16.0` type reference (was `v0.11.0`).
+- Corrected synchronous-provider docs: Claude Messages, Gemini, and AGY `getRun`/`cancelRun` use `SynchronousRunStore` (not `EndpointNotFound` / “unimplemented”).
+- Registered `src/providers/agy/paths.ts` in the operation-endpoint ownership check.
+- README: `GatewayApiClient` / `CapabilityClient` naming (was `GatewayClient`).
+- First-class docs host contract: GitHub release docs artifact is canonical ingest; npm tree is a convenience mirror (`CONSUMER.md`, `API.md`, README).
+- Navigation IA: Operations vs Type reference (no empty API reference section); Postman guide in product docs.
 - Regenerated Postman collection/environment: agnostic placeholders, variable descriptions, example bodies, setup docs; removed private fleet sample (`martina`).
 - Split release orchestration into `scripts/release/`; `scripts/docs/` is docs build/check only.
 - npm scripts `release:artifact`, `release:resolve-npm`, `release:envelope`, and `release:dry-run-report` replace `docs:release-*` (hard cut).
 - Documentation identity derives from `package.json` `version`; commit/digest/`sourceDateEpoch` come from the versioned source manifest.
 - Runtime-control release evidence stays local under `.artifacts/runtime-control/` (gitignored); removed from the docs tree and the repo.
 - npm `files` allowlist for docs (no broad `docs` entry); pack ships `docs/api-client/v*` plus brand/assets/team-manifest templates.
-- Backfilled committed docs artifact to `docs/api-client/v0.15.0`.
+- Committed docs artifact is `docs/api-client/v0.16.0`.
+- `docs:stable` packs the workspace when the registry does not yet have `package.json` version (versioned `docs/api-client/v*` trees are stashed for that pack so regenerating docs does not churn the digest); gzip OS byte is canonicalized to Unix so macOS/Linux digests match; publish uploads that exact verified tarball.
 
 ## [0.15.0] - 2026-07-24
 
@@ -897,7 +904,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.12.0...v0.13.0

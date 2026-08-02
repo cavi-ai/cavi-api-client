@@ -105,7 +105,7 @@ await client.dispose();
 ```
 
 `streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
-Gemini) stream through their own `RuntimeClient`; gateway providers are bridged
+Gemini, AGY) stream through their own `RuntimeClient`; gateway providers are bridged
 over their event transport — Hermes over SSE run events, OpenClaw over
 control-plane WebSocket frames. It resolves a `CapabilityResult<RunStreamOutcome>`
 whose `ok` reflects the streaming *call*, while the payload carries the run's own
@@ -122,8 +122,9 @@ ahead of time, or simply call and branch on `result.ok`.
   `CapabilityClient` whose every accessor exists on every provider.
 - A universal `RuntimeClient` contract for capabilities, runs, streaming, and
   optional batch operations.
-- A `GatewayClient` tier for gateway-owned resources such as teams, kanban,
-  workspace, media, wiki, and operator surfaces.
+- A `GatewayApiClient` tier for gateway-owned resources such as teams, kanban,
+  workspace, media, wiki, and operator surfaces (also reachable via
+  `createApiClient` as a `CapabilityClient`).
 - Provider registries and factories for runtime selection without branching in
   application logic.
 - Typed HTTP, SSE, WebSocket, JSON-RPC, framing, lifecycle, and error
@@ -154,7 +155,7 @@ configuration, and routing do not make one provider the default.
 - [Changelog](CHANGELOG.md) — released and unreleased changes.
 
 Product docs for the committed version live under
-[`docs/api-client/v0.15.0`](docs/api-client/v0.15.0). The **docs site** ingests the
+[`docs/api-client/v0.16.0`](docs/api-client/v0.16.0). The **docs site** ingests the
 GitHub release asset `cavi-api-client-docs-vX.Y.Z.tar.gz` ([consumer
 contract](docs/api-client/CONSUMER.md)). The npm package may include the same
 tree for offline reading. Repo guides under [`docs/guides`](docs/guides) are for

@@ -63,7 +63,7 @@ entries when an application needs only one provider surface.
 | `@cavi-ai/api-client/testing` | Provider and gateway conformance helpers |
 
 `package.json` is the authoritative list of published entry points. The
-[generated type reference](../api-client/v0.11.0/reference/index.md) lists the
+[generated type reference](../api-client/v0.16.0/reference/index.md) lists the
 symbols available from the locked stable documentation artifact.
 
 ## Transport boundaries

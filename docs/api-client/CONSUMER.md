@@ -52,7 +52,7 @@ Run the package helper (from a checkout with the unpacked tree or archive):
 ```bash
 pnpm run docs:host-ingest-check -- --dir path/to/unpacked-docs
 # or
-pnpm run docs:host-ingest-check -- --archive cavi-api-client-docs-v0.15.0.tar.gz
+pnpm run docs:host-ingest-check -- --archive cavi-api-client-docs-v0.16.0.tar.gz
 ```
 
 ## Navigation contract
