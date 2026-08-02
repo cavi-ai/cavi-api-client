@@ -30,6 +30,7 @@ export const PROVIDER_CAPABILITIES = {
   "claude-managed-agents": support("runs", "streaming"),
   codex: support("runs", "streaming", "batch"),
   gemini: support("runs", "streaming", "batch"),
+  agy: support("runs", "streaming"),
 
   // Gateways: full domain + lifecycle + introspection. No async batch surface.
   hermes: support(
