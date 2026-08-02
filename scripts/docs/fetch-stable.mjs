@@ -153,9 +153,16 @@ export function ensureStableTarball() {
   mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
   try {
     fetchRegistryTarball(target);
-  } catch {
+  } catch (error) {
     if (existsSync(target)) rmSync(target);
-    packWorkspaceTarball();
+    try {
+      packWorkspaceTarball();
+    } catch (packError) {
+      throw new Error(
+        `failed to fetch stable tarball from registry and workspace pack fallback failed: ${String(error)}`,
+        { cause: packError },
+      );
+    }
   }
   return assertApprovedDigest(target);
 }

@@ -41,12 +41,8 @@ describe("fetch-stable pack-on-miss helpers", () => {
     expect(APPROVED_RELEASE_SHA256).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it("assertApprovedDigest returns the path when the digest matches", () => {
+  it("includes expected and observed digests in the mismatch error", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "cavi-fetch-stable-ok-"));
-    // Craft bytes whose sha256 equals the pin only if we write the real cached
-    // artifact — instead verify the helper is identity on a matching digest by
-    // hashing known content into a file and temporarily skipping (pin is
-    // release-specific). Confirm the error path embeds both digests.
     const file = path.join(dir, "x.tgz");
     writeFileSync(file, "x");
     const observed = createHash("sha256").update("x").digest("hex");
