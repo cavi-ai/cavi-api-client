@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runtime-control release evidence stays local under `.artifacts/runtime-control/` (gitignored); removed from the docs tree and the repo.
 - npm `files` allowlist for docs (no broad `docs` entry); pack ships `docs/api-client/v*` plus brand/assets/team-manifest templates.
 - Committed docs artifact is `docs/api-client/v0.16.0`.
-- `docs:stable` packs the workspace when the registry does not yet have `package.json` version (versioned `docs/api-client/v*` trees are stashed for that pack so regenerating docs does not churn the digest); publish uploads that exact verified tarball.
+- `docs:stable` packs the workspace when the registry does not yet have `package.json` version (versioned `docs/api-client/v*` trees are stashed for that pack so regenerating docs does not churn the digest); gzip OS byte is canonicalized to Unix so macOS/Linux digests match; publish uploads that exact verified tarball.
 
 ## [0.15.0] - 2026-07-24
 

@@ -19,11 +19,30 @@
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { APPROVED_RELEASE_SHA256, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+
+/**
+ * npm/pnpm pack writes a platform-specific gzip OS byte (macOS often 19, Linux
+ * Unix 3). That alone changes the sha256 while the tar payload is identical.
+ * Canonicalize to Unix (3) so pack-on-miss pins match CI (ubuntu) and publish.
+ */
+export const PACKED_TARBALL_GZIP_OS_UNIX = 3;
+
+/** @param {string} tarball Absolute path to a `.tgz` produced by `pnpm pack`. */
+export function normalizePackedTarballGzipOs(tarball, osByte = PACKED_TARBALL_GZIP_OS_UNIX) {
+  const bytes = Buffer.from(readFileSync(tarball));
+  if (bytes.length < 10 || bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
+    throw new Error(`not a gzip tarball: ${tarball}`);
+  }
+  if (bytes[9] === osByte) return tarball;
+  bytes[9] = osByte;
+  writeFileSync(tarball, bytes);
+  return tarball;
+}
 
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -104,7 +123,7 @@ export function packWorkspaceTarball() {
   if (!existsSync(target)) {
     throw new Error(`pnpm pack did not produce the expected artifact at ${target}`);
   }
-  return target;
+  return normalizePackedTarballGzipOs(target);
 }
 
 function fetchRegistryTarball(target) {

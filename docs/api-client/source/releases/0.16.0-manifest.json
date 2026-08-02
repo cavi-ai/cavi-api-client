@@ -3,7 +3,7 @@
   "version": "0.16.0",
   "tag": "v0.16.0",
   "commit": "cd46164b0acc2b768a134389c79abf967be2ee3c",
-  "sha256": "62b7eeb8b627929996e842e03ccc8316e3fe09d00a7fcbc191cc46a1c1fdef76",
+  "sha256": "f8ca0ce45d7bf563b1212c708668a5fe788967b8b7d5dbdc9e119e9e09d60167",
   "exports": [
     {
       "subpath": ".",
