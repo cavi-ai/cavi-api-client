@@ -12,7 +12,6 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 function parseArgs(argv) {
   const out = {};
@@ -107,8 +106,8 @@ async function validateDocsRoot(docsRoot, expectVersion) {
   for (const section of navigation.sections) {
     const title = section?.title ?? "(missing title)";
     const pages = section?.pages;
-    if (pages !== undefined && (!Array.isArray(pages) || pages.length === 0)) {
-      throw new Error(`navigation section "${title}" has an empty pages array`);
+    if (!Array.isArray(pages) || pages.length === 0) {
+      throw new Error(`navigation section "${title}" must have a non-empty pages array`);
     }
   }
   return { version, packageName: manifest.package, contentSha256: observedContent };
