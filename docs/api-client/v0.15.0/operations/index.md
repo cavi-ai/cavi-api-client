@@ -39,8 +39,14 @@ equivalent is marked deprecated and listed under
 
 | Provider | runs | getRun/cancelRun | streamRun | batch |
 | -------- | ---- | ---------------- | --------- | ----- |
-| Claude (Anthropic) | ✅ | ❌ (stateless) | ✅ | ✅ |
+| Claude (Anthropic) | ✅ | ✅ client-local (sync) | ✅ | ✅ |
 | Codex (OpenAI) | ✅ | ✅ | ✅ | ✅ |
-| Gemini (Google) | ✅ | ❌ `EndpointNotFound` | ✅ | ✅ |
+| Gemini (Google) | ✅ | ✅ client-local (sync) | ✅ | ✅ |
+| Antigravity (AGY) | ✅ | ✅ client-local (sync) | ✅ | ❌ |
 | Hermes (gateway) | ✅ | ✅ | ✅ | ❌ |
 | OpenClaw (gateway) | ✅ | ✅ | ✅ | ❌ |
+
+Synchronous providers (Claude Messages, Gemini, AGY) implement `getRun` /
+`cancelRun` over a client-side `SynchronousRunStore`: they return the remembered
+terminal status from `startRun` / `streamRun` and do not poll an upstream run
+resource. Codex and gateway providers serve real server-side run handles.

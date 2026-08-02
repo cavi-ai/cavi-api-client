@@ -10,12 +10,13 @@ Runtime-only provider over the Gemini Developer API
 (`generativelanguage.googleapis.com`). Auth: `x-goog-api-key`. The model is
 part of the URL path, not the body, and an explicit model is **required** — no
 default ships (`GEMINI_API_VERSION` is `v1beta`). `generateContent` is
-synchronous request/response, so `getRun`/`cancelRun` throw
-`EndpointNotFound`. The batch surface is supported over
+synchronous request/response; `getRun`/`cancelRun` return the client-remembered
+terminal status via `SynchronousRunStore` (they do not throw
+`EndpointNotFound`). The batch surface is supported over
 `batchGenerateContent`.
 
-Capability (`GEMINI_RUNTIME_SUPPORT`): runs ✅ · getRun ❌ · cancelRun ❌ ·
-streamRun ✅ · batch ✅.
+Capability (`GEMINI_RUNTIME_SUPPORT`): runs ✅ · getRun ✅ (client-local) ·
+cancelRun ✅ (client-local) · streamRun ✅ · batch ✅.
 
 > **Path notation.** Gemini route helpers build paths as
 > `/${GEMINI_API_VERSION}/${resource}` — the version prefix is a constant and
@@ -53,11 +54,15 @@ events. See [runtime · streamRun](../runtime.md#streamrun).
 
 ## getRun / cancelRun
 
-**HTTP** `n/a` (throws `EndpointNotFound`)
-**Capability** unsupported
+**Signature** `client.getRun(runId: string): Promise<RuntimeRunStatus>` ·
+`client.cancelRun(runId: string): Promise<{ status: string }>`
+**HTTP** `n/a` (client-local `SynchronousRunStore`)
+**Capability** `supports.runs`
 
-`generateContent` is synchronous, so there is no run handle to poll or cancel;
-both methods throw an `EndpointNotFound`-class error.
+`generateContent` is synchronous — the run is terminal when `startRun` returns.
+`getRun`/`cancelRun` degrade to the remembered terminal result (unknown ids do
+not throw). Field tables per [runtime · getRun](../runtime.md#getrun) /
+[cancelRun](../runtime.md#cancelrun).
 
 ## submitBatch / getBatch / cancelBatch / getBatchResults
 
