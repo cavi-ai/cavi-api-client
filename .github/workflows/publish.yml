@@ -92,9 +92,14 @@ jobs:
             echo "::notice::@cavi-ai/api-client@${PKG_VERSION} is already published — skipping publish (idempotent)."
             exit 0
           fi
+          if [ -z "$CAVI_API_CLIENT_STABLE_TARBALL" ] || [ ! -f "$CAVI_API_CLIENT_STABLE_TARBALL" ]; then
+            echo "::error::CAVI_API_CLIENT_STABLE_TARBALL must point at the verified pack from the provision step"
+            exit 1
+          fi
           npm install -g npm@11
           npm --version
-          npm publish --access public --provenance
+          # Publish the exact verified tarball so registry bytes match the docs pin.
+          npm publish "$CAVI_API_CLIENT_STABLE_TARBALL" --access public --provenance
 
   docs:
     name: Publish npm-derived documentation

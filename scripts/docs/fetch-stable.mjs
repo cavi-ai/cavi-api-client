@@ -13,17 +13,22 @@
  * place that knows how to obtain it, for CI and local runs alike.
  *
  * Resolution order: an explicit env var wins (CI supplies one), otherwise the
- * artifact is fetched into a gitignored cache and digest-verified.
+ * artifact is fetched into a gitignored cache and digest-verified. When the
+ * registry does not yet have the package.json version (release cut before
+ * publish), fall back to `pnpm pack` of the workspace and digest-check that.
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { APPROVED_RELEASE_SHA256, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
 
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
 /** Where fetched artifacts are cached. Gitignored; safe to delete. */
-export const STABLE_CACHE_DIRECTORY = path.resolve(".cache/docs-stable");
+export const STABLE_CACHE_DIRECTORY = path.resolve(PACKAGE_ROOT, ".cache/docs-stable");
 
 /** `npm pack` names the file after the package with scope separators flattened. */
 export function stableTarballName() {
@@ -50,24 +55,88 @@ export function assertApprovedDigest(tarball) {
 }
 
 /**
+ * Temporarily move committed `docs/api-client/v*` trees aside so the pin pack
+ * stays stable while those trees are regenerated from the same declarations.
+ * The docs site ingest uses the GitHub release docs asset, not the npm mirror.
+ */
+function withVersionedDocsStashed(fn) {
+  const docsRoot = path.join(PACKAGE_ROOT, "docs/api-client");
+  const stashRoot = path.join(STABLE_CACHE_DIRECTORY, "stash-versioned-docs");
+  rmSync(stashRoot, { recursive: true, force: true });
+  mkdirSync(stashRoot, { recursive: true });
+  const stashed = [];
+  if (existsSync(docsRoot)) {
+    for (const name of readdirSync(docsRoot)) {
+      if (!/^v\d/u.test(name)) continue;
+      const from = path.join(docsRoot, name);
+      const to = path.join(stashRoot, name);
+      renameSync(from, to);
+      stashed.push([from, to]);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    for (const [from, to] of stashed) {
+      renameSync(to, from);
+    }
+    rmSync(stashRoot, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Pack the workspace into the stable cache path. Used when the registry does
+ * not yet publish DOCUMENTED_VERSION (release-candidate verify / publish).
+ * Versioned docs trees are stashed for the pack so regenerating `docs/api-client/v*`
+ * does not churn the approved digest.
+ * @returns {string} Absolute path to the packed tarball in the cache.
+ */
+export function packWorkspaceTarball() {
+  mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
+  const target = stableTarballPath();
+  if (existsSync(target)) rmSync(target);
+  withVersionedDocsStashed(() => {
+    execFileSync("pnpm", ["pack", "--pack-destination", STABLE_CACHE_DIRECTORY], {
+      cwd: PACKAGE_ROOT,
+      stdio: ["ignore", "ignore", "inherit"],
+    });
+  });
+  if (!existsSync(target)) {
+    throw new Error(`pnpm pack did not produce the expected artifact at ${target}`);
+  }
+  return target;
+}
+
+function fetchRegistryTarball(target) {
+  const match = /^@(?<scope>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)\/(?<name>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)$/u.exec(
+    DOCUMENTED_PACKAGE,
+  );
+  if (!match?.groups) {
+    throw new Error(`invalid scoped package name: ${DOCUMENTED_PACKAGE}`);
+  }
+  const tarballUrl = `https://registry.npmjs.org/${DOCUMENTED_PACKAGE}/-/${match.groups.name}-${DOCUMENTED_VERSION}.tgz`;
+  execFileSync("curl", ["-fsSL", tarballUrl, "-o", target], { stdio: ["ignore", "ignore", "inherit"] });
+  if (!existsSync(target)) {
+    throw new Error(`curl did not produce the expected artifact at ${target}`);
+  }
+  return target;
+}
+
+/**
  * Ensure the pinned stable tarball exists in the cache and matches its digest.
  * Re-uses a cached copy when it already verifies; otherwise downloads it from the
- * public npm registry over HTTPS. Returns the absolute path.
+ * public npm registry over HTTPS. On registry miss, packs the workspace and
+ * digest-checks that artifact. Returns the absolute path.
  */
 export function ensureStableTarball() {
   const target = stableTarballPath();
   if (existsSync(target) && sha256(target) === APPROVED_RELEASE_SHA256) return target;
   mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
-  // Public registry HTTPS fetch — no npm CLI / credential helpers.
-  const match = /^@(?<scope>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)\/(?<name>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)$/u.exec(DOCUMENTED_PACKAGE);
-  if (!match?.groups) {
-    throw new Error(`invalid scoped package name: ${DOCUMENTED_PACKAGE}`);
-  }
-  const tarballUrl = `https://registry.npmjs.org/${DOCUMENTED_PACKAGE}/-/${match.groups.name}-${DOCUMENTED_VERSION}.tgz`;
-  // stdout stays clean so callers can consume the printed path via `$(...)`.
-  execFileSync("curl", ["-fsSL", tarballUrl, "-o", target], { stdio: ["ignore", "ignore", "inherit"] });
-  if (!existsSync(target)) {
-    throw new Error(`curl did not produce the expected artifact at ${target}`);
+  try {
+    fetchRegistryTarball(target);
+  } catch {
+    if (existsSync(target)) rmSync(target);
+    packWorkspaceTarball();
   }
   return assertApprovedDigest(target);
 }

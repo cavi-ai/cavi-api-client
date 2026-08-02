@@ -10,7 +10,7 @@ reference, contract sources, and documentation artifacts. It is not a full
 method catalog. Canonical operation documentation (signatures, HTTP mappings,
 request and response shapes, examples) is published on
 [cavi-ai.xyz/docs/api-client](https://cavi-ai.xyz/docs/api-client) and committed
-under [`docs/api-client/v0.15.0`](docs/api-client/v0.15.0).
+under [`docs/api-client/v0.16.0`](docs/api-client/v0.16.0).
 
 Upstream runtimes (OpenClaw, gateway servers, Anthropic, OpenAI, Google, and
 others) remain the owners of their protocols. This package mirrors and verifies
@@ -20,7 +20,7 @@ compatible client behavior for consumers.
 
 | Audience | Primary path |
 | -------- | ------------ |
-| Application integrators | [Online documentation](https://cavi-ai.xyz/docs/api-client) → [operation index](docs/api-client/v0.15.0/operations/index.md) |
+| Application integrators | [Online documentation](https://cavi-ai.xyz/docs/api-client) → [operation index](docs/api-client/v0.16.0/operations/index.md) |
 | Library consumers (npm / checkout) | [Exports and import paths](docs/guides/exports.md), [Providers and setup](docs/guides/providers.md) |
 | Docs site hosts | [Consumer contract](docs/api-client/CONSUMER.md) |
 | Contributors / maintainers | [Development guide](docs/guides/development.md), [Architecture](ARCHITECTURE.md) |
@@ -54,9 +54,9 @@ operation maps to. Generated type declarations live under `reference/`.
 | Resource | Location |
 | -------- | -------- |
 | Source pages (editable) | [`docs/api-client/source/pages/operations`](docs/api-client/source/pages/operations) |
-| Built artifact (immutable) | [`docs/api-client/v0.15.0/operations`](docs/api-client/v0.15.0/operations) |
-| Start here | [`operations/index.md`](docs/api-client/v0.15.0/operations/index.md) |
-| Symbol / type reference | [`reference/`](docs/api-client/v0.15.0/reference) |
+| Built artifact (immutable) | [`docs/api-client/v0.16.0/operations`](docs/api-client/v0.16.0/operations) |
+| Start here | [`operations/index.md`](docs/api-client/v0.16.0/operations/index.md) |
+| Symbol / type reference | [`reference/`](docs/api-client/v0.16.0/reference) |
 | Postman (gateway surface) | [`docs/postman/cavi-api-client.postman_collection.json`](docs/postman/cavi-api-client.postman_collection.json) |
 
 Every documented HTTP path is validated against owning `paths.ts` files by
@@ -66,21 +66,21 @@ Every documented HTTP path is validated against owning `paths.ts` files by
 
 | Surface | Operation reference |
 | ------- | ------------------- |
-| Universal runtime (runs, streaming, batch) | [`operations/runtime.md`](docs/api-client/v0.15.0/operations/runtime.md) |
-| Claude (Anthropic Messages) | [`operations/providers/claude-anthropic.md`](docs/api-client/v0.15.0/operations/providers/claude-anthropic.md) |
-| Claude Managed Agents (beta) | [`operations/providers/claude-managed-agents.md`](docs/api-client/v0.15.0/operations/providers/claude-managed-agents.md) |
-| Codex (OpenAI Responses) | [`operations/providers/codex.md`](docs/api-client/v0.15.0/operations/providers/codex.md) |
-| Gemini (Google Developer API) | [`operations/providers/gemini.md`](docs/api-client/v0.15.0/operations/providers/gemini.md) |
-| Antigravity / AGY | [`operations/providers/agy.md`](docs/api-client/v0.15.0/operations/providers/agy.md) |
-| Hermes (gateway) | [`operations/providers/hermes.md`](docs/api-client/v0.15.0/operations/providers/hermes.md) |
-| OpenClaw (gateway) | [`operations/providers/openclaw.md`](docs/api-client/v0.15.0/operations/providers/openclaw.md) |
-| Gateway control-plane facade | [`operations/gateway/control-plane.md`](docs/api-client/v0.15.0/operations/gateway/control-plane.md) |
-| Gateway media and wiki | [`operations/gateway/media-wiki.md`](docs/api-client/v0.15.0/operations/gateway/media-wiki.md) |
-| Gateway sessions and agent config | [`operations/gateway/sessions.md`](docs/api-client/v0.15.0/operations/gateway/sessions.md) |
-| Gateway teams, kanban, and vault | [`operations/gateway/teams.md`](docs/api-client/v0.15.0/operations/gateway/teams.md) |
-| Gateway WebSocket RPC methods | [`operations/gateway/rpc-methods.md`](docs/api-client/v0.15.0/operations/gateway/rpc-methods.md) |
-| CAVI extension surfaces | [`operations/cavi/`](docs/api-client/v0.15.0/operations/cavi) |
-| Concepts, transports, errors | [`concepts/`](docs/api-client/v0.15.0/concepts), [`reference/core-errors.md`](docs/api-client/v0.15.0/reference/core-errors.md) |
+| Universal runtime (runs, streaming, batch) | [`operations/runtime.md`](docs/api-client/v0.16.0/operations/runtime.md) |
+| Claude (Anthropic Messages) | [`operations/providers/claude-anthropic.md`](docs/api-client/v0.16.0/operations/providers/claude-anthropic.md) |
+| Claude Managed Agents (beta) | [`operations/providers/claude-managed-agents.md`](docs/api-client/v0.16.0/operations/providers/claude-managed-agents.md) |
+| Codex (OpenAI Responses) | [`operations/providers/codex.md`](docs/api-client/v0.16.0/operations/providers/codex.md) |
+| Gemini (Google Developer API) | [`operations/providers/gemini.md`](docs/api-client/v0.16.0/operations/providers/gemini.md) |
+| Antigravity / AGY | [`operations/providers/agy.md`](docs/api-client/v0.16.0/operations/providers/agy.md) |
+| Hermes (gateway) | [`operations/providers/hermes.md`](docs/api-client/v0.16.0/operations/providers/hermes.md) |
+| OpenClaw (gateway) | [`operations/providers/openclaw.md`](docs/api-client/v0.16.0/operations/providers/openclaw.md) |
+| Gateway control-plane facade | [`operations/gateway/control-plane.md`](docs/api-client/v0.16.0/operations/gateway/control-plane.md) |
+| Gateway media and wiki | [`operations/gateway/media-wiki.md`](docs/api-client/v0.16.0/operations/gateway/media-wiki.md) |
+| Gateway sessions and agent config | [`operations/gateway/sessions.md`](docs/api-client/v0.16.0/operations/gateway/sessions.md) |
+| Gateway teams, kanban, and vault | [`operations/gateway/teams.md`](docs/api-client/v0.16.0/operations/gateway/teams.md) |
+| Gateway WebSocket RPC methods | [`operations/gateway/rpc-methods.md`](docs/api-client/v0.16.0/operations/gateway/rpc-methods.md) |
+| CAVI extension surfaces | [`operations/cavi/`](docs/api-client/v0.16.0/operations/cavi) |
+| Concepts, transports, errors | [`concepts/`](docs/api-client/v0.16.0/concepts), [`reference/core-errors.md`](docs/api-client/v0.16.0/reference/core-errors.md) |
 
 ## Contract ownership
 
@@ -105,7 +105,7 @@ clients, React adapters, or mobile-specific code.
 
 Immutable product docs for the current package version:
 
-[`docs/api-client/v0.15.0`](docs/api-client/v0.15.0)
+[`docs/api-client/v0.16.0`](docs/api-client/v0.16.0)
 (`manifest.json`, `navigation.json`, pages).
 
 | Channel | Authority |
@@ -118,7 +118,7 @@ Validate a tree or release archive:
 
 ```sh
 pnpm docs:check
-pnpm run docs:host-ingest-check -- --dir docs/api-client/v0.15.0
+pnpm run docs:host-ingest-check -- --dir docs/api-client/v0.16.0
 ```
 
 ## Conventions

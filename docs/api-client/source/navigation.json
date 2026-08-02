@@ -1,6 +1,6 @@
 {
   "title": "@cavi-ai/api-client",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "sections": [
     {
       "title": "Introduction",
@@ -117,51 +117,51 @@
           "path": "operations/providers/claude-managed-agents.md"
         },
         {
-          "title": "Gateway \u00b7 Control plane",
+          "title": "Gateway · Control plane",
           "path": "operations/gateway/control-plane.md"
         },
         {
-          "title": "Gateway \u00b7 Media & wiki",
+          "title": "Gateway · Media & wiki",
           "path": "operations/gateway/media-wiki.md"
         },
         {
-          "title": "Gateway \u00b7 Sessions & agent config",
+          "title": "Gateway · Sessions & agent config",
           "path": "operations/gateway/sessions.md"
         },
         {
-          "title": "Gateway \u00b7 Teams, kanban & vault",
+          "title": "Gateway · Teams, kanban & vault",
           "path": "operations/gateway/teams.md"
         },
         {
-          "title": "Gateway \u00b7 WebSocket RPC methods",
+          "title": "Gateway · WebSocket RPC methods",
           "path": "operations/gateway/rpc-methods.md"
         },
         {
-          "title": "CAVI \u00b7 Project board",
+          "title": "CAVI · Project board",
           "path": "operations/cavi/project-board.md"
         },
         {
-          "title": "CAVI \u00b7 Discourse",
+          "title": "CAVI · Discourse",
           "path": "operations/cavi/discourse.md"
         },
         {
-          "title": "CAVI \u00b7 Operator control",
+          "title": "CAVI · Operator control",
           "path": "operations/cavi/operator-control.md"
         },
         {
-          "title": "CAVI \u00b7 Library",
+          "title": "CAVI · Library",
           "path": "operations/cavi/library.md"
         },
         {
-          "title": "CAVI \u00b7 Registry",
+          "title": "CAVI · Registry",
           "path": "operations/cavi/registry.md"
         },
         {
-          "title": "CAVI \u00b7 Portal",
+          "title": "CAVI · Portal",
           "path": "operations/cavi/portal.md"
         },
         {
-          "title": "CAVI \u00b7 Memory",
+          "title": "CAVI · Memory",
           "path": "operations/cavi/memory.md"
         },
         {
