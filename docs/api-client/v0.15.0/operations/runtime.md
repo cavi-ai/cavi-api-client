@@ -78,9 +78,11 @@ console.log(run.status, run.output);
 **HTTP** `GET /v1/responses/:id` (Codex) · gateway RPC (Hermes/OpenClaw)
 **Capability** `supports.runs` + stateful provider
 
-Optional. Stateless providers (Claude Messages) omit it; Gemini exposes it but
-throws `EndpointNotFound` (synchronous API). Returns the same `RuntimeRunStatus`
-shape as `startRun`.
+Optional on the type, but implemented by every shipping provider. Synchronous
+providers (Claude Messages, Gemini, AGY) serve `getRun` from a client-side
+`SynchronousRunStore` (remembered terminal status; unknown ids degrade without
+throwing). Codex and gateway providers poll real upstream run handles. Returns
+the same `RuntimeRunStatus` shape as `startRun`.
 
 ### Example
 

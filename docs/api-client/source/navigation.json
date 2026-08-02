@@ -101,6 +101,10 @@
           "path": "operations/providers/gemini.md"
         },
         {
+          "title": "Antigravity (AGY)",
+          "path": "operations/providers/agy.md"
+        },
+        {
           "title": "Hermes",
           "path": "operations/providers/hermes.md"
         },

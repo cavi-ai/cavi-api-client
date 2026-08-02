@@ -105,7 +105,7 @@ await client.dispose();
 ```
 
 `streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
-Gemini) stream through their own `RuntimeClient`; gateway providers are bridged
+Gemini, AGY) stream through their own `RuntimeClient`; gateway providers are bridged
 over their event transport — Hermes over SSE run events, OpenClaw over
 control-plane WebSocket frames. It resolves a `CapabilityResult<RunStreamOutcome>`
 whose `ok` reflects the streaming *call*, while the payload carries the run's own
@@ -122,8 +122,9 @@ ahead of time, or simply call and branch on `result.ok`.
   `CapabilityClient` whose every accessor exists on every provider.
 - A universal `RuntimeClient` contract for capabilities, runs, streaming, and
   optional batch operations.
-- A `GatewayClient` tier for gateway-owned resources such as teams, kanban,
-  workspace, media, wiki, and operator surfaces.
+- A `GatewayApiClient` tier for gateway-owned resources such as teams, kanban,
+  workspace, media, wiki, and operator surfaces (also reachable via
+  `createApiClient` as a `CapabilityClient`).
 - Provider registries and factories for runtime selection without branching in
   application logic.
 - Typed HTTP, SSE, WebSocket, JSON-RPC, framing, lifecycle, and error

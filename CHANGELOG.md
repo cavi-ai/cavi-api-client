@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Rewrote `API.md` as an enterprise API index (audience paths, entry points, surface map including AGY, contract ownership, ingest channels).
+- Fixed stale exports guide link to the `v0.15.0` type reference (was `v0.11.0`).
+- Corrected synchronous-provider docs: Claude Messages, Gemini, and AGY `getRun`/`cancelRun` use `SynchronousRunStore` (not `EndpointNotFound` / “unimplemented”).
+- Added Antigravity (AGY) operations page and navigation entry; capability matrix includes AGY.
+- Registered `src/providers/agy/paths.ts` in the operation-endpoint ownership check.
+- README: `GatewayApiClient` / `CapabilityClient` naming (was `GatewayClient`).
 - First-class docs host contract: GitHub release docs artifact is canonical ingest; npm tree is a convenience mirror (`CONSUMER.md`, `API.md`, README).
 - Navigation IA: Operations vs Type reference (no empty API reference section); Postman guide in product docs; host ingest checker (`docs:host-ingest-check`).
 

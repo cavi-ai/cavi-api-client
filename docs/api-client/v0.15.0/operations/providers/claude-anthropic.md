@@ -7,11 +7,12 @@ documentedVersion: 0.15.0
 This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
 
 Runtime-only provider over the Anthropic Messages API. Auth: `x-api-key` +
-`anthropic-version`. Stateless — `getRun`/`cancelRun` are not implemented.
-Supports the batch surface over Anthropic Message Batches.
+`anthropic-version`. Messages runs are synchronous; `getRun`/`cancelRun` return
+the client-remembered terminal status via `SynchronousRunStore`. Supports the
+batch surface over Anthropic Message Batches.
 
-Capability (`CLAUDE_RUNTIME_SUPPORT`): runs ✅ · getRun ❌ · cancelRun ❌ ·
-streamRun ✅ · batch ✅.
+Capability (`CLAUDE_RUNTIME_SUPPORT`): runs ✅ · getRun ✅ (client-local) ·
+cancelRun ✅ (client-local) · streamRun ✅ · batch ✅.
 
 ## startRun
 
@@ -30,6 +31,18 @@ import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude
 // … construct the runtime client, then:
 const run = await client.startRun({ input: "Hi", model: "claude-opus-4-8" });
 ```
+
+## getRun / cancelRun
+
+**Signature** `client.getRun(runId: string): Promise<RuntimeRunStatus>` ·
+`client.cancelRun(runId: string): Promise<{ status: string }>`
+**HTTP** `n/a` (client-local `SynchronousRunStore`)
+**Capability** `supports.runs`
+
+Messages is synchronous — the run is terminal when `startRun` returns.
+`getRun`/`cancelRun` degrade to the remembered terminal result. Field tables per
+[runtime · getRun](../runtime.md#getrun) /
+[cancelRun](../runtime.md#cancelrun).
 
 ## submitBatch / getBatch / cancelBatch / getBatchResults
 
