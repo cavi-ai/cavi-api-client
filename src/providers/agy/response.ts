@@ -21,14 +21,12 @@ export function mapAgyResponseToRunStatus(
   fallbackRunId: string,
 ): RuntimeRunStatus {
   const runId = response.run_id || fallbackRunId;
-  const status = response.status === "failed" ? "failed" : "completed";
-  
-  // Format AGY output into standard universal message format
-  const outputText = response.result?.output ?? "Antigravity task executed successfully.";
+  const status = (response.status as RuntimeRunStatus["status"]) || "in_progress";
   
   return {
     run_id: runId,
     status,
-    output: outputText,
+    output: response.result?.output,
+    model: agentId,
   };
 }

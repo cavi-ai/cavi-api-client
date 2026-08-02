@@ -11,18 +11,21 @@ import {
   createRuntimeClient,
   createRuntimeProviderRegistry,
 } from "@cavi-ai/api-client";
-import { AGY_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/agy";
+import { createAgyProviderModule } from "@cavi-ai/api-client/providers/agy";
 
 const registry = createRuntimeProviderRegistry({
-  modules: [AGY_PROVIDER_MODULE],
+  modules: [
+    createAgyProviderModule({
+      apiKey: process.env.AGY_API_KEY,
+    })
+  ],
 });
 
 // Create the unified client configured for Antigravity
 const client = createRuntimeClient("agy", {
   registry,
   clientOptions: {
-    baseUrl: "http://localhost:8000",
-    apiKey: process.env.AGY_API_KEY,
+    baseUrl: "https://api.antigravity.google",
   },
 });
 ```

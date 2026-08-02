@@ -11,9 +11,11 @@ import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
 } from "../../core/runtime/run-stream.js";
+import { consumeSseStream } from "../../core/sse/index.js";
+import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { buildAgyRequestBody } from "./request.js";
 import { mapAgyResponseToRunStatus, type AgyGenerateResponse } from "./response.js";
-import { AGY_API_BASE_URL, agyRunPath, agyStreamPath } from "./paths.js";
+import { agyRunPath, agyStreamPath } from "./paths.js";
 
 export type AgyApiClientOptions = {
   /** Antigravity Orchestration API key. */
@@ -34,8 +36,11 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
   private readonly runStore = new SynchronousRunStore();
 
   constructor(options: AgyApiClientOptions) {
+    if (!options.baseUrl || !options.baseUrl.trim()) {
+      throw new ApiClientError("agy: baseUrl is required", { code: ApiClientErrorCode.InvalidConfig });
+    }
     super("agy", {
-      baseUrl: options.baseUrl?.trim() || AGY_API_BASE_URL,
+      baseUrl: options.baseUrl.trim(),
       includePortalClientIdHeader: false,
       ...(options.apiKey ? { auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-agy-api-key" }) } } : {}),
       fetchImpl: options.fetchImpl,
@@ -48,7 +53,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
   async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
     return {
       providerKind: "agy",
-      auth: { type: "api-key", required: false },
+      auth: { type: "api-key", required: true },
       supports: AGY_RUNTIME_SUPPORT,
     };
   }
@@ -59,17 +64,9 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       return buildDryRunStatus(agentId);
     }
     
-    // In a fully wired implementation, this would POST to agyRunPath()
-    // const response = await this.request<AgyGenerateResponse>(agyRunPath(), { method: "POST", body: payload });
+    const response = await this.request<AgyGenerateResponse>(agyRunPath(), { method: "POST", body: payload });
     
     const runId = newAgyRunId();
-    // Simulate a response for now
-    const response: AgyGenerateResponse = {
-      run_id: runId,
-      status: "completed",
-      result: { output: "Antigravity orchestration executed successfully." }
-    };
-    
     const status = mapAgyResponseToRunStatus(agentId, response, runId);
     this.runStore.remember(status);
     return status;
@@ -87,16 +84,55 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       return;
     }
     
-    // In a fully wired implementation, this would consume an SSE stream from agyStreamPath()
-    
+    const controller = new AbortController();
+    if (options.signal) {
+      if (options.signal.aborted) controller.abort();
+      else options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+
     const runId = newAgyRunId();
-    handlers.onEvent({
-      event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
-      runId,
-      delta: "Antigravity orchestration streaming...",
-    });
-    handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId });
-    handlers.onComplete?.();
+    
+    try {
+      const response = await this.requestRaw(agyStreamPath(), {
+        method: "POST",
+        body: payload,
+        signal: controller.signal,
+      });
+      
+      if (!response.body) {
+        throw new ApiClientError("agy: streaming response had no body", {
+          code: ApiClientErrorCode.RequestFailed,
+        });
+      }
+
+      let completed = false;
+      await consumeSseStream(response.body, controller.signal, (sse) => {
+        if (completed) return;
+        try {
+          const parsed = JSON.parse(sse.data) as AgyGenerateResponse;
+          if (parsed.result?.output) {
+            handlers.onEvent({
+              event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+              runId: parsed.run_id || runId,
+              delta: parsed.result.output,
+            });
+          }
+          if (parsed.status === "completed" || parsed.status === "failed") {
+            completed = true;
+            const status = mapAgyResponseToRunStatus(agentId, parsed, runId);
+            this.runStore.remember(status);
+            handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: status.run_id });
+          }
+        } catch (e) {
+          // ignore malformed chunks
+        }
+      });
+      if (!completed) handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId });
+      handlers.onComplete?.();
+    } catch (error) {
+      if (handlers.onError) handlers.onError(error instanceof Error ? error : new Error(String(error)));
+      else throw error;
+    }
   }
 
   async getRun(runId: string): Promise<RuntimeRunStatus> {
