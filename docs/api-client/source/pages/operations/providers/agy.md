@@ -1,5 +1,5 @@
 ---
-documentedVersion: 0.16.0
+documentedVersion: {{documentedVersion}}
 ---
 
 # Antigravity (AGY) operations

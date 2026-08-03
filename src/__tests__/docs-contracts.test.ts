@@ -177,7 +177,7 @@ describe("loadContracts", () => {
     [
       "version",
       UNDOCUMENTED_VERSION,
-      new RegExp(`version to equal ${escapeForRegExp(DOCUMENTED_VERSION)}`, "u"),
+      /contains hard-coded semantic version/u,
     ],
     ["stability", "experimental", /stability to equal stable/u],
     ["summary", "   ", /summary to be a non-empty string/u],

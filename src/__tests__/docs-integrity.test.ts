@@ -107,9 +107,11 @@ describe("docs integrity", () => {
 
     expect(developmentGuide).toContain("pnpm run verify");
     expect(developmentGuide).toContain("CAVI_API_CLIENT_STABLE_TARBALL");
-    expect(readme).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
+    expect(readme).toContain("docs/api-client/v<package.json version>");
+    expect(readme).not.toContain(DOCUMENTED_OUTPUT_DIRECTORY);
     expect(api).toContain("pnpm docs:check");
-    expect(api).toContain(DOCUMENTED_OUTPUT_DIRECTORY);
+    expect(api).toContain("docs/api-client/v<package.json version>");
+    expect(api).not.toContain(DOCUMENTED_OUTPUT_DIRECTORY);
     expect(changelog).toContain("versioned documentation consumer contract");
   });
 

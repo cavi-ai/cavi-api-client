@@ -1,6 +1,6 @@
 {
   "title": "@cavi-ai/api-client",
-  "version": "0.16.0",
+  "version": "{{documentedVersion}}",
   "sections": [
     {
       "title": "Introduction",

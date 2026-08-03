@@ -11,6 +11,7 @@ import {
   DOCUMENTED_TAG,
   DOCUMENTED_VERSION,
 } from "../../../scripts/docs/types.mjs";
+import { resolveDocumentedVersionToken } from "../../../scripts/docs/version-tokens.mjs";
 
 /**
  * Documentation identity: package.json version is canonical. Commit digest and
@@ -79,10 +80,12 @@ describe("documentation release pins", () => {
     expect(manifest.sha256).toBe(APPROVED_RELEASE_SHA256);
   });
 
-  it("stamps the documentation source with the documented version", () => {
-    const navigation = JSON.parse(
+  it("resolves the navigation source from the canonical version", () => {
+    const navigation = JSON.parse(resolveDocumentedVersionToken(
       readFileSync(path.resolve("docs/api-client/source/navigation.json"), "utf8"),
-    ) as { version: string };
+      DOCUMENTED_VERSION,
+      "navigation source",
+    )) as { version: string };
     expect(navigation.version).toBe(DOCUMENTED_VERSION);
   });
 });

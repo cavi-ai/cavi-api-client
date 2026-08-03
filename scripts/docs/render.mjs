@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { normalizedRelativePath, safeSlug } from "./paths.mjs";
+import { resolveDocumentedVersionToken } from "./version-tokens.mjs";
 
 function readContainedFile(root, relativePath, label) {
   normalizedRelativePath(relativePath, label);
@@ -162,7 +163,14 @@ export function renderDocumentation(input) {
   for (const pagePath of navigationPaths(input.navigation)) {
     normalizedRelativePath(pagePath, "navigation path");
     if (!pagePath.startsWith("reference/") && !pagePath.startsWith("contracts/")) {
-      output.set(pagePath, readContainedFile(path.join(input.curatedRoot, "pages"), pagePath, "curated page path"));
+      output.set(
+        pagePath,
+        resolveDocumentedVersionToken(
+          readContainedFile(path.join(input.curatedRoot, "pages"), pagePath, "curated page path"),
+          input.manifest.version,
+          `curated page ${pagePath}`,
+        ),
+      );
     }
   }
 

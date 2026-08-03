@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { CAPABILITY_STATES, resolveDocumentationRelease } from "./types.mjs";
 import { normalizedRelativePath, safeSlug } from "./paths.mjs";
+import { resolveDocumentedVersionToken } from "./version-tokens.mjs";
 
 const CONTRACTS_DIRECTORY = "docs/api-client/source/contracts";
 const REQUIRED_KEYS = ["id", "title", "version", "stability", "sourceOfTruth", "symbols", "capability", "evidence", "summary", "purpose", "lifecycle", "fieldConstraints", "behavior", "dependencies", "examples", "compatibilityNotes"];
@@ -60,9 +61,26 @@ export async function loadContracts(root, manifest, release = resolveDocumentati
 
   for (const filename of filenames) {
     const fallbackId = path.basename(filename, ".json");
+    let source;
+    try {
+      source = await readFile(path.join(directory, filename), "utf8");
+    } catch (error) {
+      diagnostics.push({ contractId: fallbackId, requirement: "a readable JSON source", observed: error instanceof Error ? error.message : String(error), action: "restore the contract source file" });
+      continue;
+    }
+    try {
+      source = resolveDocumentedVersionToken(
+        source,
+        release.version,
+        `contract source ${filename}`,
+      );
+    } catch (error) {
+      diagnostics.push({ contractId: fallbackId, requirement: "canonical documentation version tokens", observed: error instanceof Error ? error.message : String(error), action: "replace release versions with {{documentedVersion}}" });
+      continue;
+    }
     let candidate;
     try {
-      candidate = JSON.parse(await readFile(path.join(directory, filename), "utf8"));
+      candidate = JSON.parse(source);
     } catch (error) {
       diagnostics.push({ contractId: fallbackId, requirement: "valid JSON", observed: error instanceof Error ? error.message : String(error), action: "correct the JSON record" });
       continue;
