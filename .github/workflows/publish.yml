@@ -189,6 +189,7 @@ jobs:
               --version "$VERSION" \
               --tag "$TAG" \
               --commit "$COMMIT" \
+              --repository "$GITHUB_REPOSITORY" \
               --output "$TARBALL" > "$METADATA"; do
             if [ "$ATTEMPT" -ge 5 ]; then
               echo "::error::exact npm artifact was not available after ${ATTEMPT} attempts"

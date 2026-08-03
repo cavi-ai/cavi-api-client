@@ -11,6 +11,9 @@ const STABLE_EXACT_VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
 const COMMIT_SHA = /^[a-f0-9]{40}$/u;
 const SHA512_INTEGRITY = /^sha512-(?<digest>[A-Za-z0-9+/]{86}==)$/u;
 const PACKAGE_NAME = /^@(?<scope>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)\/(?<name>[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)$/u;
+const REPOSITORY_SLUG = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u;
+const SLSA_PROVENANCE_PREDICATE = "https://slsa.dev/provenance/v1";
+const PUBLISH_WORKFLOW_PATH = ".github/workflows/publish.yml";
 
 /** @param {unknown} value @param {string} label */
 function requiredString(value, label) {
@@ -77,19 +80,116 @@ async function fetchResponseWithTimeout({
 }
 
 /**
+ * Decode the in-toto statement carried by an npm attestation bundle.
+ *
+ * @param {unknown} attestation
+ */
+function attestationStatement(attestation) {
+  if (!attestation || typeof attestation !== "object") return undefined;
+  const payload = attestation.bundle?.dsseEnvelope?.payload;
+  if (typeof payload !== "string" || !payload) return undefined;
+  try {
+    const statement = JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
+    return statement && typeof statement === "object" ? statement : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * npm percent-encodes the scope separator inconsistently across purl subjects,
+ * so compare decoded names.
+ *
+ * @param {unknown} name
+ */
+function decodedSubjectName(name) {
+  if (typeof name !== "string") return undefined;
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Verify the npm SLSA provenance attestation binds the published tarball to the
+ * release commit, tag, and publish workflow. `gitHead` is not usable here: it is
+ * only stamped when npm publishes from a git working directory, and this release
+ * publishes the exact pre-built tarball.
+ *
+ * @param {{packageName: string, version: string, tag: string, commit: string, repository: string, tarball: Buffer, fetchImpl: typeof fetch, timeoutMs: number, timeoutSignalFactory: (timeoutMs:number) => AbortSignal}} input
+ */
+async function verifyProvenance(input) {
+  const { packageName, version, tag, commit, repository, tarball } = input;
+  const attestationsUrl = new URL(
+    `-/npm/v1/attestations/${encodeURIComponent(packageName)}@${version}`,
+    NPM_REGISTRY_URL,
+  ).href;
+  const document = await fetchResponseWithTimeout({
+    fetchImpl: input.fetchImpl,
+    url: attestationsUrl,
+    headers: { accept: "application/json" },
+    description: "npm attestation request",
+    timeoutMs: input.timeoutMs,
+    timeoutSignalFactory: input.timeoutSignalFactory,
+    read: (response) => response.json(),
+  });
+  const attestations = Array.isArray(document?.attestations) ? document.attestations : [];
+  const statements = attestations
+    .map((attestation) => attestationStatement(attestation))
+    .filter((statement) => statement?.predicateType === SLSA_PROVENANCE_PREDICATE);
+  if (statements.length !== 1) {
+    throw new Error(`npm provenance must carry exactly one ${SLSA_PROVENANCE_PREDICATE} attestation`);
+  }
+  const [statement] = statements;
+
+  const tarballSha512 = createHash("sha512").update(tarball).digest("hex");
+  const subjects = Array.isArray(statement.subject) ? statement.subject : [];
+  const subjectName = `pkg:npm/${packageName}@${version}`;
+  if (!subjects.some((subject) =>
+    decodedSubjectName(subject?.name) === subjectName && subject?.digest?.sha512 === tarballSha512
+  )) {
+    throw new Error("npm provenance subject does not match the published tarball digest");
+  }
+
+  const buildDefinition = statement.predicate?.buildDefinition;
+  const workflow = buildDefinition?.externalParameters?.workflow;
+  const expectedRepositoryUrl = `https://github.com/${repository}`;
+  if (workflow?.repository !== expectedRepositoryUrl) {
+    throw new Error(`npm provenance repository does not match ${expectedRepositoryUrl}`);
+  }
+  if (workflow?.ref !== `refs/tags/${tag}`) {
+    throw new Error(`npm provenance ref does not match refs/tags/${tag}`);
+  }
+  if (workflow?.path !== PUBLISH_WORKFLOW_PATH) {
+    throw new Error(`npm provenance workflow does not match ${PUBLISH_WORKFLOW_PATH}`);
+  }
+
+  const resolved = Array.isArray(buildDefinition?.resolvedDependencies)
+    ? buildDefinition.resolvedDependencies
+    : [];
+  if (!resolved.some((dependency) => dependency?.digest?.gitCommit === commit)) {
+    throw new Error(`npm provenance does not resolve to release commit ${commit}`);
+  }
+  return { attestationsUrl };
+}
+
+/**
  * Resolve and verify the exact npm artifact for a stable release.
  * Network access is supplied by `fetchImpl`, allowing offline tests and callers.
  *
- * @param {{packageName: string, version: string, tag: string, commit: string, outputFile: string, fetchImpl?: typeof fetch, requestTimeoutMs?: number, timeoutSignalFactory?: (timeoutMs:number) => AbortSignal}} input
+ * @param {{packageName: string, version: string, tag: string, commit: string, repository: string, outputFile: string, fetchImpl?: typeof fetch, requestTimeoutMs?: number, timeoutSignalFactory?: (timeoutMs:number) => AbortSignal}} input
  */
 export async function resolveNpmRelease(input) {
   const packageName = requiredString(input.packageName, "package name");
   const version = stableVersion(requiredString(input.version, "version"));
   const tag = requiredString(input.tag, "tag");
   const commit = requiredString(input.commit, "commit");
+  const repository = requiredString(input.repository, "repository");
   const outputFile = path.resolve(requiredString(input.outputFile, "output file"));
   if (tag !== `v${version}`) throw new Error(`release tag ${tag} does not match version ${version}`);
   if (!COMMIT_SHA.test(commit)) throw new Error("release commit must be a lowercase 40-character SHA");
+  if (!REPOSITORY_SLUG.test(repository)) throw new Error("repository must be an owner/name slug");
 
   const fetchImpl = input.fetchImpl ?? globalThis.fetch;
   if (typeof fetchImpl !== "function") throw new Error("fetch implementation is required");
@@ -116,9 +216,6 @@ export async function resolveNpmRelease(input) {
   if (metadata.version !== version) {
     throw new Error(`npm metadata version mismatch: expected ${version}, observed ${String(metadata.version)}`);
   }
-  if (metadata.gitHead !== commit) {
-    throw new Error(`npm metadata gitHead does not match release commit ${commit}`);
-  }
   if (!metadata.dist || typeof metadata.dist !== "object") throw new Error("npm metadata dist is required");
   const integrity = requiredString(metadata.dist.integrity, "npm dist.integrity");
   const integrityMatch = SHA512_INTEGRITY.exec(integrity);
@@ -142,18 +239,30 @@ export async function resolveNpmRelease(input) {
   if (observedIntegrity !== integrity) throw new Error("npm tarball integrity mismatch");
   const tarballSha256 = createHash("sha256").update(tarball).digest("hex");
 
+  const { attestationsUrl } = await verifyProvenance({
+    packageName,
+    version,
+    tag,
+    commit,
+    repository,
+    tarball,
+    fetchImpl,
+    timeoutMs,
+    timeoutSignalFactory,
+  });
+
   await mkdir(path.dirname(outputFile), { recursive: true });
   await writeFile(outputFile, tarball, { mode: 0o600 });
-  return { version, tag, metadataUrl, tarballUrl, integrity, tarballSha256 };
+  return { version, tag, metadataUrl, tarballUrl, attestationsUrl, integrity, tarballSha256 };
 }
 
-const HELP = "usage: pnpm run docs:resolve-npm-release -- --version <stable-semver> --tag <vstable-semver> --commit <40-char-sha> --output <release.tgz>\n";
+const HELP = "usage: pnpm run release:resolve-npm -- --version <stable-semver> --tag <vstable-semver> --commit <40-char-sha> --repository <owner/name> --output <release.tgz>\n";
 
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const options = argv[0] === "--" ? argv.slice(1) : argv;
   const values = {};
-  const allowed = new Set(["version", "tag", "commit", "output", "help"]);
+  const allowed = new Set(["version", "tag", "commit", "repository", "output", "help"]);
   for (let index = 0; index < options.length; index += 1) {
     const option = options[index];
     if (!option?.startsWith("--")) throw new Error(HELP.trim());
@@ -187,6 +296,7 @@ export async function runResolveNpmReleaseCli(argv = process.argv.slice(2), depe
     version: options.version,
     tag: options.tag,
     commit: options.commit,
+    repository: options.repository,
     outputFile: options.output,
     fetchImpl: dependencies.fetchImpl,
   });

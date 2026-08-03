@@ -13,7 +13,11 @@ const PACKAGE_NAME = "@cavi-ai/api-client";
 const VERSION = "0.15.0";
 const TAG = `v${VERSION}`;
 const COMMIT = "c".repeat(40);
+const REPOSITORY = "cavi-ai/cavi-api-client";
 const TARBALL_URL = `https://registry.npmjs.org/${PACKAGE_NAME}/-/api-client-${VERSION}.tgz`;
+const ATTESTATIONS_URL =
+  `https://registry.npmjs.org/-/npm/v1/attestations/%40cavi-ai%2Fapi-client@${VERSION}`;
+const SLSA_PROVENANCE_PREDICATE = "https://slsa.dev/provenance/v1";
 const tarballBytes = Buffer.from("exact published npm tarball bytes\n", "utf8");
 const integrity = `sha512-${createHash("sha512").update(tarballBytes).digest("base64")}`;
 const sha256 = createHash("sha256").update(tarballBytes).digest("hex");
@@ -31,14 +35,59 @@ function timedOutSignal(): AbortSignal {
   return controller.signal;
 }
 
-function registryFetch(metadataOverrides: Record<string, unknown> = {}, bytes = tarballBytes) {
+function provenanceStatement(
+  bytes = tarballBytes,
+  subjectName = `pkg:npm/%40cavi-ai/api-client@${VERSION}`,
+) {
+  return {
+    predicateType: SLSA_PROVENANCE_PREDICATE,
+    subject: [{
+      name: subjectName,
+      digest: { sha512: createHash("sha512").update(bytes).digest("hex") },
+    }],
+    predicate: {
+      buildDefinition: {
+        externalParameters: {
+          workflow: {
+            ref: `refs/tags/${TAG}`,
+            repository: `https://github.com/${REPOSITORY}`,
+            path: ".github/workflows/publish.yml",
+          },
+        },
+        resolvedDependencies: [{
+          uri: `git+https://github.com/${REPOSITORY}@refs/tags/${TAG}`,
+          digest: { gitCommit: COMMIT },
+        }],
+      },
+    },
+  };
+}
+
+function attestationsDocument(statements: Array<Record<string, unknown>>) {
+  return {
+    attestations: statements.map((statement) => ({
+      predicateType: statement.predicateType,
+      bundle: {
+        dsseEnvelope: {
+          payload: Buffer.from(JSON.stringify(statement), "utf8").toString("base64"),
+        },
+      },
+    })),
+  };
+}
+
+function registryFetch(
+  metadataOverrides: Record<string, unknown> = {},
+  bytes = tarballBytes,
+  attestations: unknown = attestationsDocument([provenanceStatement(bytes)]),
+) {
   return async (input: string | URL | Request): Promise<Response> => {
     const url = String(input);
     if (url === TARBALL_URL) return new Response(bytes, { status: 200 });
+    if (url === ATTESTATIONS_URL) return Response.json(attestations);
     return Response.json({
       name: PACKAGE_NAME,
       version: VERSION,
-      gitHead: COMMIT,
       dist: { integrity, tarball: TARBALL_URL },
       ...metadataOverrides,
     });
@@ -61,6 +110,7 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile,
       fetchImpl: registryFetch(),
     });
@@ -70,6 +120,7 @@ describe("resolveNpmRelease", () => {
       tag: TAG,
       metadataUrl: "https://registry.npmjs.org/%40cavi-ai%2Fapi-client/0.15.0",
       tarballUrl: TARBALL_URL,
+      attestationsUrl: ATTESTATIONS_URL,
       integrity,
       tarballSha256: sha256,
     });
@@ -86,6 +137,7 @@ describe("resolveNpmRelease", () => {
       version,
       tag,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(await temporaryDirectory(), "release.tgz"),
       fetchImpl: registryFetch(),
     })).rejects.toThrow(expected);
@@ -97,6 +149,7 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(await temporaryDirectory(), "release.tgz"),
       fetchImpl: registryFetch({ version: "0.15.1" }),
     })).rejects.toThrow(/metadata version.*0\.15\.0.*0\.15\.1/u);
@@ -108,6 +161,7 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(await temporaryDirectory(), "release.tgz"),
       fetchImpl: registryFetch({ dist: { tarball: TARBALL_URL } }),
     })).rejects.toThrow(/integrity/u);
@@ -119,6 +173,7 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(await temporaryDirectory(), "release.tgz"),
       fetchImpl: registryFetch({}, Buffer.from("mutated registry bytes\n", "utf8")),
     })).rejects.toThrow(/integrity mismatch/u);
@@ -131,23 +186,133 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(await temporaryDirectory(), "release.tgz"),
       fetchImpl: registryFetch({ dist: { integrity, tarball: mutatedUrl } }),
     })).rejects.toThrow(/canonical npm tarball URL/u);
   });
 
-  it.each([
-    ["missing", undefined],
-    ["mismatched", "d".repeat(40)],
-  ])("rejects %s npm gitHead provenance", async (_label, gitHead) => {
+  it("rejects a release without exactly one SLSA provenance attestation", async () => {
     await expect(resolveNpmRelease({
       packageName: PACKAGE_NAME,
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(await temporaryDirectory(), "release.tgz"),
-      fetchImpl: registryFetch({ gitHead }),
-    })).rejects.toThrow(/gitHead.*release commit/u);
+      fetchImpl: registryFetch({}, tarballBytes, { attestations: [] }),
+    })).rejects.toThrow(/exactly one https:\/\/slsa\.dev\/provenance\/v1 attestation/u);
+  });
+
+  it("accepts a fully percent-encoded provenance subject name", async () => {
+    const statement = provenanceStatement(
+      tarballBytes,
+      `pkg:npm/%40cavi-ai%2Fapi-client@${VERSION}`,
+    );
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: REPOSITORY,
+      outputFile: path.join(await temporaryDirectory(), "release.tgz"),
+      fetchImpl: registryFetch({}, tarballBytes, attestationsDocument([statement])),
+    })).resolves.toMatchObject({ tarballSha256: sha256 });
+  });
+
+  it("rejects provenance published under a different package name", async () => {
+    const statement = provenanceStatement(tarballBytes, `pkg:npm/%40attacker/api-client@${VERSION}`);
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: REPOSITORY,
+      outputFile: path.join(await temporaryDirectory(), "release.tgz"),
+      fetchImpl: registryFetch({}, tarballBytes, attestationsDocument([statement])),
+    })).rejects.toThrow(/provenance subject/u);
+  });
+
+  it("rejects provenance whose subject digest is not the published tarball", async () => {
+    const statement = provenanceStatement(Buffer.from("other bytes\n", "utf8"));
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: REPOSITORY,
+      outputFile: path.join(await temporaryDirectory(), "release.tgz"),
+      fetchImpl: registryFetch({}, tarballBytes, attestationsDocument([statement])),
+    })).rejects.toThrow(/provenance subject.*tarball digest/u);
+  });
+
+  it.each([
+    [
+      "a foreign repository",
+      { repository: "https://github.com/attacker/cavi-api-client" },
+      /provenance repository/u,
+    ],
+    ["a branch ref", { ref: "refs/heads/main" }, /provenance ref/u],
+    ["a foreign workflow", { path: ".github/workflows/attack.yml" }, /provenance workflow/u],
+  ])("rejects provenance built from %s", async (_label, workflowOverrides, expected) => {
+    const base = provenanceStatement();
+    const statement = {
+      ...base,
+      predicate: {
+        buildDefinition: {
+          ...base.predicate.buildDefinition,
+          externalParameters: {
+            workflow: {
+              ...base.predicate.buildDefinition.externalParameters.workflow,
+              ...workflowOverrides,
+            },
+          },
+        },
+      },
+    };
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: REPOSITORY,
+      outputFile: path.join(await temporaryDirectory(), "release.tgz"),
+      fetchImpl: registryFetch({}, tarballBytes, attestationsDocument([statement])),
+    })).rejects.toThrow(expected);
+  });
+
+  it("rejects provenance that does not resolve to the release commit", async () => {
+    const base = provenanceStatement();
+    const statement = {
+      ...base,
+      predicate: {
+        buildDefinition: {
+          ...base.predicate.buildDefinition,
+          resolvedDependencies: [{ digest: { gitCommit: "d".repeat(40) } }],
+        },
+      },
+    };
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: REPOSITORY,
+      outputFile: path.join(await temporaryDirectory(), "release.tgz"),
+      fetchImpl: registryFetch({}, tarballBytes, attestationsDocument([statement])),
+    })).rejects.toThrow(/does not resolve to release commit/u);
+  });
+
+  it("rejects a repository that is not an owner/name slug", async () => {
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: "https://github.com/cavi-ai/cavi-api-client",
+      outputFile: path.join(await temporaryDirectory(), "release.tgz"),
+      fetchImpl: registryFetch(),
+    })).rejects.toThrow(/owner\/name slug/u);
   });
 
   it("prints only public release metadata and digests from the CLI", async () => {
@@ -158,6 +323,7 @@ describe("resolveNpmRelease", () => {
       "--version", VERSION,
       "--tag", TAG,
       "--commit", COMMIT,
+      "--repository", REPOSITORY,
       "--output", outputFile,
     ], {
       fetchImpl: registryFetch(),
@@ -169,6 +335,7 @@ describe("resolveNpmRelease", () => {
       tag: TAG,
       metadataUrl: "https://registry.npmjs.org/%40cavi-ai%2Fapi-client/0.15.0",
       tarballUrl: TARBALL_URL,
+      attestationsUrl: ATTESTATIONS_URL,
       integrity,
       tarballSha256: sha256,
     });
@@ -193,6 +360,7 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(directory, "release.tgz"),
       fetchImpl,
       requestTimeoutMs: 25,
@@ -217,7 +385,6 @@ describe("resolveNpmRelease", () => {
       return Response.json({
         name: PACKAGE_NAME,
         version: VERSION,
-        gitHead: COMMIT,
         dist: { integrity, tarball: TARBALL_URL },
       });
     };
@@ -227,10 +394,42 @@ describe("resolveNpmRelease", () => {
       version: VERSION,
       tag: TAG,
       commit: COMMIT,
+      repository: REPOSITORY,
       outputFile: path.join(directory, "release.tgz"),
       fetchImpl,
       requestTimeoutMs: 25,
       timeoutSignalFactory,
     })).rejects.toThrow("npm tarball request timed out after 25ms");
+  });
+
+  it("gives the npm attestation request its own injected abort timeout", async () => {
+    const directory = await temporaryDirectory();
+    let signalIndex = 0;
+    const timeoutSignalFactory = () =>
+      signalIndex++ < 2 ? new AbortController().signal : timedOutSignal();
+    const registry = registryFetch();
+    const fetchImpl = async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      if (!init?.signal) throw new Error("request did not receive a timeout signal");
+      if (String(input) === ATTESTATIONS_URL) {
+        if (init.signal.aborted) throw init.signal.reason;
+        throw new Error("attestation request did not receive its own timeout signal");
+      }
+      return await registry(input);
+    };
+
+    await expect(resolveNpmRelease({
+      packageName: PACKAGE_NAME,
+      version: VERSION,
+      tag: TAG,
+      commit: COMMIT,
+      repository: REPOSITORY,
+      outputFile: path.join(directory, "release.tgz"),
+      fetchImpl,
+      requestTimeoutMs: 25,
+      timeoutSignalFactory,
+    })).rejects.toThrow("npm attestation request timed out after 25ms");
   });
 });
