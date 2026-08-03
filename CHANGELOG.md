@@ -16,8 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `{{documentedVersion}}` from `package.json` during generation and reject
   hard-coded semantic versions, preventing release-documentation drift.
 
-### Changed
-
 - `release:resolve-npm` verifies the npm SLSA provenance attestation instead of `gitHead`
 - Provenance check binds the published tarball digest to the release repository, tag, commit, and publish workflow
 - `release:resolve-npm` requires `--repository <owner/name>`
