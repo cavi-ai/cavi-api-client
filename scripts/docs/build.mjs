@@ -8,6 +8,7 @@ import { inspectRelease } from "../release/inspect-release.mjs";
 import { renderDocumentation } from "./render.mjs";
 import { containedPath } from "./paths.mjs";
 import { DOCUMENTED_SOURCE_DATE_EPOCH, resolveDocumentationRelease } from "./types.mjs";
+import { resolveDocumentedVersionToken } from "./version-tokens.mjs";
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -93,9 +94,11 @@ export async function buildDocumentationInTemporaryRoot(argv, temporaryRoot) {
 async function buildDocumentationAt({ options, root, outputDirectory, allowedRoot, release }) {
   const manifest = await inspectRelease(path.resolve(options.tarball), release);
   const contracts = await loadContracts(root, manifest, release);
-  const navigation = JSON.parse(
+  const navigation = JSON.parse(resolveDocumentedVersionToken(
     await readFile(path.join(root, "docs/api-client/source/navigation.json"), "utf8"),
-  );
+    release.version,
+    "navigation source",
+  ));
   const rendered = renderDocumentation({
     manifest,
     contracts,

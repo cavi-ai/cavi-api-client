@@ -1,9 +1,9 @@
 ---
-documentedVersion: 0.16.0
+documentedVersion: {{documentedVersion}}
 ---
 
 # Compatibility
 
-These pages are locked to the packed `@cavi-ai/api-client@0.16.0` declaration surface. A development-branch symbol is unavailable here unless the artifact contains it. Provider support is conditional on the upstream runtime and reported capabilities.
+These pages are locked to the packed `@cavi-ai/api-client@{{documentedVersion}}` declaration surface. A development-branch symbol is unavailable here unless the artifact contains it. Provider support is conditional on the upstream runtime and reported capabilities.
 
 This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.

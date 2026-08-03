@@ -65,7 +65,7 @@ async function createCuratedContractFixture(root: string): Promise<void> {
   await writeFile(path.join(root, "docs/api-client/source/contracts/runtime.json"), `${JSON.stringify({
     id: "runtime",
     title: "Runtime",
-    version: "0.14.0",
+    version: "{{documentedVersion}}",
     stability: "stable",
     sourceOfTruth: "upstream-compatible-mirror",
     symbols: [{ subpath: ".", name: "RuntimeClient" }],
@@ -79,13 +79,13 @@ async function createCuratedContractFixture(root: string): Promise<void> {
     examples: { valid: { value: { input: "hello" }, expected: "Accepted." }, invalid: { value: {}, expectedFailure: "Input is required." } },
     compatibilityNotes: "The source record is curated against its stable baseline.",
     evidence: [
-      { type: "declaration", path: "docs/api-client/source/releases/0.14.0-manifest.json" },
+      { type: "declaration", path: "docs/api-client/source/releases/{{documentedVersion}}-manifest.json" },
       { type: "fixture", path: "fixtures/runtime.ts" },
       { type: "conformance-test", path: "src/runtime.test.ts" },
     ],
   }, null, 2)}\n`);
   await mkdir(path.join(root, "docs/api-client/source/releases"), { recursive: true });
-  await writeFile(path.join(root, "docs/api-client/source/releases/0.14.0-manifest.json"), "{}\n");
+  await writeFile(path.join(root, "docs/api-client/source/releases/0.15.0-manifest.json"), "{}\n");
   await mkdir(path.join(root, "fixtures"), { recursive: true });
   await writeFile(path.join(root, "fixtures/runtime.ts"), "export const RuntimeClient = true;\n");
   await mkdir(path.join(root, "src"), { recursive: true });

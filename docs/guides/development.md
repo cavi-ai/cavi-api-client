@@ -45,7 +45,8 @@ Do not manually reinterpret a development declaration as a released contract.
 Hosts follow [the consumer contract](../api-client/CONSUMER.md) and validate with
 `pnpm run docs:host-ingest-check`.
 
-The current committed artifact is `docs/api-client/v0.16.0`.
+The current committed artifact is
+`docs/api-client/v<package.json version>`.
 
 ## Guardrails
 
