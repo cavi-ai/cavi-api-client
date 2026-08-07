@@ -23,6 +23,10 @@ import {
   serializeError,
   toError,
 } from "../../errors.js";
+import {
+  redactSensitiveText,
+  redactSensitiveValue,
+} from "../../http/redaction.js";
 
 declare const process:
   | {
@@ -125,6 +129,8 @@ export type GatewayConnectionState =
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_CONCURRENT_RPC_REQUESTS = 3;
+const DEFAULT_MAX_GATEWAY_RPC_FRAME_BYTES = 16 * 1024 * 1024;
+const gatewayRpcTextEncoder = new TextEncoder();
 export const DEFAULT_GATEWAY_PROTOCOL_VERSION = 4;
 const DEFAULT_GATEWAY_RPC_CLIENT_VERSION = "0.1.0";
 const DEFAULT_GATEWAY_RPC_CLIENT_SCOPES = ["operator.read"] as const;
@@ -206,6 +212,8 @@ export type GatewayRpcClientOptions = {
   requestTimeoutMs?: number;
   /** Override client-side RPC concurrency. */
   maxConcurrentRequests?: number;
+  /** Maximum accepted inbound JSON frame size in UTF-8 bytes. Defaults to 16 MiB. */
+  maxFrameBytes?: number;
   /** Override the default requested scopes used when requestedScopes is omitted. */
   defaultRequestedScopes?: readonly string[];
   /**
@@ -393,19 +401,40 @@ function redactGatewayRpcTraceParams(
         }
       }
     }
-    return clone;
+    return redactGatewayRpcTraceValue(clone) as Record<string, unknown>;
   } catch {
     return { _redactionNote: "params not JSON-serializable", method };
   }
 }
 
+function redactGatewayRpcTraceValue(value: unknown): unknown {
+  const bearerCredentialPattern = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gu;
+  const redactText = (text: string): string =>
+    redactSensitiveText(text.replace(bearerCredentialPattern, "$1[REDACTED]"));
+  const redactStrings = (entry: unknown): unknown => {
+    if (typeof entry === "string") return redactText(entry);
+    if (Array.isArray(entry)) return entry.map((item) => redactStrings(item));
+    if (entry && typeof entry === "object") {
+      return Object.fromEntries(
+        Object.entries(entry).map(([key, item]) => [key, redactStrings(item)]),
+      );
+    }
+    return entry;
+  };
+  return redactStrings(redactSensitiveValue(value));
+}
+
 function summarizeRpcTraceResult(value: unknown, maxChars: number): string {
   try {
-    const s = JSON.stringify(value);
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) {
+      return redactGatewayRpcTraceValue(String(value)) as string;
+    }
+    const s = JSON.stringify(redactGatewayRpcTraceValue(JSON.parse(serialized)));
     if (s.length <= maxChars) return s;
     return `${s.slice(0, maxChars)}…[truncated ${s.length - maxChars} chars]`;
   } catch {
-    return String(value);
+    return redactGatewayRpcTraceValue(String(value)) as string;
   }
 }
 
@@ -414,7 +443,11 @@ function serializeRpcTraceError(error: Error): {
   message: string;
   code?: string;
 } {
-  return serializeError(error);
+  return redactGatewayRpcTraceValue(serializeError(error)) as {
+    name: string;
+    message: string;
+    code?: string;
+  };
 }
 
 function createGatewaySocketClosedError(
@@ -656,7 +689,7 @@ export class GatewayRpcClient {
     }
 
     this.setState("connecting", null);
-    this.connectPromise = new Promise<void>((resolve, reject) => {
+    const connectPromise = new Promise<void>((resolve, reject) => {
       // Origin-gated gateways require an allowlisted Origin on the handshake.
       // Node's global (undici) WebSocket accepts a non-standard options bag with
       // `headers`; browsers ignore it and set Origin themselves.
@@ -684,6 +717,10 @@ export class GatewayRpcClient {
         Boolean(this.options.deviceIdentityLoader ?? isDeviceIdentitySupported());
       const handshakeEnv =
         this.options.preauthHandshakeEnv ?? readGatewayPreauthHandshakeEnv();
+      const maxFrameBytes = resolvePositiveIntegerOption(
+        this.options.maxFrameBytes,
+        DEFAULT_MAX_GATEWAY_RPC_FRAME_BYTES,
+      );
       const tokenOnlyFallbackMs = preferDeviceChallengeFirst
         ? resolveDeviceTokenOnlyFallbackMs({
             env: handshakeEnv,
@@ -694,6 +731,28 @@ export class GatewayRpcClient {
 
       const isCurrentOpenSocket = () =>
         this.socket === ws && ws.readyState === WebSocket.OPEN;
+
+      const retireCurrentSocket = (error: GatewayRpcError): boolean => {
+        if (this.socket !== ws) {
+          return false;
+        }
+        clearConnectTimer();
+        this.connectAttemptSeq += 1;
+        this.connected = false;
+        this.socket = null;
+        this.connectPromise = null;
+        for (const pending of this.pending.values()) {
+          pending.reject(error);
+        }
+        this.pending.clear();
+        this.rejectQueuedRpcRequests(error);
+        this.setState("error", error);
+        if (connectPhase !== "settled") {
+          connectPhase = "settled";
+          reject(error);
+        }
+        return true;
+      };
 
       const sendConnect = (nonce?: string) => {
         if (connectPhase !== "waiting" || !isCurrentOpenSocket()) {
@@ -821,6 +880,21 @@ export class GatewayRpcClient {
       };
 
       const onMessage = (event: MessageEvent) => {
+        if (this.socket !== ws) {
+          return;
+        }
+        if (
+          typeof event.data === "string" &&
+          (event.data.length > maxFrameBytes ||
+            gatewayRpcTextEncoder.encode(event.data).byteLength > maxFrameBytes)
+        ) {
+          retireCurrentSocket(createGatewaySocketClosedError({
+            code: 1009,
+            reason: "Message too large",
+          }));
+          ws.close(1009, "Message too large");
+          return;
+        }
         if (typeof event.data === "string") {
           try {
             const parsed = JSON.parse(event.data) as {
@@ -849,6 +923,9 @@ export class GatewayRpcClient {
       };
 
       const onError = () => {
+        if (this.socket !== ws) {
+          return;
+        }
         clearConnectTimer();
         const error = new GatewayRpcError(
           "gateway websocket failed",
@@ -866,6 +943,9 @@ export class GatewayRpcClient {
       };
 
       const onClose = (event: Event) => {
+        if (this.socket !== ws) {
+          return;
+        }
         clearConnectTimer();
         this.connected = false;
         this.connectPromise = null;
@@ -900,11 +980,15 @@ export class GatewayRpcClient {
       ws.addEventListener("message", onMessage);
       ws.addEventListener("error", onError, { once: true });
       ws.addEventListener("close", onClose);
-    }).finally(() => {
-      this.connectPromise = null;
     });
+    const trackedConnectPromise = connectPromise.finally(() => {
+      if (this.connectPromise === trackedConnectPromise) {
+        this.connectPromise = null;
+      }
+    });
+    this.connectPromise = trackedConnectPromise;
 
-    return this.connectPromise;
+    return trackedConnectPromise;
   }
 
   private async requestRaw<TPayload>(
@@ -933,8 +1017,12 @@ export class GatewayRpcClient {
       params,
     };
 
-    const startedAt = Date.now();
-    const redactedParams = redactGatewayRpcTraceParams(method, params);
+    const traceContext = this.options.onRpcTrace
+      ? {
+          startedAt: Date.now(),
+          params: redactGatewayRpcTraceParams(method, params),
+        }
+      : null;
 
     return await new Promise<TPayload>((resolve, reject) => {
       const emitDone = (
@@ -948,7 +1036,10 @@ export class GatewayRpcClient {
               error: Error;
             },
       ): void => {
-        const durationMs = Date.now() - startedAt;
+        if (!traceContext) {
+          return;
+        }
+        const durationMs = Date.now() - traceContext.startedAt;
         if (outcome.ok) {
           this.emitRpcTrace({
             at: Date.now(),
@@ -957,7 +1048,7 @@ export class GatewayRpcClient {
             method,
             durationMs,
             ok: true,
-            params: redactedParams,
+            params: traceContext.params,
             resultPreview: summarizeRpcTraceResult(outcome.value, 24_000),
           });
         } else {
@@ -968,7 +1059,7 @@ export class GatewayRpcClient {
             method,
             durationMs,
             ok: false,
-            params: redactedParams,
+            params: traceContext.params,
             error: serializeRpcTraceError(outcome.error),
           });
         }

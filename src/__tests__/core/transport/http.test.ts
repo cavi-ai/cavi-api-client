@@ -25,12 +25,38 @@ describe("HTTP transport", () => {
     });
 
     expect(fetchImpl).toHaveBeenCalledWith("https://runtime.test/api/models", expect.objectContaining({
+      redirect: "error",
       headers: expect.objectContaining({
         "x-default": "yes",
         "x-request": "yes",
         AUTHORIZATION: "Bearer fresh",
       }),
     }));
+  });
+
+  it("rejects cross-origin request paths before resolving credentials", async () => {
+    const auth = vi.fn(async () => ({ headers: { authorization: "Bearer secret" } }));
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
+    const transport = createHttpTransport({
+      baseUrl: "https://runtime.test/api/",
+      auth,
+      fetchImpl,
+    });
+
+    await expect(transport.request({
+      method: "GET",
+      path: "https://attacker.test/collect",
+    })).rejects.toMatchObject({
+      message: "HTTP request URL must use the configured origin",
+      transport: {
+        kind: "http",
+        phase: "configure",
+        retryable: false,
+        attempt: 1,
+      },
+    });
+    expect(auth).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("does not retry a mutation without explicit idempotency", async () => {

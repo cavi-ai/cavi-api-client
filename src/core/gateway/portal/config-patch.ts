@@ -13,6 +13,8 @@ export const PORTAL_CONFIG_PATCH_CONTRACT_VERSION = 1 as const;
 /** Optional header some gateways require for audit / routing. */
 export const PORTAL_CONFIG_PATCH_CLIENT_ID_HEADER = PORTAL_CLIENT_ID_HEADER;
 
+const UNSAFE_CONFIG_PATH_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
+
 export type PortalConfigPatchRequestBody = {
   contract: typeof PORTAL_CONFIG_PATCH_CONTRACT;
   v: typeof PORTAL_CONFIG_PATCH_CONTRACT_VERSION;
@@ -70,6 +72,12 @@ export function unflattenPortalConfigPatchKeys(
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
     if (!parts.length) continue;
+    const unsafeSegment = parts.find((part) => UNSAFE_CONFIG_PATH_SEGMENTS.has(part));
+    if (unsafeSegment) {
+      throw new Error(
+        `unflattenPortalConfigPatchKeys: unsafe path segment "${unsafeSegment}"`,
+      );
+    }
     let cur: Record<string, unknown> = root;
     for (let i = 0; i < parts.length - 1; i++) {
       const p = parts[i]!;

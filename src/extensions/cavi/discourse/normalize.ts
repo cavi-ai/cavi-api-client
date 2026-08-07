@@ -9,7 +9,6 @@ import {
   asBoolean,
   asNumber,
   asString,
-  asStringArray,
   isRecord,
 } from "../../../core/data/guards.js";
 import {
@@ -23,9 +22,84 @@ import {
   isDiscourseEventType,
 } from "./normalize-helpers.js";
 
+const MAX_DISCOURSE_TREE_DEPTH = 64;
+const MAX_DISCOURSE_NORMALIZATION_WORK = 10_000;
+
+type DiscourseNormalizationBudget = {
+  workItems: number;
+};
+
 export function normalizeDiscourseEvent(
   raw: unknown,
   fallbackTaskId: string,
+): DiscourseEvent | null {
+  const budget: DiscourseNormalizationBudget = { workItems: 0 };
+  reserveDiscourseWork(budget, 1);
+  return normalizeDiscourseEventWithBudget(raw, fallbackTaskId, budget);
+}
+
+function reserveDiscourseWork(
+  budget: DiscourseNormalizationBudget,
+  workItems: number,
+  errorMessage = "Task discourse exceeds maximum normalization work.",
+): void {
+  if (
+    workItems >
+    MAX_DISCOURSE_NORMALIZATION_WORK - budget.workItems
+  ) {
+    throw new Error(errorMessage);
+  }
+  budget.workItems += workItems;
+}
+
+function normalizeDiscourseStringArray(
+  raw: unknown,
+  budget: DiscourseNormalizationBudget,
+): string[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  reserveDiscourseWork(budget, raw.length);
+  return raw
+    .map((entry) => asString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+}
+
+function normalizeDecisionAlternatives(
+  raw: unknown,
+  budget: DiscourseNormalizationBudget,
+): Array<{ approach: string; reasonRejected: string }> {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  reserveDiscourseWork(budget, raw.length);
+  return raw
+    .map((entry) => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+      return {
+        approach: asDiscourseMessageText(entry.approach, "unknown"),
+        reasonRejected: asDiscourseMessageText(
+          entry.reasonRejected,
+          "Not provided",
+        ),
+      };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        approach: string;
+        reasonRejected: string;
+      } => entry !== null,
+    );
+}
+
+function normalizeDiscourseEventWithBudget(
+  raw: unknown,
+  fallbackTaskId: string,
+  budget: DiscourseNormalizationBudget,
 ): DiscourseEvent | null {
   const record = isRecord(raw) ? raw : null;
   if (!record) {
@@ -66,7 +140,10 @@ export function normalizeDiscourseEvent(
             const text = asDiscourseMessageText(data.approachRationale, "");
             return text.trim().length > 0 ? text : undefined;
           })(),
-          alternativesConsidered: asStringArray(data.alternativesConsidered),
+          alternativesConsidered: normalizeDiscourseStringArray(
+            data.alternativesConsidered,
+            budget,
+          ),
         },
       };
     case "discourse.delegation":
@@ -100,29 +177,10 @@ export function normalizeDiscourseEvent(
             data.rationale,
             "No rationale recorded.",
           ),
-          alternatives: Array.isArray(data.alternatives)
-            ? data.alternatives
-                .map((entry) => {
-                  if (!isRecord(entry)) {
-                    return null;
-                  }
-                  return {
-                    approach: asDiscourseMessageText(entry.approach, "unknown"),
-                    reasonRejected: asDiscourseMessageText(
-                      entry.reasonRejected,
-                      "Not provided",
-                    ),
-                  };
-                })
-                .filter(
-                  (
-                    entry,
-                  ): entry is {
-                    approach: string;
-                    reasonRejected: string;
-                  } => entry !== null,
-                )
-            : [],
+          alternatives: normalizeDecisionAlternatives(
+            data.alternatives,
+            budget,
+          ),
         },
       };
     case "discourse.blocker":
@@ -254,10 +312,57 @@ function normalizeTaskDiscourseAgent(raw: unknown): TaskDiscourseAgent | null {
   };
 }
 
+function normalizeDiscourseEvents(
+  rawEvents: unknown[],
+  fallbackTaskId: string,
+  budget: DiscourseNormalizationBudget,
+): DiscourseEvent[] {
+  reserveDiscourseWork(
+    budget,
+    rawEvents.length,
+    "Task discourse snapshot exceeds maximum event count.",
+  );
+  return rawEvents
+    .map((entry) =>
+      normalizeDiscourseEventWithBudget(entry, fallbackTaskId, budget),
+    )
+    .filter((entry): entry is DiscourseEvent => entry !== null)
+    .sort((left, right) => left.ts - right.ts);
+}
+
+function normalizeDelegationNodes(
+  rawNodes: unknown[],
+  fallbackTaskId: string,
+  budget: DiscourseNormalizationBudget,
+  depth: number,
+): DelegationNode[] {
+  reserveDiscourseWork(
+    budget,
+    rawNodes.length,
+    "Task discourse delegation tree exceeds maximum node count.",
+  );
+  const nodes: DelegationNode[] = [];
+  for (const rawNode of rawNodes) {
+    const node = normalizeDelegationNode(
+      rawNode,
+      fallbackTaskId,
+      budget,
+      depth,
+    );
+    if (node) nodes.push(node);
+  }
+  return nodes;
+}
+
 function normalizeDelegationNode(
   raw: unknown,
   fallbackTaskId: string,
+  budget: DiscourseNormalizationBudget,
+  depth = 1,
 ): DelegationNode | null {
+  if (depth > MAX_DISCOURSE_TREE_DEPTH) {
+    throw new Error("Task discourse delegation tree exceeds maximum depth.");
+  }
   const record = isRecord(raw) ? raw : null;
   if (!record) {
     return null;
@@ -272,13 +377,13 @@ function normalizeDelegationNode(
     agentId: asString(record.agentId) ?? "unknown-agent",
     objective: asString(record.objective) ?? "No objective recorded.",
     status: asString(record.status) ?? "unknown",
-    children: childrenRaw
-      .map((entry) => normalizeDelegationNode(entry, fallbackTaskId))
-      .filter((entry): entry is DelegationNode => entry !== null),
-    events: eventsRaw
-      .map((entry) => normalizeDiscourseEvent(entry, fallbackTaskId))
-      .filter((entry): entry is DiscourseEvent => entry !== null)
-      .sort((left, right) => left.ts - right.ts),
+    children: normalizeDelegationNodes(
+      childrenRaw,
+      fallbackTaskId,
+      budget,
+      depth + 1,
+    ),
+    events: normalizeDiscourseEvents(eventsRaw, fallbackTaskId, budget),
     cost: {
       tokens: asNumber(costRaw.tokens) ?? 0,
       costUsd: asNumber(costRaw.costUsd) ?? 0,
@@ -329,12 +434,18 @@ function resolveDiscourseDuration(events: DiscourseEvent[]): number | null {
   if (events.length < 2) {
     return null;
   }
-  const timestamps = events.map((event) => event.ts).filter((ts) => ts > 0);
-  if (timestamps.length < 2) {
+  let count = 0;
+  let minTs = Number.POSITIVE_INFINITY;
+  let maxTs = Number.NEGATIVE_INFINITY;
+  for (const event of events) {
+    if (event.ts <= 0) continue;
+    count += 1;
+    minTs = Math.min(minTs, event.ts);
+    maxTs = Math.max(maxTs, event.ts);
+  }
+  if (count < 2) {
     return null;
   }
-  const minTs = Math.min(...timestamps);
-  const maxTs = Math.max(...timestamps);
   return maxTs > minTs ? maxTs - minTs : null;
 }
 
@@ -386,18 +497,20 @@ export function normalizeTaskDiscourseSnapshot(
     ? record.delegationTree
     : [];
 
-  const events = eventsRaw
-    .map((entry) => normalizeDiscourseEvent(entry, rootTaskId))
-    .filter((entry): entry is DiscourseEvent => entry !== null)
-    .sort((left, right) => left.ts - right.ts);
+  const budget: DiscourseNormalizationBudget = { workItems: 0 };
+  const events = normalizeDiscourseEvents(eventsRaw, rootTaskId, budget);
 
+  reserveDiscourseWork(budget, agentsRaw.length);
   const agents = agentsRaw
     .map((entry) => normalizeTaskDiscourseAgent(entry))
     .filter((entry): entry is TaskDiscourseAgent => entry !== null);
 
-  const delegationTree = treeRaw
-    .map((entry) => normalizeDelegationNode(entry, rootTaskId))
-    .filter((entry): entry is DelegationNode => entry !== null);
+  const delegationTree = normalizeDelegationNodes(
+    treeRaw,
+    rootTaskId,
+    budget,
+    1,
+  );
 
   const summary = normalizeTaskDiscourseSummary({
     raw: record.summary,

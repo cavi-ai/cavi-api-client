@@ -17,9 +17,15 @@ export const SENSITIVE_KEY_PATTERN =
   /(^|[._-])(api[_-]?key|secret|password|private[_-]?key|credential|authorization|auth[_-]?token|access[_-]?token|refresh[_-]?token|token|cookie)([._-]|$)/iu;
 
 const SENSITIVE_TEXT_PATTERN =
-  /((?:api[_-]?key|secret|password|private[_-]?key|credential|authorization|auth[_-]?token|access[_-]?token|refresh[_-]?token|token|cookie)["']?\s*[:=]\s*["']?)([^"',}\]\s&]+)/giu;
+  /((?:api[_-]?key|secret|password|private[_-]?key|credential|authorization|auth[_-]?token|access[_-]?token|refresh[_-]?token|token|cookie)["']?\s*[:=]\s*["']?)(?!\[REDACTED\])([^"',}\]\s&]+)/giu;
 
-const BEARER_TOKEN_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gu;
+const SENSITIVE_QUOTED_TEXT_PATTERN =
+  /((?:api[_-]?key|secret|password|private[_-]?key|credential|authorization|auth[_-]?token|access[_-]?token|refresh[_-]?token|token|cookie)["']?\s*[:=]\s*)(["'])((?:\\.|(?!\2)[\s\S])*)\2/giu;
+
+const AUTHORIZATION_TEXT_PATTERN =
+  /((?:authorization)["']?\s*[:=]\s*)(?!["']?\[REDACTED\])[^\r\n&}\]]+/giu;
+
+const BEARER_TOKEN_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/giu;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -46,6 +52,12 @@ export function redactSensitiveValue(value: unknown): unknown {
 
 export function redactSensitiveText(text: string): string {
   return text
+    .replace(
+      SENSITIVE_QUOTED_TEXT_PATTERN,
+      (_match, prefix: string, quote: string) =>
+        `${prefix}${quote}${REDACTION_PLACEHOLDER}${quote}`,
+    )
+    .replace(AUTHORIZATION_TEXT_PATTERN, `$1${REDACTION_PLACEHOLDER}`)
     .replace(SENSITIVE_TEXT_PATTERN, `$1${REDACTION_PLACEHOLDER}`)
     .replace(BEARER_TOKEN_PATTERN, `$1${REDACTION_PLACEHOLDER}`);
 }

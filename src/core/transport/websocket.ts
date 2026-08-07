@@ -36,6 +36,8 @@ export type WebSocketConnectOptions = Readonly<{
 
 export type WebSocketTransportOptions = Readonly<{
   webSocketFactory?: (url: string, protocols?: readonly string[]) => WebSocketLike;
+  /** Maximum accepted inbound frame size in bytes. Defaults to 16 MiB. */
+  maxFrameBytes?: number;
   dependencies?: Partial<TransportDependencies>;
   onLifecycleEvent?: (event: TransportLifecycleEvent) => void;
 }>;
@@ -45,6 +47,27 @@ const noReconnect: TransportReconnectPolicy = {
   baseDelayMs: 0,
   maxDelayMs: 0,
 };
+
+const DEFAULT_MAX_FRAME_BYTES = 16 * 1024 * 1024;
+const textEncoder = new TextEncoder();
+
+function resolveMaxFrameBytes(value: number | undefined): number {
+  const limit = value ?? DEFAULT_MAX_FRAME_BYTES;
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new TypeError("maxFrameBytes must be a positive safe integer");
+  }
+  return limit;
+}
+
+function inboundFrameExceedsLimit(data: unknown, maxFrameBytes: number): boolean {
+  if (typeof data === "string") {
+    return data.length > maxFrameBytes || textEncoder.encode(data).byteLength > maxFrameBytes;
+  }
+  if (data instanceof ArrayBuffer) return data.byteLength > maxFrameBytes;
+  if (ArrayBuffer.isView(data)) return data.byteLength > maxFrameBytes;
+  if (typeof Blob === "function" && data instanceof Blob) return data.size > maxFrameBytes;
+  return false;
+}
 
 function defaultFactory(url: string, protocols?: readonly string[]): WebSocketLike {
   if (typeof globalThis.WebSocket !== "function") {
@@ -84,6 +107,7 @@ export function createWebSocketTransport(
     sleep: transportOptions.dependencies?.sleep ?? abortableSleep,
   };
   const lifecycle = createTransportLifecycle(transportOptions.onLifecycleEvent);
+  const maxFrameBytes = resolveMaxFrameBytes(transportOptions.maxFrameBytes);
 
   return {
     connect(connectOptions) {
@@ -166,6 +190,10 @@ export function createWebSocketTransport(
         };
         const onMessage: EventListener = (event) => {
           const data = (event as Event & { data?: unknown }).data;
+          if (inboundFrameExceedsLimit(data, maxFrameBytes)) {
+            failDecode(current);
+            return;
+          }
           const deliver = (message: unknown): void => {
             if (terminal || current !== socket) return;
             for (const listener of [...listeners]) {

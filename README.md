@@ -187,6 +187,15 @@ modules accept their own authentication configuration; the universal runtime
 contract does not require or expose a particular provider's credential scheme.
 Errors and diagnostic metadata redact secret-bearing fields.
 
+Credentialed HTTP and SSE transports accept only URLs on their configured
+origin and reject redirects. Inbound SSE and WebSocket data is bounded (16 MiB
+by default), and the limits can be lowered through
+`SseStreamOptions.maxBufferBytes`, `SseTransportOptions.maxBufferBytes`,
+`WebSocketTransportOptions.maxFrameBytes`, or
+`GatewayRpcClientOptions.maxFrameBytes`. Gemini resumable uploads likewise
+remain on the configured API origin, reject redirects, and honor cancellation
+and timeout options.
+
 Report vulnerabilities through [SECURITY.md](SECURITY.md).
 
 ## Contributing

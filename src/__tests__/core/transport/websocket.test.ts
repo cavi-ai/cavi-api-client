@@ -208,6 +208,34 @@ describe("WebSocket transport", () => {
     expect(JSON.stringify(error)).not.toContain("secret-not-json");
   });
 
+  it("rejects oversized inbound frames before invoking the decoder", async () => {
+    const fake = createFakeWebSocketFactory();
+    const decode = vi.fn((data: unknown) => JSON.parse(String(data)) as unknown);
+    const channel = createWebSocketTransport({
+      webSocketFactory: fake.factory,
+      maxFrameBytes: 16,
+    }).connect({
+      url: "wss://runtime.test",
+      decode,
+    });
+    const closed = new Promise<unknown>((resolve) => channel.subscribeClose(resolve));
+    fake.open(0);
+    await channel.ready;
+    const utf8Encode = vi.spyOn(TextEncoder.prototype, "encode");
+    utf8Encode.mockClear();
+
+    fake.message(0, '{"secret":"oversized"}');
+
+    await vi.waitFor(() => expect(fake.sockets[0]!.close).toHaveBeenCalledOnce());
+    expect(await closed).toMatchObject({
+      message: "WebSocket message decoding failed",
+      transport: { phase: "decode", retryable: false },
+    });
+    expect(decode).not.toHaveBeenCalled();
+    expect(utf8Encode).not.toHaveBeenCalled();
+    utf8Encode.mockRestore();
+  });
+
   it("ignores a stale decoder rejection after reconnect", async () => {
     const fake = createFakeWebSocketFactory();
     const stale = deferred<unknown>();

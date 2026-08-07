@@ -6,6 +6,7 @@ import {
   geminiBatchGenerateContentPath,
   geminiBatchPath,
   geminiBatchCancelPath,
+  geminiFilePath,
   geminiFileDownloadPath,
 } from "../../../providers/gemini/paths";
 
@@ -37,5 +38,51 @@ describe("gemini paths", () => {
     expect(geminiBatchPath("123")).toBe("/v1beta/batches/123");
     expect(geminiBatchCancelPath("batches/123")).toBe("/v1beta/batches/123:cancel");
     expect(geminiFileDownloadPath("files/out")).toContain("/download/v1beta/files/out:download");
+  });
+
+  it("encodes untrusted batch and file resource-name segments", () => {
+    expect(geminiBatchPath("batches/team/one?key=value#tail")).toBe(
+      "/v1beta/batches/team%2Fone%3Fkey%3Dvalue%23tail",
+    );
+    expect(geminiFilePath("files/team/out?alt=media#tail")).toBe(
+      "/v1beta/files/team%2Fout%3Falt%3Dmedia%23tail",
+    );
+    expect(geminiFileDownloadPath("files/team/out?alt=media#tail")).toBe(
+      "/download/v1beta/files/team%2Fout%3Falt%3Dmedia%23tail:download?alt=media",
+    );
+  });
+
+  it("preserves valid percent triplets in legacy pass-through paths", () => {
+    expect(geminiBatchPath("batches/a%2Fb")).toBe(
+      "/v1beta/batches/a%2Fb",
+    );
+    expect(geminiFileDownloadPath("files/a%2Fb")).toBe(
+      "/download/v1beta/files/a%2Fb:download?alt=media",
+    );
+  });
+
+  it("encodes raw and malformed delimiters without changing path structure", () => {
+    expect(geminiBatchPath("batches/a b%2/b?key=value#tail")).toBe(
+      "/v1beta/batches/a%20b%252%2Fb%3Fkey%3Dvalue%23tail",
+    );
+    expect(geminiFileDownloadPath("files/../a%zz/b?alt=x#tail")).toBe(
+      "/download/v1beta/files/..%2Fa%25zz%2Fb%3Falt%3Dx%23tail:download?alt=media",
+    );
+  });
+
+  it("keeps geminiFilePath's historical encodeURIComponent behavior", () => {
+    expect(geminiFilePath("files/a%2Fb")).toBe(
+      "/v1beta/files/a%252Fb",
+    );
+  });
+
+  it.each([
+    ["batch", (value: string) => geminiBatchPath(value)],
+    ["file", (value: string) => geminiFilePath(value)],
+    ["file download", (value: string) => geminiFileDownloadPath(value)],
+  ])("rejects empty and traversal-only %s identifiers", (_label, buildPath) => {
+    expect(() => buildPath(" ")).toThrow(/invalid .* id/u);
+    expect(() => buildPath("..")).toThrow(/invalid .* id/u);
+    expect(() => buildPath("%2e%2e")).toThrow(/invalid .* id/u);
   });
 });

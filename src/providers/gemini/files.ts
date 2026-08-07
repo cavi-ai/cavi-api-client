@@ -1,4 +1,8 @@
-import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
+import {
+  ApiClientError,
+  ApiClientErrorCode,
+  ApiClientErrorType,
+} from "../../core/errors.js";
 import { BaseHttpApiClient } from "../../core/http/client.js";
 import { apiKeyCredentials } from "../../core/http/credentials.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
@@ -20,14 +24,75 @@ export type GeminiFilesClientOptions = {
 
 export type GeminiFileObject = { name: string } & Record<string, unknown>;
 
-function readUploadUrl(response: Response): string {
+function rejectRedirects(fetchImpl: typeof fetch): typeof fetch {
+  return ((input: RequestInfo | URL, init?: RequestInit) =>
+    fetchImpl(input, { ...init, redirect: "error" })) as typeof fetch;
+}
+
+function createUploadAbortSignal(
+  timeoutMs: number,
+  inputSignal?: AbortSignal,
+): {
+  signal: AbortSignal;
+  timeoutError: ApiClientError;
+  didTimeout: () => boolean;
+  cleanup: () => void;
+} {
+  const controller = new AbortController();
+  const timeoutError = new ApiClientError(
+    `gemini-files: upload timed out after ${timeoutMs}ms`,
+    {
+      type: ApiClientErrorType.Timeout,
+      code: ApiClientErrorCode.Timeout,
+    },
+  );
+  let timedOut = false;
+  const abortFromInput = () => controller.abort(inputSignal?.reason);
+  if (inputSignal?.aborted) {
+    abortFromInput();
+  } else {
+    inputSignal?.addEventListener("abort", abortFromInput, { once: true });
+  }
+  const timeout = setTimeout(() => {
+    if (controller.signal.aborted) return;
+    timedOut = true;
+    controller.abort(timeoutError);
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    timeoutError,
+    didTimeout: () => timedOut,
+    cleanup: () => {
+      clearTimeout(timeout);
+      inputSignal?.removeEventListener("abort", abortFromInput);
+    },
+  };
+}
+
+function readUploadUrl(response: Response, baseUrl: string): string {
   const uploadUrl = response.headers.get("x-goog-upload-url") ?? response.headers.get("X-Goog-Upload-Url");
   if (!uploadUrl?.trim()) {
     throw new ApiClientError("gemini-files: resumable upload response missing x-goog-upload-url", {
       code: ApiClientErrorCode.RequestFailed,
     });
   }
-  return uploadUrl.trim();
+  try {
+    const base = new URL(baseUrl);
+    const destination = new URL(uploadUrl.trim(), base);
+    if (
+      !["http:", "https:"].includes(destination.protocol) ||
+      destination.origin !== base.origin ||
+      destination.username ||
+      destination.password
+    ) {
+      throw new Error("unsafe upload destination");
+    }
+    return destination.toString();
+  } catch {
+    throw new ApiClientError("gemini-files: invalid resumable upload destination", {
+      code: ApiClientErrorCode.RequestFailed,
+    });
+  }
 }
 
 function readFileName(value: unknown): string {
@@ -50,6 +115,7 @@ export class GeminiFilesClient extends BaseHttpApiClient {
   private readonly uploadFetch: typeof fetch;
 
   constructor(options: GeminiFilesClientOptions) {
+    const uploadFetch = rejectRedirects(options.fetchImpl ?? globalThis.fetch);
     const apiKey = options.apiKey?.trim();
     if (!apiKey) {
       throw new ApiClientError("gemini-files: an api key is required", {
@@ -61,17 +127,24 @@ export class GeminiFilesClient extends BaseHttpApiClient {
       includePortalClientIdHeader: false,
       auth: { resolveHeaders: apiKeyCredentials(apiKey, { header: "x-goog-api-key" }) },
       defaultTimeoutMs: options.defaultTimeoutMs,
-      fetchImpl: options.fetchImpl,
+      fetchImpl: uploadFetch,
       onTrace: options.onTrace,
     });
     this.request = this.createTransport();
-    this.uploadFetch = options.fetchImpl ?? fetch;
+    this.uploadFetch = uploadFetch;
   }
 
   /** Upload text content via Google's resumable upload protocol. */
   async uploadFile(
     content: string,
-    options: { displayName?: string; mimeType?: string } = {},
+    options: {
+      displayName?: string;
+      mimeType?: string;
+      /** Cancels both the resumable-upload start request and the byte upload. */
+      signal?: AbortSignal;
+      /** Timeout for each upload stage in milliseconds. */
+      timeoutMs?: number;
+    } = {},
   ): Promise<GeminiFileObject> {
     const bytes = new TextEncoder().encode(content);
     const mimeType = options.mimeType ?? "application/jsonl";
@@ -86,27 +159,49 @@ export class GeminiFilesClient extends BaseHttpApiClient {
         "Content-Type": "application/json",
       },
       body: { file: { display_name: displayName } },
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
     });
-    const uploadUrl = readUploadUrl(start);
-    const upload = await this.uploadFetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        ...this.buildHeaders({ method: "POST" }),
-        "Content-Length": String(bytes.length),
-        "X-Goog-Upload-Offset": "0",
-        "X-Goog-Upload-Command": "upload, finalize",
-      },
-      body: bytes,
-    });
-    if (!upload.ok) {
-      const body = await upload.text();
-      throw new ApiClientError(`gemini-files: upload failed (${upload.status})`, {
-        code: ApiClientErrorCode.RequestFailed,
-        cause: body,
+    const uploadUrl = readUploadUrl(start, this.baseUrl);
+    const uploadAbort = createUploadAbortSignal(
+      options.timeoutMs ?? this.defaultTimeoutMs,
+      options.signal,
+    );
+    try {
+      if (options.signal?.aborted) {
+        throw options.signal.reason;
+      }
+      const upload = await this.uploadFetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          ...this.buildHeaders({ method: "POST" }),
+          "Content-Length": String(bytes.length),
+          "X-Goog-Upload-Offset": "0",
+          "X-Goog-Upload-Command": "upload, finalize",
+        },
+        body: bytes,
+        signal: uploadAbort.signal,
       });
+      if (!upload.ok) {
+        const body = await upload.text();
+        throw new ApiClientError(`gemini-files: upload failed (${upload.status})`, {
+          code: ApiClientErrorCode.RequestFailed,
+          cause: body,
+        });
+      }
+      const payload = (await upload.json()) as unknown;
+      return { name: readFileName(payload) };
+    } catch (error) {
+      if (uploadAbort.didTimeout()) {
+        throw uploadAbort.timeoutError;
+      }
+      if (options.signal?.aborted) {
+        throw options.signal.reason;
+      }
+      throw error;
+    } finally {
+      uploadAbort.cleanup();
     }
-    const payload = (await upload.json()) as unknown;
-    return { name: readFileName(payload) };
   }
 
   /** Download raw file content (batch output JSONL). */

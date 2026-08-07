@@ -130,7 +130,19 @@ export function createHttpTransport(options: HttpTransportOptions): HttpTranspor
       const idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey);
       const safety = operationSafety(request, idempotencyKey);
       const operation = `${request.method} ${request.path}`;
-      const url = new URL(request.path, baseUrl).toString();
+      const resolvedUrl = new URL(request.path, baseUrl);
+      if (resolvedUrl.origin !== baseUrl.origin) {
+        throw new TransportError("HTTP request URL must use the configured origin", {
+          metadata: {
+            kind: "http",
+            phase: "configure",
+            operation,
+            retryable: false,
+            attempt: 1,
+          },
+        });
+      }
+      const url = resolvedUrl.toString();
 
       return await runTransportAttempts<T>({
         kind: "http",
@@ -150,6 +162,7 @@ export function createHttpTransport(options: HttpTransportOptions): HttpTranspor
               headers,
               body: request.body,
               signal,
+              redirect: "error",
             });
           } catch (error) {
             if (signal?.aborted || isAbortError(error)) throw error;
