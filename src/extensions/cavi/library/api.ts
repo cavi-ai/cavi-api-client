@@ -8,6 +8,7 @@ import {
   resolveGatewayRequestCredentials,
 } from "../../../core/gateway/client/fetch.js";
 import { extractGatewayErrorDetails } from "../../../core/gateway/client/error-details.js";
+import { redactPreviewText } from "../../../core/http/redaction.js";
 import { appendHttpQuery, resolveLibraryApiPath } from "../contracts/paths.js";
 import { isSessionAuthMode } from "../runtime/standalone-mode.js";
 
@@ -69,7 +70,9 @@ export async function fetchLibraryApiJson<T>(
   ).catch((error: unknown) => {
     if (error instanceof HttpApiError && error.status > 0) {
       const payload = parseLibraryApiPayload(error.body, error.status);
-      const fallbackMessage = error.body.trim() || `Request failed (${error.status})`;
+      const fallbackMessage =
+        redactPreviewText(error.body.trim(), 180) ||
+        `Request failed (${error.status})`;
       throw new Error(extractGatewayErrorDetails(payload).message ?? fallbackMessage);
     }
     throw error;
@@ -115,6 +118,8 @@ function parseLibraryApiPayload(raw: string, status: number): unknown {
   try {
     return JSON.parse(raw) as unknown;
   } catch {
-    throw new Error(raw.trim() || `Librarian error (${status})`);
+    throw new Error(
+      redactPreviewText(raw.trim(), 180) || `Librarian error (${status})`,
+    );
   }
 }

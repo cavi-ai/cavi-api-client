@@ -85,6 +85,29 @@ describe("redaction helpers", () => {
       expect(redactSensitiveText("Bearer abc.def-123")).toBe(
         `Bearer ${REDACTION_PLACEHOLDER}`,
       );
+      expect(redactSensitiveText("bearer lower.case-token")).toBe(
+        `bearer ${REDACTION_PLACEHOLDER}`,
+      );
+      expect(redactSensitiveText("authorization: bearer SECRET")).toBe(
+        `authorization: ${REDACTION_PLACEHOLDER}`,
+      );
+      expect(redactSensitiveText("Authorization: Basic dXNlcjpwYXNz")).toBe(
+        `Authorization: ${REDACTION_PLACEHOLDER}`,
+      );
+    });
+
+    it("redacts complete multi-parameter authorization credentials", () => {
+      expect(
+        redactSensitiveText(
+          'Authorization: Digest username="admin", response="digest-secret"',
+        ),
+      ).toBe(`Authorization: ${REDACTION_PLACEHOLDER}`);
+    });
+
+    it("redacts complete quoted values containing whitespace", () => {
+      expect(redactSensitiveText('password="two word secret"')).toBe(
+        `password="${REDACTION_PLACEHOLDER}"`,
+      );
     });
 
     it("leaves non-sensitive text untouched", () => {

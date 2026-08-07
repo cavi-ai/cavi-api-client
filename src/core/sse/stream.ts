@@ -7,6 +7,26 @@ export type SseMessage = {
 
 export type SseMessageHandler = (message: SseMessage) => void;
 
+export type SseStreamOptions = Readonly<{
+  /** Maximum incomplete event buffer in UTF-8 bytes. Defaults to 16 MiB. */
+  maxBufferBytes?: number;
+}>;
+
+const DEFAULT_MAX_SSE_BUFFER_BYTES = 16 * 1024 * 1024;
+const MAX_DECODE_CHUNK_BYTES = 64 * 1024;
+
+class SseBufferLimitError extends RangeError {
+  readonly code = "sse-buffer-limit";
+}
+
+function resolveMaxBufferBytes(value: number | undefined): number {
+  const limit = value ?? DEFAULT_MAX_SSE_BUFFER_BYTES;
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new TypeError("maxBufferBytes must be a positive safe integer");
+  }
+  return limit;
+}
+
 export function isSseContentType(contentType: string | null | undefined): boolean {
   return (contentType ?? "").toLowerCase().includes("text/event-stream");
 }
@@ -75,10 +95,38 @@ export async function consumeSseStream(
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal,
   onMessage: SseMessageHandler,
+  options: SseStreamOptions = {},
 ): Promise<void> {
+  const maxBufferBytes = resolveMaxBufferBytes(options.maxBufferBytes);
   const reader = body.getReader();
   const decoder = new TextDecoder("utf-8");
+  const encoder = new TextEncoder();
+  const decodeChunkBytes = Math.min(maxBufferBytes, MAX_DECODE_CHUNK_BYTES);
   let buffer = "";
+  let bufferedBytes = 0;
+  const appendDecoded = (decoded: string): void => {
+    if (decoded.length === 0) return;
+    buffer += decoded;
+    bufferedBytes += encoder.encode(decoded).byteLength;
+
+    let next = takeNextSseBlock(buffer);
+    while (next) {
+      const blockBytes = encoder.encode(next.block).byteLength;
+      if (blockBytes > maxBufferBytes) {
+        throw new SseBufferLimitError("SSE buffer exceeds the configured size limit");
+      }
+      const separatorBytes = buffer.length - next.block.length - next.rest.length;
+      bufferedBytes -= blockBytes + separatorBytes;
+      buffer = next.rest;
+      const message = parseSseBlock(next.block);
+      if (message) onMessage(message);
+      next = takeNextSseBlock(buffer);
+    }
+
+    if (bufferedBytes > maxBufferBytes) {
+      throw new SseBufferLimitError("SSE buffer exceeds the configured size limit");
+    }
+  };
   const onAbort = (): void => {
     try {
       void reader.cancel();
@@ -91,17 +139,28 @@ export async function consumeSseStream(
     while (true) {
       const { value, done } = await reader.read();
       if (done) {
-        buffer += decoder.decode();
+        appendDecoded(decoder.decode());
         break;
       }
-      buffer += decoder.decode(value, { stream: true });
-      buffer = drainSseMessages(buffer, onMessage);
+      for (let offset = 0; offset < value.byteLength; offset += decodeChunkBytes) {
+        appendDecoded(decoder.decode(
+          value.subarray(offset, Math.min(value.byteLength, offset + decodeChunkBytes)),
+          { stream: true },
+        ));
+      }
     }
-    buffer = drainSseMessages(buffer, onMessage);
     const trailing = parseSseBlock(buffer);
     if (trailing) onMessage(trailing);
+  } catch (error) {
+    try {
+      await reader.cancel(error);
+    } catch {
+      // Preserve the decode/handler failure that terminated the stream.
+    }
+    throw error;
   } finally {
     signal.removeEventListener("abort", onAbort);
+    reader.releaseLock();
   }
 }
 

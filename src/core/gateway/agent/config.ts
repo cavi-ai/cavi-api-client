@@ -106,6 +106,7 @@ export class GatewayAgentConfigApiError extends Error {
 }
 
 const AGENT_PROFILE_ID_RE = /^(?:default|[a-z0-9][a-z0-9_-]{0,63})$/u;
+const UNSAFE_CONFIG_PATH_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
 
 const REASONING_EFFORT_OPTIONS = [
   { value: "", label: "Default" },
@@ -186,6 +187,10 @@ export function setAgentConfigPathValue(
 ): Record<string, unknown> {
   const segments = pathSegments(path);
   if (segments.length === 0) return config;
+  const unsafeSegment = segments.find((segment) => UNSAFE_CONFIG_PATH_SEGMENTS.has(segment));
+  if (unsafeSegment) {
+    throw new Error(`setAgentConfigPathValue: unsafe path segment "${unsafeSegment}"`);
+  }
   const next = cloneJsonRecord(config);
   let cursor: Record<string, unknown> = next;
   for (const segment of segments.slice(0, -1)) {

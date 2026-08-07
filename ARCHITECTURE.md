@@ -271,10 +271,16 @@ structural process and socket shapes rather than Node library types.
 The universal `@cavi-ai/api-client/core/transport` entry owns HTTP, SSE,
 WebSocket, JSON-RPC, framing, lifecycle, and secret-safe error infrastructure.
 Retries are finite and opt-in; mutation replay requires explicit idempotency.
-SSE resumes from a cursor with bounded event-ID dedupe, while WebSocket and Unix
-reconnects are bounded and do not replay pending writes. JSON-RPC composes over
-WebSocket or framed stdio/Unix channels. These primitives are not a provider
-adapter and do not imply that any provider implements a corresponding surface.
+Credentialed HTTP and SSE requests are pinned to the configured origin and do
+not follow redirects. SSE resumes from a cursor with bounded event-ID dedupe and
+a bounded incomplete-event buffer. WebSocket and gateway RPC reject oversized
+inbound frames before JSON decoding; their default ceiling, and the SSE buffer
+default, is 16 MiB.
+WebSocket and Unix reconnects are bounded and do not replay pending writes.
+JSON-RPC composes over WebSocket or framed stdio/Unix channels, and RPC trace
+observers receive recursively redacted parameters, results, and errors. These
+primitives are not a provider adapter and do not imply that any provider
+implements a corresponding surface.
 
 ## Route Ownership
 

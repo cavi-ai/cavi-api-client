@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -19,6 +19,13 @@ import {
 const root = path.resolve(".");
 const contractsDirectory = "docs/api-client/source/contracts";
 const manifestSnapshotPath = path.resolve(DOCUMENTED_RELEASE_MANIFEST_PATH);
+const contractTestEvidence = [
+  "src/__tests__/contracts/route-resolver.test.ts",
+  "src/__tests__/core/errors.test.ts",
+  "src/__tests__/core/runtime/capabilities.test.ts",
+  "src/__tests__/core/runtime/run-types.test.ts",
+  "src/__tests__/core/runtime/stream-run-contract.test.ts",
+] as const;
 const temporaryDirectories: string[] = [];
 let manifest: import("../../scripts/docs/types.mjs").ReleaseManifest;
 
@@ -37,16 +44,20 @@ afterEach(async () => {
 async function mutableRegistry(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), "cavi-docs-contracts-test-"));
   temporaryDirectories.push(directory);
-  await cp(path.join(root, contractsDirectory), path.join(directory, contractsDirectory), {
-    recursive: true,
-  });
-  await cp(path.join(root, "src/__tests__"), path.join(directory, "src/__tests__"), {
-    recursive: true,
-  });
-  await cp(path.join(root, "docs/api-client/source/releases"), path.join(directory, "docs/api-client/source/releases"), { recursive: true });
-  await cp(path.join(root, "docs/examples"), path.join(directory, "docs/examples"), {
-    recursive: true,
-  });
+  await Promise.all([
+    cp(path.join(root, contractsDirectory), path.join(directory, contractsDirectory), {
+      recursive: true,
+    }),
+    cp(path.join(root, "docs/api-client/source/releases"), path.join(directory, "docs/api-client/source/releases"), { recursive: true }),
+    cp(path.join(root, "docs/examples"), path.join(directory, "docs/examples"), {
+      recursive: true,
+    }),
+    ...contractTestEvidence.map(async (evidencePath) => {
+      const destination = path.join(directory, evidencePath);
+      await mkdir(path.dirname(destination), { recursive: true });
+      await cp(path.join(root, evidencePath), destination);
+    }),
+  ]);
   return directory;
 }
 

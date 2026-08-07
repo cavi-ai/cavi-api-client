@@ -51,8 +51,47 @@ describe("SSE transport", () => {
     }).done;
 
     expect(fetchImpl).toHaveBeenCalledWith("https://runtime.test/api/events", expect.objectContaining({
+      redirect: "error",
       headers: expect.objectContaining({ AUTHORIZATION: "Bearer fresh", "Last-Event-ID": "cursor-1" }),
     }));
+  });
+
+  it("rejects cross-origin subscription paths before resolving credentials", () => {
+    const auth = vi.fn(async () => ({ headers: { authorization: "Bearer secret" } }));
+    const fetchImpl = vi.fn(async () => sseResponse("data: unreachable\n\n"));
+    const transport = createSseTransport({
+      baseUrl: "https://runtime.test/api/",
+      auth,
+      fetchImpl,
+    });
+
+    expect(() => transport.subscribe({
+      path: "https://attacker.test/collect",
+      onMessage: () => undefined,
+    })).toThrow("SSE subscription URL must use the configured origin");
+    expect(auth).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("does not retry an SSE stream that exceeds its buffer limit", async () => {
+    const fetchImpl = vi.fn(async () =>
+      sseResponse(`data: ${"x".repeat(32)}`));
+    const transport = createSseTransport({
+      baseUrl: "https://runtime.test",
+      fetchImpl,
+      maxBufferBytes: 24,
+      dependencies: { sleep: async () => undefined },
+    });
+
+    await expect(transport.subscribe({
+      path: "/events",
+      reconnect,
+      onMessage: () => undefined,
+    }).done).rejects.toMatchObject({
+      message: "SSE stream exceeds the configured size limit",
+      transport: { phase: "decode", retryable: false, attempt: 1 },
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("honors server retry hints for the next bounded reconnect", async () => {

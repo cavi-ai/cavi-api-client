@@ -66,6 +66,39 @@ describe("core SSE stream helpers", () => {
     expect(seen).toEqual(["one", "two"]);
   });
 
+  it("rejects an incomplete SSE event that exceeds the configured buffer limit", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(`data: ${"a".repeat(16)}`));
+        controller.enqueue(new TextEncoder().encode("b".repeat(16)));
+      },
+      cancel,
+    });
+    const onMessage = vi.fn();
+
+    await expect(consumeSseStream(
+      body,
+      new AbortController().signal,
+      onMessage,
+      { maxBufferBytes: 24 },
+    )).rejects.toThrow("SSE buffer exceeds the configured size limit");
+    expect(onMessage).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("validates the buffer limit before locking the response body", async () => {
+    const body = streamFromText("data: ready\n\n");
+
+    await expect(consumeSseStream(
+      body,
+      new AbortController().signal,
+      () => undefined,
+      { maxBufferBytes: 0 },
+    )).rejects.toThrow("maxBufferBytes must be a positive safe integer");
+    expect(body.locked).toBe(false);
+  });
+
   it("combines abort signals", () => {
     const left = new AbortController();
     const right = new AbortController();

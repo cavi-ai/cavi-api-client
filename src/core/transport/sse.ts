@@ -39,6 +39,8 @@ export type SseTransportOptions = Readonly<{
   defaultHeaders?: Readonly<Record<string, string>>;
   auth?: TransportAuthResolver;
   fetchImpl?: typeof fetch;
+  /** Maximum incomplete event buffer in UTF-8 bytes. Defaults to 16 MiB. */
+  maxBufferBytes?: number;
   dependencies?: Partial<TransportDependencies>;
   onLifecycleEvent?: (event: TransportLifecycleEvent) => void;
 }>;
@@ -82,6 +84,11 @@ function validateDedupeCapacity(value: number | undefined): number {
   return capacity;
 }
 
+function isSseBufferLimitError(error: unknown): boolean {
+  return error instanceof RangeError &&
+    (error as RangeError & { code?: unknown }).code === "sse-buffer-limit";
+}
+
 export function createSseTransport(transportOptions: SseTransportOptions): SseTransport {
   const baseUrl = normalizeBaseUrl(transportOptions.baseUrl);
   const fetchImpl = transportOptions.fetchImpl ?? globalThis.fetch;
@@ -99,7 +106,19 @@ export function createSseTransport(transportOptions: SseTransportOptions): SseTr
       const dedupeCapacity = validateDedupeCapacity(policy.dedupeCapacity);
       const controller = new AbortController();
       const operation = "subscribe";
-      const url = new URL(connectOptions.path, baseUrl).toString();
+      const resolvedUrl = new URL(connectOptions.path, baseUrl);
+      if (resolvedUrl.origin !== baseUrl.origin) {
+        throw new TransportError("SSE subscription URL must use the configured origin", {
+          metadata: {
+            kind: "sse",
+            phase: "configure",
+            operation,
+            retryable: false,
+            attempt: 1,
+          },
+        });
+      }
+      const url = resolvedUrl.toString();
       const seenIds = new Set<string>();
       let cursor = connectOptions.cursor;
       let closed = false;
@@ -145,7 +164,12 @@ export function createSseTransport(transportOptions: SseTransportOptions): SseTr
                 authHeaders,
                 cursor,
               );
-              response = await fetchImpl(url, { method: "GET", headers, signal: controller.signal });
+              response = await fetchImpl(url, {
+                method: "GET",
+                headers,
+                signal: controller.signal,
+                redirect: "error",
+              });
             } catch (error) {
               if (controller.signal.aborted || isAbortError(error)) return;
               const normalized = error instanceof TransportError ? error : new TransportError(
@@ -214,9 +238,20 @@ export function createSseTransport(transportOptions: SseTransportOptions): SseTr
                     },
                   });
                 }
-              });
+              }, { maxBufferBytes: transportOptions.maxBufferBytes });
             } catch (error) {
               if (controller.signal.aborted || isAbortError(error)) return;
+              if (isSseBufferLimitError(error)) {
+                throw new TransportError("SSE stream exceeds the configured size limit", {
+                  metadata: {
+                    kind: "sse",
+                    phase: "decode",
+                    operation,
+                    retryable: false,
+                    attempt,
+                  },
+                });
+              }
               if (error instanceof TransportError && !error.transport.retryable) throw error;
               const normalized = new TransportError("SSE stream decoding failed", {
                 metadata: { kind: "sse", phase: "decode", operation, retryable: true, attempt },

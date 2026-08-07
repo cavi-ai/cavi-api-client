@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provenance check binds the published tarball digest to the release repository, tag, commit, and publish workflow
 - `release:resolve-npm` requires `--repository <owner/name>`
 
+### Fixed
+
+- Pinned credentialed HTTP, SSE, and Gemini resumable-upload requests to their
+  configured origin and rejected redirects; Gemini uploads now honor
+  cancellation and per-stage timeouts.
+- Bounded incomplete SSE events, generic WebSocket frames, gateway RPC frames,
+  and CAVI discourse normalization work; overflow streams terminate without
+  retry, and gateway RPC traces recursively redact secret-bearing parameters,
+  results, and errors.
+- Encoded Gemini batch and file identifiers, rejected prototype-polluting
+  dotted config paths, and redacted bounded previews of non-JSON library errors.
+
 ## [0.16.0] - 2026-08-02
 
 ### Added

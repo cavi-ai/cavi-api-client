@@ -4,6 +4,7 @@ import {
   agentProfileConfigSourcePath,
   buildAgentConfigFromConfigSnapshot,
   buildAgentProfileConfigPatchBody,
+  setAgentConfigPathValue,
 } from "../../../core/gateway/agent/config";
 
 describe("gateway agent config client", () => {
@@ -49,4 +50,30 @@ describe("gateway agent config client", () => {
     });
     expect(paths).toEqual(["/api/agent-configs/default/config"]);
   });
+
+  it("sets a normal dotted path without mutating the source config", () => {
+    const source = { model: { default: "gpt-4.1" } };
+
+    const updated = setAgentConfigPathValue(source, "model.default", "gpt-5");
+
+    expect(updated).toEqual({ model: { default: "gpt-5" } });
+    expect(source).toEqual({ model: { default: "gpt-4.1" } });
+  });
+
+  it.each([
+    "__proto__.caviAgentConfigPollutionProbe",
+    "constructor.prototype.caviAgentConfigPollutionProbe",
+  ])(
+    "rejects the dangerous config path %s",
+    (path) => {
+      const objectPrototype = Object.prototype as Record<string, unknown>;
+      try {
+        expect(() => setAgentConfigPathValue({}, path, true)).toThrow(
+          /unsafe path segment/iu,
+        );
+      } finally {
+        delete objectPrototype.caviAgentConfigPollutionProbe;
+      }
+    },
+  );
 });
