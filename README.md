@@ -108,7 +108,14 @@ Runtime-only HTTP clients can accept provider-neutral request policy through the
 same front door:
 
 ```ts
+import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini";
+
+const registry = createRuntimeProviderRegistry({
+  modules: [createGeminiProviderModule({ apiKey: process.env.GEMINI_API_KEY ?? "" })],
+});
 const client = createApiClient("gemini", {
+  registry,
   defaultTimeoutMs: 20_000,
   cache: "no-store",
   credentials: "same-origin",
