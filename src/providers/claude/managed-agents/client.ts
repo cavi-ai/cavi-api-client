@@ -88,6 +88,8 @@ export type ClaudeManagedAgentClientOptions = {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 export type ManagedAgentSession = {
@@ -506,6 +508,8 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
           : apiKeyCredentials(apiKey ?? "", { header: "x-api-key" }),
       },
       defaultTimeoutMs: options.defaultTimeoutMs ?? 60_000,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });

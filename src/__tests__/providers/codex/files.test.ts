@@ -42,6 +42,25 @@ describe("CodexFilesClient", () => {
     expect(await files.downloadFileContent("file-1")).toBe('{"line":1}\n');
   });
 
+  it("propagates cache and credentials to file requests", async () => {
+    const fetchImpl = router(() => new Response(JSON.stringify({ id: "file-1" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    const files = new CodexFilesClient({
+      apiKey: "sk",
+      fetchImpl,
+      cache: "reload",
+      credentials: "include",
+    });
+    await files.retrieveFile("file-1");
+
+    const init = fetchImpl.calls[0]!.init!;
+    expect(init.cache).toBe("reload");
+    expect(init.credentials).toBe("include");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer sk");
+  });
+
   it("retrieve + delete hit the right path/method", async () => {
     const fetchImpl = router((url, init) => {
       if (init?.method === "DELETE") return new Response(JSON.stringify({ id: "file-1", deleted: true }), { status: 200, headers: { "content-type": "application/json" } });

@@ -38,7 +38,12 @@ describe("GeminiFilesClient", () => {
     const fetchImpl = uploadFetch(
       "https://generativelanguage.googleapis.com/upload/session",
     );
-    const client = new GeminiFilesClient({ apiKey: "secret-key", fetchImpl });
+    const client = new GeminiFilesClient({
+      apiKey: "secret-key",
+      fetchImpl,
+      cache: "reload",
+      credentials: "include",
+    });
 
     await expect(client.uploadFile("payload")).resolves.toEqual({
       name: "files/input",
@@ -46,6 +51,10 @@ describe("GeminiFilesClient", () => {
     expect(fetchImpl.calls).toHaveLength(2);
     expect(fetchImpl.calls[0]?.init?.redirect).toBe("error");
     expect(fetchImpl.calls[1]?.init?.redirect).toBe("error");
+    expect(fetchImpl.calls[0]?.init?.cache).toBe("reload");
+    expect(fetchImpl.calls[0]?.init?.credentials).toBe("include");
+    expect(fetchImpl.calls[1]?.init?.cache).toBe("reload");
+    expect(fetchImpl.calls[1]?.init?.credentials).toBe("include");
     expect(fetchImpl.calls[1]?.url).toBe(
       "https://generativelanguage.googleapis.com/upload/session",
     );
@@ -54,6 +63,17 @@ describe("GeminiFilesClient", () => {
         "x-goog-api-key"
       ],
     ).toBe("secret-key");
+  });
+
+  it("omits direct upload policy when caller leaves it unspecified", async () => {
+    const fetchImpl = uploadFetch(
+      "https://generativelanguage.googleapis.com/upload/session",
+    );
+    const client = new GeminiFilesClient({ apiKey: "secret-key", fetchImpl });
+
+    await expect(client.uploadFile("payload")).resolves.toEqual({ name: "files/input" });
+    expect(Object.hasOwn(fetchImpl.calls[1]?.init ?? {}, "cache")).toBe(false);
+    expect(Object.hasOwn(fetchImpl.calls[1]?.init ?? {}, "credentials")).toBe(false);
   });
 
   it("propagates caller cancellation across both resumable upload stages", async () => {

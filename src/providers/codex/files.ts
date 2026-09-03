@@ -16,6 +16,8 @@ export type CodexFilesClientOptions = {
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
   defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 export type CodexFileObject = { id: string } & Record<string, unknown>;
@@ -36,6 +38,8 @@ export class CodexFilesClient extends BaseHttpApiClient {
       includePortalClientIdHeader: false,
       auth: { resolveHeaders: bearerCredentials(apiKey) },
       defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });

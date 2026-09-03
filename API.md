@@ -30,6 +30,12 @@ Prefer `createApiClient(provider, options)` for a non-throwing
 `CapabilityClient` surface, or compose a `RuntimeClient` when you need the raw
 contract.
 
+Runtime HTTP policy is available through `createApiClient` with
+`defaultTimeoutMs`, `cache`, `credentials`, and `onTrace`. These settings apply
+to runtime HTTP clients only; provider credentials and required headers remain
+provider-owned, while retries and control-plane connections are configured
+separately.
+
 ## Public entry points
 
 | Layer | Import | Role |

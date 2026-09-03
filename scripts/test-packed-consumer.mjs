@@ -36,6 +36,8 @@ import type { RuntimeControlScenarioEnvironment, RuntimeControlScenarioResult } 
 import type { RawGatewayConformanceFactory, RawGatewayConformanceFixture, RawGatewayConformanceReport } from "@cavi-ai/api-client/testing";
 import type { RawGatewayChannel, RawGatewayConnectionState, RawGatewayEvent, RawGatewayRequestOptions } from "@cavi-ai/api-client";
 import type { RuntimeControlClientOptions } from "@cavi-ai/api-client";
+import type { CreateApiClientOptions, RuntimeClientOptions } from "@cavi-ai/api-client";
+import type { RuntimeClientOptions as SubpathRuntimeClientOptions } from "@cavi-ai/api-client/core/runtime/providers";
 import type { GatewayRpcClientOptions } from "@cavi-ai/api-client/core/gateway";
 import type { RawGatewayChannel as SubpathRawGatewayChannel } from "@cavi-ai/api-client/core/runtime";
 const scenarioEnvironment = null as RuntimeControlScenarioEnvironment | null;
@@ -49,6 +51,24 @@ const rawConformanceFixture = null as RawGatewayConformanceFixture | null;
 const rawConformanceReport = null as RawGatewayConformanceReport | null;
 const gatewayConnection = null as GatewayRpcClientOptions | null;
 const runtimeOptions: RuntimeControlClientOptions = gatewayConnection === null ? {} : { gatewayConnection };
+const runtimeHttpOptions: RuntimeClientOptions = {
+  baseUrl: "https://runtime.example",
+  defaultTimeoutMs: 0,
+  cache: "reload",
+  credentials: "include",
+  onTrace: (trace) => void trace,
+};
+const subpathRuntimeHttpOptions: SubpathRuntimeClientOptions = runtimeHttpOptions;
+const facadeHttpOptions: CreateApiClientOptions = {
+  defaultTimeoutMs: 0,
+  cache: "reload",
+  credentials: "include",
+  onTrace: (trace) => void trace,
+};
+// @ts-expect-error provider authentication stays provider-owned
+const invalidRuntimeAuth: RuntimeClientOptions = { auth: { bearerToken: "secret" } };
+// @ts-expect-error generic headers stay provider-owned
+const invalidRuntimeHeaders: RuntimeClientOptions = { defaultHeaders: { authorization: "secret" } };
 void scenarioEnvironment;
 void scenarioResult;
 void rawChannel;
@@ -59,6 +79,11 @@ void rawConformanceFactory;
 void rawConformanceFixture;
 void rawConformanceReport;
 void runtimeOptions;
+void runtimeHttpOptions;
+void subpathRuntimeHttpOptions;
+void facadeHttpOptions;
+void invalidRuntimeAuth;
+void invalidRuntimeHeaders;
 `;
 
 try {

@@ -16,6 +16,17 @@ const client: RuntimeClient = {
 describe("createRuntimeClient", () => {
   it("prefers createClient and forwards transport options", () => {
     let received: RuntimeClientOptions | undefined;
+    const fetchImpl = (() => Promise.reject(new Error("unused"))) as typeof fetch;
+    const onTrace: NonNullable<RuntimeClientOptions["onTrace"]> = () => undefined;
+    const clientOptions: RuntimeClientOptions = {
+      baseUrl: "https://runtime.example",
+      fetchImpl,
+      onTrace,
+      defaultTimeoutMs: 0,
+      cache: "reload",
+      credentials: "include",
+    };
+    let resolveCalls = 0;
     const provider: RuntimeProviderModule = {
       kind: "acme",
       capabilities: { runs: true },
@@ -27,27 +38,39 @@ describe("createRuntimeClient", () => {
         throw new Error("legacy factory should not run");
       },
     };
-    const registry = createRuntimeProviderRegistry({ modules: [provider] });
-    const clientOptions = { baseUrl: "https://runtime.example" };
+    const registry = {
+      resolveProvider: () => {
+        resolveCalls += 1;
+        return provider;
+      },
+      listProviders: () => [provider],
+    };
 
     expect(createRuntimeClient("acme", { registry, clientOptions })).toBe(client);
-    expect(received).toEqual(clientOptions);
+    expect(received).toBe(clientOptions);
+    expect(resolveCalls).toBe(1);
   });
 
   it("supports legacy createApiClient modules", () => {
+    let received: RuntimeClientOptions | undefined;
     const provider: RuntimeProviderModule = {
       kind: "legacy",
       capabilities: { runs: true },
-      createApiClient: () => client,
+      createApiClient: (options) => {
+        received = options;
+        return client;
+      },
     };
     const registry = createRuntimeProviderRegistry({ modules: [provider] });
+    const clientOptions: RuntimeClientOptions = { baseUrl: "https://runtime.example" };
 
     expect(
       createRuntimeClient("legacy", {
         registry,
-        clientOptions: { baseUrl: "https://runtime.example" },
+        clientOptions,
       }),
     ).toBe(client);
+    expect(received).toBe(clientOptions);
   });
 
   it("throws typed errors for unknown providers and missing factories", () => {

@@ -10,7 +10,12 @@ type GatewayTransport = unknown;
 
 export type RuntimeClientOptions = Pick<
   HttpApiClientOptions,
-  "baseUrl" | "fetchImpl" | "onTrace"
+  | "baseUrl"
+  | "fetchImpl"
+  | "onTrace"
+  | "defaultTimeoutMs"
+  | "cache"
+  | "credentials"
 >;
 
 export type RuntimeControlPlaneDeclaration = {

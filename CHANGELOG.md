@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Runtime HTTP clients now accept provider-neutral `defaultTimeoutMs`, `cache`,
+  `credentials`, and `onTrace` settings through `createApiClient`; provider
+  credentials, required headers, retries, and control-plane connections remain
+  separately owned.
+
 - Documentation source pages, contracts, and navigation now resolve
   `{{documentedVersion}}` from `package.json` during generation and reject
   hard-coded semantic versions, preventing release-documentation drift.

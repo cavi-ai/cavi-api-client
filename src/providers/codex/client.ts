@@ -50,6 +50,8 @@ export type CodexApiClientOptions = {
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
   defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 
@@ -70,6 +72,8 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
       includePortalClientIdHeader: false,
       auth: { resolveHeaders: bearerCredentials(apiKey) },
       defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });

@@ -104,6 +104,22 @@ if (sessions.ok) {
 await client.dispose();
 ```
 
+Runtime-only HTTP clients can accept provider-neutral request policy through the
+same front door:
+
+```ts
+const client = createApiClient("gemini", {
+  defaultTimeoutMs: 20_000,
+  cache: "no-store",
+  credentials: "same-origin",
+  onTrace: (trace) => console.debug(trace),
+});
+```
+
+These settings apply to runtime HTTP clients. Provider credentials and required
+headers remain provider-owned; retries and control-plane connections are
+configured separately.
+
 `streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
 Gemini, AGY) stream through their own `RuntimeClient`; gateway providers are bridged
 over their event transport — Hermes over SSE run events, OpenClaw over

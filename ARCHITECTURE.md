@@ -79,6 +79,12 @@ supply their own `RuntimeProviderModule` / `GatewayProviderModule`. A provider
 authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie,
 or api-key) instead of the core hardcoding a token.
 
+The `createApiClient` facade accepts provider-neutral runtime HTTP policy
+(`defaultTimeoutMs`, `cache`, `credentials`, and `onTrace`) for runtime HTTP
+clients. Provider credentials and required protocol headers remain owned by
+provider modules; retries and control-plane connections are configured
+separately.
+
 The provider-neutral module, registry, and `createRuntimeClient` factory live in
 `core/runtime/providers`; gateway provider APIs extend and compatibility-export
 that kernel. Narrow runtime provider entries exclude CAVI product adapters.

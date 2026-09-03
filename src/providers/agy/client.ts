@@ -24,6 +24,9 @@ export type AgyApiClientOptions = {
   defaultModel?: string;
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
+  defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 function newAgyRunId(): string {
@@ -43,6 +46,9 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       baseUrl: options.baseUrl.trim(),
       includePortalClientIdHeader: false,
       ...(options.apiKey ? { auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-agy-api-key" }) } } : {}),
+      defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });
