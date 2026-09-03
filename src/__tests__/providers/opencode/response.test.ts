@@ -1,12 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors";
 import {
+  mapOpenCodeMessageHistoryToRunStatus,
   mapOpenCodePromptResponseToRunStatus,
   parseOpenCodeHealthResponse,
+  parseOpenCodeSessionStatusResponse,
   parseOpenCodeSessionResponse,
 } from "../../../providers/opencode/response";
 
 const session = { id: "ses_123", directory: "/workspace/project", version: "1.18.27" };
+
+const assistantInfo = (overrides: Record<string, unknown> = {}) => ({
+  id: "msg_1",
+  sessionID: "ses_123",
+  role: "assistant",
+  providerID: "openai",
+  modelID: "gpt-5",
+  ...overrides,
+});
+
+const assistantMessage = (overrides: Record<string, unknown> = {}, parts: unknown[] = []) => ({
+  info: assistantInfo(overrides),
+  parts,
+});
 
 describe("OpenCode response mapping", () => {
   it("accepts only the exact supported healthy server version", () => {
@@ -229,6 +245,99 @@ describe("OpenCode response mapping", () => {
       );
       expect(() => mapOpenCodePromptResponseToRunStatus(value, "ses_123")).toThrowError(
         expect.objectContaining({ type: ApiClientErrorType.Transport }),
+      );
+    }
+  });
+
+  it("strictly parses only the requested session status", () => {
+    expect(parseOpenCodeSessionStatusResponse({}, "ses_123")).toBeUndefined();
+    expect(parseOpenCodeSessionStatusResponse({ unrelated: null }, "ses_123")).toBeUndefined();
+    expect(parseOpenCodeSessionStatusResponse({ ses_123: { type: "idle" } }, "ses_123")).toEqual({ type: "idle" });
+    expect(parseOpenCodeSessionStatusResponse({ ses_123: { type: "busy" } }, "ses_123")).toEqual({ type: "busy" });
+    expect(parseOpenCodeSessionStatusResponse({ ses_123: { type: "retry", attempt: 2, message: "retrying", next: 1000 } }, "ses_123"))
+      .toEqual({ type: "retry", attempt: 2, message: "retrying", next: 1000 });
+
+    for (const value of [
+      undefined,
+      null,
+      [],
+      { ses_123: null },
+      { ses_123: [] },
+      { ses_123: { type: "idle", extra: true } },
+      { ses_123: { type: "busy", attempt: 1 } },
+      { ses_123: { type: "unknown" } },
+      { ses_123: { type: "retry" } },
+      { ses_123: { type: "retry", attempt: Infinity, message: "retrying", next: 1000 } },
+      { ses_123: { type: "retry", attempt: 1, message: " ", next: 1000 } },
+      { ses_123: { type: "retry", attempt: 1, message: "retrying", next: "later" } },
+      { ses_123: { type: "retry", attempt: 1, message: "retrying", next: 1000, extra: true } },
+    ]) {
+      expect(() => parseOpenCodeSessionStatusResponse(value, "ses_123")).toThrowError(
+        expect.objectContaining({ code: ApiClientErrorCode.ProtocolMismatch, type: ApiClientErrorType.Transport }),
+      );
+    }
+  });
+
+  it("selects the newest terminal assistant message, using array order to break time ties", () => {
+    const result = mapOpenCodeMessageHistoryToRunStatus([
+      assistantMessage({ id: "old", time: { created: 20, completed: 21 } }, [{ type: "text", text: "old" }]),
+      { info: { sessionID: "ses_123", role: "user", time: { created: 30 } }, parts: [] },
+      assistantMessage({ id: "newer", time: { created: 30, completed: 31 } }, [{ type: "text", text: "first tie" }]),
+      assistantMessage({ id: "latest", time: { created: 30, completed: 32 } }, [{ type: "text", text: "second tie" }]),
+      assistantMessage({ id: "older-late", time: { created: 25, completed: 26 } }, [{ type: "text", text: "older late" }]),
+    ], "ses_123");
+    expect(result).toMatchObject({
+      run_id: "ses_123",
+      status: "completed",
+      output: "second tie",
+    });
+  });
+
+  it("maps the newest assistant error as terminal failure without completion time", () => {
+    expect(mapOpenCodeMessageHistoryToRunStatus([
+      assistantMessage({ time: { created: 10 }, error: { message: "failed" } }),
+    ], "ses_123")).toMatchObject({
+      run_id: "ses_123",
+      status: "failed",
+      error: "failed",
+    });
+  });
+
+  it("returns an honest unknown status when no assistant terminal evidence exists", () => {
+    expect(mapOpenCodeMessageHistoryToRunStatus([
+      assistantMessage({ time: { created: 10 } }, [{ type: "text", text: "still working" }]),
+    ], "ses_123")).toEqual({
+      run_id: "ses_123",
+      status: "unknown",
+      error: "opencode: no terminal assistant message",
+    });
+    expect(mapOpenCodeMessageHistoryToRunStatus([
+      assistantMessage({ time: { created: 10, completed: 11 } }),
+      assistantMessage({ id: "latest", time: { created: 20 } }),
+    ], "ses_123")).toEqual({
+      run_id: "ses_123",
+      status: "unknown",
+      error: "opencode: no terminal assistant message",
+    });
+  });
+
+  it("rejects malformed history records, contradictory identities, invalid times, and unknown parts", () => {
+    const malformed = [
+      undefined,
+      null,
+      {},
+      [null],
+      [{ info: assistantInfo(), parts: [], extra: true }],
+      [{ info: null, parts: [] }],
+      [{ info: { sessionID: "ses_other", role: "assistant", time: { created: 1 } }, parts: [] }],
+      [{ info: { sessionID: "ses_123", role: "assistant", time: { created: "later" } }, parts: [] }],
+      [{ info: { sessionID: "ses_123", role: "assistant", time: { completed: NaN } }, parts: [] }],
+      [{ info: { sessionID: "ses_123", role: "assistant" }, parts: [{ type: "future-part" }] }],
+      [{ info: { sessionID: "ses_123", role: "assistant" }, parts: [{ type: "text", text: 42 }] }],
+    ];
+    for (const value of malformed) {
+      expect(() => mapOpenCodeMessageHistoryToRunStatus(value, "ses_123")).toThrowError(
+        expect.objectContaining({ code: ApiClientErrorCode.ProtocolMismatch, type: ApiClientErrorType.Transport }),
       );
     }
   });
