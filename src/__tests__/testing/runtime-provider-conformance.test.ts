@@ -4,6 +4,7 @@ import type { RuntimeProviderModule } from "../../core/runtime/providers/index";
 import { createClaudeProviderModule } from "../../providers/claude/provider-module";
 import { createClaudeManagedAgentProviderModule } from "../../providers/claude/managed-agents/provider-module";
 import { createCodexProviderModule } from "../../providers/codex/provider-module";
+import { createAgyProviderModule } from "../../providers/agy/provider-module";
 import { createGeminiProviderModule } from "../../providers/gemini/provider-module";
 import { inspectRuntimeProviderConformance } from "../../testing/index";
 
@@ -133,6 +134,23 @@ describe("inspectRuntimeProviderConformance", () => {
   });
 
   describe("wired provider modules", () => {
+    it("agy is sync-store + streamRun", async () => {
+      const module = createAgyProviderModule({ apiKey: "test-key" });
+      const report = await inspectRuntimeProviderConformance({
+        module,
+        clientOptions: { baseUrl: "https://agy.example" },
+        runLifecycleSemantics: "sync-store",
+      });
+
+      expect(report.valid).toBe(true);
+      expect(report.checks.find((c) => c.id === "provider-kind")?.status).toBe("pass");
+      expect(report.checks.find((c) => c.id === "capabilities")?.status).toBe("pass");
+      expect(report.checks.find((c) => c.id === "streaming-method")?.status).toBe("pass");
+      expect(report.checks.find((c) => c.id === "streaming-path")?.status).toBe("pass");
+      expect(report.checks.find((c) => c.id === "run-lifecycle-semantics")?.status).toBe("pass");
+      expect(report.checks.find((c) => c.id === "run-lifecycle-sync-store")?.status).toBe("pass");
+    });
+
     it("claude-sdk (Messages) is sync-store + streamRun", async () => {
       const module = createClaudeProviderModule({ apiKey: "test-key" });
       const report = await inspectRuntimeProviderConformance({
