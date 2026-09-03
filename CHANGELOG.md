@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   credentials, required headers, retries, and control-plane connections remain
   separately owned.
 
+- Provider documentation identifies AGY as the active successor direction for
+  new compatible orchestration integrations and Gemini as a retained legacy
+  compatibility surface.
+
 - Documentation source pages, contracts, and navigation now resolve
   `{{documentedVersion}}` from `package.json` during generation and reject
   hard-coded semantic versions, preventing release-documentation drift.
@@ -27,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- AGY stream failures now emit `run.failed`, malformed frames are reported as non-terminal errors while later frames continue, and caller abort no longer synthesizes completion.
 - Pinned credentialed HTTP, SSE, and Gemini resumable-upload requests to their
   configured origin and rejected redirects; Gemini uploads now honor
   cancellation and per-stage timeouts.

@@ -11,7 +11,7 @@ product extension, or UI framework needs custom behavior behind the boundary.
 src/index.ts
   -> core/
   -> contracts/
-  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini
+  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini | providers/agy
   -> extensions/cavi
   -> frameworks/react
 ```
@@ -25,8 +25,10 @@ src/index.ts
   `TeamRouteResolver`, and a `TeamManifestSource` seam (host-supplied data).
 - `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
   providers (Hermes, OpenClaw) implement `GatewayClient`; runtime-only providers
-  (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google) implement
-  `RuntimeClient`. They may customize endpoint maps, headers, auth scheme, default
+  (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google, AGY / Antigravity)
+  implement `RuntimeClient`. Gemini is retained as a legacy compatibility surface;
+  AGY is the active successor direction for new compatible orchestration
+  integrations. They may customize endpoint maps, headers, auth scheme, default
   surfaces, and transport method mapping, but they reuse the core transports and
   error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
@@ -74,7 +76,7 @@ authoritative, the static table is the conservative fallback.
 Consumers build one client and choose a provider through a runtime-owned registry.
 `createGatewayProviderRegistry` holds gateway providers; the generic
 `createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in
-modules live under `src/providers/{hermes,openclaw,claude,codex,gemini}`; host applications can
+modules live under `src/providers/{hermes,openclaw,claude,codex,gemini,agy}`; host applications can
 supply their own `RuntimeProviderModule` / `GatewayProviderModule`. A provider
 authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie,
 or api-key) instead of the core hardcoding a token.
@@ -117,7 +119,9 @@ webhook verification, and a `TeamManifest`→teams mapper. It is additive and re
 the stateless Messages-API client is unchanged. Codex (`providers/codex`, OpenAI
 Responses, default `gpt-5-codex`) and Gemini (`providers/gemini`, the Gemini
 Developer API — model in the URL path, `x-goog-api-key`, explicit model
-required) are additional runtime-only providers; each ships a `RuntimeClient` +
+required) are additional runtime-only providers; Gemini remains a legacy
+compatibility surface. AGY (`providers/agy`) is the active successor direction
+for new compatible orchestration integrations. Each ships a `RuntimeClient` +
 provider module and passes the shared conformance kit. CAVI Control
 and plugin/operator behavior belongs in `extensions/cavi`. Keeping these planes
 separate lets each provider track its own API without turning the core package

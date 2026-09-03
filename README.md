@@ -107,6 +107,10 @@ await client.dispose();
 Runtime-only HTTP clients can accept provider-neutral request policy through the
 same front door:
 
+AGY (Antigravity) is the active successor direction for new compatible
+orchestration integrations. The Gemini example below remains available as a
+legacy compatibility surface for existing consumers.
+
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini";
@@ -128,7 +132,7 @@ headers remain provider-owned; retries and control-plane connections are
 configured separately.
 
 `streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
-Gemini, AGY) stream through their own `RuntimeClient`; gateway providers are bridged
+AGY, and legacy-compatible Gemini) stream through their own `RuntimeClient`; gateway providers are bridged
 over their event transport — Hermes over SSE run events, OpenClaw over
 control-plane WebSocket frames. It resolves a `CapabilityResult<RunStreamOutcome>`
 whose `ok` reflects the streaming *call*, while the payload carries the run's own

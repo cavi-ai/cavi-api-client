@@ -22,11 +22,17 @@ import { GATEWAY_RAW_EXTENSION, createRuntimeControlClient } from "@cavi-ai/api-
 import { CapabilityUnavailable, GATEWAY_RAW_EXTENSION as SUBPATH_GATEWAY_RAW_EXTENSION } from "@cavi-ai/api-client/core/runtime";
 import { createRuntimeProviderRegistry } from "@cavi-ai/api-client/core/runtime/providers";
 import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes";
+import { AGY_PROVIDER_MODULE, AgyApiClient, createAgyProviderModule } from "@cavi-ai/api-client/providers/agy";
 import { LIBRARY_API_BASE_PATH, resolvePluginApiPath, withCaviRuntimeControlProviders } from "@cavi-ai/api-client/extensions/cavi";
 import { RUNTIME_CONTROL_SCENARIOS, runRawGatewayConformance, runRuntimeControlScenarios } from "@cavi-ai/api-client/testing";
-const symbols = [GATEWAY_RAW_EXTENSION, SUBPATH_GATEWAY_RAW_EXTENSION, createRuntimeControlClient, CapabilityUnavailable, createRuntimeProviderRegistry, HERMES_PROVIDER_MODULE, withCaviRuntimeControlProviders, RUNTIME_CONTROL_SCENARIOS, runRawGatewayConformance, runRuntimeControlScenarios];
+const symbols = [GATEWAY_RAW_EXTENSION, SUBPATH_GATEWAY_RAW_EXTENSION, createRuntimeControlClient, CapabilityUnavailable, createRuntimeProviderRegistry, HERMES_PROVIDER_MODULE, AGY_PROVIDER_MODULE, AgyApiClient, createAgyProviderModule, withCaviRuntimeControlProviders, RUNTIME_CONTROL_SCENARIOS, runRawGatewayConformance, runRuntimeControlScenarios];
 if (symbols.some((symbol) => symbol === undefined)) throw new Error("packed runtime-control export missing");
 if (GATEWAY_RAW_EXTENSION !== SUBPATH_GATEWAY_RAW_EXTENSION || GATEWAY_RAW_EXTENSION.id !== "gateway.raw") throw new Error("packed raw-gateway descriptor mismatch");
+const packedAgyModule = createAgyProviderModule({ apiKey: "packed-test-key" });
+const packedAgyClient = packedAgyModule.createClient?.({ baseUrl: "https://agy.example" });
+if (AGY_PROVIDER_MODULE.kind !== "agy") throw new Error("packed AGY provider module kind mismatch");
+if (packedAgyModule.kind !== "agy") throw new Error("created AGY provider module kind mismatch");
+if (!(packedAgyClient instanceof AgyApiClient)) throw new Error("created AGY client type mismatch");
 if (LIBRARY_API_BASE_PATH !== "/api/plugins/library") throw new Error("packed library base path export missing");
 if (resolvePluginApiPath("machine", "media") !== "/api/plugins/machine/media") throw new Error("packed plugin path resolver missing");
 `;
@@ -38,6 +44,8 @@ import type { RawGatewayChannel, RawGatewayConnectionState, RawGatewayEvent, Raw
 import type { RuntimeControlClientOptions } from "@cavi-ai/api-client";
 import type { CreateApiClientOptions, RuntimeClientOptions } from "@cavi-ai/api-client";
 import type { RuntimeClientOptions as SubpathRuntimeClientOptions } from "@cavi-ai/api-client/core/runtime/providers";
+import type { RuntimeProviderModule } from "@cavi-ai/api-client/core/runtime/providers";
+import type { AgyApiClientOptions } from "@cavi-ai/api-client/providers/agy";
 import type { GatewayRpcClientOptions } from "@cavi-ai/api-client/core/gateway";
 import type { RawGatewayChannel as SubpathRawGatewayChannel } from "@cavi-ai/api-client/core/runtime";
 const scenarioEnvironment = null as RuntimeControlScenarioEnvironment | null;
@@ -65,6 +73,14 @@ const facadeHttpOptions: CreateApiClientOptions = {
   credentials: "include",
   onTrace: (trace) => void trace,
 };
+const agyOptions: AgyApiClientOptions = {
+  baseUrl: "https://agy.example",
+  apiKey: "packed-test-key",
+  defaultTimeoutMs: 0,
+  cache: "reload",
+  credentials: "include",
+};
+const typedAgyModule: RuntimeProviderModule = packedAgyModule;
 // @ts-expect-error provider authentication stays provider-owned
 const invalidRuntimeAuth: RuntimeClientOptions = { auth: { bearerToken: "secret" } };
 // @ts-expect-error generic headers stay provider-owned
@@ -82,6 +98,8 @@ void runtimeOptions;
 void runtimeHttpOptions;
 void subpathRuntimeHttpOptions;
 void facadeHttpOptions;
+void agyOptions;
+void typedAgyModule;
 void invalidRuntimeAuth;
 void invalidRuntimeHeaders;
 `;

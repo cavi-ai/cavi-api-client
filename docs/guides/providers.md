@@ -13,14 +13,18 @@ There is no package-wide API key and no default provider.
 | Claude Messages | yes | provider-specific | yes | no |
 | Claude Managed Agents | yes | yes | capability-gated | no |
 | Codex | yes | yes | yes | no |
-| Gemini | yes | yes | yes | no |
-| Antigravity (AGY) | yes | yes | no | no |
+| Gemini (legacy compatibility) | yes | yes | yes | no |
+| Antigravity (AGY, active successor direction) | yes | yes | no | no |
 | Hermes | yes | yes | no | yes |
 | OpenClaw | yes | yes | no | yes |
 
 Treat this table as orientation, not runtime truth. Always inspect
 `getRuntimeCapabilities()` because upstream availability and configured
 transports can change what an instance supports.
+
+AGY is the active successor direction for new compatible orchestration
+integrations. Gemini remains available as a legacy compatibility surface; these
+labels describe package direction and do not replace runtime capability checks.
 
 ## Composition boundary
 

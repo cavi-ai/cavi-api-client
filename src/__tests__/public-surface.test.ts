@@ -29,10 +29,13 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     const openclaw = await import("../providers/openclaw/index");
     const claude = await import("../providers/claude/index");
     const codex = await import("../providers/codex/index");
+    const agy = await import("../providers/agy/index");
     expect(hermes.HERMES_PROVIDER_MODULE).toBeDefined();
     expect(openclaw.OPENCLAW_PROVIDER_MODULE).toBeDefined();
     expect(claude.createClaudeProviderModule).toBeDefined();
     expect(codex.createCodexProviderModule).toBeDefined();
+    expect(agy.createAgyProviderModule).toBeDefined();
+    expect(agy.AGY_PROVIDER_MODULE).toBeDefined();
   });
 
   it("narrow provider entries expose only focused runtime surfaces", async () => {
