@@ -732,6 +732,7 @@ describe("package hardening", () => {
       ["./core/runtime", "core/runtime/index"],
       ["./core/runtime/providers", "core/runtime/providers/index"],
       ["./providers/hermes", "providers/hermes/index"],
+      ["./providers/opencode", "providers/opencode/index"],
       ["./extensions/cavi", "extensions/cavi/index"],
       ["./testing", "testing/index"],
     ] as const) {
@@ -751,6 +752,7 @@ describe("package hardening", () => {
       "@cavi-ai/api-client/core/runtime",
       "@cavi-ai/api-client/core/runtime/providers",
       "@cavi-ai/api-client/providers/hermes",
+      "@cavi-ai/api-client/providers/opencode",
       "@cavi-ai/api-client/extensions/cavi",
       "@cavi-ai/api-client/testing",
     ]) expect(packedConsumerScript).toContain(specifier);
@@ -1187,6 +1189,11 @@ describe("package hardening", () => {
       types: "./dist/providers/gemini/index.d.ts",
       import: "./dist/providers/gemini/index.js",
       default: "./dist/providers/gemini/index.js",
+    });
+    expect(packageJson.exports["./providers/opencode"]).toEqual({
+      types: "./dist/providers/opencode/index.d.ts",
+      import: "./dist/providers/opencode/index.js",
+      default: "./dist/providers/opencode/index.js",
     });
     expect(read(path.join(SRC_ROOT, "index.ts"))).toContain(
       'from "./core/gateway/providers/index.js"',

@@ -1,10 +1,14 @@
 # Antigravity (AGY) Integration
 
-The `@cavi-ai/api-client` package provides native, first-class support for Google Antigravity (AGY) orchestration APIs. While traditional providers like Claude or Gemini talk to foundational models directly, the `agy` provider orchestrates powerful Antigravity agents capable of solving tasks, utilizing local tools, and performing multi-step reasoning.
+AGY is the active successor direction for new compatible orchestration
+integrations in `@cavi-ai/api-client`. The existing Gemini provider remains a
+legacy compatibility surface; both providers continue to use the same
+provider-agnostic runtime contract.
 
-## Getting Started
+## Getting started
 
-To orchestrate an Antigravity agent, initialize the `AgyApiClient` with your AGY endpoint and API key, then register it with the universal runtime client.
+Callers supply the AGY service `baseUrl`; the package does not choose a default
+endpoint. Supply the provider API key through the AGY module configuration.
 
 ```ts
 import {
@@ -17,33 +21,41 @@ const registry = createRuntimeProviderRegistry({
   modules: [
     createAgyProviderModule({
       apiKey: process.env.AGY_API_KEY,
-    })
+    }),
   ],
 });
 
-// Create the unified client configured for Antigravity
 const client = createRuntimeClient("agy", {
   registry,
   clientOptions: {
-    baseUrl: "https://api.antigravity.google",
+    baseUrl: process.env.AGY_BASE_URL,
   },
 });
 ```
 
-## Features
+`baseUrl` is required when the AGY client is constructed. `AgyApiClientOptions`
+also accepts the shared runtime HTTP policy fields (`defaultTimeoutMs`,
+`cache`, and `credentials`) alongside provider-owned authentication.
 
-The `agy` provider is designed to offer a premium experience when interacting with Antigravity agents:
+## Operations and stream behavior
 
-- **Runs**: Execute a full agent task using `startRun`. The provider bridges the universal run start body into AGY's native orchestration payload.
-- **Streaming**: Supports real-time feedback using `streamRun`. As the Antigravity agent executes its plan, the client seamlessly translates AGY's Server-Sent Events (SSE) into standard `RunEventStreamHandlers` callbacks.
-- **Universal Contract**: Antigravity agents can be swapped seamlessly with simple models like `gemini` or `codex` without needing to change your application's logic.
+- **Runs:** `startRun` sends the provider's run request and stores the returned
+  status for subsequent `getRun` and `cancelRun` calls.
+- **Streaming:** `streamRun` consumes AGY Server-Sent Events and maps output
+  deltas and terminal states to the canonical runtime stream events.
+- **Failed runs:** an upstream failed run emits a canonical `run.failed` event
+  and records the failed status. This is distinct from a transport-level
+  `onError` callback.
+- **Malformed frames:** a malformed JSON SSE frame is reported through
+  `onError` as a non-terminal error. Later valid frames continue to be
+  processed.
+- **Caller abort:** aborting the supplied signal stops the stream without
+  synthesizing a `run.completed` event.
 
 ## Capabilities
 
 | Capability | Supported | Notes |
 | :--- | :--- | :--- |
-| **Runs** | Yes | Orchestrates tasks natively via AGY |
-| **Streaming** | Yes | Streams agent thought processes and outputs |
-| **Batching** | No | Async batching is not currently scoped for AGY |
-
-For more details on the Antigravity local code harness, check out the [Antigravity Guide](https://antigravity.google/docs).
+| **Runs** | Yes | Uses the AGY run operation |
+| **Streaming** | Yes | Maps AGY SSE frames to canonical runtime events |
+| **Batching** | No | The AGY module does not declare batch support |

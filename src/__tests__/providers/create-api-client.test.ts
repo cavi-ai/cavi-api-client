@@ -11,6 +11,11 @@ import {
 import { OpenClawWebSocketClient } from "../../providers/openclaw/websocket.js";
 import type { OpenClawRpcEvent } from "../../providers/openclaw/control-plane/rpc.js";
 import type { RawGatewayConnectionState } from "../../core/runtime/control-plane/raw-gateway.js";
+import type {
+  RuntimeClientOptions,
+  RuntimeProviderModule,
+  RuntimeProviderRegistry,
+} from "../../core/runtime/providers/types.js";
 
 async function waitFor(predicate: () => boolean, tries = 50): Promise<void> {
   for (let i = 0; i < tries; i += 1) {
@@ -71,6 +76,51 @@ const HERMES_ENVELOPE = {
 };
 
 describe("createApiClient — the one front door", () => {
+  it("forwards runtime HTTP policy through an explicit allowlist", () => {
+    const fetchImpl = vi.fn(async () => new Response("{}")) as unknown as typeof fetch;
+    const onTrace = vi.fn();
+    let received: RuntimeClientOptions | undefined;
+    let resolveCalls = 0;
+    const module: RuntimeProviderModule = {
+      kind: "policy-runtime",
+      createClient: (options) => {
+        received = options;
+        return fakeRuntime;
+      },
+    };
+    const registry: RuntimeProviderRegistry = {
+      resolveProvider: () => {
+        resolveCalls += 1;
+        return module;
+      },
+      listProviders: () => [module],
+    };
+
+    createApiClient("policy-runtime", {
+      registry,
+      fetchImpl,
+      onTrace,
+      defaultTimeoutMs: 0,
+      cache: "reload",
+      credentials: "include",
+    });
+
+    expect(received).toMatchObject({
+      fetchImpl,
+      onTrace,
+      defaultTimeoutMs: 0,
+      cache: "reload",
+      credentials: "include",
+    });
+    expect(resolveCalls).toBe(2);
+
+    createApiClient("policy-runtime", { registry });
+
+    for (const key of ["onTrace", "defaultTimeoutMs", "cache", "credentials"] as const) {
+      expect(Object.hasOwn(received ?? {}, key)).toBe(false);
+    }
+  });
+
   it("returns the full surface for a runtime-only provider; unsupported is notated", async () => {
     const client = createApiClient("gemini", { registry: geminiRegistry });
     await expect(client.startRun({} as never)).resolves.toMatchObject({

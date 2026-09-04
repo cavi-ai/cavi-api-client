@@ -8,6 +8,7 @@ import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dr
 import { SynchronousRunStore, unknownSynchronousRun } from "../../core/runtime/synchronous-run-store.js";
 import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import {
+  markNonTerminalStreamError,
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
 } from "../../core/runtime/run-stream.js";
@@ -24,6 +25,9 @@ export type AgyApiClientOptions = {
   defaultModel?: string;
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
+  defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 function newAgyRunId(): string {
@@ -43,6 +47,9 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       baseUrl: options.baseUrl.trim(),
       includePortalClientIdHeader: false,
       ...(options.apiKey ? { auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-agy-api-key" }) } } : {}),
+      defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });
@@ -108,25 +115,37 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       let completed = false;
       await consumeSseStream(response.body, controller.signal, (sse) => {
         if (completed) return;
+        let parsed: AgyGenerateResponse;
         try {
-          const parsed = JSON.parse(sse.data) as AgyGenerateResponse;
-          if (parsed.result?.output) {
+          parsed = JSON.parse(sse.data) as AgyGenerateResponse;
+        } catch (error) {
+          const normalizedError = error instanceof Error ? error : new Error(String(error));
+          handlers.onError?.(markNonTerminalStreamError(normalizedError));
+          return;
+        }
+        if (parsed.result?.output) {
+          handlers.onEvent({
+            event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
+            runId: parsed.run_id || runId,
+            delta: parsed.result.output,
+          });
+        }
+        if (parsed.status === "completed" || parsed.status === "failed") {
+          completed = true;
+          const status = mapAgyResponseToRunStatus(agentId, parsed, runId);
+          this.runStore.remember(status);
+          if (parsed.status === "failed") {
             handlers.onEvent({
-              event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
-              runId: parsed.run_id || runId,
-              delta: parsed.result.output,
+              event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
+              runId: status.run_id,
+              error: "agy: upstream run failed",
             });
-          }
-          if (parsed.status === "completed" || parsed.status === "failed") {
-            completed = true;
-            const status = mapAgyResponseToRunStatus(agentId, parsed, runId);
-            this.runStore.remember(status);
+          } else {
             handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: status.run_id });
           }
-        } catch (e) {
-          // ignore malformed chunks
         }
       });
+      if (controller.signal.aborted) return;
       if (!completed) handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId });
       handlers.onComplete?.();
     } catch (error) {

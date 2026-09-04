@@ -104,8 +104,71 @@ if (sessions.ok) {
 await client.dispose();
 ```
 
+Runtime-only HTTP clients can accept provider-neutral request policy through the
+same front door:
+
+AGY (Antigravity) is the active successor direction for new compatible
+orchestration integrations. The Gemini example below remains available as a
+legacy compatibility surface for existing consumers.
+
+```ts
+import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini";
+
+const registry = createRuntimeProviderRegistry({
+  modules: [createGeminiProviderModule({ apiKey: process.env.GEMINI_API_KEY ?? "" })],
+});
+const client = createApiClient("gemini", {
+  registry,
+  defaultTimeoutMs: 20_000,
+  cache: "no-store",
+  credentials: "same-origin",
+  onTrace: (trace) => console.debug(trace),
+});
+```
+
+OpenCode is an additional opt-in harness available from its provider subpath.
+It requires an absolute `http(s)` server URL and an absolute scoped directory;
+the optional workspace narrows that scope. Basic authentication is optional;
+when a password is supplied, the username defaults to `opencode`.
+
+```ts
+import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import {
+  createOpenCodeProviderModule,
+} from "@cavi-ai/api-client/providers/opencode";
+
+const registry = createRuntimeProviderRegistry({
+  modules: [createOpenCodeProviderModule({
+    baseUrl: "http://127.0.0.1:4096",
+    scope: {
+      directory: "/absolute/path/to/project",
+      workspace: "/absolute/path/to/workspace",
+    },
+    username: process.env.OPENCODE_USERNAME,
+    password: process.env.OPENCODE_PASSWORD,
+  })],
+});
+
+const client = createApiClient("opencode", {
+  registry,
+  defaultTimeoutMs: 20_000,
+  cache: "no-store",
+});
+```
+
+The OpenCode client targets server `1.18.27` and the verified
+`legacy-http-sse` endpoint family. It advertises runs and streaming only (no
+batch or gateway resources). See the [OpenCode integration guide](docs/guides/opencode.md)
+for lifecycle, streaming, cancellation, and compatibility details.
+
+These settings apply to runtime HTTP clients. Provider credentials and required
+headers remain provider-owned; retries and control-plane connections are
+configured separately.
+
 `streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
-Gemini, AGY) stream through their own `RuntimeClient`; gateway providers are bridged
+AGY, legacy-compatible Gemini, and OpenCode) stream through their own
+`RuntimeClient`; gateway providers are bridged
 over their event transport — Hermes over SSE run events, OpenClaw over
 control-plane WebSocket frames. It resolves a `CapabilityResult<RunStreamOutcome>`
 whose `ok` reflects the streaming *call*, while the payload carries the run's own

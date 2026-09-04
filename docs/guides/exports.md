@@ -48,10 +48,11 @@ entries when an application needs only one provider surface.
 | --- | --- | --- |
 | Claude | `@cavi-ai/api-client/providers/claude` | `@cavi-ai/api-client/providers/claude/messages`, `@cavi-ai/api-client/providers/claude/managed-agents` |
 | Codex | `@cavi-ai/api-client/providers/codex` | `@cavi-ai/api-client/providers/codex/runtime`, `@cavi-ai/api-client/providers/codex/files` |
-| Gemini | `@cavi-ai/api-client/providers/gemini` | `@cavi-ai/api-client/providers/gemini/runtime`, `@cavi-ai/api-client/providers/gemini/files` |
-| Antigravity (AGY) | `@cavi-ai/api-client/providers/agy` | |
+| Gemini (legacy compatibility) | `@cavi-ai/api-client/providers/gemini` | `@cavi-ai/api-client/providers/gemini/runtime`, `@cavi-ai/api-client/providers/gemini/files` |
+| Antigravity (AGY, active successor direction) | `@cavi-ai/api-client/providers/agy` | |
 | Hermes | `@cavi-ai/api-client/providers/hermes` | `@cavi-ai/api-client/providers/hermes/runtime` |
 | OpenClaw | `@cavi-ai/api-client/providers/openclaw` | `@cavi-ai/api-client/providers/openclaw/runtime` |
+| OpenCode | `@cavi-ai/api-client/providers/opencode` | |
 
 ## Extensions, frameworks, and testing
 
@@ -64,7 +65,8 @@ entries when an application needs only one provider surface.
 
 `package.json` is the authoritative list of published entry points. The
 [generated type reference](../api-client/v0.16.0/reference/index.md) lists the
-symbols available from the locked stable documentation artifact.
+symbols available from the locked stable documentation artifact; it does not
+include the unreleased OpenCode subpath.
 
 ## Transport boundaries
 

@@ -10,7 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the opt-in `@cavi-ai/api-client/providers/opencode` provider subpath.
+  OpenCode targets server `1.18.27` through the verified `legacy-http-sse`
+  contract and supports runs plus streaming; it is not added to the default
+  provider registry. AGY remains the active successor direction and Gemini
+  remains legacy compatibility.
+
 ### Changed
+
+- Runtime HTTP clients now accept provider-neutral `defaultTimeoutMs`, `cache`,
+  `credentials`, and `onTrace` settings through `createApiClient`; provider
+  credentials, required headers, retries, and control-plane connections remain
+  separately owned.
+
+- Provider documentation identifies AGY as the active successor direction for
+  new compatible orchestration integrations and Gemini as a retained legacy
+  compatibility surface.
 
 - Documentation source pages, contracts, and navigation now resolve
   `{{documentedVersion}}` from `package.json` during generation and reject
@@ -22,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- AGY stream failures now emit `run.failed`, malformed frames are reported as non-terminal errors while later frames continue, and caller abort no longer synthesizes completion.
 - Pinned credentialed HTTP, SSE, and Gemini resumable-upload requests to their
   configured origin and rejected redirects; Gemini uploads now honor
   cancellation and per-stage timeouts.

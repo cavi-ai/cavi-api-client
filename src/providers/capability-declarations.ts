@@ -31,6 +31,7 @@ export const PROVIDER_CAPABILITIES = {
   codex: support("runs", "streaming", "batch"),
   gemini: support("runs", "streaming", "batch"),
   agy: support("runs", "streaming"),
+  opencode: support("runs", "streaming"),
 
   // Gateways: full domain + lifecycle + introspection. No async batch surface.
   hermes: support(

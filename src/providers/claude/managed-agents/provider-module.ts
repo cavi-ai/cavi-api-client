@@ -23,6 +23,13 @@ export function createClaudeManagedAgentProviderModule(
       ...(clientOptions.baseUrl ? { baseUrl: clientOptions.baseUrl } : {}),
       ...(clientOptions.fetchImpl ? { fetchImpl: clientOptions.fetchImpl } : {}),
       ...(clientOptions.onTrace ? { onTrace: clientOptions.onTrace } : {}),
+      ...(clientOptions.defaultTimeoutMs !== undefined
+        ? { defaultTimeoutMs: clientOptions.defaultTimeoutMs }
+        : {}),
+      ...(clientOptions.cache !== undefined ? { cache: clientOptions.cache } : {}),
+      ...(clientOptions.credentials !== undefined
+        ? { credentials: clientOptions.credentials }
+        : {}),
     });
   return {
     kind: "claude-managed-agents",

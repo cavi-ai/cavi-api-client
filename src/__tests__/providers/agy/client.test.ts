@@ -43,7 +43,14 @@ describe("AgyApiClient", () => {
       status: "completed",
       result: { output: "Test output" }
     });
-    const client = new AgyApiClient({ baseUrl: "https://api.antigravity.google", apiKey: "sk-test", fetchImpl });
+    const client = new AgyApiClient({
+      baseUrl: "https://api.antigravity.google",
+      apiKey: "sk-test",
+      cache: "reload",
+      credentials: "include",
+      defaultTimeoutMs: 25,
+      fetchImpl,
+    });
 
     const status = await client.startRun({
       input: "Execute the plan.",
@@ -55,6 +62,10 @@ describe("AgyApiClient", () => {
     expect(call.init?.method).toBe("POST");
     const headers = call.init?.headers as Record<string, string>;
     expect(headers["x-agy-api-key"]).toBe("sk-test");
+    expect(call.init?.cache).toBe("reload");
+    expect(call.init?.credentials).toBe("include");
+    expect(call.init?.signal).toBeInstanceOf(AbortSignal);
+    expect(call.init?.signal?.aborted).toBe(false);
     const body = JSON.parse(String(call.init?.body));
     expect(body).toMatchObject({
       agent_id: "agy-agent-1",
@@ -66,6 +77,72 @@ describe("AgyApiClient", () => {
       status: "completed",
       model: "agy-agent-1",
       output: "Test output",
+    });
+  });
+
+  it("aborts an in-flight startRun request at the configured timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      let requestSignal: AbortSignal | undefined;
+      const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        requestSignal = init?.signal;
+        if (!requestSignal) throw new Error("missing request signal");
+        return await new Promise<Response>((_resolve, reject) => {
+          requestSignal!.addEventListener("abort", () => {
+            reject(requestSignal!.reason ?? new DOMException("Aborted", "AbortError"));
+          }, { once: true });
+        });
+      }) as unknown as typeof fetch;
+      const client = new AgyApiClient({
+        baseUrl: "https://api.antigravity.google",
+        apiKey: "sk-test",
+        defaultTimeoutMs: 25,
+        fetchImpl,
+      });
+
+      const pending = expect(client.startRun({ input: "hi", model: "agy-agent-1" }))
+        .rejects.toThrow(/POST \/v1\/agents\/run failed/u);
+      await vi.advanceTimersByTimeAsync(25);
+
+      await pending;
+      expect(requestSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  describe("synchronous lifecycle compatibility", () => {
+    const response = {
+      run_id: "agy-sync-1",
+      status: "completed",
+      result: { output: "ok" },
+    };
+
+    it("returns a successful startRun result from getRun", async () => {
+      const client = new AgyApiClient({
+        baseUrl: "https://api.antigravity.google",
+        apiKey: "sk-test",
+        fetchImpl: mockFetch(response),
+      });
+
+      const started = await client.startRun({ input: "hi", model: "agy-agent-1" });
+      await expect(client.getRun(started.run_id)).resolves.toEqual(started);
+    });
+
+    it("returns unknown for a foreign run and completed when cancelling either run", async () => {
+      const client = new AgyApiClient({
+        baseUrl: "https://api.antigravity.google",
+        apiKey: "sk-test",
+        fetchImpl: mockFetch(response),
+      });
+
+      const started = await client.startRun({ input: "hi", model: "agy-agent-1" });
+      await expect(client.getRun("agy-foreign")).resolves.toMatchObject({
+        run_id: "agy-foreign",
+        status: "unknown",
+      });
+      await expect(client.cancelRun(started.run_id)).resolves.toEqual({ status: "completed" });
+      await expect(client.cancelRun("agy-foreign")).resolves.toEqual({ status: "completed" });
     });
   });
 

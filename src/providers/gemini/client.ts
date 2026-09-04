@@ -53,6 +53,9 @@ export type GeminiApiClientOptions = {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
+  defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 function newGeminiRunId(): string {
@@ -70,6 +73,9 @@ export class GeminiApiClient extends BaseHttpApiClient implements RuntimeClient 
       baseUrl: options.baseUrl?.trim() || GEMINI_API_BASE_URL,
       includePortalClientIdHeader: false,
       auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-goog-api-key" }) },
+      defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });

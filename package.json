@@ -1,7 +1,7 @@
 {
   "name": "@cavi-ai/api-client",
   "version": "0.16.0",
-  "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Gemini, Antigravity (AGY), Hermes, and OpenClaw, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
+  "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Gemini, Antigravity (AGY), Hermes, OpenClaw, and OpenCode, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
   "sideEffects": false,
@@ -41,6 +41,7 @@
     "mcp",
     "hermes",
     "openclaw",
+    "opencode",
     "fetch",
     "react",
     "cavi"
@@ -171,6 +172,11 @@
       "types": "./dist/providers/openclaw/index.d.ts",
       "import": "./dist/providers/openclaw/index.js",
       "default": "./dist/providers/openclaw/index.js"
+    },
+    "./providers/opencode": {
+      "types": "./dist/providers/opencode/index.d.ts",
+      "import": "./dist/providers/opencode/index.js",
+      "default": "./dist/providers/opencode/index.js"
     },
     "./providers/claude": {
       "types": "./dist/providers/claude/index.d.ts",

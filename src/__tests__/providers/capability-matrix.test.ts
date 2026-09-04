@@ -14,6 +14,7 @@ describe("runtime provider capability matrix", () => {
       "gemini",
       "hermes",
       "openclaw",
+      "opencode",
     ]);
   });
 
@@ -78,6 +79,11 @@ describe("runtime provider capability matrix", () => {
           modules: { sessions: true, models: true, usage: true, tasks: true, workspace: true, authStatus: true, events: true },
           transports: { websocket },
         },
+      },
+      opencode: {
+        runtime: { runs: true, streaming: true },
+        transports: { http, sse },
+        controlPlane: {},
       },
     });
   });

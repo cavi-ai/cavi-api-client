@@ -45,6 +45,9 @@ export type ClaudeApiClientOptions = {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
+  defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient {
@@ -60,6 +63,9 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       defaultHeaders: { "anthropic-version": version },
       includePortalClientIdHeader: false,
       auth: { resolveHeaders: apiKeyCredentials(options.apiKey, { header: "x-api-key" }) },
+      defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: options.fetchImpl,
       onTrace: options.onTrace,
     });

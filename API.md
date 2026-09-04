@@ -30,6 +30,12 @@ Prefer `createApiClient(provider, options)` for a non-throwing
 `CapabilityClient` surface, or compose a `RuntimeClient` when you need the raw
 contract.
 
+Runtime HTTP policy is available through `createApiClient` with
+`defaultTimeoutMs`, `cache`, `credentials`, and `onTrace`. These settings apply
+to runtime HTTP clients only; provider credentials and required headers remain
+provider-owned, while retries and control-plane connections are configured
+separately.
+
 ## Public entry points
 
 | Layer | Import | Role |
@@ -37,7 +43,7 @@ contract.
 | Root | `@cavi-ai/api-client` | Curated provider-neutral API: factories, capabilities, shared types |
 | Core | `@cavi-ai/api-client/core/*` | Runtime, gateway, HTTP, SSE, WebSocket, errors, teams, kanban |
 | Contracts | `@cavi-ai/api-client/contracts` | Route tables, surface maps, team-manifest types |
-| Providers | `@cavi-ai/api-client/providers/{claude,codex,gemini,agy,hermes,openclaw}` | Concrete adapters |
+| Providers | `@cavi-ai/api-client/providers/{claude,codex,gemini,agy,hermes,openclaw,opencode}` | Concrete adapters; AGY is the active successor direction, Gemini is retained for legacy compatibility, and OpenCode is opt-in |
 | Extensions | `@cavi-ai/api-client/extensions/cavi` | CAVI-owned control, portal, library, registry surfaces |
 | Frameworks | `@cavi-ai/api-client/frameworks/react` | Optional React gateway bindings |
 | Testing | `@cavi-ai/api-client/testing` | Conformance helpers for adapters |
@@ -70,8 +76,8 @@ Every documented HTTP path is validated against owning `paths.ts` files by
 | Claude (Anthropic Messages) | [`operations/providers/claude-anthropic.md`](docs/api-client/source/pages/operations/providers/claude-anthropic.md) |
 | Claude Managed Agents (beta) | [`operations/providers/claude-managed-agents.md`](docs/api-client/source/pages/operations/providers/claude-managed-agents.md) |
 | Codex (OpenAI Responses) | [`operations/providers/codex.md`](docs/api-client/source/pages/operations/providers/codex.md) |
-| Gemini (Google Developer API) | [`operations/providers/gemini.md`](docs/api-client/source/pages/operations/providers/gemini.md) |
-| Antigravity / AGY | [`operations/providers/agy.md`](docs/api-client/source/pages/operations/providers/agy.md) |
+| Gemini (Google Developer API, legacy compatibility) | [`operations/providers/gemini.md`](docs/api-client/source/pages/operations/providers/gemini.md) |
+| Antigravity / AGY (active successor direction) | [`operations/providers/agy.md`](docs/api-client/source/pages/operations/providers/agy.md) |
 | Hermes (gateway) | [`operations/providers/hermes.md`](docs/api-client/source/pages/operations/providers/hermes.md) |
 | OpenClaw (gateway) | [`operations/providers/openclaw.md`](docs/api-client/source/pages/operations/providers/openclaw.md) |
 | Gateway control-plane facade | [`operations/gateway/control-plane.md`](docs/api-client/source/pages/operations/gateway/control-plane.md) |
@@ -98,14 +104,19 @@ clients, React adapters, or mobile-specific code.
 | Claude Messages + Message Batches | `src/providers/claude/paths.ts` |
 | Claude Managed Agents (beta) | `src/providers/claude/managed-agents/paths.ts` |
 | Codex / OpenAI Responses | `src/providers/codex/paths.ts` |
-| Gemini / Google Developer API | `src/providers/gemini/paths.ts` |
-| Antigravity (AGY) | `src/providers/agy/paths.ts` |
+| Gemini / Google Developer API (legacy compatibility) | `src/providers/gemini/paths.ts` |
+| Antigravity (AGY, active successor direction) | `src/providers/agy/paths.ts` |
+| OpenCode (legacy HTTP/SSE; opt-in) | `src/providers/opencode/paths.ts` (private; see the provider guide) |
 
 ## Versioned documentation artifact
 
 Immutable product docs for the current package version live at
 `docs/api-client/v<package.json version>` (`manifest.json`, `navigation.json`,
 pages).
+
+The locked generated documentation tree predates OpenCode and must not be read
+as documenting this unreleased provider. See the [OpenCode integration guide](docs/guides/opencode.md)
+for the current setup and behavior contract.
 
 | Channel | Authority |
 | ------- | --------- |
@@ -142,4 +153,5 @@ Operation and surface pages use these notations:
 - [Migration guide](MIGRATION.md) — supported import migrations
 - [Changelog](CHANGELOG.md) — released and unreleased changes
 - [Claude integrations](docs/guides/claude.md) — Messages API and Managed Agents
+- [OpenCode integrations](docs/guides/opencode.md) — opt-in runtime setup and behavior
 - [Security](SECURITY.md) — vulnerability reporting

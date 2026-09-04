@@ -29,10 +29,17 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     const openclaw = await import("../providers/openclaw/index");
     const claude = await import("../providers/claude/index");
     const codex = await import("../providers/codex/index");
+    const agy = await import("../providers/agy/index");
+    const opencode = await import("../providers/opencode/index");
     expect(hermes.HERMES_PROVIDER_MODULE).toBeDefined();
     expect(openclaw.OPENCLAW_PROVIDER_MODULE).toBeDefined();
     expect(claude.createClaudeProviderModule).toBeDefined();
     expect(codex.createCodexProviderModule).toBeDefined();
+    expect(agy.createAgyProviderModule).toBeDefined();
+    expect(agy.AGY_PROVIDER_MODULE).toBeDefined();
+    expect(opencode.OpenCodeApiClient).toBeDefined();
+    expect(opencode.createOpenCodeProviderModule).toBeTypeOf("function");
+    expect(opencode.OPENCODE_RUNTIME_SUPPORT).toEqual({ runs: true, streaming: true });
   });
 
   it("narrow provider entries expose only focused runtime surfaces", async () => {
@@ -87,5 +94,8 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     expect((root as Record<string, unknown>).CaviControlApiClient).toBeUndefined();
     expect((root as Record<string, unknown>).HermesApiClient).toBeUndefined();
     expect((root as Record<string, unknown>).BaseHttpApiClient).toBeUndefined();
+    expect((root as Record<string, unknown>).OpenCodeApiClient).toBeUndefined();
+    expect((root as Record<string, unknown>).createOpenCodeProviderModule).toBeUndefined();
+    expect((root as Record<string, unknown>).OPENCODE_RUNTIME_SUPPORT).toBeUndefined();
   });
 });

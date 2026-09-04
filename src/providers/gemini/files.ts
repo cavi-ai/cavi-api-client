@@ -20,6 +20,8 @@ export type GeminiFilesClientOptions = {
   fetchImpl?: typeof fetch;
   onTrace?: HttpApiClientOptions["onTrace"];
   defaultTimeoutMs?: number;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
 };
 
 export type GeminiFileObject = { name: string } & Record<string, unknown>;
@@ -113,6 +115,8 @@ function readFileName(value: unknown): string {
 export class GeminiFilesClient extends BaseHttpApiClient {
   readonly request: HttpApiTransport;
   private readonly uploadFetch: typeof fetch;
+  private readonly uploadCache?: RequestCache;
+  private readonly uploadCredentials?: RequestCredentials;
 
   constructor(options: GeminiFilesClientOptions) {
     const uploadFetch = rejectRedirects(options.fetchImpl ?? globalThis.fetch);
@@ -127,11 +131,15 @@ export class GeminiFilesClient extends BaseHttpApiClient {
       includePortalClientIdHeader: false,
       auth: { resolveHeaders: apiKeyCredentials(apiKey, { header: "x-goog-api-key" }) },
       defaultTimeoutMs: options.defaultTimeoutMs,
+      cache: options.cache,
+      credentials: options.credentials,
       fetchImpl: uploadFetch,
       onTrace: options.onTrace,
     });
     this.request = this.createTransport();
     this.uploadFetch = uploadFetch;
+    this.uploadCache = options.cache;
+    this.uploadCredentials = options.credentials;
   }
 
   /** Upload text content via Google's resumable upload protocol. */
@@ -181,6 +189,10 @@ export class GeminiFilesClient extends BaseHttpApiClient {
         },
         body: bytes,
         signal: uploadAbort.signal,
+        ...(this.uploadCache !== undefined ? { cache: this.uploadCache } : {}),
+        ...(this.uploadCredentials !== undefined
+          ? { credentials: this.uploadCredentials }
+          : {}),
       });
       if (!upload.ok) {
         const body = await upload.text();

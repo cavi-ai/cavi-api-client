@@ -114,6 +114,14 @@ export type CreateApiClientOptions = {
   webSocketUrl?: string;
   token?: string;
   fetchImpl?: typeof fetch;
+  /** Default timeout for runtime HTTP requests. */
+  defaultTimeoutMs?: number;
+  /** Cache policy for runtime HTTP requests. */
+  cache?: RequestCache;
+  /** Credentials mode for runtime HTTP requests. */
+  credentials?: RequestCredentials;
+  /** Trace callback for runtime HTTP requests. */
+  onTrace?: RuntimeClientOptions["onTrace"];
   /** Advertised WS client id for gateways that validate it. */
   clientId?: string;
   /**
@@ -395,6 +403,12 @@ export function createApiClient(
   const clientOptions = {
     ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    ...(options.defaultTimeoutMs !== undefined
+      ? { defaultTimeoutMs: options.defaultTimeoutMs }
+      : {}),
+    ...(options.cache !== undefined ? { cache: options.cache } : {}),
+    ...(options.credentials !== undefined ? { credentials: options.credentials } : {}),
+    ...(options.onTrace !== undefined ? { onTrace: options.onTrace } : {}),
     ...(options.token ? { auth: { bearerToken: options.token } } : {}),
     // Provider-specific pass-through (like `auth` above): the OpenClaw runtime
     // client reads `rpcClient`; core's RuntimeClientOptions stays agnostic, so
