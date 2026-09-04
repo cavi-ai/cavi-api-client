@@ -52,6 +52,7 @@ entries when an application needs only one provider surface.
 | Antigravity (AGY, active successor direction) | `@cavi-ai/api-client/providers/agy` | |
 | Hermes | `@cavi-ai/api-client/providers/hermes` | `@cavi-ai/api-client/providers/hermes/runtime` |
 | OpenClaw | `@cavi-ai/api-client/providers/openclaw` | `@cavi-ai/api-client/providers/openclaw/runtime` |
+| OpenCode | `@cavi-ai/api-client/providers/opencode` | |
 
 ## Extensions, frameworks, and testing
 
@@ -64,7 +65,8 @@ entries when an application needs only one provider surface.
 
 `package.json` is the authoritative list of published entry points. The
 [generated type reference](../api-client/v0.16.0/reference/index.md) lists the
-symbols available from the locked stable documentation artifact.
+symbols available from the locked stable documentation artifact; it does not
+include the unreleased OpenCode subpath.
 
 ## Transport boundaries
 

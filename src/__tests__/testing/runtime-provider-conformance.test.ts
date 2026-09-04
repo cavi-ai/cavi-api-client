@@ -6,6 +6,7 @@ import { createClaudeManagedAgentProviderModule } from "../../providers/claude/m
 import { createCodexProviderModule } from "../../providers/codex/provider-module";
 import { createAgyProviderModule } from "../../providers/agy/provider-module";
 import { createGeminiProviderModule } from "../../providers/gemini/provider-module";
+import { createOpenCodeProviderModule } from "../../providers/opencode/provider-module";
 import { inspectRuntimeProviderConformance } from "../../testing/index";
 
 const client = (supports = { runs: true }): RuntimeClient => ({
@@ -134,6 +135,65 @@ describe("inspectRuntimeProviderConformance", () => {
   });
 
   describe("wired provider modules", () => {
+    it("opencode is server + streamRun with a deterministic no-network fixture", async () => {
+      const requests: Array<{ method: string; url: string }> = [];
+      const fetchImpl: typeof fetch = async (input, init) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+        requests.push({ method, url });
+        if (url.includes("/global/health")) {
+          return new Response(JSON.stringify({ healthy: true, version: "1.18.27" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.includes("/session/ses_foreign/abort")) {
+          return new Response("true", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.includes("/session/ses_foreign")) return new Response("", { status: 404 });
+        throw new Error(`unexpected fixture request: ${url}`);
+      };
+      const module = createOpenCodeProviderModule({
+        baseUrl: "https://opencode.example",
+        scope: { directory: "/repo" },
+      });
+      const report = await inspectRuntimeProviderConformance({
+        module,
+        clientOptions: {
+          baseUrl: "https://opencode.example",
+          fetchImpl,
+        },
+        runLifecycleSemantics: "server",
+      });
+
+      expect(report.valid).toBe(true);
+      expect(report.checks.find((check) => check.id === "provider-kind")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "capabilities")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "streaming-method")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "streaming-path")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "run-lifecycle-semantics")?.status).toBe("pass");
+
+      requests.length = 0;
+      const client = module.createClient({
+        baseUrl: "https://opencode.example",
+        fetchImpl,
+      });
+      await expect(client.getRun?.("ses_foreign")).resolves.toEqual({
+        run_id: "ses_foreign",
+        status: "unknown",
+        error: "opencode: session not found",
+      });
+      await expect(client.cancelRun?.("ses_foreign")).resolves.toEqual({ status: "cancelled" });
+      expect(requests).toEqual([
+        { method: "GET", url: "https://opencode.example/global/health" },
+        { method: "GET", url: "https://opencode.example/session/ses_foreign?directory=%2Frepo" },
+        { method: "POST", url: "https://opencode.example/session/ses_foreign/abort?directory=%2Frepo" },
+      ]);
+    });
+
     it("agy is sync-store + streamRun", async () => {
       const module = createAgyProviderModule({ apiKey: "test-key" });
       const report = await inspectRuntimeProviderConformance({

@@ -45,6 +45,11 @@ describe("single-source provider capabilities", () => {
     expect(new Set(Object.keys(PROVIDER_CAPABILITIES))).toEqual(new Set(matrixKeys));
   });
 
+  it("declares OpenCode as a runs-and-streaming provider", () => {
+    expect(PROVIDER_CAPABILITIES.opencode).toEqual({ runs: true, streaming: true });
+    expect(declaredCapabilities("opencode")).toEqual(["runs", "streaming"]);
+  });
+
   // The matrix derives from PROVIDER_CAPABILITIES via projections, so the
   // round trip (matrix runtime ∪ control-plane modules) must reconstruct the
   // declaration EXACTLY — zero drift, for every provider, forever. Any failure

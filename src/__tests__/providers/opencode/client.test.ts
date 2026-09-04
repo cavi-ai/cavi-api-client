@@ -684,11 +684,46 @@ describe("OpenCodeApiClient", () => {
       defaultTimeoutMs: 37,
       onTrace: (trace) => traces.push(trace),
     });
-    await expect(instance.probeHealth()).rejects.toThrow(/request failed/u);
+    let observed: unknown;
+    try {
+      await instance.probeHealth();
+    } catch (error) {
+      observed = error;
+    }
+    expect(observed).toMatchObject({
+      message: "GET /global/health failed: request failed with password=[REDACTED]",
+    });
+    expect((observed as Error & { cause?: unknown }).cause).toBeUndefined();
     expect(fetchImpl.calls[0]!.init?.cache).toBe("reload");
     expect(fetchImpl.calls[0]!.init?.credentials).toBe("include");
     expect(fetchImpl.calls[0]!.init?.signal).toBeInstanceOf(AbortSignal);
     expect(JSON.stringify(traces)).not.toContain("秘密");
+  });
+
+  it("drops secret-bearing nested causes even when the outer message is clean", async () => {
+    const secret = "nested-secret";
+    const fetchImpl: typeof fetch = async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => {
+        throw new Error("request failed", { cause: new Error(`credential=${secret}`) });
+      },
+    }) as Response;
+
+    let observed: unknown;
+    try {
+      await client(fetchImpl, { password: secret }).probeHealth();
+    } catch (error) {
+      observed = error;
+    }
+
+    expect(observed).toMatchObject({
+      type: ApiClientErrorType.Transport,
+      code: ApiClientErrorCode.RequestFailed,
+      message: "request failed",
+    });
+    expect((observed as Error & { cause?: unknown }).cause).toBeUndefined();
   });
 
   it("declares exactly the OpenCode runtime surfaces", async () => {

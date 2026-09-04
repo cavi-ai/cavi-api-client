@@ -59,6 +59,7 @@ export const RUNTIME_PROVIDER_CAPABILITY_MATRIX = Object.freeze({
   codex: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.codex), { http, sse }),
   gemini: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.gemini), { http, sse }),
   agy: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.agy), { http, sse }),
+  opencode: row(projectRuntimeSurfaces(PROVIDER_CAPABILITIES.opencode), { http, sse }),
   hermes: row(
     projectRuntimeSurfaces(PROVIDER_CAPABILITIES.hermes),
     { http, sse, websocket: experimentalWebsocket },

@@ -11,7 +11,7 @@ product extension, or UI framework needs custom behavior behind the boundary.
 src/index.ts
   -> core/
   -> contracts/
-  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini | providers/agy
+  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini | providers/agy | providers/opencode
   -> extensions/cavi
   -> frameworks/react
 ```
@@ -25,12 +25,12 @@ src/index.ts
   `TeamRouteResolver`, and a `TeamManifestSource` seam (host-supplied data).
 - `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
   providers (Hermes, OpenClaw) implement `GatewayClient`; runtime-only providers
-  (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google, AGY / Antigravity)
-  implement `RuntimeClient`. Gemini is retained as a legacy compatibility surface;
-  AGY is the active successor direction for new compatible orchestration
-  integrations. They may customize endpoint maps, headers, auth scheme, default
-  surfaces, and transport method mapping, but they reuse the core transports and
-  error handling.
+  (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google, AGY / Antigravity,
+  OpenCode) implement `RuntimeClient`. Gemini is retained as a legacy compatibility
+  surface; AGY is the active successor direction for new compatible orchestration
+  integrations. OpenCode is the next added harness, not an AGY replacement. They
+  may customize endpoint maps, headers, auth scheme, default surfaces, and
+  transport method mapping, but they reuse the core transports and error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
   fallback snapshots, and DTO shaping. It composes the generic core instead of
   changing the provider interface. The complete, compiler-checked ownership
@@ -76,8 +76,11 @@ authoritative, the static table is the conservative fallback.
 Consumers build one client and choose a provider through a runtime-owned registry.
 `createGatewayProviderRegistry` holds gateway providers; the generic
 `createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in
-modules live under `src/providers/{hermes,openclaw,claude,codex,gemini,agy}`; host applications can
-supply their own `RuntimeProviderModule` / `GatewayProviderModule`. A provider
+modules live under `src/providers/{hermes,openclaw,claude,codex,gemini,agy,opencode}`;
+host applications can supply their own `RuntimeProviderModule` /
+`GatewayProviderModule`. OpenCode is explicitly registered from
+`@cavi-ai/api-client/providers/opencode`; there is no default OpenCode module.
+A provider
 authenticates through an `auth.resolveHeaders` credential scheme (bearer, cookie,
 or api-key) instead of the core hardcoding a token.
 
@@ -117,12 +120,19 @@ server-run agents (full agent/environment/session lifecycle) with SSE steering,
 outcomes, threads, memory, vaults, session resources, scheduled deployments,
 webhook verification, and a `TeamManifest`→teams mapper. It is additive and re-exported from the same `providers/claude` entry, so
 the stateless Messages-API client is unchanged. Codex (`providers/codex`, OpenAI
-Responses, default `gpt-5-codex`) and Gemini (`providers/gemini`, the Gemini
+Responses, default `gpt-5-codex`), Gemini (`providers/gemini`, the Gemini
 Developer API — model in the URL path, `x-goog-api-key`, explicit model
-required) are additional runtime-only providers; Gemini remains a legacy
-compatibility surface. AGY (`providers/agy`) is the active successor direction
-for new compatible orchestration integrations. Each ships a `RuntimeClient` +
-provider module and passes the shared conformance kit. CAVI Control
+required), and OpenCode (`providers/opencode`, server `1.18.27`,
+`legacy-http-sse`) are additional runtime-only providers; Gemini remains a
+legacy compatibility surface. AGY (`providers/agy`) is the active successor
+direction for new compatible orchestration integrations, and OpenCode is the
+next added harness rather than an AGY replacement. OpenCode supports `runs` and
+`streaming` only: its lifecycle is health → scoped session → synchronous
+message, while `getRun` reconciles server session/status/history, `cancelRun`
+uses session abort, and streaming subscribes to SSE before sending
+`prompt_async`. It does not reconnect or replay, and caller abort performs
+best-effort cleanup. Each ships a `RuntimeClient` + provider module and passes
+the shared conformance kit. CAVI Control
 and plugin/operator behavior belongs in `extensions/cavi`. Keeping these planes
 separate lets each provider track its own API without turning the core package
 into a single-provider client. The shared conformance kit
@@ -300,6 +310,7 @@ API route literals are centralized:
   `src/contracts/surfaces.ts`.
 - CAVI extension contracts: `src/extensions/cavi/contracts/paths.ts` and
   `src/extensions/cavi/contracts/surfaces.ts`.
+- OpenCode routes: `src/providers/opencode/paths.ts` (private to the provider).
 
 Clients, adapters, React hooks, and provider modules should import path constants
 or use resolver helpers instead of assembling paths inline. The hardening tests

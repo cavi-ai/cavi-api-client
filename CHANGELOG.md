@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the opt-in `@cavi-ai/api-client/providers/opencode` provider subpath.
+  OpenCode targets server `1.18.27` through the verified `legacy-http-sse`
+  contract and supports runs plus streaming; it is not added to the default
+  provider registry. AGY remains the active successor direction and Gemini
+  remains legacy compatibility.
+
 ### Changed
 
 - Runtime HTTP clients now accept provider-neutral `defaultTimeoutMs`, `cache`,

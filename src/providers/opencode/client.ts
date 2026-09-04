@@ -45,6 +45,7 @@ import {
   type OpenCodeSessionResponse,
 } from "./response.js";
 import { parseOpenCodeEvent, translateOpenCodeEvent } from "./stream.js";
+import { OPENCODE_RUNTIME_SUPPORT } from "./capabilities.js";
 
 const OPENCODE_DEFAULT_USERNAME = "opencode";
 const OPENCODE_UNKNOWN_SESSION_ERROR = "opencode: session not found";
@@ -149,11 +150,9 @@ function sanitizeTransportError(error: unknown, secrets: readonly string[]): unk
       body: redactedBody,
     });
   }
-  if (redacted === message) return error;
   return new ApiClientError(redacted, {
     type: error instanceof ApiClientError ? error.type : ApiClientErrorType.Transport,
     code: error instanceof ApiClientError ? error.code : ApiClientErrorCode.RequestFailed,
-    cause: error,
   });
 }
 
@@ -298,7 +297,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       providerKind: "opencode",
       protocolVersion: OPENCODE_SERVER_VERSION,
       auth: { type: "basic", required: this.configuredPassword },
-      supports: { runs: true, streaming: true },
+      supports: OPENCODE_RUNTIME_SUPPORT,
     };
   }
 
