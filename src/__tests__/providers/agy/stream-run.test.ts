@@ -159,6 +159,29 @@ describe("AgyApiClient.streamRun", () => {
     expect(completeCalls).toBe(0);
   });
 
+  it("reports premature stream EOF as terminal without lifecycle completion", async () => {
+    const fetchImpl = streamFetch(sseStream([
+      JSON.stringify({ status: "running", result: { output: "partial" } }),
+    ]));
+    const errors: unknown[] = [];
+    const events: RunStreamEvent[] = [];
+    let completeCalls = 0;
+
+    await client(fetchImpl).streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      {
+        onEvent: (event) => events.push(event),
+        onError: (error) => errors.push(error),
+        onComplete: () => { completeCalls += 1; },
+      },
+    );
+
+    expect(errors).toHaveLength(1);
+    expect(isNonTerminalStreamError(errors[0])).toBe(false);
+    expect(events.map((event) => event.event)).toEqual([RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA]);
+    expect(completeCalls).toBe(0);
+  });
+
   it("surfaces onEvent handler errors through terminal onError", async () => {
     const fetchImpl = streamFetch(sseStream([
       JSON.stringify({ status: "running", result: { output: "first" } }),
