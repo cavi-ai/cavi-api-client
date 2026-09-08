@@ -59,5 +59,7 @@ Synchronous runs are already terminal; returns the remembered status (or
 **HTTP** `POST /v1/agents/stream` (SSE)
 **Capability** `supports.streaming`
 
-Streams Antigravity SSE chunks, normalized to canonical run-stream events. See
-[runtime · streamRun](../runtime.md#streamrun).
+Streams Antigravity SSE chunks, normalized to canonical run-stream events. If
+the connection closes without an upstream terminal status, `streamRun` reports
+a terminal error instead of synthesizing `run.completed`. See [runtime ·
+streamRun](../runtime.md#streamrun).

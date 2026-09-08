@@ -146,7 +146,11 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
         }
       });
       if (controller.signal.aborted) return;
-      if (!completed) handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId });
+      if (!completed) {
+        throw new ApiClientError("agy: stream ended before a terminal event", {
+          code: ApiClientErrorCode.RequestFailed,
+        });
+      }
       handlers.onComplete?.();
     } catch (error) {
       if (handlers.onError) handlers.onError(error instanceof Error ? error : new Error(String(error)));

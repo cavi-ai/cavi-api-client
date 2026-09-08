@@ -49,6 +49,9 @@ also accepts the shared runtime HTTP policy fields (`defaultTimeoutMs`,
 - **Malformed frames:** a malformed JSON SSE frame is reported through
   `onError` as a non-terminal error. Later valid frames continue to be
   processed.
+- **Premature EOF:** if the SSE connection closes without an upstream terminal
+  status, `streamRun` reports a terminal error instead of synthesizing
+  `run.completed`.
 - **Caller abort:** aborting the supplied signal stops the stream without
   synthesizing a `run.completed` event.
 

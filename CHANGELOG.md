@@ -39,7 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- AGY stream failures now emit `run.failed`, malformed frames are reported as non-terminal errors while later frames continue, and caller abort no longer synthesizes completion.
+- AGY stream failures now emit `run.failed`, malformed frames are reported as
+  non-terminal errors while later frames continue, premature EOF reports a
+  terminal error, and caller abort no longer synthesizes completion.
 - Pinned credentialed HTTP, SSE, and Gemini resumable-upload requests to their
   configured origin and rejected redirects; Gemini uploads now honor
   cancellation and per-stage timeouts.
