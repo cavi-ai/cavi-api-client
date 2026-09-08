@@ -44,7 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   terminal error, and caller abort no longer synthesizes completion.
 - Pinned credentialed HTTP, SSE, and Gemini resumable-upload requests to their
   configured origin and rejected redirects; Gemini uploads now honor
-  cancellation and per-stage timeouts.
+  cancellation and per-stage timeouts, and failed uploads no longer retain raw
+  response bodies in thrown errors.
 - Bounded incomplete SSE events, generic WebSocket frames, gateway RPC frames,
   and CAVI discourse normalization work; overflow streams terminate without
   retry, and gateway RPC traces recursively redact secret-bearing parameters,
