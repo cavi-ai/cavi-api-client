@@ -330,6 +330,14 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
     }
   }
 
+  private async cleanupSession(sessionId: string): Promise<void> {
+    const cleanupSignal = new AbortController().signal;
+    await this.requestChecked<unknown>(opencodeSessionAbortPath(this.scope, sessionId), {
+      method: "POST",
+      signal: cleanupSignal,
+    }).then(() => undefined).catch(() => undefined);
+  }
+
   async startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus> {
     const payload = buildOpenCodePromptBody(body, this.defaultModel);
     if (body.dryRun) {
@@ -341,13 +349,18 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       await this.requestChecked<unknown>(opencodeSessionCreatePath(this.scope), { method: "POST", body: {} }),
       this.scope,
     );
-    const response = await this.requestChecked<unknown>(opencodeSessionMessagePath(this.scope, created.id), {
-      method: "POST",
-      body: payload,
-    });
-    const status = sanitizeRunStatus(mapOpenCodePromptResponseToRunStatus(response, created.id), this.authSecrets);
-    this.runStore.remember(status);
-    return status;
+    try {
+      const response = await this.requestChecked<unknown>(opencodeSessionMessagePath(this.scope, created.id), {
+        method: "POST",
+        body: payload,
+      });
+      const status = sanitizeRunStatus(mapOpenCodePromptResponseToRunStatus(response, created.id), this.authSecrets);
+      this.runStore.remember(status);
+      return status;
+    } catch (error) {
+      void this.cleanupSession(created.id);
+      throw error;
+    }
   }
 
   private modelString(payload: OpenCodePromptBody): string | undefined {
@@ -433,20 +446,16 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
     let handlerFailure = false;
     const state = { promptAccepted: false };
 
-    const cleanupCallerAbort = (): Promise<void> => {
-      if (!sessionId) return Promise.resolve();
+    const cleanupCreatedSession = (): Promise<void> => {
+      if (!sessionId || terminalSeen) return Promise.resolve();
       if (!cleanupPromise) {
-        const cleanupSignal = new AbortController().signal;
-        cleanupPromise = this.requestChecked<unknown>(opencodeSessionAbortPath(this.scope, sessionId), {
-          method: "POST",
-          signal: cleanupSignal,
-        }).then(() => undefined).catch(() => undefined);
+        cleanupPromise = this.cleanupSession(sessionId);
       }
       return cleanupPromise;
     };
     const onCallerAbort = (): void => {
       streamController.abort();
-      void cleanupCallerAbort();
+      void cleanupCreatedSession();
     };
     if (callerSignal) callerSignal.addEventListener("abort", onCallerAbort, { once: true });
 
@@ -489,7 +498,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
         await raceWithCallerAbort(sessionRequest, callerSignal, (value) => {
           try {
             sessionId = parseOpenCodeSessionResponse(value, this.scope).id;
-            void cleanupCallerAbort();
+            void cleanupCreatedSession();
           } catch {
             // A malformed late response cannot identify a session to clean up.
           }
@@ -498,7 +507,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       );
       sessionId = created.id;
       if (callerSignal?.aborted) {
-        void cleanupCallerAbort();
+        void cleanupCreatedSession();
         return;
       }
 
@@ -510,7 +519,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       const eventResponse = await raceWithCallerAbort(eventRequest, callerSignal, cancelResponseBody);
       if (callerSignal?.aborted || streamSignal.aborted) {
         cancelResponseBody(eventResponse);
-        void cleanupCallerAbort();
+        void cleanupCreatedSession();
         return;
       }
       if (!isSseContentType(eventResponse.headers.get("content-type"))) {
@@ -525,7 +534,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       }
       if (callerSignal?.aborted || streamSignal.aborted) {
         cancelResponseBody(eventResponse);
-        void cleanupCallerAbort();
+        void cleanupCreatedSession();
         return;
       }
 
@@ -568,7 +577,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
 
       await settleConsumer();
       if (callerSignal?.aborted) {
-        void cleanupCallerAbort();
+        void cleanupCreatedSession();
         return;
       }
       if (!terminalSeen) {
@@ -576,8 +585,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
           type: ApiClientErrorType.Transport,
           code: ApiClientErrorCode.TransportProtocolError,
         });
-        reportError(eof);
-        return;
+        throw eof;
       }
       try {
         handlers.onComplete?.();
@@ -588,7 +596,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
     } catch (error) {
       if (callerSignal?.aborted) {
         streamController.abort();
-        void cleanupCallerAbort();
+        void cleanupCreatedSession();
         void consumer?.catch(() => undefined);
         return;
       }
@@ -598,6 +606,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       } catch {
         // Preserve the original terminal failure below.
       }
+      void cleanupCreatedSession();
       if (handlerFailure) throw error;
       const safeError = sanitizeTransportError(error, this.authSecrets);
       reportError(safeError);

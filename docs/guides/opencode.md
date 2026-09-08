@@ -69,6 +69,9 @@ session, and submits a synchronous message. The session ID is the canonical
 request; otherwise it reconciles the server session, session status, and
 message history. Busy or retrying sessions remain `running`. A terminal
 assistant result is cached; an absent session is reported as `unknown`.
+If synchronous message submission or response validation fails after session
+creation, the client issues one best-effort session abort before preserving the
+original failure.
 
 `cancelRun` calls the session abort endpoint. A successful abort returns a
 cancelled status; a negative server response leaves the run unknown unless a
@@ -91,8 +94,10 @@ run status.
 Aborting the caller's signal stops event delivery, issues one best-effort
 session abort when a session has been identified, and cleans up pending
 responses and the SSE body. Abort cleanup is bounded even when an injected
-transport does not promptly honor its signal. No credentials are included in
-URLs, errors, status values, or trace metadata.
+transport does not promptly honor its signal. Pre-terminal stream setup,
+transport, protocol, and handler failures use the same single cleanup path;
+sessions that already emitted a terminal event are not aborted. No credentials
+are included in URLs, errors, status values, or trace metadata.
 
 The stable documentation artifact under `docs/api-client/v0.16.0` describes a
 previous release and intentionally does not include this unreleased OpenCode

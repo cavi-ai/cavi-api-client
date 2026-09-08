@@ -260,7 +260,9 @@ describe("OpenCodeApiClient", () => {
         onError: (error) => errors.push(error),
         onComplete: () => { completions += 1; },
       });
-      expect(fetchImpl.calls).toHaveLength(3);
+      expect(fetchImpl.calls).toHaveLength(4);
+      expect(fetchImpl.calls.some((call) => call.url.includes("/prompt_async?"))).toBe(false);
+      expect(fetchImpl.calls.filter((call) => call.url.includes("/abort?"))).toHaveLength(1);
       expect(errors).toHaveLength(1);
       expect(completions).toBe(0);
     }
@@ -275,6 +277,7 @@ describe("OpenCodeApiClient", () => {
       { value: health },
       { value: session },
       new Response(body, { headers: { "content-type": "application/json" } }),
+      { value: true },
     );
 
     await client(fetchImpl).streamRun({ input: "hello" }, {
@@ -283,6 +286,7 @@ describe("OpenCodeApiClient", () => {
     });
 
     expect(bodyCancelled).toBe(true);
+    expect(fetchImpl.calls.filter((call) => call.url.includes("/abort?"))).toHaveLength(1);
   });
 
   it("cancels an unexpected successful prompt response body", async () => {
@@ -296,6 +300,7 @@ describe("OpenCodeApiClient", () => {
       { value: session },
       new Response(eventBody, { headers: { "content-type": "text/event-stream" } }),
       new Response(promptBody, { status: 200 }),
+      { value: true },
     );
 
     await client(fetchImpl).streamRun({ input: "hello" }, {
@@ -304,6 +309,7 @@ describe("OpenCodeApiClient", () => {
     });
 
     expect(promptBodyCancelled).toBe(true);
+    expect(fetchImpl.calls.filter((call) => call.url.includes("/abort?"))).toHaveLength(1);
   });
 
   it("reports prompt status, fetch, read, and EOF failures as terminal errors", async () => {
@@ -789,6 +795,41 @@ describe("OpenCodeApiClient", () => {
       system: "system",
     });
     expect(status).toMatchObject({ run_id: "ses_123", status: "completed", output: "done" });
+  });
+
+  it("cleans up a created session when synchronous message submission fails", async () => {
+    const fetchImpl = mockFetch(
+      { value: health },
+      { value: session },
+      { status: 503, value: { error: "prompt unavailable" } },
+      { value: true },
+    );
+
+    await expect(client(fetchImpl).startRun({ input: "hello" })).rejects.toMatchObject({ status: 503 });
+    expect(fetchImpl.calls.map((call) => [call.init?.method, call.url])).toEqual([
+      ["GET", "https://opencode.example/api/global/health"],
+      ["POST", "https://opencode.example/api/session?directory=%2Fworkspace%2Fproject&workspace=team-a"],
+      ["POST", "https://opencode.example/api/session/ses_123/message?directory=%2Fworkspace%2Fproject&workspace=team-a"],
+      ["POST", "https://opencode.example/api/session/ses_123/abort?directory=%2Fworkspace%2Fproject&workspace=team-a"],
+    ]);
+  });
+
+  it("does not let best-effort cleanup delay the original synchronous failure", async () => {
+    const cleanupResponse = deferred<Response>();
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/global/health")) return new Response(JSON.stringify(health));
+      if (url.includes("/session?") && !url.includes("/message") && !url.includes("/abort")) {
+        return new Response(JSON.stringify(session));
+      }
+      if (url.includes("/message?")) return new Response(null, { status: 503 });
+      if (url.includes("/abort?")) return cleanupResponse.promise;
+      throw new Error(`unexpected request ${url}`);
+    }) as unknown as typeof fetch;
+
+    const pending = client(fetchImpl).startRun({ input: "hello" });
+    expect(await settlesWithin(pending)).toBe(true);
+    await expect(pending).rejects.toMatchObject({ status: 503 });
   });
 
   it("returns a remembered run without network and maps failed starts with redacted errors", async () => {
