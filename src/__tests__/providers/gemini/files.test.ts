@@ -76,6 +76,32 @@ describe("GeminiFilesClient", () => {
     expect(Object.hasOwn(fetchImpl.calls[1]?.init ?? {}, "credentials")).toBe(false);
   });
 
+  it("does not retain a failed upload response body in the thrown error", async () => {
+    const secret = "api_key=simulated-secret";
+    let callCount = 0;
+    const fetchImpl = vi.fn(async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return new Response("", {
+          status: 200,
+          headers: {
+            "x-goog-upload-url":
+              "https://generativelanguage.googleapis.com/upload/session",
+          },
+        });
+      }
+      return new Response(secret, { status: 500 });
+    }) as unknown as typeof fetch;
+    const client = new GeminiFilesClient({ apiKey: "secret-key", fetchImpl });
+
+    const error = await client.uploadFile("payload").catch((reason: unknown) => reason);
+
+    expect(error).toMatchObject({ code: ApiClientErrorCode.RequestFailed });
+    expect(error).not.toHaveProperty("cause");
+    expect(String(error)).not.toContain(secret);
+    expect(JSON.stringify(error)).not.toContain(secret);
+  });
+
   it("propagates caller cancellation across both resumable upload stages", async () => {
     const controller = new AbortController();
     const reason = new Error("caller cancelled upload");

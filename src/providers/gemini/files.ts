@@ -195,10 +195,9 @@ export class GeminiFilesClient extends BaseHttpApiClient {
           : {}),
       });
       if (!upload.ok) {
-        const body = await upload.text();
+        await upload.text();
         throw new ApiClientError(`gemini-files: upload failed (${upload.status})`, {
           code: ApiClientErrorCode.RequestFailed,
-          cause: body,
         });
       }
       const payload = (await upload.json()) as unknown;
