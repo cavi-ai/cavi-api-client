@@ -1,6 +1,6 @@
 import { GATEWAY_API_ENDPOINTS } from "../../../contracts/paths.js";
+import { combineAbortSignalsWithCleanup } from "../../sse/abort-signals.js";
 import {
-  combineAbortSignals,
   consumeSseStream,
   isSseContentType,
   type SseMessage,
@@ -117,7 +117,10 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
     handlers: RunEventStreamHandlers,
   ): Promise<RunEventStreamSubscription> {
     const localController = new AbortController();
-    const signal = combineAbortSignals(localController.signal, params.signal);
+    const { signal, dispose: disposeSignal } = combineAbortSignalsWithCleanup(
+      localController.signal,
+      params.signal,
+    );
     let disposed = false;
 
     const dispose = (): void => {
@@ -134,6 +137,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
         if (!disposed) handlers.onError?.(error);
       } finally {
         disposed = true;
+        disposeSignal();
       }
     })();
 

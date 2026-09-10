@@ -1,3 +1,5 @@
+import { combineAbortSignalsWithCleanup } from "./abort-signals.js";
+
 export type SseMessage = {
   data: string;
   event?: string;
@@ -165,13 +167,5 @@ export async function consumeSseStream(
 }
 
 export function combineAbortSignals(a: AbortSignal, b: AbortSignal | undefined): AbortSignal {
-  if (!b) return a;
-  const controller = new AbortController();
-  if (a.aborted || b.aborted) {
-    controller.abort();
-    return controller.signal;
-  }
-  a.addEventListener("abort", () => controller.abort(), { once: true });
-  b.addEventListener("abort", () => controller.abort(), { once: true });
-  return controller.signal;
+  return combineAbortSignalsWithCleanup(a, b).signal;
 }
