@@ -86,18 +86,20 @@ Streaming uses the direct OpenCode SSE event endpoint. The event subscription is
 opened before the `prompt_async` request is sent, so early events cannot be
 missed. The prompt must receive HTTP 204 before the client treats it as
 accepted. OpenCode streams have no reconnect or replay behavior; the adapter
-does not synthesize completion when the stream ends without a terminal event.
-Malformed frames are reported as non-terminal errors so later valid frames can
-still be processed. Terminal events are delivered once and reconcile the local
-run status.
+does not synthesize completion when the stream ends without a verified terminal
+session event. Premature EOF reports one terminal transport error and uses the
+same best-effort session cleanup path. Malformed frames are reported as
+non-terminal errors so later valid frames can still be processed. Terminal
+events are delivered once and reconcile the local run status.
 
 Aborting the caller's signal stops event delivery, issues one best-effort
 session abort when a session has been identified, and cleans up pending
-responses and the SSE body. Abort cleanup is bounded even when an injected
-transport does not promptly honor its signal. Pre-terminal stream setup,
-transport, protocol, and handler failures use the same single cleanup path;
-sessions that already emitted a terminal event are not aborted. No credentials
-are included in URLs, errors, status values, or trace metadata.
+responses and the SSE body. Best-effort cleanup does not delay caller
+settlement, even when an injected transport does not promptly honor its signal.
+Pre-terminal stream setup, transport, protocol, and handler failures use the
+same single cleanup path; sessions that already emitted a terminal event are
+not aborted. No credentials are included in URLs, errors, status values, or
+trace metadata.
 
 The stable documentation artifact under `docs/api-client/v0.16.0` describes a
 previous release and intentionally does not include this unreleased OpenCode

@@ -312,7 +312,7 @@ describe("OpenCodeApiClient", () => {
     expect(fetchImpl.calls.filter((call) => call.url.includes("/abort?"))).toHaveLength(1);
   });
 
-  it("reports prompt status, fetch, read, and EOF failures as terminal errors", async () => {
+  it("reports prompt status, fetch, and read failures as terminal errors", async () => {
     const promptFailure = mockFetch(
       { value: health },
       { value: session },
@@ -348,24 +348,43 @@ describe("OpenCodeApiClient", () => {
       onError: (error) => readErrors.push(error),
     });
     expect(readErrors).toHaveLength(1);
+  });
 
-    const eof = mockFetch(
+  it("reports premature stream EOF as terminal without lifecycle completion", async () => {
+    const encoder = new TextEncoder();
+    const fetchImpl = mockFetch(
       { value: health },
       { value: session },
-      new Response(new ReadableStream<Uint8Array>({ start(controller) { controller.close(); } }), {
-        headers: { "content-type": "text/event-stream" },
-      }),
+      new Response(new ReadableStream<Uint8Array>({ start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "message.part.delta", properties: {
+          sessionID: "ses_123", messageID: "msg_1", partID: "part_1", field: "text", delta: "partial",
+        } })}\n\n`));
+        controller.close();
+      } }), { headers: { "content-type": "text/event-stream" } }),
       new Response(null, { status: 204 }),
+      { value: true },
     );
-    const eofErrors: unknown[] = [];
-    await client(eof).streamRun({ input: "hello" }, {
-      onEvent: () => undefined,
-      onError: (error) => eofErrors.push(error),
+    const errors: unknown[] = [];
+    const events: unknown[] = [];
+    let completions = 0;
+
+    await client(fetchImpl).streamRun({ input: "hello" }, {
+      onEvent: (event) => events.push(event),
+      onError: (error) => errors.push(error),
+      onComplete: () => { completions += 1; },
     });
-    expect(eofErrors[0]).toMatchObject({
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
       type: ApiClientErrorType.Transport,
       code: ApiClientErrorCode.TransportProtocolError,
     });
+    expect(isNonTerminalStreamError(errors[0])).toBe(false);
+    expect(events).toEqual([
+      { event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA, runId: "ses_123", delta: "partial" },
+    ]);
+    expect(completions).toBe(0);
+    expect(fetchImpl.calls.filter((call) => call.url.includes("/abort?"))).toHaveLength(1);
   });
 
   it("propagates event handler failures and never completes", async () => {
