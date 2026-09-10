@@ -64,9 +64,9 @@ entries when an application needs only one provider surface.
 | `@cavi-ai/api-client/testing` | Provider and gateway conformance helpers |
 
 `package.json` is the authoritative list of published entry points. The
-[generated type reference](../api-client/v0.16.0/reference/index.md) lists the
-symbols available from the locked stable documentation artifact; it does not
-include the unreleased OpenCode subpath.
+[generated type reference](../api-client/v0.17.0/reference/index.md) lists the
+symbols available from the locked stable documentation artifact, including the
+OpenCode provider subpath.
 
 ## Transport boundaries
 

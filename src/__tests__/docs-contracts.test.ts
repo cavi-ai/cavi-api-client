@@ -201,7 +201,7 @@ describe("loadContracts", () => {
     ["evidence", [42], /evidence path to be repository-relative/u],
     ["evidence", [], /evidence to be a non-empty array/u],
     ["evidence", ["../outside.test.ts"], /evidence path to be repository-relative/u],
-    ["evidence", [path.resolve("outside.test.ts")], /evidence path to be repository-relative/u],
+    ["evidence", [path.join(path.parse(root).root, "outside.test.ts")], /evidence path to be repository-relative/u],
   ])("rejects malformed %s fields", async (field, value, diagnostic) => {
     const registryRoot = await mutableRegistry();
     await mutateRecord(registryRoot, "runtime-error.json", (record) => {
