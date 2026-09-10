@@ -1,3 +1,4 @@
+import { getEventListeners } from "node:events";
 import { describe, expect, it } from "vitest";
 import {
   RunPreviewPollProvider,
@@ -11,13 +12,18 @@ describe("run event stream helpers", () => {
     const caller = new AbortController();
     let snapshotSignal: AbortSignal | undefined;
     let resolveCalled: (() => void) | undefined;
+    let resolveSnapshot: (() => void) | undefined;
     const called = new Promise<void>((resolve) => {
       resolveCalled = resolve;
+    });
+    const snapshot = new Promise<void>((resolve) => {
+      resolveSnapshot = resolve;
     });
     const provider = new RunPreviewPollProvider({
       fetchSnapshot: async (_runId, signal) => {
         snapshotSignal = signal;
         resolveCalled?.();
+        await snapshot;
         return null;
       },
     });
@@ -31,6 +37,24 @@ describe("run event stream helpers", () => {
     caller.abort();
 
     expect(snapshotSignal?.aborted).toBe(true);
+    resolveSnapshot?.();
+  });
+
+  it("releases the caller abort listener after polling completes", async () => {
+    const caller = new AbortController();
+    const provider = new RunPreviewPollProvider({
+      fetchSnapshot: async () => null,
+      maxPolls: 1,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      void provider.subscribe(
+        { runId: "run_1", signal: caller.signal },
+        { onEvent: () => undefined, onError: reject, onComplete: resolve },
+      );
+    });
+
+    expect(getEventListeners(caller.signal, "abort")).toHaveLength(0);
   });
 
   it("waits for async tool fallback events before completing", async () => {

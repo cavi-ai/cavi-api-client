@@ -1,3 +1,4 @@
+import { getEventListeners } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import {
   combineAbortSignals,
@@ -110,6 +111,20 @@ describe("core SSE stream helpers", () => {
 
     expect(signal.aborted).toBe(true);
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes both source listeners after either signal aborts", () => {
+    const left = new AbortController();
+    const right = new AbortController();
+
+    combineAbortSignals(left.signal, right.signal);
+    expect(getEventListeners(left.signal, "abort")).toHaveLength(1);
+    expect(getEventListeners(right.signal, "abort")).toHaveLength(1);
+
+    right.abort();
+
+    expect(getEventListeners(left.signal, "abort")).toHaveLength(0);
+    expect(getEventListeners(right.signal, "abort")).toHaveLength(0);
   });
 
   it("recognizes SSE content types", () => {

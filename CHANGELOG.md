@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   streaming startup fails after session creation, preventing orphaned runs
   while preserving the original failure. Premature stream EOF reports a
   terminal transport error instead of lifecycle completion.
+- SSE abort-signal composition now releases listeners from both source signals
+  after abort or subscription settlement.
 - AGY stream failures now emit `run.failed`, malformed frames are reported as
   non-terminal errors while later frames continue, premature EOF reports a
   terminal error, and caller abort no longer synthesizes completion.
