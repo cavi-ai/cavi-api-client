@@ -185,18 +185,19 @@ jobs:
           TARBALL="$RUNNER_TEMP/cavi-ai-api-client-${VERSION}.tgz"
           METADATA="$RUNNER_TEMP/npm-release-${VERSION}.json"
           ATTEMPT=1
+          MAX_ATTEMPTS=12
           until pnpm --silent run release:resolve-npm -- \
               --version "$VERSION" \
               --tag "$TAG" \
               --commit "$COMMIT" \
               --repository "$GITHUB_REPOSITORY" \
               --output "$TARBALL" > "$METADATA"; do
-            if [ "$ATTEMPT" -ge 5 ]; then
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
               echo "::error::exact npm artifact was not available after ${ATTEMPT} attempts"
               exit 1
             fi
-            echo "::notice::exact npm artifact is not yet available; retrying after registry propagation delay"
-            sleep "$((ATTEMPT * 5))"
+            echo "::notice::exact npm artifact is not yet available; retrying after registry propagation delay (attempt ${ATTEMPT}/${MAX_ATTEMPTS})"
+            sleep 30
             ATTEMPT="$((ATTEMPT + 1))"
           done
           jq . "$METADATA"
