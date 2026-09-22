@@ -14,7 +14,7 @@ import {
   type AgentRunDetailSnapshot,
   type AgentRunPreviewItem,
 } from "./contracts.js";
-import { combineAbortSignals } from "../../sse/index.js";
+import { combineAbortSignalsWithCleanup } from "../../sse/abort-signals.js";
 
 // The stream interfaces live in core/runtime; re-exported here so existing
 // importers of `./event-stream.js` keep resolving them.
@@ -88,7 +88,10 @@ export class RunPreviewPollProvider implements RunEventStreamProvider {
     let disposed = false;
     const seen = new Set<string>();
     const localController = new AbortController();
-    const signal = combineAbortSignals(localController.signal, params.signal);
+    const { signal, dispose: disposeSignal } = combineAbortSignalsWithCleanup(
+      localController.signal,
+      params.signal,
+    );
 
     const dispose = (): void => {
       if (disposed) return;
@@ -124,6 +127,7 @@ export class RunPreviewPollProvider implements RunEventStreamProvider {
         if (!disposed) handlers.onError?.(error);
       } finally {
         disposed = true;
+        disposeSignal();
       }
     })();
 

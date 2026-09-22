@@ -1,8 +1,30 @@
+import { getEventListeners } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { GatewaySseRunEventProvider } from "../../../../core/gateway/run/sse-run-event-provider";
 import { RUN_STREAM_EVENT_NAMES, type RunStreamEvent } from "../../../../core/runtime/run-stream";
 
 describe("GatewaySseRunEventProvider — usage normalization (F6)", () => {
+  it("releases the caller abort listener after streaming completes", async () => {
+    const caller = new AbortController();
+    const provider = new GatewaySseRunEventProvider({
+      httpBase: "https://gateway.example",
+      clientId: "client-1",
+      fetchImpl: async () => new Response("data: {}\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      void provider.subscribe(
+        { runId: "run_1", signal: caller.signal },
+        { onEvent: () => undefined, onError: reject, onComplete: resolve },
+      );
+    });
+
+    expect(getEventListeners(caller.signal, "abort")).toHaveLength(0);
+  });
+
   it("populates normalized tokens on a live SSE run.completed event", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(

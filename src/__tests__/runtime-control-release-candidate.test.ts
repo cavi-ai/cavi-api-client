@@ -98,11 +98,15 @@ describe("runtime-control release candidate evidence", () => {
     execFileSync("pnpm", ["run", "build"], { cwd: packageRoot, stdio: "ignore" });
     const first = mkdtempSync(path.join(tmpdir(), "runtime-control-pack-a-"));
     const second = mkdtempSync(path.join(tmpdir(), "runtime-control-pack-b-"));
+    const priorDryRun = process.env.npm_config_dry_run;
+    process.env.npm_config_dry_run = "true";
     try {
       const firstTarball = buildPackageTarball(first, { ignoreScripts: true });
       const secondTarball = buildPackageTarball(second, { ignoreScripts: true });
       expect(digest(firstTarball)).toBe(digest(secondTarball));
     } finally {
+      if (priorDryRun === undefined) delete process.env.npm_config_dry_run;
+      else process.env.npm_config_dry_run = priorDryRun;
       rmSync(first, { recursive: true, force: true });
       rmSync(second, { recursive: true, force: true });
     }

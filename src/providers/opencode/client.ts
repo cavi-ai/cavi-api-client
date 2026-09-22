@@ -6,8 +6,8 @@ import type { RuntimeCapabilities } from "../../core/runtime/capabilities.js";
 import type { RuntimeClient } from "../../core/runtime/client.js";
 import { buildDryRunStatus, buildDryRunStreamEvent } from "../../core/runtime/dry-run.js";
 import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/run.js";
+import { combineAbortSignalsWithCleanup } from "../../core/sse/abort-signals.js";
 import {
-  combineAbortSignals,
   consumeSseStream,
   isSseContentType,
 } from "../../core/sse/index.js";
@@ -438,7 +438,10 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
     }
 
     const streamController = new AbortController();
-    const streamSignal = combineAbortSignals(streamController.signal, callerSignal);
+    const { signal: streamSignal, dispose: disposeStreamSignal } = combineAbortSignalsWithCleanup(
+      streamController.signal,
+      callerSignal,
+    );
     let sessionId: string | undefined;
     let cleanupPromise: Promise<void> | undefined;
     let consumer: Promise<void> | undefined;
@@ -612,6 +615,7 @@ export class OpenCodeApiClient extends BaseHttpApiClient implements RuntimeClien
       reportError(safeError);
     } finally {
       callerSignal?.removeEventListener("abort", onCallerAbort);
+      disposeStreamSignal();
     }
   }
 }

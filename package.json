@@ -1,6 +1,6 @@
 {
   "name": "@cavi-ai/api-client",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Gemini, Antigravity (AGY), Hermes, OpenClaw, and OpenCode, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
@@ -287,22 +287,23 @@
   },
   "pnpm": {
     "overrides": {
-      "undici": "7.28.0"
+      "smol-toml": "1.7.1",
+      "undici": "7.29.0"
     }
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@types/react": "^19.2.15",
     "@types/react-dom": "19.2.3",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
-    "markdownlint-cli2": "^0.23.0",
+    "markdownlint-cli2": "^0.23.2",
     "react": "^19.2.6",
     "react-dom": "19.2.6",
     "typescript": "^6.0.3",
-    "vite": "^8.1.3",
-    "vitest": "^4.1.10"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "react": ">=18.0.0"

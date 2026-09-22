@@ -184,7 +184,9 @@ export function buildPackageTarball(destination, { ignoreScripts = false } = {})
   // have already built `dist/` can skip it with `ignoreScripts` to pack the
   // existing output directly — the reproducibility check does this so it packs
   // the SAME dist twice instead of paying for two sequential builds.
-  const args = ["pack", "--json", "--pack-destination", destination];
+  // `pnpm publish --dry-run` exports npm_config_dry_run=true to lifecycle
+  // scripts. This helper must still create the tarball that callers inspect.
+  const args = ["pack", "--json", "--config.dry-run=false", "--pack-destination", destination];
   if (ignoreScripts) args.push("--config.ignore-scripts=true");
   return parsePackOutput(run("pnpm", args));
 }
