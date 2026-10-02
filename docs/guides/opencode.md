@@ -101,5 +101,5 @@ same single cleanup path; sessions that already emitted a terminal event are
 not aborted. No credentials are included in URLs, errors, status values, or
 trace metadata.
 
-The stable documentation artifact under `docs/api-client/v0.17.0` includes the
+The stable documentation artifact under `docs/api-client/v0.18.0` includes the
 generated API reference for this OpenCode provider subpath.
