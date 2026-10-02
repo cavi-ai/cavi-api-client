@@ -1,8 +1,4 @@
-import {
-  ApiClientError,
-  ApiClientErrorCode,
-  ApiClientErrorType,
-} from "../core/errors.js";
+import { invalidConfigError } from "../core/error-factories.js";
 import { appendHttpQuery } from "./paths.js";
 
 export const TEAM_MANIFEST_VERSION = 1 as const;
@@ -261,17 +257,10 @@ function nonEmpty(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function manifestError(message: string): ApiClientError {
-  return new ApiClientError(message, {
-    type: ApiClientErrorType.Configuration,
-    code: ApiClientErrorCode.InvalidConfig,
-  });
-}
-
 function requiredText(value: string | null | undefined, label: string): string {
   const trimmed = nonEmpty(value);
   if (!trimmed) {
-    throw manifestError(`team manifest: missing ${label}`);
+    throw invalidConfigError(`team manifest: missing ${label}`);
   }
   return trimmed;
 }
@@ -310,7 +299,7 @@ function normalizeActionInputMode(
     return null;
   }
   if (!TEAM_ACTION_INPUT_MODES.includes(mode as TeamActionInputMode)) {
-    throw manifestError(`team manifest: invalid action input mode "${mode}"`);
+    throw invalidConfigError(`team manifest: invalid action input mode "${mode}"`);
   }
   return mode as TeamActionInputMode;
 }
@@ -323,7 +312,7 @@ function normalizeActionOutputMode(
     return null;
   }
   if (!TEAM_ACTION_OUTPUT_MODES.includes(mode as TeamActionOutputMode)) {
-    throw manifestError(`team manifest: invalid action output mode "${mode}"`);
+    throw invalidConfigError(`team manifest: invalid action output mode "${mode}"`);
   }
   return mode as TeamActionOutputMode;
 }
@@ -344,7 +333,7 @@ function normalizeActionParamType(
     case "string":
       return type;
     default:
-      throw manifestError(`team manifest: invalid action param type "${type}"`);
+      throw invalidConfigError(`team manifest: invalid action param type "${type}"`);
   }
 }
 
@@ -363,7 +352,7 @@ function normalizeActionHttpMethod(
     case "PUT":
       return method;
     default:
-      throw manifestError(`team manifest: invalid action route method "${method}"`);
+      throw invalidConfigError(`team manifest: invalid action route method "${method}"`);
   }
 }
 
@@ -412,7 +401,7 @@ function normalizeActionParams(
   for (const param of params ?? []) {
     const entry = normalizeActionParamContract(param);
     if (seen.has(entry.key)) {
-      throw manifestError(`team manifest: duplicate action param "${entry.key}"`);
+      throw invalidConfigError(`team manifest: duplicate action param "${entry.key}"`);
     }
     seen.add(entry.key);
     normalized.push(entry);
@@ -462,7 +451,7 @@ function normalizeActionArtifacts(
   for (const artifact of artifacts ?? []) {
     const entry = normalizeActionArtifactContract(artifact);
     if (seen.has(entry.key)) {
-      throw manifestError(`team manifest: duplicate action artifact "${entry.key}"`);
+      throw invalidConfigError(`team manifest: duplicate action artifact "${entry.key}"`);
     }
     seen.add(entry.key);
     normalized.push(entry);
@@ -534,7 +523,7 @@ function normalizeTeamActionContracts(
   for (const action of actions ?? []) {
     const entry = normalizeTeamActionContract(action);
     if (seen.has(entry.id)) {
-      throw manifestError(`team manifest: duplicate action "${entry.id}"`);
+      throw invalidConfigError(`team manifest: duplicate action "${entry.id}"`);
     }
     seen.add(entry.id);
     normalized.push(entry);
@@ -553,7 +542,7 @@ function pathSegment(value: string, label: string): string {
     /[/?#\\]/u.test(segment) ||
     /[/?#\\]/u.test(decoded)
   ) {
-    throw manifestError(`team manifest: invalid ${label}: ${segment}`);
+    throw invalidConfigError(`team manifest: invalid ${label}: ${segment}`);
   }
   return encodeURIComponent(segment);
 }
@@ -561,14 +550,14 @@ function pathSegment(value: string, label: string): string {
 function normalizeRelativePath(value: string): string {
   const trimmed = nonEmpty(value);
   if (!trimmed) {
-    throw manifestError("team manifest: missing workspace path");
+    throw invalidConfigError("team manifest: missing workspace path");
   }
   if (
     /^[a-z][a-z0-9+.-]*:/iu.test(trimmed) ||
     trimmed.startsWith("/") ||
     trimmed.includes("\\")
   ) {
-    throw manifestError(`team manifest: workspace path must be relative: ${trimmed}`);
+    throw invalidConfigError(`team manifest: workspace path must be relative: ${trimmed}`);
   }
   const segments = trimmed
     .split("/")
@@ -588,7 +577,7 @@ function normalizeRelativePath(value: string): string {
       );
     })
   ) {
-    throw manifestError(`team manifest: invalid workspace path: ${trimmed}`);
+    throw invalidConfigError(`team manifest: invalid workspace path: ${trimmed}`);
   }
   return segments.join("/");
 }
@@ -601,14 +590,14 @@ function normalizeAbsoluteApiPath(value: string, label: string): string {
     /^[a-z][a-z0-9+.-]*:/iu.test(trimmed) ||
     /[\\?#]/u.test(trimmed)
   ) {
-    throw manifestError(`team manifest: invalid ${label}: ${trimmed}`);
+    throw invalidConfigError(`team manifest: invalid ${label}: ${trimmed}`);
   }
   const segments = trimmed
     .split("/")
     .map((segment) => segment.trim())
     .filter(Boolean);
   if (segments.length === 0) {
-    throw manifestError(`team manifest: invalid ${label}: ${trimmed}`);
+    throw invalidConfigError(`team manifest: invalid ${label}: ${trimmed}`);
   }
   for (const segment of segments) {
     const decoded = decodePathSegment(segment);
@@ -620,7 +609,7 @@ function normalizeAbsoluteApiPath(value: string, label: string): string {
       decoded.includes("/") ||
       decoded.includes("\\")
     ) {
-      throw manifestError(`team manifest: invalid ${label}: ${trimmed}`);
+      throw invalidConfigError(`team manifest: invalid ${label}: ${trimmed}`);
     }
   }
   return `/${segments.join("/")}`;
@@ -629,7 +618,7 @@ function normalizeAbsoluteApiPath(value: string, label: string): string {
 function normalizeRootPath(value: string): string {
   const trimmed = nonEmpty(value);
   if (!trimmed) {
-    throw manifestError("team manifest: missing workspace rootPath");
+    throw invalidConfigError("team manifest: missing workspace rootPath");
   }
   return normalizeAbsoluteApiPath(trimmed, "workspace rootPath");
 }
@@ -655,7 +644,7 @@ function normalizeWorkspacePathEntry(
   }
   const key = nonEmpty(entry.key);
   if (!key) {
-    throw manifestError("team manifest: missing workspace path key");
+    throw invalidConfigError("team manifest: missing workspace path key");
   }
   return {
     key,
@@ -714,7 +703,7 @@ function normalizeMembers(
   for (const member of members ?? []) {
     const entry = normalizeMember(member);
     if (seen.has(entry.id)) {
-      throw manifestError(`team manifest: duplicate member "${entry.id}"`);
+      throw invalidConfigError(`team manifest: duplicate member "${entry.id}"`);
     }
     seen.add(entry.id);
     normalized.push(entry);
@@ -731,7 +720,7 @@ function normalizeTeamRoutes(
     const key = requiredText(route.key, "route key");
     const routePath = nonEmpty(route.path);
     if (seen.has(key)) {
-      throw manifestError(`team manifest: duplicate route "${key}"`);
+      throw invalidConfigError(`team manifest: duplicate route "${key}"`);
     }
     seen.add(key);
     normalized.push({
@@ -765,7 +754,7 @@ function normalizeTeams(
   for (const team of teams ?? []) {
     const entry = normalizeTeam(team);
     if (seen.has(entry.id)) {
-      throw manifestError(`team manifest: duplicate team "${entry.id}"`);
+      throw invalidConfigError(`team manifest: duplicate team "${entry.id}"`);
     }
     seen.add(entry.id);
     normalized.push(entry);
@@ -801,7 +790,7 @@ function normalizeGatewayRouteBindings(
   for (const binding of bindings ?? []) {
     const entry = normalizeGatewayRouteBinding(binding);
     if (seen.has(entry.id)) {
-      throw manifestError(`team manifest: duplicate gateway route binding "${entry.id}"`);
+      throw invalidConfigError(`team manifest: duplicate gateway route binding "${entry.id}"`);
     }
     seen.add(entry.id);
     normalized.push(entry);
@@ -1059,7 +1048,7 @@ function mergeTeamActionContracts(
   override: TeamActionContract,
 ): TeamActionContract {
   if (base.id !== override.id) {
-    throw manifestError(
+    throw invalidConfigError(
       `team manifest: cannot merge action "${override.id}" into "${base.id}"`,
     );
   }
@@ -1101,14 +1090,14 @@ export function resolveTeamActionContract(
   const normalizedActionId = requiredText(actionId, "action id");
   const team = findTeamManifestTeam(manifest, normalizedTeamId);
   if (!team) {
-    throw manifestError(`team manifest: unknown team "${normalizedTeamId}"`);
+    throw invalidConfigError(`team manifest: unknown team "${normalizedTeamId}"`);
   }
   const normalizedMemberId = nonEmpty(options.memberId);
   const member = normalizedMemberId
     ? findTeamManifestMember(team, normalizedMemberId)
     : null;
   if (normalizedMemberId && !member) {
-    throw manifestError(
+    throw invalidConfigError(
       `team manifest: unknown member "${normalizedMemberId}" for team "${team.id}"`,
     );
   }
@@ -1118,7 +1107,7 @@ export function resolveTeamActionContract(
     member ? findTeamActionContract(member.actions, normalizedActionId) : null,
   ].filter((action): action is TeamActionContract => Boolean(action));
   if (!scopedActions.length) {
-    throw manifestError(
+    throw invalidConfigError(
       `team manifest: unknown action "${normalizedActionId}" for team "${team.id}"`,
     );
   }
@@ -1134,7 +1123,7 @@ function substituteRouteParams(
   return path.replace(/\{([A-Za-z0-9_]+)\}/gu, (_match, token: string) => {
     const value = params?.[token];
     if (value === undefined || value === null || value === "") {
-      throw manifestError(`team manifest: missing route param "${token}"`);
+      throw invalidConfigError(`team manifest: missing route param "${token}"`);
     }
     return encodeURIComponent(String(value));
   });
@@ -1148,7 +1137,7 @@ export function resolveTeamActionApiPath(
 ): string {
   const action = resolveTeamActionContract(manifest, teamId, actionId, options);
   if (action.enabled === false) {
-    throw manifestError(`team manifest: action "${action.id}" is disabled`);
+    throw invalidConfigError(`team manifest: action "${action.id}" is disabled`);
   }
   if (action.route?.path) {
     const withParams = substituteRouteParams(action.route.path, options.params);
@@ -1227,7 +1216,7 @@ export function resolveTeamRoutePath(
       ]);
     }
     default:
-      throw manifestError(`team manifest: unknown team route "${routeKey}"`);
+      throw invalidConfigError(`team manifest: unknown team route "${routeKey}"`);
   }
 }
 
@@ -1345,11 +1334,11 @@ export function resolveGatewayRouteBinding(
 
   const team = findTeamManifestTeam(manifest, selected.teamId);
   if (!team) {
-    throw manifestError(`team manifest: binding "${selected.id}" references unknown team "${selected.teamId}"`);
+    throw invalidConfigError(`team manifest: binding "${selected.id}" references unknown team "${selected.teamId}"`);
   }
   const memberId = nonEmpty(selected.memberId);
   if (memberId && !findTeamManifestMember(team, memberId)) {
-    throw manifestError(
+    throw invalidConfigError(
       `team manifest: binding "${selected.id}" references unknown member "${memberId}" for team "${team.id}"`,
     );
   }
@@ -1382,11 +1371,11 @@ function resolveTeamWorkspaceEntry(
   const member = findTeamManifestMember(team, options.memberId);
   const workspace = member?.workspace ?? team.workspace ?? null;
   if (!workspace) {
-    throw manifestError(`team manifest: team "${team.id}" has no workspace root`);
+    throw invalidConfigError(`team manifest: team "${team.id}" has no workspace root`);
   }
   const entry = findWorkspacePath(workspace, keyOrPath);
   if (!entry) {
-    throw manifestError(
+    throw invalidConfigError(
       `team manifest: workspace path "${keyOrPath}" is not whitelisted for team "${team.id}"`,
     );
   }
@@ -1401,7 +1390,7 @@ export function resolveTeamWorkspacePath(
   const member = findTeamManifestMember(team, options.memberId);
   const workspace = member?.workspace ?? team.workspace ?? null;
   if (!workspace) {
-    throw manifestError(`team manifest: team "${team.id}" has no workspace root`);
+    throw invalidConfigError(`team manifest: team "${team.id}" has no workspace root`);
   }
   const entry = resolveTeamWorkspaceEntry(team, keyOrPath, options);
   return joinWorkspacePath(workspace.rootPath, entry.path);

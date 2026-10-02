@@ -30,6 +30,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Team manifest validation and resolution failures throw `ApiClientError` with
   type `configuration` and code `invalid_config` instead of a plain `Error`.
   Messages are unchanged.
+- No source module throws or rejects with a plain `Error` any more. Messages
+  are unchanged; each now carries a type and code:
+  - caller input: `validation` / `validation_failed`
+  - client, provider, or registry configuration: `configuration` /
+    `invalid_config`
+  - responses or frames that break the wire contract: `protocol_mismatch`,
+    or `invalid_json` for unparseable bodies
+  - no live gateway connection: `transport` / `socket_unavailable` or
+    `socket_closed`
+  - aborted waits and polls: `abort` / `aborted`, with name `AbortError`,
+    so they now satisfy `isAbortError`
+- `CapabilityClient` calls that fail caller-input validation inside the
+  package (for example an unsupported media kind) now resolve to a
+  `request-invalid` gap instead of rejecting.
 
 ## [0.17.0] - 2026-09-10
 

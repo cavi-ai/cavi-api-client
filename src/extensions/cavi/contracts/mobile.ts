@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../../core/error-factories.js";
 import { resolvePath } from "./resolve.js";
 
 export type MobileGatewayEndpointContract = {
@@ -300,7 +301,7 @@ export function getMobileGatewayEndpointContract(
 export function getMobileGatewayEndpointPath(key: MobileGatewaySurfaceKey): string {
   const contract = getMobileGatewayEndpointContract(key);
   if (!contract.path) {
-    throw new Error(`Mobile gateway contract ${contract.surface} has no endpoint path`);
+    throw invalidConfigError(`Mobile gateway contract ${contract.surface} has no endpoint path`);
   }
   return contract.path;
 }
@@ -330,7 +331,7 @@ export function resolveOperatorTaskDispatchPath(
 ): string {
   const contract = resolveOperatorTaskDispatchContract(mode);
   if (!contract.path) {
-    throw new Error(`Operator task dispatch mode ${mode} has no endpoint path`);
+    throw invalidConfigError(`Operator task dispatch mode ${mode} has no endpoint path`);
   }
   return contract.path;
 }

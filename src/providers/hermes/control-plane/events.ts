@@ -1,3 +1,4 @@
+import { abortError } from "../../../core/error-factories.js";
 import type { RuntimeUsage } from "../../../core/runtime/usage.js";
 import type { RuntimeControlPlaneEvent, RuntimeEventClient, RuntimeEventSubscription } from "../../../core/runtime/control-plane/events.js";
 import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
@@ -179,9 +180,7 @@ export function createHermesRuntimeEventClient(rpc: HermesDashboardJsonRpcClient
     async subscribe(params, handlers): Promise<RuntimeEventSubscription> {
       if (params.cursor !== undefined) throw new CapabilityUnavailable("hermes", "controlPlane.events.cursor");
       if (params.signal?.aborted) {
-        const error = new Error("The operation was aborted");
-        error.name = "AbortError";
-        throw error;
+        throw abortError();
       }
       const subscriber: Subscriber = { operationId: params.operationId, ...handlers, active: true };
       detach ??= rpc.subscribe(notify);

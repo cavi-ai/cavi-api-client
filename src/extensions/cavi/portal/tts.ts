@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../../core/error-factories.js";
 import type { HttpApiRequestInit } from "../../../core/http/types.js";
 import type { GatewayMediaJsonValue } from "../../../core/gateway/resources/media.js";
 
@@ -190,7 +191,7 @@ export async function requestPortalTtsAudio(
 ): Promise<Blob> {
   const text = cleanString(body.text);
   if (!text) {
-    throw new Error("Enter text to synthesize.");
+    throw invalidInputError("Enter text to synthesize.");
   }
   const voiceId = cleanString(body.voiceId);
   const providerId = cleanString(body.providerId);

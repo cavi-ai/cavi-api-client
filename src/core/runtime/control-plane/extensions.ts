@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../error-factories.js";
 import type { RuntimeControlClient } from "./runtime-control-client.js";
 
 declare const extensionType: unique symbol;
@@ -30,10 +31,10 @@ const RESERVED_RUNTIME_CONTROL_EXTENSION_IDS = new Set([
 function normalizeId(id: string): string {
   const normalized = id.trim();
   if (normalized.length === 0) {
-    throw new Error("Runtime-control extension ID must not be blank");
+    throw invalidConfigError("Runtime-control extension ID must not be blank");
   }
   if (RESERVED_RUNTIME_CONTROL_EXTENSION_IDS.has(normalized)) {
-    throw new Error(`Reserved runtime-control extension ID: ${normalized}`);
+    throw invalidConfigError(`Reserved runtime-control extension ID: ${normalized}`);
   }
   return normalized;
 }
@@ -53,7 +54,7 @@ export function createRuntimeControlExtensionRegistry(
   for (const [descriptor, extension] of snapshot) {
     const id = normalizeId(descriptor.id);
     if (registeredIds.has(id)) {
-      throw new Error(`Duplicate runtime-control extension: ${id}`);
+      throw invalidConfigError(`Duplicate runtime-control extension: ${id}`);
     }
     registeredIds.add(id);
     extensions.set(descriptor, extension);
@@ -84,7 +85,7 @@ export function withRuntimeControlExtensions(
   const registeredIds = new Set<string>();
   for (const id of [...existingIds, ...additions.list()]) {
     if (registeredIds.has(id)) {
-      throw new Error(`Duplicate runtime-control extension: ${id}`);
+      throw invalidConfigError(`Duplicate runtime-control extension: ${id}`);
     }
     registeredIds.add(id);
   }

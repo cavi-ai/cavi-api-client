@@ -1,3 +1,5 @@
+import { abortError, invalidConfigError, invalidJsonError, protocolError } from "../../error-factories.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../errors.js";
 import { GATEWAY_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { combineAbortSignalsWithCleanup } from "../../sse/abort-signals.js";
 import {
@@ -68,7 +70,7 @@ const APPROVAL_CHOICES: ReadonlySet<RunStreamApprovalChoice> = new Set([
 function normalizeHttpBase(httpBase: string): string {
   const normalized = httpBase.trim().replace(/\/+$/u, "");
   if (!normalized) {
-    throw new Error("GatewaySseRunEventProvider requires httpBase");
+    throw invalidConfigError("GatewaySseRunEventProvider requires httpBase");
   }
   return normalized;
 }
@@ -76,7 +78,7 @@ function normalizeHttpBase(httpBase: string): string {
 function normalizeClientId(clientId: string): string {
   const normalized = clientId.trim();
   if (!normalized) {
-    throw new Error("GatewaySseRunEventProvider requires clientId");
+    throw invalidConfigError("GatewaySseRunEventProvider requires clientId");
   }
   return normalized;
 }
@@ -199,7 +201,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
       if (this.fallbackToPoll) {
         return this.pollUntilTerminal(runId, signal, handlers);
       }
-      throw new Error("run events response missing readable body");
+      throw protocolError(ApiClientErrorType.Http, "run events response missing readable body");
     }
 
     await consumeSseStream(response.body, signal, (message) => {
@@ -214,7 +216,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
   ): Promise<void> {
     const startedAt = Date.now();
     while (true) {
-      if (signal.aborted) throw new Error("run polling aborted");
+      if (signal.aborted) throw abortError("run polling aborted");
       const response = await this.fetchImpl(
         `${this.httpBase}${this.endpoints.run(runId)}`,
         {
@@ -239,7 +241,7 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
       try {
         payload = text.trim() ? (JSON.parse(text) as typeof payload) : {};
       } catch {
-        throw new Error(`run status polling returned invalid JSON: ${text.slice(0, 240)}`);
+        throw invalidJsonError(ApiClientErrorType.Http, `run status polling returned invalid JSON: ${text.slice(0, 240)}`);
       }
       const status = typeof payload.status === "string" ? payload.status : "";
       const resolvedRunId = typeof payload.run_id === "string" && payload.run_id.trim()
@@ -276,7 +278,10 @@ export class GatewaySseRunEventProvider implements RunEventStreamProvider {
         return;
       }
       if (Date.now() - startedAt > this.pollTimeoutMs) {
-        throw new Error(`run polling timed out after ${this.pollTimeoutMs}ms`);
+        throw new ApiClientError(`run polling timed out after ${this.pollTimeoutMs}ms`, {
+          type: ApiClientErrorType.Timeout,
+          code: ApiClientErrorCode.Timeout,
+        });
       }
       await wait(this.pollIntervalMs, signal);
     }
@@ -521,15 +526,19 @@ function formatHttpError(prefix: string, status: number, body: string): string {
  * scraping the message string. The message is unchanged from `formatHttpError`.
  */
 function httpStatusError(prefix: string, status: number, body: string): Error {
-  return Object.assign(new Error(formatHttpError(prefix, status, body)), { status });
+  const error = new ApiClientError(formatHttpError(prefix, status, body), {
+    type: ApiClientErrorType.Http,
+    code: ApiClientErrorCode.HttpRequestFailed,
+  });
+  return Object.assign(error, { status });
 }
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal.aborted) return reject(new Error("aborted"));
+    if (signal.aborted) return reject(abortError("aborted"));
     const onAbort = (): void => {
       clearTimeout(timer);
-      reject(new Error("aborted"));
+      reject(abortError("aborted"));
     };
     const timer = setTimeout(() => {
       signal.removeEventListener("abort", onAbort);

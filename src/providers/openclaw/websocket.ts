@@ -1,3 +1,4 @@
+import { abortError } from "../../core/error-factories.js";
 import {
   GatewayWebSocketClient,
   type GatewayWebSocketClientOptions,
@@ -52,12 +53,6 @@ function withOpenClawDefaults(
     preauthHandshakeEnvKeys:
       options.preauthHandshakeEnvKeys ?? OPENCLAW_PREAUTH_HANDSHAKE_ENV_KEYS,
   };
-}
-
-function abortError(): Error {
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  return error;
 }
 
 function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {

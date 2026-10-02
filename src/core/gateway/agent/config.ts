@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../error-factories.js";
 import { GATEWAY_AGENT_CONFIG_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../errors.js";
 import { BaseHttpApiClient } from "../../http/client.js";
@@ -195,7 +196,7 @@ export function setAgentConfigPathValue(
   if (segments.length === 0) return config;
   const unsafeSegment = segments.find((segment) => UNSAFE_CONFIG_PATH_SEGMENTS.has(segment));
   if (unsafeSegment) {
-    throw new Error(`setAgentConfigPathValue: unsafe path segment "${unsafeSegment}"`);
+    throw invalidInputError(`setAgentConfigPathValue: unsafe path segment "${unsafeSegment}"`);
   }
   const next = cloneJsonRecord(config);
   let cursor: Record<string, unknown> = next;

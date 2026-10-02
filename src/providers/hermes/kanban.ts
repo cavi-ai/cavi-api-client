@@ -1,3 +1,5 @@
+import { protocolError } from "../../core/error-factories.js";
+import { ApiClientErrorType } from "../../core/errors.js";
 import {
   KANBAN_PLUGIN_API_ENDPOINTS,
   KANBAN_PLUGIN_ARCHIVED_STATUS,
@@ -140,7 +142,7 @@ type BoardsResponse = {
 type TaskResponse = { task?: HermesTask | null };
 
 function requireTask(payload: TaskResponse, action: string): HermesTask {
-  if (!payload.task) throw new Error(`Hermes kanban ${action} returned no task`);
+  if (!payload.task) throw protocolError(ApiClientErrorType.Http, `Hermes kanban ${action} returned no task`);
   return payload.task;
 }
 

@@ -1,3 +1,5 @@
+import { invalidJsonError, protocolError } from "../../error-factories.js";
+import { ApiClientErrorType } from "../../errors.js";
 import { requirePortalClientId, PORTAL_CLIENT_ID_HEADER } from "../../http/client-id.js";
 import { HttpApiError } from "../../http/errors.js";
 import {
@@ -74,7 +76,7 @@ async function parseGatewayJsonResponse<T>(
         ? ` (received HTML - check ${safeEndpoint} gateway wiring)`
         : "";
 
-    throw new Error(
+    throw protocolError(ApiClientErrorType.Http,
       `Expected JSON from ${safeEndpoint}, got ${contentType || "unknown"}${htmlHint}`,
     );
   }
@@ -82,7 +84,7 @@ async function parseGatewayJsonResponse<T>(
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error(`Invalid JSON from ${safeEndpoint}.`);
+    throw invalidJsonError(ApiClientErrorType.Http, `Invalid JSON from ${safeEndpoint}.`);
   }
 }
 

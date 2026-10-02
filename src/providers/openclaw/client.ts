@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../core/error-factories.js";
 import {
   GatewayApiClient,
   type GatewayRunStartBody,
@@ -323,7 +324,7 @@ export class OpenClawApiClient extends GatewayApiClient {
         wsUrl = resolveHttpWebSocketTargets(this.baseUrl).wsUrl;
       } catch (error) {
         const message = getErrorMessage(error);
-        throw new Error(
+        throw invalidConfigError(
           `OpenClawApiClient requires an absolute baseUrl or explicit wsUrl for WebSocket RPC: ${message}`,
         );
       }

@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../../core/error-factories.js";
 import type { SurfaceContract } from "../../../contracts/surfaces.js";
 import { CAVI_CONTROL_OPERATOR_API, LIBRARY_API_ENDPOINTS } from "./paths.js";
 
@@ -5,13 +6,13 @@ export type { SurfaceContract };
 
 const p = (params: Record<string, string> | undefined, k: string): string => {
   const v = params?.[k];
-  if (!v) throw new Error(`CAVI_SURFACE_CONTRACTS: missing path param "${k}"`);
+  if (!v) throw invalidInputError(`CAVI_SURFACE_CONTRACTS: missing path param "${k}"`);
   return encodeURIComponent(v);
 };
 
 const raw = (params: Record<string, string> | undefined, k: string): string => {
   const v = params?.[k];
-  if (!v) throw new Error(`CAVI_SURFACE_CONTRACTS: missing path param "${k}"`);
+  if (!v) throw invalidInputError(`CAVI_SURFACE_CONTRACTS: missing path param "${k}"`);
   return v;
 };
 

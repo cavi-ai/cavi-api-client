@@ -1,3 +1,5 @@
+import { protocolError } from "../../core/error-factories.js";
+import { ApiClientErrorType } from "../../core/errors.js";
 import type {
   CapabilityKey,
   CapabilitySupport,
@@ -169,13 +171,13 @@ export function transformHermesCapabilities(
   options: TransformHermesCapabilitiesOptions = {},
 ): ResolvedProviderCapabilities {
   if (!isRecord(payload)) {
-    throw new Error("Hermes capabilities response failed schema validation");
+    throw protocolError(ApiClientErrorType.Http, "Hermes capabilities response failed schema validation");
   }
   if (
     payload.object !== "hermes.api_server.capabilities" ||
     payload.platform !== "hermes-agent"
   ) {
-    throw new Error("Hermes capabilities response failed schema validation");
+    throw protocolError(ApiClientErrorType.Http, "Hermes capabilities response failed schema validation");
   }
 
   const features = isRecord(payload.features) ? payload.features : {};

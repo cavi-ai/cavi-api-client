@@ -1,3 +1,5 @@
+import { invalidJsonError, protocolError } from "../../../core/error-factories.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors.js";
 import { HttpApiError } from "../../../core/http/errors.js";
 import {
   createRawHttpApiClient,
@@ -73,7 +75,11 @@ export async function fetchLibraryApiJson<T>(
       const fallbackMessage =
         redactPreviewText(error.body.trim(), 180) ||
         `Request failed (${error.status})`;
-      throw new Error(extractGatewayErrorDetails(payload).message ?? fallbackMessage);
+      throw new ApiClientError(extractGatewayErrorDetails(payload).message ?? fallbackMessage, {
+        type: ApiClientErrorType.Http,
+        code: ApiClientErrorCode.HttpRequestFailed,
+        cause: error,
+      });
     }
     throw error;
   });
@@ -82,7 +88,7 @@ export async function fetchLibraryApiJson<T>(
   const payload = parseLibraryApiPayload(raw, response.status);
 
   if (payload === null) {
-    throw new Error("Empty response.");
+    throw protocolError(ApiClientErrorType.Http, "Empty response.");
   }
 
   return payload as T;
@@ -118,7 +124,7 @@ function parseLibraryApiPayload(raw: string, status: number): unknown {
   try {
     return JSON.parse(raw) as unknown;
   } catch {
-    throw new Error(
+    throw invalidJsonError(ApiClientErrorType.Http,
       redactPreviewText(raw.trim(), 180) || `Librarian error (${status})`,
     );
   }

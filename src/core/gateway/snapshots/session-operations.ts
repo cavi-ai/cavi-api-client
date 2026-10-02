@@ -1,3 +1,4 @@
+import { abortError, notConnectedError } from "../../error-factories.js";
 import { GATEWAY_SESSION_API_PATHS } from "../../../contracts/paths.js";
 
 import type { GatewayRpcClient } from "../rpc/client.js";
@@ -80,7 +81,7 @@ function requireTransport(
   requestJson: SessionHttpRequestJson | null,
 ): void {
   if (!client && !requestJson) {
-    throw new Error("Gateway client not connected");
+    throw notConnectedError("Gateway client not connected");
   }
 }
 
@@ -92,9 +93,7 @@ function throwIfAborted(options?: GatewaySessionRequestOptions): void {
   if (signal.reason instanceof Error) {
     throw signal.reason;
   }
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  throw error;
+  throw abortError();
 }
 
 export function createOpenClawSessionOperations(

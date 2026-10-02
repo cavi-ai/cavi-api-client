@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../error-factories.js";
 import { GATEWAY_WIKI_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { BaseHttpApiClient } from "../../http/client.js";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "../../http/types.js";
@@ -177,7 +178,7 @@ export interface GatewayWikiClient {
 function requiredText(value: string | null | undefined, label: string): string {
   const normalized = value?.trim();
   if (!normalized) {
-    throw new Error(`gateway wiki: missing ${label}`);
+    throw invalidInputError(`gateway wiki: missing ${label}`);
   }
   return normalized;
 }

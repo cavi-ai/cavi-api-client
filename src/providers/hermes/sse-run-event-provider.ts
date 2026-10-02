@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../core/error-factories.js";
 import { HERMES_API_ENDPOINTS } from "../../contracts/paths.js";
 import {
   GatewaySseRunEventProvider as CoreGatewaySseRunEventProvider,
@@ -31,7 +32,7 @@ export class HermesSseRunEventProvider extends CoreGatewaySseRunEventProvider {
   constructor(options: HermesSseRunEventProviderOptions) {
     const sessionKey = options.sessionKey.trim();
     if (!sessionKey) {
-      throw new Error("HermesSseRunEventProvider requires sessionKey");
+      throw invalidConfigError("HermesSseRunEventProvider requires sessionKey");
     }
     super({
       ...options,

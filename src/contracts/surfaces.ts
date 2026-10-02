@@ -1,3 +1,4 @@
+import { invalidInputError } from "../core/error-factories.js";
 import {
   KANBAN_PLUGIN_API_ENDPOINTS,
   GATEWAY_MEDIA_API_ENDPOINTS,
@@ -16,13 +17,13 @@ export type SurfaceContract = {
 
 const p = (params: Record<string, string> | undefined, k: string): string => {
   const v = params?.[k];
-  if (!v) throw new Error(`SURFACE_CONTRACTS: missing path param "${k}"`);
+  if (!v) throw invalidInputError(`SURFACE_CONTRACTS: missing path param "${k}"`);
   return encodeURIComponent(v);
 };
 
 const raw = (params: Record<string, string> | undefined, k: string): string => {
   const v = params?.[k];
-  if (!v) throw new Error(`SURFACE_CONTRACTS: missing path param "${k}"`);
+  if (!v) throw invalidInputError(`SURFACE_CONTRACTS: missing path param "${k}"`);
   return v;
 };
 

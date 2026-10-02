@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../error-factories.js";
 import { normalizeRuntimeProviderToken } from "./normalize.js";
 import type {
   CreateRuntimeProviderRegistryOptions,
@@ -22,7 +23,7 @@ export function createProviderRegistry<M extends RuntimeProviderModule>(
   for (const module of modules) {
     for (const key of providerModuleKeys(module)) {
       if (byKey.has(key) && options.allowOverrides !== true) {
-        throw new Error(`Duplicate provider key "${key}"`);
+        throw invalidConfigError(`Duplicate provider key "${key}"`);
       }
       byKey.set(key, module);
     }

@@ -1348,6 +1348,26 @@ describe("package hardening", () => {
     expect(offenders, "exported error classes must extend ApiClientError").toEqual([]);
   });
 
+  it("throws typed errors instead of bare built-in errors", () => {
+    // Conformance kits construct foreign errors on purpose (simulated listener
+    // failures, abort reasons), so they are the one exemption.
+    const exempt = path.join(SRC_ROOT, "testing") + path.sep;
+    const offenders: string[] = [];
+    for (const filePath of productionSourceFiles()) {
+      if (!/\.tsx?$/u.test(filePath) || filePath.startsWith(exempt)) continue;
+      const sourceFile = ts.createSourceFile(filePath, read(filePath), ts.ScriptTarget.Latest, true);
+      const visit = (node: ts.Node): void => {
+        if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Error") {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+          offenders.push(`${rel(filePath)}:${line + 1}`);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+    }
+    expect(offenders, "use ApiClientError or a core/error-factories helper").toEqual([]);
+  });
+
   it("builds only canonical and compat folders", () => {
     const tsconfig = JSON.parse(read(TS_CONFIG)) as {
       include?: string[];

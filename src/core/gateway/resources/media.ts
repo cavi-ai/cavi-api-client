@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../error-factories.js";
 import { GATEWAY_MEDIA_API_ENDPOINTS } from "../../../contracts/paths.js";
 import { BaseHttpApiClient } from "../../http/client.js";
 import type { HttpApiClientOptions, HttpApiRequestInit } from "../../http/types.js";
@@ -220,13 +221,13 @@ function normalizeMediaKind(kind: GatewayMediaKind | string): GatewayMediaKind {
   if (GATEWAY_MEDIA_KINDS.includes(normalized as GatewayMediaKind)) {
     return normalized as GatewayMediaKind;
   }
-  throw new Error(`gateway media: unsupported media kind "${kind}"`);
+  throw invalidInputError(`gateway media: unsupported media kind "${kind}"`);
 }
 
 function requiredText(value: string | null | undefined, label: string): string {
   const normalized = value?.trim();
   if (!normalized) {
-    throw new Error(`gateway media: missing ${label}`);
+    throw invalidInputError(`gateway media: missing ${label}`);
   }
   return normalized;
 }
@@ -246,7 +247,7 @@ function normalizeListOptions(
     limit !== undefined &&
     (!Number.isFinite(limit) || limit <= 0 || Math.floor(limit) !== limit)
   ) {
-    throw new Error("gateway media: asset list limit must be a positive integer");
+    throw invalidInputError("gateway media: asset list limit must be a positive integer");
   }
   return {
     ...(kind ? { kind } : {}),
@@ -271,7 +272,7 @@ function normalizeAssetUploadRequest(
     ...rest
   } = body;
   if (!input && !dataBase64 && !url) {
-    throw new Error("gateway media: missing media asset source");
+    throw invalidInputError("gateway media: missing media asset source");
   }
   return {
     ...rest,

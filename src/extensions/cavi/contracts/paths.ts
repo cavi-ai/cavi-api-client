@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../../core/error-factories.js";
 import { appendHttpQuery } from "../../../contracts/paths.js";
 
 export { appendHttpQuery };
@@ -86,25 +87,25 @@ export function appendCaviApiPath(
   const boundaryLabel = options.boundaryLabel ?? "base path";
   const base = basePath.trim().replace(/\/+$/u, "");
   if (!base.startsWith("/") || base.startsWith("//")) {
-    throw new Error(`${errorPrefix}: basePath must start with "/"`);
+    throw invalidInputError(`${errorPrefix}: basePath must start with "/"`);
   }
   if (base.includes("\\")) {
-    throw new Error(`${errorPrefix}: basePath must not contain backslashes`);
+    throw invalidInputError(`${errorPrefix}: basePath must not contain backslashes`);
   }
   if (/[?#]/u.test(base)) {
-    throw new Error(`${errorPrefix}: basePath must not contain query strings or fragments`);
+    throw invalidInputError(`${errorPrefix}: basePath must not contain query strings or fragments`);
   }
 
   const raw = relativePath?.trim() ?? "";
   if (!raw || raw === "/") return base;
   if (/^[a-z][a-z\d+.-]*:/iu.test(raw) || raw.startsWith("//")) {
-    throw new Error(`${errorPrefix}: relativePath must not be an absolute URL`);
+    throw invalidInputError(`${errorPrefix}: relativePath must not be an absolute URL`);
   }
   if (raw.includes("\\")) {
-    throw new Error(`${errorPrefix}: relativePath must not contain backslashes`);
+    throw invalidInputError(`${errorPrefix}: relativePath must not contain backslashes`);
   }
   if (/[?#]/u.test(raw)) {
-    throw new Error(
+    throw invalidInputError(
       `${errorPrefix}: relativePath must not contain query strings or fragments; use appendHttpQuery for queries`,
     );
   }
@@ -127,7 +128,7 @@ export function appendCaviApiPath(
       decoded.includes("/") ||
       decoded.includes("\\")
     ) {
-      throw new Error(`${errorPrefix}: relativePath must stay within ${boundaryLabel}`);
+      throw invalidInputError(`${errorPrefix}: relativePath must stay within ${boundaryLabel}`);
     }
   }
 
@@ -137,7 +138,7 @@ export function appendCaviApiPath(
 export function resolvePortalApiPath(portalId: string, relativePath: string): string {
   const portal = portalId.trim();
   if (!portal) {
-    throw new Error("resolvePortalApiPath: missing portalId");
+    throw invalidInputError("resolvePortalApiPath: missing portalId");
   }
   const root = `/api/plugins/portal/${encodeURIComponent(portal)}`;
   return appendCaviApiPath(root, relativePath, {
@@ -149,7 +150,7 @@ export function resolvePortalApiPath(portalId: string, relativePath: string): st
 export function resolvePluginApiPath(pluginId: string, ...segments: string[]): string {
   const plugin = pluginId.trim();
   if (!plugin) {
-    throw new Error("resolvePluginApiPath: missing pluginId");
+    throw invalidInputError("resolvePluginApiPath: missing pluginId");
   }
   const root = `/api/plugins/${encodeURIComponent(plugin)}`;
   return appendCaviApiPath(root, segments.join("/"), {

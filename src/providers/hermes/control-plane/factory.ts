@@ -1,3 +1,4 @@
+import { ApiClientError } from "../../../core/errors.js";
 import type { RuntimeControlClient } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import {
   CapabilityUnavailable,
@@ -120,7 +121,7 @@ function createCleanupStack(): {
           firstError ??= error;
         }
       }
-      if (firstError !== undefined) throw new Error("Hermes runtime control cleanup failed");
+      if (firstError !== undefined) throw new ApiClientError("Hermes runtime control cleanup failed", { cause: firstError });
     },
   };
 }
