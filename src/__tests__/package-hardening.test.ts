@@ -846,6 +846,16 @@ describe("package hardening", () => {
     expect(read(CORE_TRANSPORT_NODE_INDEX)).toContain('export * from "./unix-socket.js";');
   });
 
+  it("keeps the root entry to the built-in gateway providers", () => {
+    const builtIn = new Set(["hermes", "openclaw"]);
+    const reached = relativeImportGraph(path.join(SRC_ROOT, "index.ts"))
+      .map((filePath) => path.relative(path.join(SRC_ROOT, "providers"), filePath))
+      .filter((relative) => !relative.startsWith("..") && relative.includes(path.sep))
+      .map((relative) => relative.split(path.sep)[0]!);
+    const offenders = [...new Set(reached)].filter((provider) => !builtIn.has(provider)).sort();
+    expect(offenders, "root entry reaches provider modules outside the built-in registry").toEqual([]);
+  });
+
   it("finds static Node imports reached only through re-export barrels", () => {
     const graph = relativeImportGraph(TRANSPORT_NODE_REEXPORT_FIXTURE);
     const nodeSpecifiers = graph.flatMap((filePath) =>
