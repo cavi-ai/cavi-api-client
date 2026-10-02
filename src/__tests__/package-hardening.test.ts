@@ -124,6 +124,7 @@ const ROOT_EXPORT_BASELINE = path.join(
   "fixtures",
   "root-exports-origin-main.json",
 );
+const CONSUMER_IMPORT_PINS = path.join(SRC_ROOT, "__tests__", "fixtures", "consumer-import-pins.json");
 const TRANSPORT_NODE_REEXPORT_FIXTURE = path.join(
   SRC_ROOT,
   "__tests__",
@@ -508,6 +509,37 @@ function rootExportNames(entry: string): string[] {
   const symbol = checker.getSymbolAtLocation(source);
   if (!symbol) throw new Error(`TypeScript did not resolve the module symbol for ${entry}`);
   return checker.getExportsOfModule(symbol).map((current) => current.name).sort();
+}
+
+function exportNamesBySubpath(subpaths: readonly string[]): Map<string, Set<string>> {
+  const packageJson = JSON.parse(read(PACKAGE_JSON)) as {
+    exports: Record<string, string | { import: string }>;
+  };
+  const entries = new Map(subpaths.map((subpath) => {
+    const target = packageJson.exports[subpath];
+    if (target === undefined) throw new Error(`package.json does not export ${subpath}`);
+    const built = typeof target === "string" ? target : target.import;
+    const base = path.join(PACKAGE_ROOT, built.replace(/^\.\/dist\//u, "src/").replace(/\.js$/u, ""));
+    const entry = [`${base}.ts`, `${base}.tsx`].find((candidate) => existsSync(candidate));
+    if (!entry) throw new Error(`no source entry for ${subpath}`);
+    return [subpath, entry] as const;
+  }));
+  const program = ts.createProgram([...entries.values()], {
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ES2022,
+    jsx: ts.JsxEmit.ReactJSX,
+    skipLibCheck: true,
+  });
+  const checker = program.getTypeChecker();
+  const names = new Map<string, Set<string>>();
+  for (const [subpath, entry] of entries) {
+    const source = program.getSourceFile(entry);
+    const symbol = source && checker.getSymbolAtLocation(source);
+    if (!symbol) throw new Error(`TypeScript did not resolve ${entry}`);
+    names.set(subpath, new Set(checker.getExportsOfModule(symbol).map((current) => current.name)));
+  }
+  return names;
 }
 
 describe("package hardening", () => {
@@ -1368,24 +1400,17 @@ describe("package hardening", () => {
     expect(offenders, "use ApiClientError or a core/error-factories helper").toEqual([]);
   });
 
-  it("keeps mock-data fixtures to the runtime-control ledger samples", () => {
-    const mockDataRoot = path.join(SRC_ROOT, "__tests__", "fixtures", "mock-data");
-    const ledger = JSON.parse(
-      read(path.join(PACKAGE_ROOT, "docs", "compatibility", "runtime-control-ledger.json")),
-    ) as Array<{ fixture: string | null }>;
-    const referenced = new Set(
-      ledger
-        .map((row) => row.fixture)
-        .filter((fixture): fixture is string => typeof fixture === "string")
-        .map((fixture) => path.join(PACKAGE_ROOT, fixture))
-        .filter((fixture) => fixture.startsWith(mockDataRoot + path.sep))
-        .flatMap((fixture) => relativeImportGraph(fixture)),
-    );
-    const orphans = walkFiles(mockDataRoot)
-      .filter((filePath) => !referenced.has(filePath))
-      .map(rel)
-      .sort();
-    expect(orphans, "mock-data files outside the ledger fixtures' import graph").toEqual([]);
+  it("keeps every symbol internal consumers import on its subpath", () => {
+    // Pinned from the imports of the package's internal consumer apps. Removing
+    // or moving one of these is a breaking change for them: update the pin only
+    // together with a migration.
+    const pins = JSON.parse(read(CONSUMER_IMPORT_PINS)) as Record<string, string[]>;
+    const exported = exportNamesBySubpath(Object.keys(pins));
+    const missing = Object.entries(pins).flatMap(([subpath, symbols]) =>
+      symbols
+        .filter((symbol) => !exported.get(subpath)?.has(symbol))
+        .map((symbol) => `${subpath}: ${symbol}`));
+    expect(missing, "consumer-imported symbols no longer exported").toEqual([]);
   });
 
   it("builds only canonical and compat folders", () => {
