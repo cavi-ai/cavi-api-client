@@ -1368,6 +1368,26 @@ describe("package hardening", () => {
     expect(offenders, "use ApiClientError or a core/error-factories helper").toEqual([]);
   });
 
+  it("keeps mock-data fixtures to the runtime-control ledger samples", () => {
+    const mockDataRoot = path.join(SRC_ROOT, "__tests__", "fixtures", "mock-data");
+    const ledger = JSON.parse(
+      read(path.join(PACKAGE_ROOT, "docs", "compatibility", "runtime-control-ledger.json")),
+    ) as Array<{ fixture: string | null }>;
+    const referenced = new Set(
+      ledger
+        .map((row) => row.fixture)
+        .filter((fixture): fixture is string => typeof fixture === "string")
+        .map((fixture) => path.join(PACKAGE_ROOT, fixture))
+        .filter((fixture) => fixture.startsWith(mockDataRoot + path.sep))
+        .flatMap((fixture) => relativeImportGraph(fixture)),
+    );
+    const orphans = walkFiles(mockDataRoot)
+      .filter((filePath) => !referenced.has(filePath))
+      .map(rel)
+      .sort();
+    expect(orphans, "mock-data files outside the ledger fixtures' import graph").toEqual([]);
+  });
+
   it("builds only canonical and compat folders", () => {
     const tsconfig = JSON.parse(read(TS_CONFIG)) as {
       include?: string[];
