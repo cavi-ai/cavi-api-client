@@ -22,12 +22,7 @@ const mixedAliasesFixture = path.join(
   "extension-ownership",
   "mixed-aliases.ts.fixture",
 );
-const providerExtensionImportAllowlist = new Set([
-  "src/providers/hermes/team-registry.ts",
-  "src/providers/hermes/team-registry-config.ts",
-  "src/providers/openclaw/team-registry.ts",
-  "src/providers/openclaw/team-registry-config.ts",
-]);
+const providerExtensionImportAllowlist = new Set<string>();
 const tsConfig = ts.readConfigFile(path.join(packageRoot, "tsconfig.json"), ts.sys.readFile);
 const parsedTsConfig = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, packageRoot);
 

@@ -5,10 +5,10 @@ import {
   createTeamRegistry,
   getConfiguredTeamRegistry,
   resetTeamRegistryConfig,
+  createHermesTeamRegistry,
+  createOpenClawTeamRegistry,
   type TeamRegistryConfig,
 } from "../../../../extensions/cavi/index";
-import { createHermesTeamRegistry } from "../../../../providers/hermes/index";
-import { createOpenClawTeamRegistry } from "../../../../providers/openclaw/index";
 
 const TEST_TEAM_REGISTRY_CONFIG: TeamRegistryConfig = {
   provider: "openclaw",

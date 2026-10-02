@@ -38,7 +38,6 @@ import {
   HermesAgentConfigApiClient,
   HERMES_PROVIDER_MODULE,
   HermesSseRunEventProvider,
-  createHermesTeamRegistry,
 } from "../providers/hermes/index";
 import {
   OpenClawApiClient,
@@ -48,7 +47,6 @@ import {
   OpenClawSseRunEventProvider,
   OpenClawWebSocketClient,
   OpenClawWikiApiClient,
-  createOpenClawTeamRegistry,
 } from "../providers/openclaw/index";
 import {
   CodexApiClient,
@@ -64,6 +62,8 @@ import {
   resolveLibraryApiPath,
   resolvePluginApiPath,
   resolvePortalApiPath,
+  createHermesTeamRegistry,
+  createOpenClawTeamRegistry,
 } from "../extensions/cavi/index";
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -106,12 +106,6 @@ const CORE_GATEWAY_FETCH = path.join(SRC_ROOT, "core", "gateway", "client", "fet
 const CORE_GATEWAY_SNAPSHOT_LOADERS = path.join(SRC_ROOT, "core", "gateway", "snapshots", "loaders.ts");
 const REACT_GATEWAY_PROVIDER = path.join(SRC_ROOT, "frameworks", "react", "gateway-provider.tsx");
 const HARDENING_TEST_PATH = "src/__tests__/package-hardening.test.ts";
-const PROVIDER_EXTENSION_IMPORT_ALLOWLIST = new Set<string>([
-  "src/providers/hermes/team-registry.ts",
-  "src/providers/hermes/team-registry-config.ts",
-  "src/providers/openclaw/team-registry.ts",
-  "src/providers/openclaw/team-registry-config.ts",
-]);
 const CAVI_GENERIC_IMPLEMENTATION_FILENAME_ALLOWLIST = new Set<string>([
   "src/extensions/cavi/fallbacks/snapshots/operator-control/snapshot.ts",
 ]);
@@ -364,8 +358,6 @@ const CORE_GATEWAY_COMPAT_BARREL_IMPORT_RE =
   /from\s+["'][^"']*(?:core\/gateway\/|(?:\.\.\/)+gateway\/)(?:client|error-details|fetch|runtime-targets|media|wiki|envelope|envelope-types|cache|agent-commands|agent-config|agent-voice-config|run-event-stream|run-stream-contracts|sse-run-event-provider|stream-failure|session-loaders|snapshot-loaders|system-loaders|transforms|rpc|rpc-error|device-crypto|device-store|preauth-handshake|portal-config-patch)(?:\.js)?["']/u;
 const TEAM_REGISTRY_OWNER_FILES = [
   "src/extensions/cavi/registry/team-registry-config.ts",
-  "src/providers/hermes/team-registry-config.ts",
-  "src/providers/openclaw/team-registry-config.ts",
   "src/extensions/cavi/registry/canonical-team-registry.ts",
   "src/extensions/cavi/registry/portal-library-registry.ts",
 ] as const;
@@ -999,13 +991,11 @@ describe("package hardening", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps providers independent from CAVI extensions (except team-registry wrappers)", () => {
+  it("keeps providers independent from CAVI extensions", () => {
     // providers/* and extensions/cavi are siblings over core+contracts; a provider
-    // must not import extensions/cavi. The only sanctioned exception is the thin
-    // team-registry wrapper set (documented in CLAUDE.md).
+    // must not import extensions/cavi.
     const offenders = walkFiles(path.join(SRC_ROOT, "providers"))
       .filter((filePath) => /\.tsx?$/u.test(filePath) && !/\.test\.tsx?$/u.test(filePath))
-      .filter((filePath) => !PROVIDER_EXTENSION_IMPORT_ALLOWLIST.has(rel(filePath)))
       .filter((filePath) => importsUnder(filePath, ["extensions/cavi"]))
       .map(rel);
 

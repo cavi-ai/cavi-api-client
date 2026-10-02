@@ -26,8 +26,8 @@ package is a follower/mirror and normalizes only proven behavior.
 - **promote-now**: the provider-neutral gateway session operation port is now
   owned by core. It is not a CAVI export, so no inventory row uses this
   classification; CAVI composes the core loader and does not copy the port.
-- **compatibility-exception**: limited to the four released provider forwarding
-  modules listed below.
+- **compatibility-exception**: a provider module allowed to import the extension.
+  None remain; the provider team-registry forwarding modules were removed.
 - **retire-later**: requires an obsolete released symbol, a documented
   replacement, and removal only under an explicitly approved major version. No
   current export is classified this way.
@@ -310,25 +310,12 @@ actual `core/contracts` or `CAVI extension` owner.
 | `withCaviRuntimeControlProviders` | CAVI extension | keep | Declared by `src/extensions/cavi/providers/runtime-control-registry.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep immutable provider-specific registry composition under the CAVI extension. |
 | `withRuntimeBasePath` | CAVI extension | keep | Declared by `src/extensions/cavi/runtime/paths.ts`; TypeScript resolves this declaration through the CAVI barrel. | Keep implementation and evolution under the CAVI extension. |
 
-## Provider forwarding compatibility exceptions
-
-These are the only provider-to-extension imports allowed. They preserve released
-provider subpath exports while delegating to extension-owned team registry code;
-they do not transfer implementation ownership to a provider.
-
-| Module | Current owner | Classification | Evidence | Action |
-| --- | --- | --- | --- | --- |
-| `src/providers/hermes/team-registry.ts` | Provider compatibility facade | compatibility-exception | Released Hermes forwarding module imports the CAVI registry implementation. | Preserve as a forwarding-only module until a human-approved major-version plan removes it. |
-| `src/providers/hermes/team-registry-config.ts` | Provider compatibility facade | compatibility-exception | Released Hermes configuration forwarding module imports the CAVI registry implementation. | Preserve as a forwarding-only module until a human-approved major-version plan removes it. |
-| `src/providers/openclaw/team-registry.ts` | Provider compatibility facade | compatibility-exception | Released OpenClaw forwarding module imports the CAVI registry implementation. | Preserve as a forwarding-only module until a human-approved major-version plan removes it. |
-| `src/providers/openclaw/team-registry-config.ts` | Provider compatibility facade | compatibility-exception | Released OpenClaw configuration forwarding module imports the CAVI registry implementation. | Preserve as a forwarding-only module until a human-approved major-version plan removes it. |
-
 ## Dependency direction
 
-`core` and `contracts` cannot import the CAVI extension. Providers cannot import
-it except through the four forwarding files above. The guard parses static imports
-and re-exports, dynamic `import()`, TypeScript `import = require()`, and
-JavaScript `require()`, then resolves their actual modules with TypeScript.
+`core`, `contracts`, and providers cannot import the CAVI extension. The guard
+parses static imports and re-exports, dynamic `import()`, TypeScript
+`import = require()`, and JavaScript `require()`, then resolves their actual
+modules with TypeScript.
 A production source file also cannot import both a core implementation and a CAVI
 implementation for the same resolved owner-relative concern; transport and
 snapshot implementation filenames are normalized explicitly, including through
