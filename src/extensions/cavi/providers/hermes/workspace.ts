@@ -1,4 +1,5 @@
-import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
+import { protocolError } from "../../../../core/error-factories.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../../core/errors.js";
 import type { RuntimeControlPlaneMetadata } from "../../../../core/runtime/control-plane/types.js";
 import type { RuntimeWorkspaceDescriptor, WorkspaceClient } from "../../../../core/runtime/control-plane/workspace.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
@@ -19,7 +20,7 @@ function safeSnapshot(value: unknown): Record<string, unknown> {
   try {
     return requireHermesSafeJsonRecord(value, "CAVI workspace");
   } catch {
-    throw new Error(WORKSPACE_SCHEMA_ERROR);
+    throw protocolError(ApiClientErrorType.Unknown, WORKSPACE_SCHEMA_ERROR);
   }
 }
 
@@ -62,7 +63,7 @@ export function createHermesCaviWorkspaceClient(adapters: CaviControlAdapters): 
       const agent = record(value);
       const identity = workspaceIdentity(agent?.workspaceIdentity);
       if (identity) {
-        if (operatorTransport === "fallback") throw new Error(WORKSPACE_SCHEMA_ERROR);
+        if (operatorTransport === "fallback") throw protocolError(ApiClientErrorType.Unknown, WORKSPACE_SCHEMA_ERROR);
         candidates.push({
           identity, method: "operator.registry", transport: operatorTransport,
           ...(typeof agent?.id === "string" ? { providerData: { agentId: agent.id } } : {}),
@@ -77,7 +78,7 @@ export function createHermesCaviWorkspaceClient(adapters: CaviControlAdapters): 
         if (existing.accessMode !== candidate.identity.accessMode
           || existing.root !== candidate.identity.root
           || existing.displayName !== candidate.identity.displayName) {
-          throw new Error(WORKSPACE_SCHEMA_ERROR);
+          throw protocolError(ApiClientErrorType.Unknown, WORKSPACE_SCHEMA_ERROR);
         }
         continue;
       }

@@ -13,7 +13,7 @@ import {
   type RunEventStreamHandlers,
 } from "../../core/runtime/run-stream.js";
 import { consumeSseStream } from "../../core/sse/index.js";
-import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
+import { ApiClientError, ApiClientErrorCode, toError } from "../../core/errors.js";
 import { buildAgyRequestBody } from "./request.js";
 import { mapAgyResponseToRunStatus, type AgyGenerateResponse } from "./response.js";
 import { agyRunPath, agyStreamPath } from "./paths.js";
@@ -119,7 +119,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
         try {
           parsed = JSON.parse(sse.data) as AgyGenerateResponse;
         } catch (error) {
-          const normalizedError = error instanceof Error ? error : new Error(String(error));
+          const normalizedError = toError(error);
           handlers.onError?.(markNonTerminalStreamError(normalizedError));
           return;
         }
@@ -153,7 +153,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       }
       handlers.onComplete?.();
     } catch (error) {
-      if (handlers.onError) handlers.onError(error instanceof Error ? error : new Error(String(error)));
+      if (handlers.onError) handlers.onError(toError(error));
       else throw error;
     }
   }

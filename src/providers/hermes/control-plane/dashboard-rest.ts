@@ -1,3 +1,5 @@
+import { invalidInputError, invalidJsonError, protocolError } from "../../../core/error-factories.js";
+import { ApiClientErrorType } from "../../../core/errors.js";
 import { JsonHttpApiClient } from "../../../core/http/json-client.js";
 import { GatewayHttpError } from "../../../core/http/gateway-error.js";
 import { HttpApiError } from "../../../core/http/errors.js";
@@ -115,7 +117,7 @@ function isSafeJsonValue(value: unknown, seen = new WeakSet<object>()): boolean 
 
 function schemaError(label: string, value: unknown): Error {
   const preview = isSafeJsonValue(value) ? stringifyRedacted(value, 400) ?? "undefined" : "[unsafe value]";
-  return new Error(`Hermes dashboard ${label} response failed schema validation: ${preview}`);
+  return protocolError(ApiClientErrorType.Http, `Hermes dashboard ${label} response failed schema validation: ${preview}`);
 }
 
 function requireRecord(value: unknown, label: string): JsonRecord {
@@ -316,7 +318,7 @@ function isFallbackStatus(error: unknown): boolean {
 }
 
 function safeId(id: string): string {
-  if (!id.trim()) throw new Error("Hermes dashboard session id is required");
+  if (!id.trim()) throw invalidInputError("Hermes dashboard session id is required");
   return id;
 }
 
@@ -360,7 +362,7 @@ export function createHermesDashboardRestClient(
       return parser(await http.request<unknown>(path, init));
     } catch (error) {
       if (error instanceof HttpApiError && error.status > 0) {
-        throw new Error(
+        throw invalidJsonError(ApiClientErrorType.Http,
           `Hermes dashboard response was not valid JSON: ${redactPreviewText(error.body, 400)}`,
         );
       }

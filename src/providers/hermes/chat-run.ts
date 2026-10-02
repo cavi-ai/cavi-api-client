@@ -1,3 +1,4 @@
+import { abortError, invalidJsonError, protocolError } from "../../core/error-factories.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamApprovalChoice,
@@ -11,7 +12,7 @@ import {
   type RunEventStreamSubscription,
   type RunPreviewSnapshotFetcher,
 } from "../../core/gateway/run/event-stream.js";
-import { toError } from "../../core/errors.js";
+import { ApiClientErrorType, toError } from "../../core/errors.js";
 import { createRawHttpApiClient } from "../../core/http/raw-client.js";
 
 /**
@@ -228,7 +229,7 @@ async function parseJsonResponse(
   try {
     return text.trim() ? (JSON.parse(text) as unknown) : {};
   } catch {
-    throw new Error(`${label} returned invalid JSON`);
+    throw invalidJsonError(ApiClientErrorType.Http, `${label} returned invalid JSON`);
   }
 }
 
@@ -290,7 +291,7 @@ export async function startHermesChatRun(
     ? payload.run_id
     : "";
   if (!runId) {
-    throw new Error("run start missing run_id");
+    throw protocolError(ApiClientErrorType.Http, "run start missing run_id");
   }
   return { runId };
 }
@@ -457,7 +458,7 @@ export async function streamHermesChatRun(
     if (params.signal) {
       const onAbort = (): void => {
         if (subscription) void Promise.resolve(subscription.dispose());
-        settleReject(new Error("aborted"));
+        settleReject(abortError("aborted"));
       };
       if (params.signal.aborted) {
         onAbort();

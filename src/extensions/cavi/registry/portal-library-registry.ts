@@ -1,10 +1,11 @@
+import { invalidConfigError } from "../../../core/error-factories.js";
 import type { PortalLibraryRef } from "../contracts/portals.js";
 import { getConfiguredTeamRegistry } from "./team-registry-config.js";
 
 export function getFleetLibraryRef(): PortalLibraryRef {
   const ref = getConfiguredTeamRegistry().getFleetLibraryRef();
   if (!ref) {
-    throw new Error(
+    throw invalidConfigError(
       "Team registry config does not define a fleet library ref. Load TEAM_REGISTRY_CONFIG before using library APIs.",
     );
   }

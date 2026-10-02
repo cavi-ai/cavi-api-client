@@ -1,3 +1,4 @@
+import { notConnectedError } from "../../error-factories.js";
 import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
@@ -70,7 +71,7 @@ export function createGatewaySystemLoaders(
   const loadHealthSnapshotRaw = async (): Promise<HealthSnapshotPayload> => {
     const c = client;
     if (!c) {
-      throw new Error("Gateway client not connected");
+      throw notConnectedError("Gateway client not connected");
     }
     const cacheKey = GATEWAY_SYSTEM_RPC_METHODS.health;
     const cacheEntry = getOrCreateTtlCacheEntry(healthSnapshotCache, cacheKey);
@@ -101,7 +102,7 @@ export function createGatewaySystemLoaders(
   }): Promise<LogsTailPayload> => {
     const c = client;
     if (!c) {
-      throw new Error("Gateway client not connected");
+      throw notConnectedError("Gateway client not connected");
     }
     const cacheKey = JSON.stringify(params);
     const cacheEntry = getOrCreateTtlCacheEntry(logsTailCache, cacheKey);

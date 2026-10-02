@@ -1,3 +1,4 @@
+import { invalidInputError } from "../error-factories.js";
 import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../errors.js";
 
 export type GatewayJobStatus =
@@ -97,7 +98,7 @@ function normalizeStatus(status: GatewayJobStatus | null | undefined): string {
 
 function assertPositiveInteger(value: number, label: string): number {
   if (!Number.isFinite(value) || value <= 0 || Math.floor(value) !== value) {
-    throw new Error(`gateway job: ${label} must be a positive integer`);
+    throw invalidInputError(`gateway job: ${label} must be a positive integer`);
   }
   return value;
 }

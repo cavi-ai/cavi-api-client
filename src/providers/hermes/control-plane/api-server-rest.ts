@@ -1,3 +1,5 @@
+import { protocolError } from "../../../core/error-factories.js";
+import { ApiClientErrorType } from "../../../core/errors.js";
 import { HERMES_API_ENDPOINTS, GATEWAY_SESSION_API_PATHS } from "../../../contracts/paths.js";
 import { JsonHttpApiClient } from "../../../core/http/json-client.js";
 import { GatewayHttpError } from "../../../core/http/gateway-error.js";
@@ -20,7 +22,7 @@ function metadata(method: string) {
 
 function nonnegative(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    throw new Error(`Hermes API Server ${label} response failed schema validation`);
+    throw protocolError(ApiClientErrorType.Http, `Hermes API Server ${label} response failed schema validation`);
   }
   return value;
 }
@@ -62,12 +64,12 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
       if (query.cursor !== undefined) throw new CapabilityUnavailable("hermes", "controlPlane.sessions.cursor");
       const value = await withOptionalSurface("controlPlane.sessions.list", () => get<unknown>(GATEWAY_SESSION_API_PATHS.list, query.signal));
       const payload = requireHermesSafeJsonRecord(value, "API Server sessions");
-      if (!Array.isArray(payload.sessions)) throw new Error("Hermes API Server sessions response failed schema validation");
+      if (!Array.isArray(payload.sessions)) throw protocolError(ApiClientErrorType.Http, "Hermes API Server sessions response failed schema validation");
       const limit = query.limit === undefined ? payload.sessions.length : Math.max(0, query.limit);
       const data = payload.sessions.slice(0, limit).map((entry): RuntimeSessionSummary => {
         const row = requireHermesSafeJsonRecord(entry, "API Server session row");
         const id = typeof row.key === "string" ? row.key : typeof row.id === "string" ? row.id : "";
-        if (!id) throw new Error("Hermes API Server session row response failed schema validation");
+        if (!id) throw protocolError(ApiClientErrorType.Http, "Hermes API Server session row response failed schema validation");
         const state = row.state === "pending" || row.state === "active" || row.state === "completed"
           || row.state === "cancelled" || row.state === "failed" ? row.state : "unknown";
         const createdAt = optionalTimestamp(row.createdAt ?? (typeof row.started_at === "number" ? row.started_at * 1_000 : undefined));
@@ -91,17 +93,17 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
     async probe() {
       const value = requireHermesSafeJsonRecord(await get<unknown>(HERMES_API_ENDPOINTS.capabilities), "API Server capabilities");
       if (value.object !== "hermes.api_server.capabilities" || value.platform !== "hermes-agent") {
-        throw new Error("Hermes API Server capabilities response failed schema validation");
+        throw protocolError(ApiClientErrorType.Http, "Hermes API Server capabilities response failed schema validation");
       }
     },
     models: {
       async listModels() {
         const value = await withOptionalSurface("controlPlane.models.list", () => get<unknown>(HERMES_API_ENDPOINTS.models));
         const payload = requireHermesSafeJsonRecord(value, "API Server models");
-        if (payload.object !== "list" || !Array.isArray(payload.data)) throw new Error("Hermes API Server models response failed schema validation");
+        if (payload.object !== "list" || !Array.isArray(payload.data)) throw protocolError(ApiClientErrorType.Http, "Hermes API Server models response failed schema validation");
         const data = payload.data.map((entry): RuntimeModelDescriptor => {
           const model = requireHermesSafeJsonRecord(entry, "API Server model");
-          if (typeof model.id !== "string" || !model.id) throw new Error("Hermes API Server model response failed schema validation");
+          if (typeof model.id !== "string" || !model.id) throw protocolError(ApiClientErrorType.Http, "Hermes API Server model response failed schema validation");
           return { providerId: "hermes", id: model.id, displayName: model.id, availability: "available", metadata: metadata("models") };
         });
         return { data };
@@ -112,7 +114,7 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
       async getUsage() {
         const value = await withOptionalSurface("controlPlane.usage.get", () => get<unknown>(GATEWAY_SESSION_API_PATHS.usage));
         const payload = requireHermesSafeJsonRecord(value, "API Server session usage");
-        if (!Array.isArray(payload.sessions)) throw new Error("Hermes API Server session usage response failed schema validation");
+        if (!Array.isArray(payload.sessions)) throw protocolError(ApiClientErrorType.Http, "Hermes API Server session usage response failed schema validation");
         let totalTokens = 0;
         for (const entry of payload.sessions) {
           const row = requireHermesSafeJsonRecord(entry, "API Server usage row");

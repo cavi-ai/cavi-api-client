@@ -1,3 +1,4 @@
+import { invalidConfigError, invalidInputError } from "../../../core/error-factories.js";
 import type {
   OperatorRegistrySnapshot,
   OperatorRegistryTeam,
@@ -250,7 +251,7 @@ function assertUniqueTeamRegistryLookups(teams: readonly OperatorRegistryTeam[])
       const portalId = normalizeTeamLookupValue(team.portalId);
       const owner = portalOwners.get(portalId);
       if (owner && owner !== team.id) {
-        throw new Error(
+        throw invalidConfigError(
           `Team registry has duplicate portal id "${portalId}" for teams "${owner}" and "${team.id}".`,
         );
       }
@@ -259,7 +260,7 @@ function assertUniqueTeamRegistryLookups(teams: readonly OperatorRegistryTeam[])
     for (const key of getTeamLookupKeys(team)) {
       const owner = lookupOwners.get(key);
       if (owner && owner !== team.id) {
-        throw new Error(
+        throw invalidConfigError(
           `Team registry has ambiguous lookup key "${key}" for teams "${owner}" and "${team.id}".`,
         );
       }
@@ -287,20 +288,20 @@ export function createTeamRegistry(
   function requireTeam(identifier: string | null | undefined): OperatorRegistryTeam {
     const team = resolveTeam(identifier);
     if (!team) {
-      throw new Error(missingRegistryMessage(identifier));
+      throw invalidInputError(missingRegistryMessage(identifier));
     }
     return team;
   }
 
   function getPortalTeam(portalId: string | null | undefined): OperatorRegistryTeam {
     if (!portalId?.trim()) {
-      throw new Error(missingRegistryMessage(portalId));
+      throw invalidInputError(missingRegistryMessage(portalId));
     }
     const team =
       teams.find((entry) => entry.portalId === portalId) ??
       resolveTeam(portalId);
     if (!team) {
-      throw new Error(missingRegistryMessage(portalId));
+      throw invalidInputError(missingRegistryMessage(portalId));
     }
     return team;
   }

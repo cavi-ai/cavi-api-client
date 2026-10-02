@@ -1,4 +1,5 @@
-import { ApiClientError, ApiClientErrorCode } from "../../../../core/errors.js";
+import { protocolError } from "../../../../core/error-factories.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../../core/errors.js";
 import { CapabilityUnavailable } from "../../../../core/runtime/control-plane/runtime-control-client.js";
 import type { RuntimeTaskState, RuntimeTaskSummary, TaskClient } from "../../../../core/runtime/control-plane/tasks.js";
 import type { CaviControlAdapters } from "../../adapters/create-cavi-control-adapters.js";
@@ -9,7 +10,7 @@ const TASK_SCHEMA_ERROR = "Hermes CAVI task response failed schema validation";
 const TASK_STATES = new Set<OperatorTaskState>(["accepted", "queued", "started", "retrying", "blocked", "completed", "dead-letter"]);
 const TASK_TIERS = new Set(["LITE", "STANDARD", "HEAVY"] as const);
 
-function fail(): never { throw new Error(TASK_SCHEMA_ERROR); }
+function fail(): never { throw protocolError(ApiClientErrorType.Unknown, TASK_SCHEMA_ERROR); }
 function object(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) fail();
   return value as Record<string, unknown>;
@@ -87,7 +88,7 @@ function taskSnapshot(value: unknown): { tasks: { tasks: OperatorTaskRecord[] } 
     for (const taskState of TASK_STATES) integer(summary[taskState]);
     return { tasks: { tasks: tasksContainer.tasks.map(taskRecord) } };
   } catch {
-    throw new Error(TASK_SCHEMA_ERROR);
+    throw protocolError(ApiClientErrorType.Unknown, TASK_SCHEMA_ERROR);
   }
 }
 
@@ -103,7 +104,7 @@ function state(value: OperatorTaskState): RuntimeTaskState {
 
 function timestamp(value: number): string {
   if (!Number.isSafeInteger(value) || value < 0 || value > 8_640_000_000_000_000) {
-    throw new Error(TASK_SCHEMA_ERROR);
+    throw protocolError(ApiClientErrorType.Unknown, TASK_SCHEMA_ERROR);
   }
   return new Date(value).toISOString();
 }
@@ -134,13 +135,13 @@ export function createHermesCaviTaskClient(adapters: CaviControlAdapters): TaskC
       const envelope = await adapters.loadOperatorControl();
       const snapshot = taskSnapshot(envelope.data);
       const transport = envelope.transports.tasks;
-      if (transport === "fallback") throw new Error(TASK_SCHEMA_ERROR);
+      if (transport === "fallback") throw protocolError(ApiClientErrorType.Unknown, TASK_SCHEMA_ERROR);
       return { data: snapshot.tasks.tasks.slice(0, query.limit).map((task) => mapTask(task, "operator.tasks.list", transport)) };
     },
     async getTask(id: string) {
       const envelope = await adapters.loadOperatorControl();
       const transport = envelope.transports.tasks;
-      if (transport === "fallback") throw new Error(TASK_SCHEMA_ERROR);
+      if (transport === "fallback") throw protocolError(ApiClientErrorType.Unknown, TASK_SCHEMA_ERROR);
       const task = taskSnapshot(envelope.data).tasks.tasks.find((candidate) => candidate.envelope.task_id === id);
       if (!task) throw new ApiClientError(`Hermes CAVI task not found: ${id}`, { code: ApiClientErrorCode.EndpointNotFound });
       return mapTask(task, "operator.tasks.get", transport);

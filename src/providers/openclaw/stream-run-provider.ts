@@ -1,3 +1,4 @@
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../core/errors.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunEventStreamHandlers,
@@ -101,7 +102,10 @@ export function createOpenClawRunEventStreamProvider(
         unsubscribeState = deps.rpc.onConnectionState((state) => {
           if (state !== "error" || settled) return;
           settled = true;
-          handlers.onError?.(new Error("gateway websocket disconnected"));
+          handlers.onError?.(new ApiClientError("gateway websocket disconnected", {
+            type: ApiClientErrorType.Transport,
+            code: ApiClientErrorCode.SocketClosed,
+          }));
         });
       }
 

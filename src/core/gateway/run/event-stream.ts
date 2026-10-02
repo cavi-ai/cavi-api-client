@@ -1,3 +1,4 @@
+import { abortError } from "../../error-factories.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
@@ -184,11 +185,11 @@ function deriveToolNameFromText(text: string): string | null {
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal.aborted) return reject(new Error("aborted"));
+    if (signal.aborted) return reject(abortError("aborted"));
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const onAbort = (): void => {
       if (timeout) clearTimeout(timeout);
-      reject(new Error("aborted"));
+      reject(abortError("aborted"));
     };
     timeout = setTimeout(() => {
       signal.removeEventListener("abort", onAbort);

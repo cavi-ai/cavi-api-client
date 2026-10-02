@@ -1,3 +1,5 @@
+import { protocolError } from "../../../core/error-factories.js";
+import { ApiClientErrorType } from "../../../core/errors.js";
 import type {
   DelegationNode,
   DiscourseEvent,
@@ -47,7 +49,7 @@ function reserveDiscourseWork(
     workItems >
     MAX_DISCOURSE_NORMALIZATION_WORK - budget.workItems
   ) {
-    throw new Error(errorMessage);
+    throw protocolError(ApiClientErrorType.Unknown, errorMessage);
   }
   budget.workItems += workItems;
 }
@@ -361,7 +363,7 @@ function normalizeDelegationNode(
   depth = 1,
 ): DelegationNode | null {
   if (depth > MAX_DISCOURSE_TREE_DEPTH) {
-    throw new Error("Task discourse delegation tree exceeds maximum depth.");
+    throw protocolError(ApiClientErrorType.Unknown, "Task discourse delegation tree exceeds maximum depth.");
   }
   const record = isRecord(raw) ? raw : null;
   if (!record) {

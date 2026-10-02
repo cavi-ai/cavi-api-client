@@ -1,3 +1,5 @@
+import { protocolError } from "../../core/error-factories.js";
+import { ApiClientErrorType } from "../../core/errors.js";
 import type {
   CapabilityKey,
   CapabilitySupport,
@@ -111,7 +113,7 @@ export function transformOpenClawHello(
   options: TransformOpenClawHelloOptions = {},
 ): ResolvedProviderCapabilities {
   if (!isRecord(payload) || payload.type !== "hello-ok" || typeof payload.protocol !== "number") {
-    throw new Error("OpenClaw hello-ok frame failed schema validation");
+    throw protocolError(ApiClientErrorType.GatewayRpc, "OpenClaw hello-ok frame failed schema validation");
   }
 
   const features = isRecord(payload.features) ? payload.features : {};

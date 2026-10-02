@@ -1,4 +1,4 @@
-import { isAbortError } from "../errors.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType, isAbortError } from "../errors.js";
 import { resolveTransportHeaders } from "./auth.js";
 import {
   abortableSleep,
@@ -126,5 +126,8 @@ export async function runTransportAttempts<T>(options: Readonly<{
       }
     }
   }
-  throw new Error("Transport attempts exhausted");
+  throw new ApiClientError("Transport attempts exhausted", {
+    type: ApiClientErrorType.Transport,
+    code: ApiClientErrorCode.TransportUnavailable,
+  });
 }

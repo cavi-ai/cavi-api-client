@@ -1,3 +1,4 @@
+import { abortError } from "../error-factories.js";
 import type { TransportMessageChannel } from "./channel.js";
 import { TransportError } from "./error.js";
 
@@ -28,12 +29,6 @@ function rpcError(message: string, phase: "request" | "decode" | "close", code?:
       ...(code === undefined ? {} : { code }),
     },
   });
-}
-
-function abortError(): Error {
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  return error;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,3 +1,5 @@
+import { abortError, invalidInputError } from "../../error-factories.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../errors.js";
 import {
   defineRuntimeControlExtension,
   type RuntimeControlExtensionDescriptor,
@@ -76,7 +78,12 @@ export function createRawGatewayConnectionLifecycle(
     }
   };
   const startConnect = (): Promise<void> => {
-    if (disposed) return Promise.reject(new Error("Raw gateway lifecycle is disposed"));
+    if (disposed) {
+      return Promise.reject(new ApiClientError("Raw gateway lifecycle is disposed", {
+        type: ApiClientErrorType.Transport,
+        code: ApiClientErrorCode.SocketClosed,
+      }));
+    }
     if (connectPromise) return connectPromise;
     const pending = Promise.resolve().then(delegate.connect).then(() => {
       const next = delegate.getConnectionState();
@@ -157,7 +164,7 @@ export function createRawGatewayConnectionLifecycle(
   });
   const dispose = createRawGatewayDisposer(async () => {
     disposed = true;
-    controller.abort(new Error("Raw gateway lifecycle disposed"));
+    controller.abort(abortError("Raw gateway lifecycle disposed"));
     unsubscribe();
     listeners.clear();
     try { await reconnectTask; } catch { /* Cancellation is expected during disposal. */ }
@@ -194,7 +201,7 @@ export function normalizeRawGatewayRequest(
   }
   const normalizedOperationId = operationId.trim();
   if (normalizedOperationId.length === 0) {
-    throw new Error("Raw gateway operation ID must not be blank");
+    throw invalidInputError("Raw gateway operation ID must not be blank");
   }
   if (payload !== undefined && (
     payload === null || typeof payload !== "object" || Array.isArray(payload)

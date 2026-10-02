@@ -1,5 +1,6 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
+import { invalidConfigError } from "../../core/error-factories.js";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -370,7 +371,7 @@ export function useGatewayClient(options: UseGatewayClientOptions): GatewayClien
     }
     if (!target) {
       setUrlError(
-        new Error(
+        invalidConfigError(
           "Invalid gateway URL. Use a full URL such as http://127.0.0.1:18789 (or https://, ws://, wss://).",
         ),
       );
@@ -822,7 +823,7 @@ export function GatewayClientProvider({
 export function useGatewayClientContext(): GatewayClientContextValue {
   const ctx = useContext(GatewayClientContext);
   if (!ctx) {
-    throw new Error("useGatewayClientContext must be used within GatewayClientProvider");
+    throw invalidConfigError("useGatewayClientContext must be used within GatewayClientProvider");
   }
   return ctx;
 }
