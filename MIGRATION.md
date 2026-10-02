@@ -43,6 +43,18 @@ Runtime behavior — including the `hermes-*` surface tags — is unchanged. Mos
 callers should not construct these at all: `HERMES_PROVIDER_MODULE` and
 `createApiClient` already supply the configuration.
 
+## Import team registries from the CAVI extension (Unreleased)
+
+The deprecated team-registry forwarding exports are removed from the provider
+subpaths. Import them from the CAVI extension instead; behavior is unchanged.
+
+| Removed from | Import from `@cavi-ai/api-client/extensions/cavi` |
+| --- | --- |
+| `./providers/hermes`: `createHermesTeamRegistry` | `createHermesTeamRegistry` |
+| `./providers/openclaw`: `createOpenClawTeamRegistry` | `createOpenClawTeamRegistry` |
+| `./providers/hermes`, `./providers/openclaw`: `TEAM_REGISTRY_CONFIG` | `TEAM_REGISTRY_CONFIG` |
+| `./providers/hermes`, `./providers/openclaw`: `TeamRegistryConfig` | `TeamRegistryConfig` |
+
 ## Prefer the capability client over hand-wired construction
 
 `createApiClient(provider, options)` returns a `CapabilityClient` that wires the

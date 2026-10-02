@@ -10,10 +10,10 @@ import {
 } from "../../../../index";
 import {
   configureTeamRegistryConfig,
+  createOpenClawTeamRegistry,
   getConfiguredTeamRegistry,
   resetTeamRegistryConfig,
 } from "../../../../extensions/cavi/index";
-import { createOpenClawTeamRegistry } from "../../../../providers/openclaw/index";
 import {
   CAVI_TEAM_MANIFEST,
   createCaviTeamRegistryConfig,

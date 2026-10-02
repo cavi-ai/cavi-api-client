@@ -93,8 +93,8 @@ separately.
 The provider-neutral module, registry, and `createRuntimeClient` factory live in
 `core/runtime/providers`; gateway provider APIs extend and compatibility-export
 that kernel. Narrow runtime provider entries exclude CAVI product adapters.
-Historical Hermes/OpenClaw team-registry exports remain deprecated forwarding
-aliases, while their implementations are owned by `extensions/cavi/providers`.
+Hermes and OpenClaw team registries are owned by `extensions/cavi/providers`
+and exported from `./extensions/cavi` only.
 The public `testing` entry exposes runner-neutral conformance reports for
 third-party provider authors, including one shared raw-gateway harness that
 binds a channel to controllable driver events and lifecycle state without a

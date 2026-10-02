@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Removed the deprecated team-registry forwarding exports from
+  `./providers/hermes` (`createHermesTeamRegistry`, `TEAM_REGISTRY_CONFIG`,
+  `TeamRegistryConfig`) and `./providers/openclaw`
+  (`createOpenClawTeamRegistry`, `TEAM_REGISTRY_CONFIG`, `TeamRegistryConfig`).
+  Import them from `./extensions/cavi`; see MIGRATION.md.
+
 ### Added
 
 - Added `isApiClientError`, one guard for every error class the package
