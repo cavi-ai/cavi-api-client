@@ -491,6 +491,54 @@ function staticModuleSpecifiers(source: string, fileName = "source.ts"): string[
   return specifiers;
 }
 
+/**
+ * Every module a source file references: static imports and re-exports
+ * (side-effect and type-only included), `import x = require()`, dynamic
+ * `import()`, and `import("…")` type queries. Comments and strings never match.
+ */
+function moduleReferences(source: string, fileName: string): string[] {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+  const specifiers: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      specifiers.push(node.moduleSpecifier.text);
+    } else if (ts.isExternalModuleReference(node) && ts.isStringLiteral(node.expression)) {
+      specifiers.push(node.expression.text);
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) {
+      specifiers.push(node.arguments[0].text);
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) &&
+      ts.isStringLiteral(node.argument.literal)) {
+      specifiers.push(node.argument.literal.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return specifiers;
+}
+
+/** Relative module references resolved to `src/`-relative paths without an extension. */
+function sourceImportTargets(filePath: string, source = read(filePath)): string[] {
+  return moduleReferences(source, filePath)
+    .filter((specifier) => specifier.startsWith("."))
+    .map((specifier) => path
+      .relative(SRC_ROOT, path.resolve(path.dirname(filePath), specifier))
+      .replace(/\.(?:[cm]?[jt]sx?)$/u, "")
+      .split(path.sep)
+      .join("/"));
+}
+
+function importsUnder(filePath: string, prefixes: readonly string[], source?: string): boolean {
+  return sourceImportTargets(filePath, source).some((target) =>
+    prefixes.some((prefix) => target === prefix || target.startsWith(`${prefix}/`)));
+}
+
+function importsOwnPackage(filePath: string): boolean {
+  return moduleReferences(read(filePath), filePath).some((specifier) =>
+    /^@cavi(?:-ai)?\/api-client(?:\/|$)/u.test(specifier));
+}
+
 function staticNodeSpecifiers(source: string, fileName?: string): string[] {
   return staticModuleSpecifiers(source, fileName).filter((specifier) =>
     specifier.startsWith("node:"));
@@ -919,12 +967,33 @@ describe("package hardening", () => {
     )))).not.toContain("node:path");
   });
 
+  it("sees side-effect, dynamic, re-export, and type-query imports but not comments", () => {
+    const probe = path.join(SRC_ROOT, "core", "probe.ts");
+    const source = [
+      '// import { x } from "../providers/commented.js";',
+      'const text = "from \'../providers/in-a-string.js\'";',
+      'import "../providers/side-effect.js";',
+      'export * from "../extensions/cavi/reexport.js";',
+      'type T = import("../providers/type-query.js").T;',
+      'const lazy = () => import("../core/ws/index.js");',
+      'import type { U } from "../contracts/paths.js";',
+    ].join("\n");
+    expect(sourceImportTargets(probe, source).sort()).toEqual([
+      "contracts/paths",
+      "core/ws/index",
+      "extensions/cavi/reexport",
+      "providers/side-effect",
+      "providers/type-query",
+    ]);
+    expect(importsUnder(probe, ["core/ws"], source)).toBe(true);
+    expect(importsUnder(probe, ["core/sse"], source)).toBe(false);
+  });
+
   it("keeps core gateway independent from CAVI and provider implementations", () => {
     const offenders = walkFiles(path.join(SRC_ROOT, "core"))
-      .filter((filePath) => {
-        const source = read(filePath);
-        return /from\s+["'][^"']*(?:(?:\.\.\/)+providers\/|extensions\/cavi|cavi\/)/u.test(source);
-      })
+      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) =>
+        importsUnder(filePath, ["providers", "extensions"]) || importsOwnPackage(filePath))
       .map(rel);
 
     expect(offenders).toEqual([]);
@@ -937,7 +1006,7 @@ describe("package hardening", () => {
     const offenders = walkFiles(path.join(SRC_ROOT, "providers"))
       .filter((filePath) => /\.tsx?$/u.test(filePath) && !/\.test\.tsx?$/u.test(filePath))
       .filter((filePath) => !PROVIDER_EXTENSION_IMPORT_ALLOWLIST.has(rel(filePath)))
-      .filter((filePath) => /from\s+["'][^"']*extensions\/cavi/u.test(read(filePath)))
+      .filter((filePath) => importsUnder(filePath, ["extensions/cavi"]))
       .map(rel);
 
     expect(offenders).toEqual([]);
@@ -959,10 +1028,8 @@ describe("package hardening", () => {
     // A contracts/** file must never import upward. Mirrors the core-gateway
     // and providers import-direction tests above.
     const offenders = walkFiles(path.join(SRC_ROOT, "contracts"))
-      .filter((filePath) => {
-        const source = read(filePath);
-        return /from\s+["'][^"']*(?:(?:\.\.\/)+providers\/|(?:\.\.\/)+extensions\/)/u.test(source);
-      })
+      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) => importsUnder(filePath, ["providers", "extensions"]))
       .map(rel);
 
     expect(offenders).toEqual([]);
@@ -1102,7 +1169,9 @@ describe("package hardening", () => {
 
   it("keeps production code independent from test fixtures", () => {
     const offenders = productionSourceFiles()
-      .filter((filePath) => /from\s+["'][^"']*(?:test-support|__tests__)\//u.test(read(filePath)))
+      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) => sourceImportTargets(filePath).some((target) =>
+        target.split("/").some((segment) => segment === "__tests__" || segment === "test-support")))
       .map(rel);
 
     expect(offenders).toEqual([]);
@@ -1196,11 +1265,8 @@ describe("package hardening", () => {
       exports: Record<string, unknown>;
     };
     const importOffenders = productionSourceFiles()
-      .filter((filePath) =>
-        /from\s+["']\.\/core\/gateway\/websocket\.js["']|from\s+["'][^"']*core\/gateway\/websocket/u.test(
-          read(filePath),
-        ),
-      )
+      .filter((filePath) => /\.tsx?$/u.test(filePath))
+      .filter((filePath) => importsUnder(filePath, ["core/gateway/websocket"]))
       .map(rel);
 
     expect(existsSync(CORE_GATEWAY_WEBSOCKET)).toBe(false);
@@ -1314,17 +1380,18 @@ describe("package hardening", () => {
       ...walkFiles(path.join(SRC_ROOT, "core", "runtime", "control-plane")),
       path.join(SRC_ROOT, "testing", "raw-gateway-conformance.ts"),
     ];
-    const concreteImport = /from\s+["'][^"']*(?:providers\/|extensions\/cavi\/providers\/|core\/(?:gateway\/rpc|ws|sse)(?:\/|(?:\.[cm]?[jt]s)?(?=["']))|core\/transport\/(?:websocket|sse|json-rpc)(?:\/|(?:\.[cm]?[jt]s)?(?=["'])))[^"']*["']/u;
-    for (const directImport of [
-      'import { x } from "../core/transport/websocket.js";',
-      'import { x } from "../core/transport/sse.ts";',
-      'import { x } from "../core/transport/json-rpc";',
-      'import { x } from "../core/ws/index.js";',
-      'import { x } from "../core/sse/stream.js";',
-      'import { x } from "../core/gateway/rpc/error.js";',
-    ]) expect(concreteImport.test(directImport)).toBe(true);
+    const concreteTransports = [
+      "providers",
+      "extensions/cavi/providers",
+      "core/gateway/rpc",
+      "core/ws",
+      "core/sse",
+      "core/transport/websocket",
+      "core/transport/sse",
+      "core/transport/json-rpc",
+    ];
     const offenders = providerNeutralFiles
-      .filter((filePath) => concreteImport.test(read(filePath)))
+      .filter((filePath) => importsUnder(filePath, concreteTransports))
       .map(rel);
 
     expect(offenders).toEqual([]);
