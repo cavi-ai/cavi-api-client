@@ -9,7 +9,6 @@ import {
   matchesTeamIdentifier,
   normalizeTeamLookupValue,
   normalizeTeamRegistryTeam,
-  resolveTeamFromCollection as resolveTeamFromConfiguredCollection,
   type TeamRegistryConfig,
   type TeamRegistryTeamConfig,
 } from "./team-registry.js";
@@ -74,13 +73,6 @@ export function resolveCompiledCanonicalTeam(
   identifier: string | null | undefined,
 ): OperatorRegistryTeam | null {
   return getConfiguredTeamRegistry().resolveTeam(identifier);
-}
-
-export function resolveTeamFromCollection(
-  teams: OperatorRegistryTeam[],
-  identifier: string | null | undefined,
-): OperatorRegistryTeam | null {
-  return resolveTeamFromConfiguredCollection(teams, identifier);
 }
 
 export function backfillCanonicalTeam(
