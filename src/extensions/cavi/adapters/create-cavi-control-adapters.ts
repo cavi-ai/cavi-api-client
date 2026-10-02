@@ -14,7 +14,6 @@ import type {
 } from "../../../core/gateway/snapshots/contracts.js";
 import {
   type DataEnvelope,
-  type MutationResult,
   withFallback,
 } from "../../../core/gateway/envelope/index.js";
 import { createJsonHttpRequest } from "../../../core/http/json-client.js";

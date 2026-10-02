@@ -1480,6 +1480,23 @@ describe("package hardening", () => {
     expect(missing, "consumer-imported symbols no longer exported").toEqual([]);
   });
 
+  it("ships the README's relative images and no other brand files", () => {
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as { files: string[] };
+    const readmeImages = [...read(path.join(PACKAGE_ROOT, "README.md")).matchAll(/<img\s[^>]*src="([^"]+)"/gu)]
+      .map((match) => match[1]!)
+      .filter((src) => !/^[a-z]+:/iu.test(src));
+    expect(readmeImages.length).toBeGreaterThan(0);
+    for (const image of readmeImages) {
+      expect(existsSync(path.join(PACKAGE_ROOT, image)), image).toBe(true);
+      expect(
+        packageJson.files.some((entry) => image === entry || image.startsWith(`${entry}/`)),
+        `${image} is not in package.json files`,
+      ).toBe(true);
+    }
+    const brandEntries = packageJson.files.filter((entry) => entry.startsWith("docs/brand"));
+    expect(brandEntries.every((entry) => readmeImages.includes(entry)), brandEntries.join(", ")).toBe(true);
+  });
+
   it("builds only canonical and compat folders", () => {
     const tsconfig = JSON.parse(read(TS_CONFIG)) as {
       include?: string[];

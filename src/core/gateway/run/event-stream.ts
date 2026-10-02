@@ -1,7 +1,6 @@
 import { abortError } from "../../error-factories.js";
 import {
   RUN_STREAM_EVENT_NAMES,
-  type RunStreamEvent,
   type RunStreamEventName,
   type RunStreamToolCall,
   type RunStreamToolEvent,
