@@ -1,4 +1,5 @@
 import { GATEWAY_AGENT_CONFIG_API_ENDPOINTS } from "../../../contracts/paths.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../errors.js";
 import { BaseHttpApiClient } from "../../http/client.js";
 import { isSensitiveKey } from "../../http/redaction.js";
 import type { HttpApiClientOptions } from "../../http/types.js";
@@ -93,12 +94,17 @@ export type AgentProfileConfigPatchBody = {
   baseEtag?: string;
 };
 
-export class GatewayAgentConfigApiError extends Error {
+export class GatewayAgentConfigApiError extends ApiClientError {
   readonly status?: number;
   readonly path?: string;
 
   constructor(message: string, options?: { status?: number; path?: string }) {
-    super(message);
+    super(
+      message,
+      options?.status === undefined
+        ? {}
+        : { type: ApiClientErrorType.Http, code: ApiClientErrorCode.HttpRequestFailed },
+    );
     this.name = "GatewayAgentConfigApiError";
     this.status = options?.status;
     this.path = options?.path;

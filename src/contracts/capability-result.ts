@@ -1,5 +1,7 @@
 import {
+  ApiClientError,
   ApiClientErrorCode,
+  ApiClientErrorType,
   getErrorCode,
   getErrorStatus,
   isAuthError,
@@ -59,14 +61,17 @@ export function gapResult<T>(gap: ContractGap): CapabilityResult<T> {
  * caller mistake the transport can name before any request is made. The
  * facade classifies it into a `request-invalid` gap — consumers never see it.
  */
-export class CapabilityCallRejected extends Error {
+export class CapabilityCallRejected extends ApiClientError {
   override readonly name = "CapabilityCallRejected";
 
   constructor(
     message: string,
     readonly httpStatus?: number,
   ) {
-    super(message);
+    super(message, {
+      type: ApiClientErrorType.Validation,
+      code: ApiClientErrorCode.InvalidRequest,
+    });
   }
 }
 
@@ -160,8 +165,8 @@ export function classifyCapabilityFailure(params: {
   // throwing `ValidationFailed`. Map those to their gap reason instead of
   // letting `classifyFallbackError` treat them as `unknown` and rethrow.
   // Duck-type the code (as the auth path does via `getErrorCode`) rather than
-  // gating on `instanceof ApiClientError`: `GatewayRpcError` is a plain Error
-  // subclass carrying the server code verbatim, and it must map the same way.
+  // gating on `instanceof ApiClientError`, so a code-carrying error from
+  // outside this package maps the same way.
   // Auth codes already rethrew above via `isAuthError`; transport/config codes
   // intentionally fall through to `classifyFallbackError` unchanged (they are
   // not caller-input errors).

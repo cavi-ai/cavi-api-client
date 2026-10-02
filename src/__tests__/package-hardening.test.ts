@@ -204,6 +204,20 @@ const APPROVED_ROOT_TEAMS_ADDITIONS = [
   "manifestTeamToTeam",
   "teamDirectoryFromManifest",
 ] as const;
+const APPROVED_ROOT_ERROR_ADDITIONS = [
+  "isApiClientError",
+] as const;
+const BUILT_IN_ERROR_BASES = new Set([
+  "Error",
+  "RangeError",
+  "TypeError",
+  "SyntaxError",
+  "ReferenceError",
+  "EvalError",
+  "URIError",
+  "AggregateError",
+  "DOMException",
+]);
 
 const FORBIDDEN_PACKAGES = [
   "@cavi/data",
@@ -1293,6 +1307,7 @@ describe("package hardening", () => {
       ...APPROVED_ROOT_RUNTIME_CONTROL_CLIENT_ADDITIONS,
       ...APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS,
       ...APPROVED_ROOT_TEAMS_ADDITIONS,
+      ...APPROVED_ROOT_ERROR_ADDITIONS,
     ]
       .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
       .sort();
@@ -1310,6 +1325,27 @@ describe("package hardening", () => {
     }
     expect(rootIndex).toContain("RUNTIME_PROVIDER_CAPABILITY_MATRIX");
     expect(rootIndex).toContain("getRuntimeProviderCapabilityRow");
+  });
+
+  it("roots every exported error class at ApiClientError", () => {
+    const errorsModule = path.join(SRC_ROOT, "core", "errors.ts");
+    const offenders: string[] = [];
+    for (const filePath of productionSourceFiles()) {
+      if (!/\.tsx?$/u.test(filePath)) continue;
+      const sourceFile = ts.createSourceFile(filePath, read(filePath), ts.ScriptTarget.Latest, true);
+      for (const statement of sourceFile.statements) {
+        if (!ts.isClassDeclaration(statement) || !statement.name) continue;
+        const exported = statement.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+        if (!exported) continue;
+        const base = statement.heritageClauses
+          ?.find((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+          ?.types[0]?.expression.getText(sourceFile);
+        if (!base || !BUILT_IN_ERROR_BASES.has(base)) continue;
+        if (filePath === errorsModule && statement.name.text === "ApiClientError") continue;
+        offenders.push(`${rel(filePath)}: ${statement.name.text} extends ${base}`);
+      }
+    }
+    expect(offenders, "exported error classes must extend ApiClientError").toEqual([]);
   });
 
   it("builds only canonical and compat folders", () => {

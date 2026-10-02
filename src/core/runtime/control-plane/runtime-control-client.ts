@@ -1,3 +1,4 @@
+import { ApiClientError, ApiClientErrorCode } from "../../errors.js";
 import { createRuntimeControlExtensionRegistry, type RuntimeControlExtensionRegistry } from "./extensions.js";
 import type { RuntimeEventClient } from "./events.js";
 import type { AuthStatusClient, ModelCatalogClient } from "./models.js";
@@ -18,14 +19,16 @@ export interface RuntimeControlClient {
   dispose(): Promise<void>;
 }
 
-export class CapabilityUnavailable extends Error {
-  readonly name = "CapabilityUnavailable";
+export class CapabilityUnavailable extends ApiClientError {
+  override readonly name = "CapabilityUnavailable";
 
   constructor(
     readonly providerId: string,
     readonly capability: string,
   ) {
-    super(`${capability} is unavailable for provider ${providerId}`);
+    super(`${capability} is unavailable for provider ${providerId}`, {
+      code: ApiClientErrorCode.CapabilityUnavailable,
+    });
   }
 }
 

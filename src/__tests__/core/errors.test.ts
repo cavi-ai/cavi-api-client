@@ -9,6 +9,7 @@ import {
   getErrorStatus,
   getErrorType,
   isAbortError,
+  isApiClientError,
   isAuthError,
   isEndpointNotFoundError,
   serializeError,
@@ -20,6 +21,15 @@ import {
   GatewayHttpError,
   isGatewayHttpError,
 } from "../../core/http/gateway-error";
+import { GatewayRpcError } from "../../core/gateway/rpc/error";
+import { GatewayJobAbortError, GatewayJobTimeoutError } from "../../core/gateway/jobs";
+import { PortalConfigPatchError } from "../../core/gateway/portal/config-patch";
+import { GatewayAgentConfigApiError } from "../../core/gateway/agent/config";
+import { CapabilityUnavailable } from "../../core/runtime/control-plane/runtime-control-client";
+import { CapabilityCallRejected } from "../../contracts/capability-result";
+import { resolveTeamRoutePath } from "../../contracts/team-manifest";
+import { OpenClawWireError } from "../../providers/openclaw/control-plane/wire";
+import { WebhookVerificationError } from "../../providers/claude/managed-agents/webhooks";
 
 describe("core error helpers", () => {
   it("exposes stable generic error type and code enums", () => {
@@ -177,5 +187,122 @@ describe("core error helpers", () => {
       isEndpointNotFoundError(new ApiClientError("no such surface", { code: ApiClientErrorCode.EndpointNotFound })),
     ).toBe(true);
     expect(isEndpointNotFoundError(new Error("other"))).toBe(false);
+  });
+});
+
+describe("single error root", () => {
+  const cases: Array<{
+    name: string;
+    error: Error;
+    type: ApiClientErrorType | string;
+    code: ApiClientErrorCode | string;
+  }> = [
+    {
+      name: "HttpApiError",
+      error: new HttpApiError({ message: "boom", path: "/x", url: "http://h/x", method: "GET", status: 500, body: "" }),
+      type: ApiClientErrorType.Http,
+      code: ApiClientErrorCode.HttpRequestFailed,
+    },
+    {
+      name: "GatewayHttpError",
+      error: new GatewayHttpError("boom", 502),
+      type: ApiClientErrorType.GatewayHttp,
+      code: ApiClientErrorCode.GatewayError,
+    },
+    {
+      name: "GatewayRpcError",
+      error: new GatewayRpcError("boom", "UNAVAILABLE"),
+      type: ApiClientErrorType.GatewayRpc,
+      code: "UNAVAILABLE",
+    },
+    {
+      name: "GatewayJobTimeoutError",
+      error: new GatewayJobTimeoutError({ attempts: 3, elapsedMs: 900, lastJob: null }),
+      type: ApiClientErrorType.Timeout,
+      code: ApiClientErrorCode.Timeout,
+    },
+    {
+      name: "GatewayJobAbortError",
+      error: new GatewayJobAbortError("stop"),
+      type: ApiClientErrorType.Abort,
+      code: ApiClientErrorCode.Aborted,
+    },
+    {
+      name: "PortalConfigPatchError",
+      error: new PortalConfigPatchError(409, "conflict", null),
+      type: ApiClientErrorType.Http,
+      code: ApiClientErrorCode.HttpRequestFailed,
+    },
+    {
+      name: "GatewayAgentConfigApiError",
+      error: new GatewayAgentConfigApiError("missing", { status: 404 }),
+      type: ApiClientErrorType.Http,
+      code: ApiClientErrorCode.HttpRequestFailed,
+    },
+    {
+      name: "CapabilityUnavailable",
+      error: new CapabilityUnavailable("gemini", "controlPlane.usage.get"),
+      type: ApiClientErrorType.Unknown,
+      code: ApiClientErrorCode.CapabilityUnavailable,
+    },
+    {
+      name: "CapabilityCallRejected",
+      error: new CapabilityCallRejected("bad input", 400),
+      type: ApiClientErrorType.Validation,
+      code: ApiClientErrorCode.InvalidRequest,
+    },
+    {
+      name: "OpenClawWireError",
+      error: new OpenClawWireError("bad payload"),
+      type: ApiClientErrorType.GatewayRpc,
+      code: ApiClientErrorCode.ProtocolMismatch,
+    },
+    {
+      name: "WebhookVerificationError",
+      error: new WebhookVerificationError("bad signature"),
+      type: ApiClientErrorType.Validation,
+      code: ApiClientErrorCode.ValidationFailed,
+    },
+  ];
+
+  it.each(cases)("$name extends ApiClientError with its type and code", ({ name, error, type, code }) => {
+    expect(error).toBeInstanceOf(ApiClientError);
+    expect(isApiClientError(error)).toBe(true);
+    expect(error.name).toBe(name);
+    expect(getErrorType(error)).toBe(type);
+    expect(getErrorCode(error)).toBe(code);
+    expect(serializeError(error)).toMatchObject({ name, type, code });
+  });
+
+  it("keeps a gateway-supplied code on GatewayHttpError", () => {
+    expect(new GatewayHttpError("nope", 404, "not_found").code).toBe("not_found");
+  });
+
+  it("leaves a statusless GatewayAgentConfigApiError untyped", () => {
+    const error = new GatewayAgentConfigApiError("invalid payload");
+    expect(getErrorType(error)).toBe(ApiClientErrorType.Unknown);
+    expect(getErrorCode(error)).toBe(ApiClientErrorCode.Unknown);
+  });
+
+  it("treats a gateway job abort as an abort", () => {
+    expect(isAbortError(new GatewayJobAbortError())).toBe(true);
+  });
+
+  it("throws team manifest failures as InvalidConfig ApiClientErrors", () => {
+    let caught: unknown;
+    try {
+      resolveTeamRoutePath("action", { teamId: "  " });
+    } catch (error) {
+      caught = error;
+    }
+    expect(isApiClientError(caught)).toBe(true);
+    expect(getErrorType(caught)).toBe(ApiClientErrorType.Configuration);
+    expect(getErrorCode(caught)).toBe(ApiClientErrorCode.InvalidConfig);
+    expect(getErrorMessage(caught)).toBe("team manifest: missing team id");
+  });
+
+  it("rejects non-package errors", () => {
+    expect(isApiClientError(new Error("plain"))).toBe(false);
+    expect(isApiClientError({ type: "http", code: "x" })).toBe(false);
   });
 });
