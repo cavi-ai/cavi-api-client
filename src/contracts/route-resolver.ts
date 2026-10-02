@@ -1,3 +1,4 @@
+import { invalidInputError } from "../core/error-factories.js";
 import {
   findTeamManifestTeam,
   resolveTeamActionApiPath,
@@ -48,7 +49,7 @@ export function createTeamRouteResolver(): TeamRouteResolver {
     resolveWorkspaceApiPath(manifest, teamId, keyOrPath, options = {}) {
       const team = findTeamManifestTeam(manifest, teamId);
       if (!team) {
-        throw new Error(`team manifest: unknown team "${teamId}"`);
+        throw invalidInputError(`team manifest: unknown team "${teamId}"`);
       }
       return resolveTeamWorkspaceApiPath(team, keyOrPath, options);
     },

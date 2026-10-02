@@ -1,3 +1,4 @@
+import { notConnectedError } from "../../core/error-factories.js";
 import type { ProviderCapabilityResolver } from "../../contracts/capability-source.js";
 import { transformOpenClawHello } from "./capabilities-transform.js";
 
@@ -32,7 +33,7 @@ export function createOpenClawCapabilityResolver(
       hello = source.getHelloFrame();
     }
     if (hello === null || hello === undefined) {
-      throw new Error(
+      throw notConnectedError(
         "OpenClaw capability resolution requires a connected gateway handshake",
       );
     }

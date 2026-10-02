@@ -7,6 +7,8 @@
 // Environments (`/v1/environments`), and per-session SSE event streams. The SDK
 // gates all of it behind the `managed-agents-2026-04-01` beta header.
 
+import { invalidInputError } from "../../../core/error-factories.js";
+
 /** Beta header value required on every Managed Agents request. */
 export const CLAUDE_MANAGED_AGENTS_BETA = "managed-agents-2026-04-01";
 
@@ -27,10 +29,10 @@ export const CLAUDE_MANAGED_AGENTS_ENDPOINTS = {
 function segment(value: string, label: string): string {
   const trimmed = value?.trim();
   if (!trimmed) {
-    throw new Error(`claude managed-agents: missing ${label}`);
+    throw invalidInputError(`claude managed-agents: missing ${label}`);
   }
   if (trimmed === "." || trimmed === ".." || /[/?#\\]/u.test(trimmed)) {
-    throw new Error(`claude managed-agents: invalid ${label}: ${trimmed}`);
+    throw invalidInputError(`claude managed-agents: invalid ${label}: ${trimmed}`);
   }
   return encodeURIComponent(trimmed);
 }

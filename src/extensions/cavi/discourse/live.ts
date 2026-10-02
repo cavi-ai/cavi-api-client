@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../../core/error-factories.js";
 import type { GatewayWebSocketClient } from "../../../core/ws/index.js";
 import type { TaskDiscourseSnapshot } from "../domain/index.js";
 import {
@@ -26,7 +27,7 @@ export async function loadTaskDiscourseLive(
 ): Promise<TaskDiscourseSnapshot> {
   const normalizedTaskId = taskId.trim();
   if (!normalizedTaskId) {
-    throw new Error("Task id is required.");
+    throw invalidInputError("Task id is required.");
   }
 
   if (wsClient) {

@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../error-factories.js";
 import { PORTAL_CLIENT_ID_HEADER } from "./types.js";
 
 export { PORTAL_CLIENT_ID_HEADER };
@@ -8,14 +9,14 @@ export function requirePortalClientId(
   value: string | null | undefined,
 ): string {
   if (typeof value !== "string") {
-    throw new Error("Missing clientId. Pass a clientId explicitly.");
+    throw invalidConfigError("Missing clientId. Pass a clientId explicitly.");
   }
   const normalized = value.trim().toLowerCase();
   if (!normalized) {
-    throw new Error("Missing clientId. Pass a clientId explicitly.");
+    throw invalidConfigError("Missing clientId. Pass a clientId explicitly.");
   }
   if (!PORTAL_CLIENT_ID_PATTERN.test(normalized)) {
-    throw new Error("Portal client id must be a lowercase slug.");
+    throw invalidConfigError("Portal client id must be a lowercase slug.");
   }
   return normalized;
 }

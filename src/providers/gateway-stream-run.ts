@@ -7,7 +7,7 @@ import {
   type RunEventStreamSubscription,
 } from "../core/runtime/run-stream.js";
 import { CapabilityCallRejected } from "../contracts/capability-result.js";
-import { toError } from "../core/errors.js";
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType, toError } from "../core/errors.js";
 
 const TERMINAL_EVENTS: ReadonlySet<string> = new Set([
   RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
@@ -117,7 +117,10 @@ export function createGatewayStreamRun(params: {
               // Per-frame protocol errors are observability-only; only a
               // terminal error settles (and rejects) the bridge.
               if (isNonTerminalStreamError(error)) return;
-              finish(error ?? new Error("stream transport error"));
+              finish(error ?? new ApiClientError("stream transport error", {
+                type: ApiClientErrorType.Transport,
+                code: ApiClientErrorCode.TransportUnavailable,
+              }));
             },
             onComplete: () => {
               fireComplete();

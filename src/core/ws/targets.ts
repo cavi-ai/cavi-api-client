@@ -1,3 +1,5 @@
+import { invalidConfigError } from "../error-factories.js";
+
 export type HttpWebSocketTargets = {
   httpBase: string;
   wsUrl: string;
@@ -35,7 +37,7 @@ export function resolveHttpWebSocketTargets(baseUrl: string): HttpWebSocketTarge
       wsProtocol = "wss:";
       break;
     default:
-      throw new Error(
+      throw invalidConfigError(
         `resolveHttpWebSocketTargets: unsupported scheme "${url.protocol.replace(/:$/u, "")}". Expected one of http, https, ws, wss.`,
       );
   }

@@ -1,5 +1,6 @@
 // CANONICAL — single source of truth lives here. Do not duplicate. See packages/README.md.
 
+import { invalidConfigError } from "../../error-factories.js";
 import { buildDeviceAuthPayloadV3, signPayload } from "./device-crypto.js";
 import {
   loadOrCreateDeviceIdentity,
@@ -270,7 +271,7 @@ export function resolveGatewayRpcClientProfile(
 ): ResolvedGatewayRpcClientProfile {
   const clientId = options?.clientId?.trim();
   if (!clientId) {
-    throw new Error(
+    throw invalidConfigError(
       "Missing clientId. Pass clientId to useGatewayEventStream, GatewayClientProvider, or useGatewayClient.",
     );
   }
@@ -295,7 +296,7 @@ function resolveGatewayProtocolRange(options?: GatewayRpcClientOptions): {
     maxProtocol < 1 ||
     minProtocol > maxProtocol
   ) {
-    throw new Error("Gateway protocol range must be positive integers with minProtocol <= maxProtocol.");
+    throw invalidConfigError("Gateway protocol range must be positive integers with minProtocol <= maxProtocol.");
   }
   return { minProtocol, maxProtocol };
 }

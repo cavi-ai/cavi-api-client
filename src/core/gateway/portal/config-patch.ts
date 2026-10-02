@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../error-factories.js";
 import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../errors.js";
 import { PORTAL_CLIENT_ID_HEADER } from "../../http/types.js";
 import { GATEWAY_PORTAL_API_ENDPOINTS } from "../../../contracts/paths.js";
@@ -57,7 +58,7 @@ export class PortalConfigPatchError extends ApiClientError {
 export function portalConfigPatchPath(portalSlug: string): string {
   const slug = portalSlug.trim().replace(/^\/+/u, "").replace(/\/+$/u, "");
   if (!slug || slug.includes("/")) {
-    throw new Error(`portalConfigPatchPath: invalid portal slug "${portalSlug}"`);
+    throw invalidInputError(`portalConfigPatchPath: invalid portal slug "${portalSlug}"`);
   }
   return GATEWAY_PORTAL_API_ENDPOINTS.config(slug);
 }
@@ -78,7 +79,7 @@ export function unflattenPortalConfigPatchKeys(
     if (!parts.length) continue;
     const unsafeSegment = parts.find((part) => UNSAFE_CONFIG_PATH_SEGMENTS.has(part));
     if (unsafeSegment) {
-      throw new Error(
+      throw invalidInputError(
         `unflattenPortalConfigPatchKeys: unsafe path segment "${unsafeSegment}"`,
       );
     }

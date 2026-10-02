@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../../core/error-factories.js";
 import { LIBRARY_API_ENDPOINTS, resolveLibraryApiPath } from "../contracts/paths.js";
 import { resolveCaviPath } from "../contracts/resolve.js";
 import { getErrorMessage } from "../../../core/errors.js";
@@ -154,7 +155,7 @@ export function buildLibraryClipPayload(input: LibraryClipInput): LibraryClipReq
   const sourceUrl = cleanString(input.sourceUrl);
   const text = cleanString(input.text);
   if (!sourceUrl && !text) {
-    throw new Error("Library clip requires a sourceUrl or text value.");
+    throw invalidInputError("Library clip requires a sourceUrl or text value.");
   }
 
   const title =

@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../../core/error-factories.js";
 import { createProviderRegistry } from "../../../core/runtime/providers/registry.js";
 import { withRuntimeControlExtensions } from "../../../core/runtime/control-plane/extensions.js";
 import { normalizeRuntimeProviderToken } from "../../../core/runtime/providers/normalize.js";
@@ -95,14 +96,14 @@ function assertCanonicalProvider(
   const canonical = baseModules.filter(
     (module) => normalizeRuntimeProviderToken(module.kind) === kind,
   );
-  if (canonical.length !== 1) throw new Error(cardinalityError);
+  if (canonical.length !== 1) throw invalidConfigError(cardinalityError);
   const resolved = base.resolveProvider(kind);
   if (
     !resolved ||
     normalizeRuntimeProviderToken(resolved.kind) !== kind ||
     !isSameProviderDeclaration(canonical[0]!, resolved)
   ) {
-    throw new Error(shadowError);
+    throw invalidConfigError(shadowError);
   }
   return canonical[0]!;
 }
@@ -121,7 +122,7 @@ export function withCaviRuntimeControlProviders<M extends RuntimeProviderModule>
       base, baseModules, "openclaw", OPENCLAW_REGISTRY_CARDINALITY_ERROR, OPENCLAW_REGISTRY_SHADOW_ERROR,
     );
   if (canonicalOpenclaw && canonicalOpenclaw.createRuntimeControlClient === undefined) {
-    throw new Error(OPENCLAW_REGISTRY_FACTORY_ERROR);
+    throw invalidConfigError(OPENCLAW_REGISTRY_FACTORY_ERROR);
   }
 
   const hermesOptions = snapshotHermesOptions(options.hermes);

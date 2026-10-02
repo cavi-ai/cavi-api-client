@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../../../core/error-factories.js";
 import type { FleetLibrarySnapshot, TeamLibraryStatus } from "../../domain/index.js";
 import type { JsonHttpRequest } from "../../../../core/http/json-client.js";
 import { requestLibraryApiJson } from "../../library/api.js";
@@ -106,7 +107,7 @@ export async function loadFleetLibraryLive(
 ): Promise<FleetLibrarySnapshot> {
   const teamLibraryRefs = listTeamLibraryRefs();
   if (teamLibraryRefs.length === 0) {
-    throw new Error(
+    throw invalidConfigError(
       "Team registry config does not define team library refs. Load TEAM_REGISTRY_CONFIG before loading fleet library status.",
     );
   }

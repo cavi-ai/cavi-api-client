@@ -1,3 +1,4 @@
+import { protocolError } from "../../core/error-factories.js";
 import {
   ApiClientError,
   ApiClientErrorCode,
@@ -87,7 +88,7 @@ function readUploadUrl(response: Response, baseUrl: string): string {
       destination.username ||
       destination.password
     ) {
-      throw new Error("unsafe upload destination");
+      throw protocolError(ApiClientErrorType.Http, "unsafe upload destination");
     }
     return destination.toString();
   } catch {

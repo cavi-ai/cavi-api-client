@@ -1,3 +1,5 @@
+import { invalidInputError, protocolError } from "../../../core/error-factories.js";
+import { ApiClientErrorType } from "../../../core/errors.js";
 import type { GatewaySessionOperations } from "../../../core/gateway/snapshots/session-operations.js";
 import type { RawSessionRow } from "../../../core/gateway/snapshots/contracts.js";
 import type { ListSessionsOptions, RuntimeSessionSummary, SessionClient, SessionRequestOptions } from "../../../core/runtime/control-plane/sessions.js";
@@ -48,7 +50,7 @@ function timestamp(value: unknown): string | undefined {
 }
 
 function mapRow(row: RawSessionRow, method: string, transport: "json-rpc" | "http" = "json-rpc"): RuntimeSessionSummary {
-  if (typeof row.key !== "string" || row.key.length === 0) throw new Error("Hermes canonical session response failed schema validation");
+  if (typeof row.key !== "string" || row.key.length === 0) throw protocolError(ApiClientErrorType.Http, "Hermes canonical session response failed schema validation");
   const createdAt = timestamp(row.createdAt);
   const updatedAt = timestamp(row.updatedAt);
   const state = row.state ?? "unknown";
@@ -67,7 +69,7 @@ function detailRow(value: unknown): RawSessionRow {
   const state = row.state;
   if (state !== undefined && state !== "pending" && state !== "active" && state !== "completed"
     && state !== "cancelled" && state !== "failed" && state !== "unknown") {
-    throw new Error("Hermes canonical session detail response failed schema validation");
+    throw protocolError(ApiClientErrorType.Http, "Hermes canonical session detail response failed schema validation");
   }
   return {
     ...(typeof row.key === "string" ? { key: row.key } : {}),
@@ -85,7 +87,7 @@ export function createHermesSessionClient(operations: GatewaySessionOperations):
       const limit = pageLimit(options.limit);
       if (offset + limit > MAX_HERMES_SESSION_PAGE_SIZE) throw new TypeError("Hermes session page window exceeds the 200-session bound");
       const payload = await operations.list({ limit: offset + limit }, { signal: options.signal });
-      if ("unchanged" in payload || !Array.isArray(payload.sessions)) throw new Error("Hermes canonical session list response failed schema validation");
+      if ("unchanged" in payload || !Array.isArray(payload.sessions)) throw protocolError(ApiClientErrorType.Http, "Hermes canonical session list response failed schema validation");
       const data = payload.sessions.slice(offset, offset + limit).map((row) => mapRow(row, "session.list"));
       const total = typeof payload.count === "number" ? payload.count : payload.sessions.length;
       const nextOffset = offset + data.length;
@@ -93,7 +95,7 @@ export function createHermesSessionClient(operations: GatewaySessionOperations):
     },
     async getSession(id: string, requestOptions: SessionRequestOptions = {}) {
       const payload = await operations.detail({ key: id }, requestOptions);
-      if (payload.row === null || payload.row === undefined) throw new Error(`Hermes session not found: ${id}`);
+      if (payload.row === null || payload.row === undefined) throw invalidInputError(`Hermes session not found: ${id}`);
       return mapRow(detailRow(payload.row), "session.detail", "http");
     },
     async cancelSession(id: string, requestOptions: SessionRequestOptions = {}) {

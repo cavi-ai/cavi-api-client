@@ -1,3 +1,5 @@
+import { invalidInputError } from "../core/error-factories.js";
+
 export function appendHttpQuery(
   path: string,
   query?: Record<string, string | number | boolean | undefined>,
@@ -39,21 +41,21 @@ export function appendHttpQuery(
 export function assertSafeRelativePath(value: string): string {
   const trimmed = value?.trim() ?? "";
   if (!trimmed) {
-    throw new Error("assertSafeRelativePath: path must not be empty");
+    throw invalidInputError("assertSafeRelativePath: path must not be empty");
   }
   if (
     /^[a-z][a-z0-9+.-]*:/iu.test(trimmed) ||
     trimmed.startsWith("/") ||
     trimmed.includes("\\")
   ) {
-    throw new Error(`assertSafeRelativePath: path must be relative: ${trimmed}`);
+    throw invalidInputError(`assertSafeRelativePath: path must be relative: ${trimmed}`);
   }
   const segments = trimmed
     .split("/")
     .map((segment) => segment.trim())
     .filter(Boolean);
   if (segments.length === 0) {
-    throw new Error(`assertSafeRelativePath: invalid path: ${trimmed}`);
+    throw invalidInputError(`assertSafeRelativePath: invalid path: ${trimmed}`);
   }
   for (const segment of segments) {
     let decoded = segment;
@@ -70,7 +72,7 @@ export function assertSafeRelativePath(value: string): string {
       decoded.includes("/") ||
       decoded.includes("\\")
     ) {
-      throw new Error(`assertSafeRelativePath: path must not traverse: ${trimmed}`);
+      throw invalidInputError(`assertSafeRelativePath: path must not traverse: ${trimmed}`);
     }
   }
   return segments.join("/");

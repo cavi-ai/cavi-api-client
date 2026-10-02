@@ -3,6 +3,8 @@
 // hardening test). There is intentionally no default-model constant — the
 // client requires an explicit model so we never ship a stale id.
 
+import { invalidInputError } from "../../core/error-factories.js";
+
 export const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com";
 export const GEMINI_API_VERSION = "v1beta";
 
@@ -22,7 +24,7 @@ function normalizedResourceId(
     // Malformed percent encoding is harmless after encodeURIComponent below.
   }
   if (!normalized || decoded === "." || decoded === "..") {
-    throw new Error(`gemini: invalid ${label} id`);
+    throw invalidInputError(`gemini: invalid ${label} id`);
   }
   return normalized;
 }

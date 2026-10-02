@@ -1,3 +1,5 @@
+import { invalidConfigError } from "../error-factories.js";
+
 export const REPO_ROOT_ENV_KEY = "REPO_ROOT" as const;
 export const GLOBAL_REPO_ROOT_KEY = "__CAVI_REPO_ROOT__" as const;
 
@@ -53,7 +55,7 @@ export function resolveRepoRoot(options: ResolveRepoRootOptions = {}): string | 
 export function requireRepoRoot(options: ResolveRepoRootOptions = {}): string {
   const repoRoot = resolveRepoRoot(options);
   if (!repoRoot) {
-    throw new Error("Missing REPO_ROOT for @cavi-ai/api-client filesystem integration");
+    throw invalidConfigError("Missing REPO_ROOT for @cavi-ai/api-client filesystem integration");
   }
   return repoRoot;
 }

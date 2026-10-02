@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../core/error-factories.js";
 import type { GatewayProviderModule } from "../../core/gateway/providers/index.js";
 import { GatewayApiClient } from "../../core/gateway/client/client.js";
 import { GatewayMediaApiClient } from "../../core/gateway/resources/media.js";
@@ -43,7 +44,7 @@ export const HERMES_PROVIDER_MODULE: GatewayProviderModule = {
   createSseRunEventProvider: (options) => {
     const sessionKey = options.sessionKey?.trim();
     if (!sessionKey) {
-      throw new Error("createGatewaySseRunEventProvider: Hermes requires sessionKey");
+      throw invalidConfigError("createGatewaySseRunEventProvider: Hermes requires sessionKey");
     }
     return new HermesSseRunEventProvider({ ...options, sessionKey });
   },

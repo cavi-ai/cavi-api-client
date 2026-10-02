@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../error-factories.js";
 import {
   IDEMPOTENCY_KEY_HEADER,
   PORTAL_CLIENT_ID_HEADER,
@@ -17,7 +18,7 @@ const DEFAULT_CLIENT_ID = "cavi-api-client";
 function normalizeBaseUrl(baseUrl: string, allowRelative = false): string {
   const trimmed = baseUrl.trim();
   if (!trimmed && allowRelative) return "";
-  if (!trimmed) throw new Error("Missing baseUrl for HTTP API client");
+  if (!trimmed) throw invalidConfigError("Missing baseUrl for HTTP API client");
   return trimmed.replace(/\/+$/, "");
 }
 

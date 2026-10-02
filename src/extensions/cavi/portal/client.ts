@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../../core/error-factories.js";
 import { BaseHttpApiClient } from "../../../core/http/client.js";
 import { CAVI_CONTROL_API_ENDPOINTS, resolvePortalApiPath } from "../contracts/paths.js";
 import { resolvePath } from "../contracts/resolve.js";
@@ -10,7 +11,7 @@ export type PortalApiClientOptions = HttpApiClientOptions & {
 function normalizePortalId(portalId: string): string {
   const trimmed = portalId.trim();
   if (!trimmed) {
-    throw new Error("PortalApiClient requires a non-empty portalId");
+    throw invalidConfigError("PortalApiClient requires a non-empty portalId");
   }
   return trimmed;
 }

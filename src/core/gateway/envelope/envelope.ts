@@ -1,5 +1,5 @@
 import { GatewayHttpError } from "../../http/gateway-error.js";
-import { getErrorMessage, isAuthError } from "../../errors.js";
+import { ApiClientError, getErrorMessage, isAuthError } from "../../errors.js";
 import type {
   ContractGap,
   ContractGapReason,
@@ -195,7 +195,7 @@ export async function withMutationResult<TData>(params: {
     const classified = classifyFallbackError(error);
     if (classified.reason === "unknown") {
       const reason = getErrorMessage(error);
-      throw new Error(
+      throw new ApiClientError(
         `${params.note}. ${params.expectedContract} unavailable: ${reason}`,
         { cause: error },
       );

@@ -1,3 +1,4 @@
+import { abortError } from "../../../core/error-factories.js";
 import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import type {
   RuntimeControlPlaneEvent,
@@ -257,9 +258,7 @@ export function createOpenClawRuntimeEventClient(rpc: OpenClawRpc): RuntimeEvent
         throw new CapabilityUnavailable("openclaw", "controlPlane.events.cursor");
       }
       if (params.signal?.aborted) {
-        const error = new Error("The operation was aborted");
-        error.name = "AbortError";
-        throw error;
+        throw abortError();
       }
 
       const subscriber: Subscriber = {

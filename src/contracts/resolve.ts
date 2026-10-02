@@ -1,3 +1,4 @@
+import { invalidInputError } from "../core/error-factories.js";
 import { SURFACE_CONTRACTS } from "./surfaces.js";
 import type { SurfaceContract } from "./surfaces.js";
 
@@ -31,6 +32,6 @@ export function resolvePath(
   params?: Record<string, string>,
 ): string {
   const contract = SURFACE_CONTRACTS[key];
-  if (!contract) throw new Error(`resolvePath: unknown surface "${key}"`);
+  if (!contract) throw invalidInputError(`resolvePath: unknown surface "${key}"`);
   return resolveSurfaceContractPath(contract, params);
 }

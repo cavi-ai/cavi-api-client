@@ -1,3 +1,5 @@
+import { protocolError } from "../../../core/error-factories.js";
+import { ApiClientErrorType } from "../../../core/errors.js";
 import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import { normalizeTransportAbort } from "../../../core/transport/backoff.js";
 import { getTransportErrorMetadata } from "../../../core/transport/error.js";
@@ -26,20 +28,20 @@ function record(value: unknown, label: string): Record<string, unknown> {
 
 function finite(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    throw new Error(`Hermes ${label} response failed schema validation`);
+    throw protocolError(ApiClientErrorType.Http, `Hermes ${label} response failed schema validation`);
   }
   return value;
 }
 
 function optionalText(value: unknown, label: string): string | undefined {
   if (value === null || value === undefined) return undefined;
-  if (typeof value !== "string") throw new Error(`Hermes ${label} response failed schema validation`);
+  if (typeof value !== "string") throw protocolError(ApiClientErrorType.Http, `Hermes ${label} response failed schema validation`);
   return value;
 }
 
 function sessionRow(value: unknown): RawSessionRow {
   const row = record(value, "session row");
-  if (typeof row.id !== "string" || row.id.length === 0) throw new Error("Hermes session row response failed schema validation");
+  if (typeof row.id !== "string" || row.id.length === 0) throw protocolError(ApiClientErrorType.Http, "Hermes session row response failed schema validation");
   const startedAt = finite(row.started_at, "session started_at");
   const lastActive = row.last_active === undefined ? startedAt : finite(row.last_active, "session last_active");
   const title = optionalText(row.title, "session title");
@@ -68,7 +70,7 @@ function isTransportUnavailable(error: unknown): boolean {
 
 function parseRpcList(value: unknown, requestedLimit: number | undefined): SessionsListRpcPayload {
   const payload = record(value, "session.list");
-  if (!Array.isArray(payload.sessions)) throw new Error("Hermes session.list response failed schema validation");
+  if (!Array.isArray(payload.sessions)) throw protocolError(ApiClientErrorType.Http, "Hermes session.list response failed schema validation");
   const sessions = payload.sessions.map(sessionRow);
   const total = payload.total === undefined
     ? sessions.length === requestedLimit && sessions.length < 200
@@ -76,7 +78,7 @@ function parseRpcList(value: unknown, requestedLimit: number | undefined): Sessi
       : sessions.length
     : finite(payload.total, "session.list total");
   if (!Number.isSafeInteger(total) || total < sessions.length) {
-    throw new Error("Hermes session.list response failed schema validation");
+    throw protocolError(ApiClientErrorType.Http, "Hermes session.list response failed schema validation");
   }
   return { sessions, count: total };
 }
@@ -126,7 +128,7 @@ function detail(value: HermesDashboardSession): SessionDetailPayload {
 function parseInterrupt(id: string, value: unknown): GatewaySessionCancelResult {
   const payload = record(value, "session.interrupt");
   if (payload.status !== "interrupted" || Object.keys(payload).length !== 1) {
-    throw new Error("Hermes session.interrupt response failed schema validation");
+    throw protocolError(ApiClientErrorType.Http, "Hermes session.interrupt response failed schema validation");
   }
   return { id, status: "cancelled", providerData: { status: "interrupted" } };
 }

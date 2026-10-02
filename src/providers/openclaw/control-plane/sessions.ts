@@ -1,3 +1,4 @@
+import { invalidInputError } from "../../../core/error-factories.js";
 import { toError } from "../../../core/errors.js";
 import type {
   RuntimeSessionSummary,
@@ -154,7 +155,7 @@ export function createOpenClawSessionClient(rpc: OpenClawRpc) {
       );
       return parseOpenClaw("sessions.describe", () => {
         const parsed = parseSessionsDescribe(payload);
-        if (parsed.session === null) throw new Error(`OpenClaw session not found: ${id}`);
+        if (parsed.session === null) throw invalidInputError(`OpenClaw session not found: ${id}`);
         return mapSession(parsed.session as WireSession, "sessions.describe");
       });
     },

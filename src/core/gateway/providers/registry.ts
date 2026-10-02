@@ -1,3 +1,4 @@
+import { invalidConfigError } from "../../error-factories.js";
 import { normalizeGatewayProviderToken } from "./normalize.js";
 import {
   createRuntimeProviderRegistry as createUniversalRuntimeProviderRegistry,
@@ -23,7 +24,7 @@ export function createProviderRegistry<M extends RuntimeProviderModule>(
       const key = normalizeGatewayProviderToken(rawKey);
       if (!key) continue;
       if (byKey.has(key) && options.allowOverrides !== true) {
-        throw new Error(`Duplicate provider key "${key}"`);
+        throw invalidConfigError(`Duplicate provider key "${key}"`);
       }
       byKey.set(key, module);
     }
@@ -94,7 +95,7 @@ export function resolveGatewayProviderModule(
   const registry = gatewayProviderRegistryFromOptions(options);
   const provider = registry.resolveProvider(requested);
   if (!provider) {
-    throw new Error(`Unknown gateway provider "${requested}"`);
+    throw invalidConfigError(`Unknown gateway provider "${requested}"`);
   }
   return provider;
 }
