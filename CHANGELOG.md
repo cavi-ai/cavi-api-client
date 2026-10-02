@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The npm package ships only the brand image the README uses; the other
+  logo and social-preview files are no longer packed.
 - Every exported error class now extends `ApiClientError` and carries `type`
   and `code`: `HttpApiError`, `GatewayHttpError`, `GatewayRpcError`,
   `GatewayJobTimeoutError`, `GatewayJobAbortError`, `PortalConfigPatchError`,
