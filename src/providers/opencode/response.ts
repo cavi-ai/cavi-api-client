@@ -290,11 +290,3 @@ export function mapOpenCodeMessageHistoryToRunStatus(
     expectedSessionID,
   );
 }
-
-export const mapOpenCodeResponseToRunStatus = mapOpenCodePromptResponseToRunStatus;
-export const parseOpenCodePromptResponse = mapOpenCodePromptResponseToRunStatus;
-export const mapOpenCodeHealthResponse = parseOpenCodeHealthResponse;
-export const mapOpenCodeSessionResponse = parseOpenCodeSessionResponse;
-export const parseOpenCodeSessionStatus = parseOpenCodeSessionStatusResponse;
-export const parseOpenCodeMessageHistory = mapOpenCodeMessageHistoryToRunStatus;
-export const mapOpenCodeHistoryToRunStatus = mapOpenCodeMessageHistoryToRunStatus;

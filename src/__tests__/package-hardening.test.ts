@@ -1413,6 +1413,67 @@ describe("package hardening", () => {
     expect(missing, "consumer-imported symbols no longer exported").toEqual([]);
   });
 
+  it("exports nothing that no package entry, module, or test references", () => {
+    const files = walkFiles(SRC_ROOT).filter((filePath) => /\.tsx?$/u.test(filePath) && !filePath.endsWith(".d.ts"));
+    const program = ts.createProgram(files, {
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
+      skipLibCheck: true,
+    });
+    const checker = program.getTypeChecker();
+    const target = (symbol: ts.Symbol): ts.Declaration | undefined => {
+      let current = symbol;
+      while (current.flags & ts.SymbolFlags.Alias) current = checker.getAliasedSymbol(current);
+      return current.declarations?.[0];
+    };
+    const referenced = new Set<ts.Declaration>();
+    const packageJson = JSON.parse(read(PACKAGE_JSON)) as { exports: Record<string, string | { import?: string }> };
+    for (const exportTarget of Object.values(packageJson.exports)) {
+      const built = typeof exportTarget === "string" ? exportTarget : exportTarget.import;
+      if (!built?.endsWith(".js")) continue;
+      const base = path.join(PACKAGE_ROOT, built.replace(/^\.\/dist\//u, "src/").replace(/\.js$/u, ""));
+      const source = program.getSourceFile(`${base}.ts`) ?? program.getSourceFile(`${base}.tsx`);
+      const moduleSymbol = source && checker.getSymbolAtLocation(source);
+      if (!moduleSymbol) continue;
+      for (const exported of checker.getExportsOfModule(moduleSymbol)) {
+        const declaration = target(exported);
+        if (declaration) referenced.add(declaration);
+      }
+    }
+    for (const source of program.getSourceFiles()) {
+      if (!source.fileName.startsWith(SRC_ROOT)) continue;
+      const visit = (node: ts.Node): void => {
+        if (ts.isIdentifier(node)) {
+          const symbol = checker.getSymbolAtLocation(node);
+          const declaration = symbol && target(symbol);
+          if (declaration && (declaration as ts.NamedDeclaration).name !== node) referenced.add(declaration);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+    const unreferenced: string[] = [];
+    for (const filePath of productionSourceFiles()) {
+      if (!/\.tsx?$/u.test(filePath)) continue;
+      const source = program.getSourceFile(filePath);
+      if (!source) continue;
+      for (const statement of source.statements) {
+        if (!(ts.getCombinedModifierFlags(statement as ts.Declaration) & ts.ModifierFlags.Export)) continue;
+        const names = ts.isVariableStatement(statement)
+          ? statement.declarationList.declarations.map((declaration) => declaration.name)
+          : [(statement as ts.NamedDeclaration).name];
+        for (const name of names) {
+          if (!name || !ts.isIdentifier(name)) continue;
+          const declaration = checker.getSymbolAtLocation(name)?.declarations?.[0];
+          if (declaration && !referenced.has(declaration)) unreferenced.push(`${rel(filePath)}: ${name.text}`);
+        }
+      }
+    }
+    expect(unreferenced, "remove the export or the code").toEqual([]);
+  });
+
   it("builds only canonical and compat folders", () => {
     const tsconfig = JSON.parse(read(TS_CONFIG)) as {
       include?: string[];
