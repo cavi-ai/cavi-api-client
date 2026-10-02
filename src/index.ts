@@ -1,10 +1,15 @@
 // @cavi-ai/api-client — curated root API for the current 0.x release line.
 //
-// Providers, the CAVI extension, framework bindings, and low-level core
-// primitives are intentionally NOT re-exported here. Import them from their
-// subpaths: ./providers/{hermes,openclaw,claude} · ./extensions/cavi ·
-// ./frameworks/react · ./core/http · ./core/sse · ./core/ws · ./core/data ·
-// ./core/env · ./core/gateway. See MIGRATION.md.
+// Provider modules, the CAVI extension, framework bindings, and low-level core
+// primitives are NOT re-exported here. Import them from their subpaths:
+// ./providers/{hermes,openclaw,claude,codex,gemini,agy,opencode} ·
+// ./extensions/cavi · ./frameworks/react · ./core/http · ./core/sse ·
+// ./core/ws · ./core/data · ./core/env · ./core/gateway. See MIGRATION.md.
+//
+// `createApiClient` is the root front door and builds on the built-in
+// registry, so importing the root loads the Hermes and OpenClaw gateway
+// providers. No other provider and no Node built-in is reachable from here
+// (enforced in package-hardening.test.ts).
 
 // ── Errors & guards (universal) ──────────────────────────────────────────────
 export {
