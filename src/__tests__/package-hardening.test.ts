@@ -1452,8 +1452,14 @@ describe("package hardening", () => {
   });
 
   it("keeps the team manifest contract agnostic and CAVI registry logic in the extension", () => {
-    const manifestSource = read(TEAM_MANIFEST_CONTRACT);
-    expect(manifestSource).not.toMatch(/extensions\/cavi|providers\/|Hermes|OpenClaw|Martina|Deb/u);
+    const manifestSources = [
+      TEAM_MANIFEST_CONTRACT,
+      ...walkFiles(path.join(SRC_ROOT, "contracts", "team-manifest")),
+    ];
+    expect(manifestSources.length).toBeGreaterThan(1);
+    for (const filePath of manifestSources) {
+      expect(read(filePath), rel(filePath)).not.toMatch(/extensions\/cavi|providers\/|Hermes|OpenClaw|Martina|Deb/u);
+    }
     expect(read(CAVI_TEAM_REGISTRY)).toContain("../../../contracts/team-manifest.js");
     expect(existsSync(path.join(SRC_ROOT, "core", "gateway", "team-registry.ts"))).toBe(false);
   });
