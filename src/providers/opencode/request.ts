@@ -81,8 +81,3 @@ export function buildOpenCodePromptBody(
   }
   return payload;
 }
-
-// Provider-local aliases make the mapper usable by later client orchestration
-// without changing the package's public exports in this foundation phase.
-export const mapOpenCodeRequest = buildOpenCodePromptBody;
-export const buildOpenCodeRequestBody = buildOpenCodePromptBody;
