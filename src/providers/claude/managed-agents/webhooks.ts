@@ -12,6 +12,8 @@
 // a space-delimited list of `v1,<base64sig>` (any match passes); 5-minute tolerance.
 // Implemented with Web Crypto so it runs on Node 20+ and the browser without a dep.
 
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors.js";
+
 /** Webhook `data.type` values Anthropic emits. */
 export const MANAGED_AGENT_WEBHOOK_EVENT_TYPES = [
   "session.status_scheduled",
@@ -64,9 +66,12 @@ export type ManagedAgentWebhookEvent = {
   };
 };
 
-export class WebhookVerificationError extends Error {
+export class WebhookVerificationError extends ApiClientError {
   constructor(message: string) {
-    super(message);
+    super(message, {
+      type: ApiClientErrorType.Validation,
+      code: ApiClientErrorCode.ValidationFailed,
+    });
     this.name = "WebhookVerificationError";
   }
 }

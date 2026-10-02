@@ -79,6 +79,16 @@ export class ApiClientError extends Error {
   }
 }
 
+/**
+ * True for any error this package throws as a class. Every exported error
+ * class (`HttpApiError`, `GatewayHttpError`, `GatewayRpcError`,
+ * `TransportError`, …) extends `ApiClientError`, so one guard covers them all
+ * and `type`/`code` are always present.
+ */
+export function isApiClientError(error: unknown): error is ApiClientError {
+  return error instanceof ApiClientError;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

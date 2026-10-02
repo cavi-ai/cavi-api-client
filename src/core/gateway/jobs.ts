@@ -1,3 +1,5 @@
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../errors.js";
+
 export type GatewayJobStatus =
   | "queued"
   | "running"
@@ -53,8 +55,8 @@ export type GatewayJobWaitOptions<TJob extends GatewayJobLike> = {
   now?: () => number;
 };
 
-export class GatewayJobTimeoutError<TJob extends GatewayJobLike> extends Error {
-  readonly name = "GatewayJobTimeoutError";
+export class GatewayJobTimeoutError<TJob extends GatewayJobLike> extends ApiClientError {
+  override readonly name = "GatewayJobTimeoutError";
   readonly attempts: number;
   readonly elapsedMs: number;
   readonly lastJob: TJob | null;
@@ -68,6 +70,7 @@ export class GatewayJobTimeoutError<TJob extends GatewayJobLike> extends Error {
       `gateway job: timed out after ${params.attempts} attempt${
         params.attempts === 1 ? "" : "s"
       }`,
+      { type: ApiClientErrorType.Timeout, code: ApiClientErrorCode.Timeout },
     );
     this.attempts = params.attempts;
     this.elapsedMs = params.elapsedMs;
@@ -75,12 +78,15 @@ export class GatewayJobTimeoutError<TJob extends GatewayJobLike> extends Error {
   }
 }
 
-export class GatewayJobAbortError extends Error {
-  readonly name = "GatewayJobAbortError";
+export class GatewayJobAbortError extends ApiClientError {
+  override readonly name = "GatewayJobAbortError";
   readonly reason: unknown;
 
   constructor(reason?: unknown) {
-    super("gateway job: wait aborted");
+    super("gateway job: wait aborted", {
+      type: ApiClientErrorType.Abort,
+      code: ApiClientErrorCode.Aborted,
+    });
     this.reason = reason;
   }
 }

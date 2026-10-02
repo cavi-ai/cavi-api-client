@@ -4,7 +4,11 @@ import {
   formatGatewayHttpErrorMessage,
   parseGatewayErrorText,
 } from "../gateway/client/error-details.js";
-import { ApiClientErrorType } from "../errors.js";
+import {
+  ApiClientError,
+  ApiClientErrorCode,
+  ApiClientErrorType,
+} from "../errors.js";
 
 export {
   cleanGatewayErrorText,
@@ -12,16 +16,21 @@ export {
   parseGatewayErrorText,
 };
 
-export class GatewayHttpError extends Error {
-  readonly type = ApiClientErrorType.GatewayHttp;
+/**
+ * `code` is the gateway's own error code when the response carried one, and
+ * `ApiClientErrorCode.GatewayError` otherwise.
+ */
+export class GatewayHttpError extends ApiClientError {
+  declare readonly type: ApiClientErrorType.GatewayHttp;
   readonly status: number;
-  readonly code: string | null;
 
   constructor(message: string, status: number, code: string | null = null) {
-    super(message);
+    super(message, {
+      type: ApiClientErrorType.GatewayHttp,
+      code: code ?? ApiClientErrorCode.GatewayError,
+    });
     this.name = "GatewayHttpError";
     this.status = status;
-    this.code = code;
   }
 }
 

@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `isApiClientError`, one guard for every error class the package
+  throws. It is exported from the root and `./core/errors`.
+
+### Changed
+
+- Every exported error class now extends `ApiClientError` and carries `type`
+  and `code`: `HttpApiError`, `GatewayHttpError`, `GatewayRpcError`,
+  `GatewayJobTimeoutError`, `GatewayJobAbortError`, `PortalConfigPatchError`,
+  `GatewayAgentConfigApiError`, `CapabilityUnavailable`,
+  `CapabilityCallRejected`, `OpenClawWireError`, and
+  `WebhookVerificationError`. Existing guards (`isHttpApiError`,
+  `isGatewayHttpError`) and classification behavior are unchanged.
+- `GatewayHttpError.code` is now always a string. When the gateway sends no
+  code, it is `gateway_error` (previously `null`).
+- `GatewayJobAbortError` now satisfies `isAbortError`.
+- Team manifest validation and resolution failures throw `ApiClientError` with
+  type `configuration` and code `invalid_config` instead of a plain `Error`.
+  Messages are unchanged.
+
 ## [0.17.0] - 2026-09-10
 
 ### Added

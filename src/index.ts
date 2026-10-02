@@ -17,6 +17,7 @@ export {
   getErrorType,
   getRuntimeErrorMetadata,
   isAbortError,
+  isApiClientError,
   isAuthError,
   isEndpointNotFoundError,
   serializeError,

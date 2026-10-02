@@ -1,12 +1,13 @@
 import type { HttpApiHttpMethod } from "./types.js";
 import {
+  ApiClientError,
   ApiClientErrorCode,
   ApiClientErrorType,
 } from "../errors.js";
 
-export class HttpApiError extends Error {
-  readonly type = ApiClientErrorType.Http;
-  readonly code = ApiClientErrorCode.HttpRequestFailed;
+export class HttpApiError extends ApiClientError {
+  declare readonly type: ApiClientErrorType.Http;
+  declare readonly code: ApiClientErrorCode.HttpRequestFailed;
   readonly path: string;
   readonly url: string;
   readonly method: HttpApiHttpMethod;
@@ -21,7 +22,10 @@ export class HttpApiError extends Error {
     status: number;
     body: string;
   }) {
-    super(params.message);
+    super(params.message, {
+      type: ApiClientErrorType.Http,
+      code: ApiClientErrorCode.HttpRequestFailed,
+    });
     this.name = "HttpApiError";
     this.path = params.path;
     this.url = params.url;

@@ -1,3 +1,4 @@
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../errors.js";
 import { PORTAL_CLIENT_ID_HEADER } from "../../http/types.js";
 import { GATEWAY_PORTAL_API_ENDPOINTS } from "../../../contracts/paths.js";
 
@@ -38,12 +39,15 @@ export type PostPortalConfigPatchParams = {
   signal?: AbortSignal;
 };
 
-export class PortalConfigPatchError extends Error {
+export class PortalConfigPatchError extends ApiClientError {
   readonly status: number;
   readonly responseBody: string | null;
 
   constructor(status: number, message: string, responseBody: string | null) {
-    super(message);
+    super(message, {
+      type: ApiClientErrorType.Http,
+      code: ApiClientErrorCode.HttpRequestFailed,
+    });
     this.name = "PortalConfigPatchError";
     this.status = status;
     this.responseBody = responseBody;

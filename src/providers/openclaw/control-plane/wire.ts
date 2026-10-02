@@ -1,7 +1,14 @@
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "../../../core/errors.js";
 import { isSensitiveKey } from "../../../core/http/redaction.js";
 
-export class OpenClawWireError extends Error {
-  constructor(message: string) { super(message); this.name = "OpenClawWireError"; }
+export class OpenClawWireError extends ApiClientError {
+  constructor(message: string) {
+    super(message, {
+      type: ApiClientErrorType.GatewayRpc,
+      code: ApiClientErrorCode.ProtocolMismatch,
+    });
+    this.name = "OpenClawWireError";
+  }
 }
 
 type WireObject = Record<string, unknown>;
