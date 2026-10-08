@@ -202,6 +202,13 @@ const APPROVED_ROOT_TEAMS_ADDITIONS = [
 const APPROVED_ROOT_ERROR_ADDITIONS = [
   "isApiClientError",
 ] as const;
+// Approved opt-in completion/output helpers; transport factories remain subpath-only.
+const APPROVED_ROOT_RUN_RESULT_ADDITIONS = [
+  "requireCompletedRun",
+  "requireRunText",
+  "requireCompletedStream",
+  "requireStreamText",
+] as const;
 const BUILT_IN_ERROR_BASES = new Set([
   "Error",
   "RangeError",
@@ -1397,6 +1404,7 @@ describe("package hardening", () => {
       ...APPROVED_ROOT_CAPABILITY_CONTRACT_ADDITIONS,
       ...APPROVED_ROOT_TEAMS_ADDITIONS,
       ...APPROVED_ROOT_ERROR_ADDITIONS,
+      ...APPROVED_ROOT_RUN_RESULT_ADDITIONS,
     ]
       .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
       .sort();

@@ -66,6 +66,13 @@ otherwise the accumulated deltas. Do not append a terminal snapshot as another
 delta: that can duplicate the answer. Partial deltas can already be visible
 when a run fails; retain them as partial output, not a successful answer.
 
+Unreleased development builds add `requireCompletedStream` and
+`requireStreamText` for applications that require completed output. The
+[development collector](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md)
+preserves facade gaps, handles text snapshots, and returns normalized usage
+when supplied by the terminal event. These helpers are not in the pinned
+release; use the compatible implementation above with that release.
+
 ## Render more than text
 
 | Event | Application action |
