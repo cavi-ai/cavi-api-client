@@ -2,8 +2,37 @@
 documentedVersion: 0.18.0
 ---
 
-# Installation
+# Install and choose your environment
 
-Install the exact documented release with `pnpm add @cavi-ai/api-client@0.18.0`. The package is ESM and includes TypeScript declarations. Keep provider API keys on a trusted backend.
+```sh
+npm install @cavi-ai/api-client@0.18.0
+# Or: pnpm add @cavi-ai/api-client@0.18.0
+```
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
+The package is ESM and includes TypeScript declarations. Use Node.js 20 or later,
+or a compatible environment with the web APIs required by your selected
+transport. CommonJS `require()` is not the package entry point.
+
+## Server applications
+
+Keep provider API keys in server-side configuration. Import the application
+facade from the root and the provider module from its documented subpath.
+See the [quickstart](quickstart.md) for a complete executable example.
+
+## Browser and React applications
+
+Connect to infrastructure that enforces authentication and permissions for your
+application. Do not ship a provider's privileged API key in a browser bundle.
+React is an optional peer dependency; install React 18 or later only if you use
+`@cavi-ai/api-client/frameworks/react`.
+
+Use [React gateway bindings](../guides/react.md) for connection state. Node-only
+stdio and Unix-socket transports live in `core/transport/node`; do not import
+them into a browser bundle.
+
+## Version and import selection
+
+These pages document the pinned package version above. Use
+[import paths](../guides/imports.md) to select public entries and
+[upgrade guidance](../release/migration-and-support.md) before changing versions.
+Installing the client does not install an upstream runtime or grant model access.

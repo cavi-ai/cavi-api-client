@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Antigravity (AGY) operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Runtime-only provider over the Antigravity orchestration API. Auth:
 `x-agy-api-key`. `baseUrl` is required. Runs are synchronous request/response
 (`POST /v1/agents/run`); `getRun`/`cancelRun` return the client-remembered

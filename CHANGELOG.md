@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Reorganized consumer documentation around provider setup, execution workflows,
+  failure handling, and upgrades; retained exhaustive declarations behind a
+  reference index.
+- Replaced stale provider links and conflicting release guidance, and added
+  executable quickstart and workflow examples with documentation link checks.
+
 ## [0.18.0] - 2026-10-02
 
 ### Removed

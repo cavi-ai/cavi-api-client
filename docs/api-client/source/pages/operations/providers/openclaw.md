@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # OpenClaw operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Gateway provider. `OpenClawApiClient` extends `GatewayApiClient`, which
 implements the universal `RuntimeClient` over the gateway surface
 `openclaw-api` (provider kind `openclaw`, alias `open-claw`). Each unified call

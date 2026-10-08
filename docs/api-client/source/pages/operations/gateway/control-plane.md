@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Gateway control-plane operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Core gateway REST routes (`GATEWAY_API_ENDPOINTS`, aliased as
 `HERMES_API_ENDPOINTS`) plus the provider-neutral runtime control-plane facade
 (`@cavi-ai/api-client/core/runtime`). REST paths are relative to the gateway

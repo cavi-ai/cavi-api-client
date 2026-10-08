@@ -36,7 +36,7 @@ under `scripts/docs/`. Maintainer release evidence is local-only under
 | Tree | Audience | Role |
 | --- | --- | --- |
 | `docs/api-client/source` → `docs/api-client/v*` | Product docs / docs host | Generated immutable set; site ingest is the GitHub release docs artifact |
-| `docs/guides`, `docs/examples` | Contributors | Checkout-only how-to; not host IA |
+| `docs/guides`, `docs/examples` | Contributors | Pointers and checked examples; consumer guidance belongs in source/pages |
 | `docs/postman` | Integrators | Generated gateway surface verification |
 | `docs/maintainers`, `docs/compatibility` | Maintainers | Process / ledgers; not packed for the host |
 | `docs/brand`, `docs/assets` | Packaging / site chrome | Logos and assets |
@@ -56,3 +56,21 @@ The current committed artifact is
 - Public behavior changes require an Unreleased changelog entry and affected
   documentation updates.
 - Never weaken package-hardening or conformance tests to make a change pass.
+
+## Editing consumer documentation
+
+Edit pages under `docs/api-client/source/pages` and its navigation.json.
+Keep setup and workflows there; repository provider guides link to those pages.
+After edits, run:
+
+```sh
+export CAVI_DOCS_PACKAGE_TGZ="$(node scripts/docs/fetch-stable.mjs)"
+pnpm run docs:build
+pnpm run verify
+```
+
+Generation retains exhaustive reference pages and places their links in a hub.
+Complete introduction, concept, and guide TypeScript snippets are checked against
+the pinned release declarations; operation examples can be contextual fragments.
+Do not patch generated pages independently or replace an already published
+release artifact. Deliver candidate docs through the maintainer release process.

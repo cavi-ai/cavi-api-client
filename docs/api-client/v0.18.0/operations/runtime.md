@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Runtime operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The universal `RuntimeClient` contract every provider implements. Optional
 methods are absent on providers that do not support them — null-check
 (`client.getRun?.(id)`) or gate on `getRuntimeCapabilities()`.
@@ -108,7 +106,7 @@ Optional. Same availability rules as `getRun`.
 
 **Signature** `client.streamRun?(body: RuntimeRunStartBody, handlers: RunEventStreamHandlers, options?: { signal?: AbortSignal }): Promise<void>`
 **HTTP** `POST /v1/messages?stream=1` (Claude) · `POST /v1/responses` (SSE, Codex) · `POST /v1beta/models/:model:streamGenerateContent` (Gemini)
-**Capability** `supports.runs` (streaming)
+**Capability** `supports.streaming`
 
 Optional. Gateways use a subscribe-by-runId model and omit this, exposing a
 `RunEventStreamProvider` instead. `handlers` receive canonical `RunStreamEvent`s.
@@ -118,7 +116,7 @@ Optional. Gateways use a subscribe-by-runId model and omit this, exposing a
 ```ts
 await client.streamRun?.(
   { input: "Write a haiku.", model: "gpt-5-codex" },
-  { onEvent: (e) => process.stdout.write(e.type) },
+  { onEvent: (e) => process.stdout.write(e.event) },
 );
 ```
 

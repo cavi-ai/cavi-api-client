@@ -1,13 +1,5 @@
 # Stream event
 
-Package: @cavi-ai/api-client
-Verified by: declaration + fixture + conformance test
-Contract: stream-event
-Version: 0.18.0
-Stability: stable
-Source of truth: upstream-compatible-mirror
-Capability: conditional
-
 Normalized event emitted when a compatible runtime provider implements streaming.
 
 ## Purpose and lifecycle
@@ -68,6 +60,16 @@ Event ordering and resumability beyond the normalized union remain upstream-owne
 ## Public symbols
 
 - `./core/runtime:RunStreamEvent`
+
+## Package and verification metadata
+
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
+Contract: stream-event
+Version: 0.18.0
+Stability: stable
+Source of truth: upstream-compatible-mirror
+Capability: conditional
 
 ## Verification evidence
 

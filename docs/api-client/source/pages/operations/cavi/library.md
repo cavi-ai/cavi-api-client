@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Library operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The library folder is the client for the CAVI **library** plugin — document
 ingest, search, retrieval, and the CaviClip capture pipeline. These are
 plugin-specific REST surfaces (`/library/api/*` and the `/api/plugins/library/*`

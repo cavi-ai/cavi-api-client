@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Operator Control operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The operator-control folder composes the cavi-control **operator plane** — a
 plugin-gated surface that only exists when the cavi-control plugin is installed
 on the target harness (it runs the same on OpenClaw and Hermes). Its RPC methods

@@ -61,6 +61,7 @@ async function explicitFixtureRelease(version = "0.15.0") {
 
 async function createCuratedContractFixture(root: string): Promise<void> {
   await mkdir(path.join(root, "docs/api-client/source/contracts"), { recursive: true });
+  await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [0.15.0]\n\nFixture release.\n");
   await writeFile(path.join(root, "docs/api-client/source/navigation.json"), "{}\n");
   await writeFile(path.join(root, "docs/api-client/source/contracts/runtime.json"), `${JSON.stringify({
     id: "runtime",

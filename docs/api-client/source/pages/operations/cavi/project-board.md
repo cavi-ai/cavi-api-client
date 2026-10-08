@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Project Board operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 CAVI's Project Board is a REST-and-RPC hybrid over the cavi-control kanban plane.
 Every helper here is a **divergence point**: it prefers native OpenClaw Workboard
 RPC (`workboard.cards.*`) when a `workboardRpc` is supplied, falls back to the

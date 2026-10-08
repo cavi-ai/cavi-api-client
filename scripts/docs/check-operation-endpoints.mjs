@@ -13,6 +13,7 @@ const OWNER_PATHS_GLOBS = [
   "src/providers/codex/paths.ts",
   "src/providers/gemini/paths.ts",
   "src/providers/agy/paths.ts",
+  "src/providers/opencode/paths.ts",
 ];
 
 /** Extract owner-checkable static path prefixes from a page's `**HTTP**` lines. */
@@ -69,13 +70,22 @@ async function markdownFiles(directory) {
 }
 
 async function main() {
-  const corpus = (
-    await Promise.all(OWNER_PATHS_GLOBS.map((rel) => readFile(path.join(ROOT, rel), "utf8")))
-  ).join("\n");
+  const owners = await Promise.all(OWNER_PATHS_GLOBS.map(async (rel) => [rel, await readFile(path.join(ROOT, rel), "utf8")]));
+  const corpus = owners.map(([, contents]) => contents).join("\n");
+  const providerOwners = {
+    "claude-anthropic.md": "src/providers/claude/paths.ts",
+    "claude-managed-agents.md": "src/providers/claude/managed-agents/paths.ts",
+    "codex.md": "src/providers/codex/paths.ts",
+    "gemini.md": "src/providers/gemini/paths.ts",
+    "agy.md": "src/providers/agy/paths.ts",
+    "opencode.md": "src/providers/opencode/paths.ts",
+  };
   const files = await markdownFiles(OPERATIONS_DIR);
   let orphanTotal = 0;
   for (const file of files) {
-    const orphans = findOrphanPaths(extractHttpPaths(await readFile(file, "utf8")), corpus);
+    const owner = providerOwners[path.basename(file)];
+    const ownerCorpus = owner ? owners.find(([name]) => name === owner)[1] : corpus;
+    const orphans = findOrphanPaths(extractHttpPaths(await readFile(file, "utf8")), ownerCorpus);
     if (orphans.length) {
       orphanTotal += orphans.length;
       console.error(`${path.relative(ROOT, file)}: unknown HTTP paths -> ${orphans.join(", ")}`);

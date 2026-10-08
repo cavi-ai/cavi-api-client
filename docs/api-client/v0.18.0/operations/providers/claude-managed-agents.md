@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Claude Managed Agents (beta) operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 `ClaudeManagedAgentClient` is a stateful `RuntimeClient` over the Anthropic
 Managed Agents surface — a separate, beta API from `/v1/messages` covering the
 full agent lifecycle: persisted Agent configs, reusable Environments, stateful
@@ -393,7 +391,7 @@ onto sessions. Field-level run/stream semantics are documented under
 ```ts
 await client.streamRun(
   { input: "Draft the release notes.", metadata: { agent_id: "agt_…", environment_id: "env_…" } },
-  { onEvent: (e) => console.log(e.type), onError: (err) => console.error(err) },
+  { onEvent: (e) => console.log(e.event), onError: (err) => console.error(err) },
 );
 ```
 

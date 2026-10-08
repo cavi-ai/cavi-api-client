@@ -3,36 +3,77 @@
   "version": "{{documentedVersion}}",
   "sections": [
     {
-      "title": "Introduction",
+      "title": "Start here",
       "pages": [
         {
-          "title": "Overview",
+          "title": "Why use this client",
           "path": "introduction/overview.md"
         },
         {
-          "title": "Installation",
+          "title": "Install",
           "path": "introduction/installation.md"
         },
         {
-          "title": "Quickstart",
+          "title": "First response",
           "path": "introduction/quickstart.md"
+        },
+        {
+          "title": "Choose a provider",
+          "path": "guides/providers.md"
+        },
+        {
+          "title": "Import paths",
+          "path": "guides/imports.md"
         }
       ]
     },
     {
-      "title": "Concepts",
+      "title": "Run and integrate",
       "pages": [
         {
-          "title": "Runtime client",
+          "title": "Requests and cancellation",
+          "path": "guides/requests.md"
+        },
+        {
+          "title": "Streaming",
+          "path": "guides/streaming.md"
+        },
+        {
+          "title": "Errors and troubleshooting",
+          "path": "guides/errors.md"
+        },
+        {
+          "title": "Batch processing",
+          "path": "guides/batching.md"
+        },
+        {
+          "title": "Provider files",
+          "path": "guides/files.md"
+        },
+        {
+          "title": "Gateway resources",
+          "path": "guides/gateway.md"
+        },
+        {
+          "title": "React",
+          "path": "guides/react.md"
+        }
+      ]
+    },
+    {
+      "title": "Understand the contracts",
+      "pages": [
+        {
+          "title": "Facade versus raw runtime",
           "path": "concepts/runtime-client.md"
+        },
+        {
+          "title": "Capabilities",
+          "path": "concepts/routing-and-capabilities.md"
         },
         {
           "title": "Providers and transports",
           "path": "concepts/providers-and-transports.md"
-        },
-        {
-          "title": "Routing and capabilities",
-          "path": "concepts/routing-and-capabilities.md"
         },
         {
           "title": "Compatibility",
@@ -41,38 +82,18 @@
       ]
     },
     {
-      "title": "Guides",
+      "title": "Advanced integration",
       "pages": [
-        {
-          "title": "Requests",
-          "path": "guides/requests.md"
-        },
-        {
-          "title": "Streaming",
-          "path": "guides/streaming.md"
-        },
-        {
-          "title": "Files",
-          "path": "guides/files.md"
-        },
-        {
-          "title": "Batching",
-          "path": "guides/batching.md"
-        },
         {
           "title": "Manifests",
           "path": "guides/manifests.md"
         },
         {
-          "title": "React",
-          "path": "guides/react.md"
-        },
-        {
-          "title": "Testing",
+          "title": "Testing adapters",
           "path": "guides/testing.md"
         },
         {
-          "title": "Postman",
+          "title": "Gateway Postman checks",
           "path": "guides/postman.md"
         }
       ]
@@ -117,56 +138,56 @@
           "path": "operations/providers/claude-managed-agents.md"
         },
         {
-          "title": "Gateway · Control plane",
+          "title": "OpenCode",
+          "path": "operations/providers/opencode.md"
+        },
+        {
+          "title": "Gateway \u00b7 Control plane",
           "path": "operations/gateway/control-plane.md"
         },
         {
-          "title": "Gateway · Media & wiki",
+          "title": "Gateway \u00b7 Media & wiki",
           "path": "operations/gateway/media-wiki.md"
         },
         {
-          "title": "Gateway · Sessions & agent config",
+          "title": "Gateway \u00b7 Sessions & agent config",
           "path": "operations/gateway/sessions.md"
         },
         {
-          "title": "Gateway · Teams, kanban & vault",
+          "title": "Gateway \u00b7 Teams, kanban & vault",
           "path": "operations/gateway/teams.md"
         },
         {
-          "title": "Gateway · WebSocket RPC methods",
+          "title": "Gateway \u00b7 WebSocket RPC methods",
           "path": "operations/gateway/rpc-methods.md"
         },
         {
-          "title": "CAVI · Project board",
+          "title": "CAVI \u00b7 Project board",
           "path": "operations/cavi/project-board.md"
         },
         {
-          "title": "CAVI · Discourse",
+          "title": "CAVI \u00b7 Discourse",
           "path": "operations/cavi/discourse.md"
         },
         {
-          "title": "CAVI · Operator control",
+          "title": "CAVI \u00b7 Operator control",
           "path": "operations/cavi/operator-control.md"
         },
         {
-          "title": "CAVI · Library",
+          "title": "CAVI \u00b7 Library",
           "path": "operations/cavi/library.md"
         },
         {
-          "title": "CAVI · Registry",
+          "title": "CAVI \u00b7 Registry",
           "path": "operations/cavi/registry.md"
         },
         {
-          "title": "CAVI · Portal",
+          "title": "CAVI \u00b7 Portal",
           "path": "operations/cavi/portal.md"
         },
         {
-          "title": "CAVI · Memory",
+          "title": "CAVI \u00b7 Memory",
           "path": "operations/cavi/memory.md"
-        },
-        {
-          "title": "Removal candidates",
-          "path": "operations/removal-candidates.md"
         }
       ]
     },
@@ -175,8 +196,8 @@
       "id": "type-reference",
       "pages": [
         {
-          "title": "Package root (.)",
-          "path": "reference/index.md"
+          "title": "Import and symbol index",
+          "path": "reference/exports.md"
         }
       ]
     },

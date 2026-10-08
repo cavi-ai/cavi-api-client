@@ -2,7 +2,7 @@
 
 `@cavi-ai/api-client` is one provider-agnostic TypeScript client package. Every
 provider implements a universal `RuntimeClient` contract; gateway-style providers
-extend it with `GatewayClient`. The public API stays unified even when a provider,
+extend it with `GatewayApiClient`. The public API stays unified even when a provider,
 product extension, or UI framework needs custom behavior behind the boundary.
 
 ## Layers
@@ -24,7 +24,7 @@ src/index.ts
   and the team manifest *interface* — its types, normalization, a
   `TeamRouteResolver`, and a `TeamManifestSource` seam (host-supplied data).
 - `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
-  providers (Hermes, OpenClaw) implement `GatewayClient`; runtime-only providers
+  providers (Hermes, OpenClaw) implement `GatewayApiClient`; runtime-only providers
   (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google, AGY / Antigravity,
   OpenCode) implement `RuntimeClient`. Gemini is retained as a legacy compatibility
   surface; AGY is the active successor direction for new compatible orchestration
@@ -35,7 +35,7 @@ src/index.ts
   fallback snapshots, and DTO shaping. It composes the generic core instead of
   changing the provider interface. The complete, compiler-checked ownership
   inventory and the four released provider forwarding exceptions are recorded
-  in [CAVI Extension Ownership](docs/extension-ownership.md).
+  in [CAVI Extension Ownership](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/extension-ownership.md).
   Its runtime-control registry enhancer clones an application registry and
   wraps configured OpenClaw and Hermes factories with the typed `cavi.control`
   extension; it does not mutate the base
@@ -52,7 +52,7 @@ src/index.ts
 The contract is tiered. **`RuntimeClient`** is the universal surface every
 provider implements — `getRuntimeCapabilities`, `startRun`, optional
 `getRun`/`cancelRun`, optional `streamRun`, and an optional batch surface
-(`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`). **`GatewayClient`** extends it for
+(`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`). **`GatewayApiClient`** extends it for
 gateway backends, adding teams, kanban, workspace, and operator surfaces. Each
 provider declares a capability profile; calling an unsupported surface returns a
 typed `EndpointNotFound` rather than crashing.

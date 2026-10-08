@@ -65,6 +65,9 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Validate documentation and packed examples
+        run: pnpm run docs:check
+
       - name: Lint markdown
         run: pnpm run lint:md
 
