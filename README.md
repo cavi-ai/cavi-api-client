@@ -48,7 +48,7 @@ an account-accessible model from server configuration. It creates a reusable
 service that returns text, run identity, and usage to its caller.
 
 ```ts
-import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { ApiClientError, createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 
 export function createAssistant(config: { apiKey: string; model: string }) {
@@ -64,11 +64,17 @@ export function createAssistant(config: { apiKey: string; model: string }) {
 
       const run = result.data;
       if (run.status !== "completed") {
-        throw new Error(`Run ${run.run_id} ended as ${run.status}`, { cause: run });
+        const code = run.status === "failed" ? "run_failed"
+          : run.status === "cancelled" ? "run_cancelled" : "run_incomplete";
+        throw new ApiClientError(`Run ${run.run_id} has no completed answer (status: ${run.status})`, {
+          type: "run", code, cause: run,
+        });
       }
       const text = run.output ?? run.response;
       if (text === undefined) {
-        throw new Error(`Run ${run.run_id} completed with no text`, { cause: run });
+        throw new ApiClientError(`Run ${run.run_id} completed with no text`, {
+          type: "run", code: "run_output_missing", cause: run,
+        });
       }
       return {
         ok: true as const,
@@ -86,6 +92,14 @@ When `result.ok` is true, use `result.data.text` in your HTTP response, saved
 record, or UI. When it is false, handle `result.gap.reason`; retain the gap for
 diagnostics. Authentication errors, unclassified failures, unsuccessful runs,
 and missing text reject, so use your server's exception boundary.
+
+The service's exceptions use `ApiClientError`: `run_failed`, `run_cancelled`,
+`run_incomplete`, or `run_output_missing`. Narrow with `isApiClientError` and
+branch on `code`; keep `cause` in protected diagnostics for run reconciliation.
+The new `ApiClientErrorCode.Run*` members and `ApiClientErrorType.Run` are
+unreleased; the example uses their string values to work on npm's pinned
+release. See [error handling](https://cavi-ai.xyz/docs/api-client/guides/errors)
+for guards and safe application responses.
 
 The factory above is example application code, not an exported package API.
 It uses Claude Messages' synchronous lifecycle. Background adapters need

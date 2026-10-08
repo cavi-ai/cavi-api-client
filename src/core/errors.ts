@@ -10,6 +10,8 @@ export enum ApiClientErrorType {
   Abort = "abort",
   BackendUnavailable = "backend_unavailable",
   Auth = "auth",
+  /** An execution outcome rejected by an application that requires completion. */
+  Run = "run",
 }
 
 export enum ApiClientErrorCode {
@@ -39,6 +41,14 @@ export enum ApiClientErrorCode {
   TransportUnavailable = "transport_unavailable",
   TransportProtocolError = "transport_protocol_error",
   ServerOverloaded = "server_overloaded",
+  /** The backend reported a failed run; distinct from a failed client call. */
+  RunFailed = "run_failed",
+  /** The backend reported cancellation; does not imply local request abort. */
+  RunCancelled = "run_cancelled",
+  /** Completion was required but not observed; upstream work may still be active. */
+  RunIncomplete = "run_incomplete",
+  /** A completed run has no output required by the application. */
+  RunOutputMissing = "run_output_missing",
 }
 
 export type RuntimeErrorMetadata = {

@@ -60,6 +60,28 @@ Partial text does not change a failed or incomplete run into a successful one.
 The versioned docs still describe the pinned published package. Check the
 [changelog](CHANGELOG.md#unreleased) before relying on this development change.
 
+## Unreleased run outcome errors
+
+`ApiClientErrorType.Run` and `ApiClientErrorCode.RunFailed`, `RunCancelled`,
+`RunIncomplete`, and `RunOutputMissing` are additive exports from the root and
+`core/errors`. Use them when an application requires completed output:
+
+```ts
+import { ApiClientError, ApiClientErrorCode, ApiClientErrorType } from "@cavi-ai/api-client";
+
+throw new ApiClientError("The run completed without required text", {
+  type: ApiClientErrorType.Run,
+  code: ApiClientErrorCode.RunOutputMissing,
+});
+```
+
+Preserve the run in `cause` for protected diagnostics when available.
+`RunIncomplete` does not assert backend failure or cancellation, and
+`RunCancelled` does not mean a local request was aborted. Providers continue
+returning lifecycle states; these codes do not automatically turn a run into
+a thrown exception. Versioned examples use the matching string values to stay
+compatible with the pinned release.
+
 ## Maintainer references
 
 - [Architecture](ARCHITECTURE.md): layers and ownership.

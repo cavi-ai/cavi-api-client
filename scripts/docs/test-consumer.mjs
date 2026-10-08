@@ -34,6 +34,7 @@ try {
   assert.equal(snippets.length, 1, "README must contain one complete quickstart");
   const fixture = `
 import assert from "node:assert/strict";
+import { isApiClientError, isAuthError, serializeError } from "@cavi-ai/api-client";
 process.env.ANTHROPIC_API_KEY = "fixture-key";
 process.env.ANTHROPIC_MODEL = "fixture-model";
 let calls = 0;
@@ -65,13 +66,31 @@ await assistant.answer("A second question");
 assert.equal(calls, 2, "the service remains usable until its owner disposes it");
 
 response = () => Response.json({ id: "no-text", content: [], stop_reason: "end_turn" });
-await assert.rejects(assistant.answer("No text"), /no text/);
+await assert.rejects(assistant.answer("No text"), (error) => {
+  assert.equal(isApiClientError(error), true);
+  assert.equal(error.code, "run_output_missing");
+  assert.equal(error.type, "run");
+  assert.equal(error.cause.run_id, "no-text");
+  assert.equal(serializeError(error).cause, undefined);
+  return true;
+});
+response = () => Response.json({ id: "empty-text", content: [{ type: "text", text: "" }], stop_reason: "end_turn" });
+// Claude normalizes an empty-only text response to absent output.
+await assert.rejects(assistant.answer("Empty provider text"), { code: "run_output_missing" });
+response = () => Response.json({ id: "active-run", content: [], stop_reason: null });
+await assert.rejects(assistant.answer("No terminal state"), (error) => {
+  assert.ok(isApiClientError(error));
+  assert.equal(error.code, "run_incomplete");
+  assert.equal(error.cause.run_id, "active-run");
+  assert.equal(error.cause.status, "running");
+  return true;
+});
 response = () => Response.json({ error: { message: "unavailable" } }, { status: 503 });
 const unavailable = await assistant.answer("Unavailable");
 assert.equal(unavailable.ok, false);
 assert.equal(unavailable.gap.reason, "backend-unavailable");
 response = () => Response.json({ error: { message: "bad credential" } }, { status: 401 });
-await assert.rejects(assistant.answer("Unauthorized"));
+await assert.rejects(assistant.answer("Unauthorized"), isAuthError);
 await assistant.dispose();
 `);
   command(process.execPath, ["quickstart.mjs"], consumer);
@@ -89,7 +108,7 @@ await assistant.dispose();
   }).outputText);
   writeFileSync(path.join(consumer, "journeys.mjs"), `
 import assert from "node:assert/strict";
-import { createApiClient, createCapabilityClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { ApiClientError, ApiClientErrorCode, createApiClient, createCapabilityClient, createRuntimeProviderRegistry, isApiClientError } from "@cavi-ai/api-client";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 import { runAndWait } from "./runtime-node.mjs";
 import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
@@ -165,6 +184,26 @@ const failedStream = createCapabilityClient({
 await assert.rejects(streamText(failedStream, { input: "fail" }, () => {}, AbortSignal.timeout(1_000)), /outcome failed/);
 await failedStream.dispose();
 
+for (const [event, code] of [["run.failed", ApiClientErrorCode.RunFailed], ["run.cancelled", ApiClientErrorCode.RunCancelled], [null, ApiClientErrorCode.RunIncomplete]]) {
+  const execution = createCapabilityClient({
+    providerKind: "fixture", fallbackSupports: { streaming: true },
+    runtime: { ...runtime,
+      getRuntimeCapabilities: async () => ({ providerKind: "fixture", supports: { streaming: true } }),
+      streamRun: async (_body, handlers) => {
+        handlers.onEvent({ event: "message.delta", runId: "unfinished", delta: "Partial" });
+        if (event) handlers.onEvent({ event, runId: "unfinished", error: "private run details" });
+      },
+    },
+  });
+  await assert.rejects(streamText(execution, { input: "No completed answer" }, () => {}, AbortSignal.timeout(1_000)), (error) => {
+    assert.ok(isApiClientError(error));
+    assert.equal(error.code, code);
+    assert.equal(error.cause.runId, "unfinished");
+    return true;
+  });
+  await execution.dispose();
+}
+
 let polls = 0;
 const batch = createCapabilityClient({ providerKind: "fixture", fallbackSupports: { batch: true }, runtime: {
   ...runtime,
@@ -221,6 +260,11 @@ const failure = await handle(request({ input: "Rejected" }));
 assert.equal(failure.status, 502);
 assert.ok(!(await failure.text()).includes("private diagnostics"));
 assert.equal(diagnostics[0], providerError);
+providerError = new ApiClientError("private credential details", { type: "auth", code: ApiClientErrorCode.AuthRequired });
+const authenticationFailure = await handle(request({ input: "Provider authentication" }));
+assert.equal(authenticationFailure.status, 503);
+assert.ok(!(await authenticationFailure.text()).includes("private credential details"));
+assert.equal(diagnostics[1], providerError);
 const unavailable = await createRunHandler(unsupported, "fixture-model", (error) => diagnostics.push(error))(request({ input: "Unsupported" }));
 assert.equal(unavailable.status, 503);
 assert.ok(!(await unavailable.text()).includes("expectedContract"));
