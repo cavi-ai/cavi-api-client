@@ -209,6 +209,11 @@ const APPROVED_ROOT_RUN_RESULT_ADDITIONS = [
   "requireCompletedStream",
   "requireStreamText",
 ] as const;
+const APPROVED_ROOT_RUN_WAIT_ADDITIONS = [
+  "waitForRun",
+  "RunWaitOptions",
+  "RunWaitResult",
+] as const;
 const BUILT_IN_ERROR_BASES = new Set([
   "Error",
   "RangeError",
@@ -1405,6 +1410,7 @@ describe("package hardening", () => {
       ...APPROVED_ROOT_TEAMS_ADDITIONS,
       ...APPROVED_ROOT_ERROR_ADDITIONS,
       ...APPROVED_ROOT_RUN_RESULT_ADDITIONS,
+      ...APPROVED_ROOT_RUN_WAIT_ADDITIONS,
     ]
       .filter((name) => !APPROVED_ROOT_REMOVALS.has(name))
       .sort();

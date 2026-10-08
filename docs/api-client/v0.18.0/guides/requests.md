@@ -65,6 +65,13 @@ cancel work as a side effect of reaching the poll limit.
 This is a poll-count budget, not a wall-clock deadline. Each request also needs
 a configured HTTP timeout. The helper borrows the client; its owner disposes it.
 
+Unreleased development builds add `waitForRun` with both time and poll budgets,
+caller cancellation during delays or pending retrievals, and an explicit stop
+reason with the last observed run. See the
+[development background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
+That API is not in the pinned release; use the compatible helper above with
+this page's documented version.
+
 ## Keep identity and state
 
 Persist server-side run IDs with their application owner so a later worker can

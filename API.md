@@ -100,6 +100,30 @@ retries, cancellation, or disposal. Existing client methods are unchanged.
 See [complete development examples](docs/guides/run-results.md) for service and
 streaming integration. These helpers are not in the pinned published release.
 
+## Unreleased bounded run wait
+
+`waitForRun(client, initialRun, options)` and its `RunWaitOptions` and
+`RunWaitResult` types are exported from the root and `contracts`. The client
+only needs the facade's `getRun` method; the helper never submits, cancels,
+or disposes. It polls started/running/stopping states sequentially and returns
+the last observed run and retrieval attempt count on every resolved exit.
+
+Options default to `maxPolls: 60`, `pollIntervalMs: 1_000`, and
+`maxWaitMs: 60_000`; an optional caller `signal` ends the local wait. Timer
+budgets are non-negative integers up to 2,147,483,647 ms; the poll budget is
+a non-negative safe integer. Terminal and unknown initial states return
+immediately. Active runs with a zero budget make no retrieval calls.
+
+`reason` distinguishes `terminal`, `state-not-pollable`, `poll-limit`, `timeout`,
+`aborted`, and `gap`. Gaps retain the original `ContractGap`; terminal includes
+failed and cancelled runs, so inspect the run or use the output helpers.
+Authentication and unclassified exceptions propagate unchanged.
+
+The deadline and signal bound local waits on pending retrievals, without
+aborting the request or cancelling backend work. Late results and rejections
+are safely ignored. Set transport timeouts separately. See
+[the development guide](docs/guides/run-results.md) for the complete example.
+
 ## Maintainer references
 
 - [Architecture](ARCHITECTURE.md): layers and ownership.

@@ -107,6 +107,11 @@ also support tool-oriented runs without requiring text. See the
 [development guide and complete examples](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
 These helpers are unreleased; the quickstart above remains compatible with npm.
 
+For background workflows, development builds also provide `waitForRun` with
+time and poll budgets, caller cancellation, and the last observed run retained.
+Stopping a local wait leaves backend work running. The development guide
+includes a complete background answer example.
+
 The factory above is example application code, not an exported package API.
 It uses Claude Messages' synchronous lifecycle. Background adapters need
 retrieval; they do not promise an answer when `startRun` returns.

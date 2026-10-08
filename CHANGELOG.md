@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `waitForRun`, `RunWaitOptions`, and `RunWaitResult` from the root and
+  `contracts`: bounded sequential retrieval of an existing run with a local
+  deadline, poll budget, and caller cancellation. Stopped waits retain the last
+  observed run; backend work and in-flight HTTP requests are not cancelled.
+
 - Opt-in `requireCompletedRun`, `requireRunText`, `requireCompletedStream`, and
   `requireStreamText` helpers from the root and `core/runtime`. They enforce
   observed completion and required text with typed run errors, retain original

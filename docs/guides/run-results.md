@@ -18,7 +18,7 @@ Import them from `@cavi-ai/api-client` or `@cavi-ai/api-client/core/runtime`.
 | `requireCompletedStream(stream)` | The original object, with `outcome` narrowed to `"completed"` | Observed stream completion; text is optional |
 | `requireStreamText(stream)` | Caller-collected `output` | Stream completion and supplied text |
 
-All helpers retain the original input object in an error's `cause`. Completion
+The completion/text helpers retain the original input in an error's `cause`. Completion
 helpers preserve extra fields and object identity. They do not poll, retry,
 cancel, dispose clients, or infer completion from partial text or stream EOF.
 Stream helpers accept the facade's `{ runId, outcome }` shape structurally;
@@ -116,6 +116,70 @@ errors as well as transport errors. On success, the collector returns only
 text, identity, and optional terminal token usage. Error diagnostics remain in
 the exception's cause. Partial deltas can already be visible when a run fails;
 mark that output as partial rather than treating it as a completed answer.
+
+## Bound a background wait and keep its last observation
+
+`waitForRun` is available from the root and `@cavi-ai/api-client/contracts`.
+It accepts a configured facade and an existing run. Start work once, persist
+its ID with its application owner, and pass the successful start result's
+`data`. To resume with only an ID, retrieve it first and handle that call's gap.
+
+The defaults are 60 retrieval attempts, a 1,000 ms delay before each attempt,
+and a 60,000 ms local time budget. Supply `signal` for caller cancellation.
+Each request remains sequential; the time budget includes a pending retrieval.
+Timer budgets are non-negative integer milliseconds up to 2,147,483,647, and
+`maxPolls` must be a non-negative safe integer. Zero budgets make no retrievals
+for active runs. Observed terminal or unpollable states return immediately.
+
+Download [background-answer.ts](../../examples/background-answer.ts). This
+function turns a completed run into an answer using `requireRunText`; failed
+or cancelled terminal runs reject with their typed execution errors. Other
+wait outcomes remain explicit so the application can resume or report them.
+
+```ts
+import { requireRunText, waitForRun, type CapabilityClient, type RuntimeRunStatus, type RunWaitOptions } from "@cavi-ai/api-client";
+
+export async function awaitBackgroundAnswer(
+  client: CapabilityClient,
+  run: RuntimeRunStatus,
+  options: RunWaitOptions,
+) {
+  const waited = await waitForRun(client, run, options);
+  if (waited.reason !== "terminal") return { kind: "wait-stopped" as const, ...waited };
+
+  return {
+    kind: "answer" as const,
+    runId: waited.run.run_id,
+    text: requireRunText(waited.run),
+    tokens: waited.run.tokens,
+  };
+}
+```
+
+For example, set `{ maxWaitMs: 30_000, maxPolls: 10, pollIntervalMs: 1_000,
+signal: request.signal }` at your application boundary. The helper borrows the
+client; its owner disposes it. It never submits another run or cancels work.
+
+| `RunWaitResult.reason` | Meaning | Application action |
+| --- | --- | --- |
+| `terminal` | Observed completed, failed, or cancelled state | Inspect `run.status`; use the output helper if text is required |
+| `state-not-pollable` | A state outside started/running/stopping and the three terminal states | Reconcile deliberately; unknown and `dry_run` states are not inferred success |
+| `poll-limit` | Retrieval attempt budget exhausted | Keep `run` and resume in a later worker if appropriate |
+| `timeout` | Local time budget elapsed | Keep `run`; upstream work may still be active |
+| `aborted` | Caller ended the local wait | Keep `run`; distinguish this from backend cancellation |
+| `gap` | Retrieval returned a facade gap | Inspect `gap.reason`, retain the last run, and avoid blind submission retries |
+
+Every result retains the original last-observed run and the number of retrieval
+attempts started. A timeout or abort also ends a local wait on an in-flight
+`getRun`; that request is not aborted because the current retrieval contract
+has no per-call signal. Its late result or rejection is safely ignored by the
+wait. Configure HTTP request timeouts separately to bound transport resources.
+Authentication and other rejected client calls still propagate unchanged.
+The helper removes its timers and caller signal listener on every exit.
+
+Keep stopped snapshots and gaps in application state or protected diagnostics;
+do not send raw provider payloads to the frontend. Authorize stored IDs before
+retrieval or explicit cancellation.
 
 ## Handle the three failure layers
 
