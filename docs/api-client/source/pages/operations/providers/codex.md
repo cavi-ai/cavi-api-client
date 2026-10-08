@@ -60,7 +60,7 @@ events. See [runtime · streamRun](../runtime.md#streamrun).
 
 ## submitBatch / getBatch / cancelBatch / getBatchResults
 
-**HTTP** `POST /v1/batches` · `GET /v1/batches/:id` ·
+**HTTP** `POST /v1/files` · `POST /v1/batches` · `GET /v1/batches/:id` ·
 `POST /v1/batches/:id/cancel` · `GET /v1/files/:id/content`
 **Capability** `supports.batch`
 

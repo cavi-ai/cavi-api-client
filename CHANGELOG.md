@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Documentation checks now validate runtime-provider HTTP verbs and full route
+  shapes, including wrapped HTTP lines. Gemini route labels show collection
+  segments explicitly, and Codex batch routes include the input-file upload.
+
 - Reorganized consumer documentation around provider setup, execution workflows,
   failure handling, and upgrades; retained exhaustive declarations behind a
   reference index.
