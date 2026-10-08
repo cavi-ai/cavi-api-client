@@ -6,7 +6,7 @@ import path from "node:path";
 export function verifyRunResultExamples({ root, consumer, command }) {
   const guide = readFileSync(path.join(root, "docs/guides/run-results.md"), "utf8");
   const snippets = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)];
-  const names = ["answer-service", "stream-answer"];
+  const names = ["answer-service", "stream-answer", "background-answer"];
   assert.equal(snippets.length, names.length);
   for (const [index, name] of names.entries()) {
     const example = readFileSync(path.join(root, `examples/${name}.ts`), "utf8");
@@ -32,6 +32,14 @@ const streamText: string = requireStreamText(completedStream);
 // Text helpers accept caller diagnostics without losing them from error causes.
 requireStreamText({ runId: null, outcome: "completed", output: "", diagnostic: new Error("detail") });
 requireRunText({ run_id: "extended", status: "completed", output: "", sessionKey: "session" });
+import { waitForRun, type RunWaitOptions, type RunWaitResult } from "@cavi-ai/api-client/contracts";
+const options: RunWaitOptions = { maxPolls: 2, pollIntervalMs: 0, maxWaitMs: 1_000, signal: new AbortController().signal };
+declare const reader: import("@cavi-ai/api-client").CapabilityClient;
+const pending: Promise<RunWaitResult> = waitForRun(reader, run, options);
+declare const waited: RunWaitResult;
+if (waited.reason === "gap") {
+  const originalGap: import("@cavi-ai/api-client").ContractGap = waited.gap;
+}
 `);
   writeFileSync(path.join(consumer, "tsconfig.run-results.json"), JSON.stringify({
     compilerOptions: {
@@ -47,6 +55,8 @@ import assert from "node:assert/strict";
 import { ApiClientError, ApiClientErrorCode, createCapabilityClient, isApiClientError } from "@cavi-ai/api-client";
 import { createAnswerService } from "./answer-service.js";
 import { streamAnswer } from "./stream-answer.js";
+import { awaitBackgroundAnswer } from "./background-answer.js";
+import { waitForRun } from "@cavi-ai/api-client/contracts";
 let state = "completed";
 let output = "An answer";
 let rejection;
@@ -68,6 +78,28 @@ const runtime = {
 };
 const client = createCapabilityClient({ providerKind: "fixture", runtime, fallbackSupports: { runs: true, streaming: true } });
 const service = createAnswerService(client, "fixture-model");
+let retrievals = 0;
+const backgroundClient = createCapabilityClient({ providerKind: "fixture", fallbackSupports: { runs: true }, runtime: {
+  ...runtime,
+  getRun: async (id) => {
+    assert.equal(id, "background-1");
+    retrievals += 1;
+    return { run_id: id, status: "completed", output: "Background answer" };
+  },
+} });
+const background = await awaitBackgroundAnswer(backgroundClient, { run_id: "background-1", status: "running" }, { maxPolls: 2, pollIntervalMs: 0, maxWaitMs: 1_000 });
+assert.equal(background.kind, "answer");
+assert.equal(background.text, "Background answer");
+assert.equal(retrievals, 1);
+assert.equal(starts, 0, "resuming an existing run must not submit another one");
+const stopped = await awaitBackgroundAnswer(backgroundClient, { run_id: "background-1", status: "running" }, { maxPolls: 0 });
+assert.equal(stopped.kind, "wait-stopped");
+assert.equal(stopped.reason, "poll-limit");
+assert.equal(stopped.run.run_id, "background-1");
+const locallyAborted = await waitForRun(backgroundClient, stopped.run, { signal: AbortSignal.abort() });
+assert.equal(locallyAborted.reason, "aborted");
+assert.equal(retrievals, 1);
+await backgroundClient.dispose();
 assert.deepEqual((await service.answer("Question")).data, { runId: "answer-1", text: "An answer", tokens: { inputTokens: 3, outputTokens: 4 } });
 assert.equal(lastInput, "Question");
 output = "";

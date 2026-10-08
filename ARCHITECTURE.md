@@ -347,6 +347,15 @@ or lifecycle operations and never alter raw provider or facade results.
 Development examples borrow caller-owned clients and use these helpers at the
 application boundary; release-pinned examples keep their compatible checks.
 
+`contracts/run-wait.ts` provides bounded waiting over the facade's retrieval
+contract. It owns sequential polling, local timers, and signal listeners; it
+returns the last observed state with an explicit stop reason and preserves
+retrieval gaps. It never submits, cancels, retries failed calls, or disposes.
+Local abort/deadline races safely observe a pending retrieval's eventual
+settlement without aborting the transport. Rejected client calls propagate
+unchanged. Keeping this helper in `contracts` avoids a core dependency on the
+application facade or its gap envelopes.
+
 ## Runtime Boundaries
 
 Filesystem integrations must receive an explicit `repoRoot` or resolve

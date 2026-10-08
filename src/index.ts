@@ -201,6 +201,7 @@ export {
   type StreamRunBody,
   type RunStreamOutcome,
 } from "./contracts/capability-client.js";
+export { waitForRun, type RunWaitOptions, type RunWaitResult } from "./contracts/run-wait.js";
 export {
   createApiClient,
   type CreateApiClientOptions,
