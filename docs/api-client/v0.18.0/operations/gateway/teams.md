@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Gateway teams, kanban & vault operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Vault and kanban compatibility routes are owned by `SURFACE_CONTRACTS`
 (`src/contracts/surfaces.ts`) and resolved with `resolvePath(key)`. Team routes
 are assembled by the team-manifest resolvers (`resolveTeamRoutePath`,

@@ -4,9 +4,7 @@ documentedVersion: {{documentedVersion}}
 
 # Hermes operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
-Gateway provider. `HermesApiClient` extends `GatewayApiClient`, which implements
+Gateway provider. the Hermes provider constructs `GatewayApiClient`, which implements
 the universal `RuntimeClient` over the gateway surface `hermes-api-server`
 (provider kind `hermes`). Runs are dispatched over gateway RPC rather than
 plain REST route literals, so no provider-owned `paths.ts` exists — the HTTP

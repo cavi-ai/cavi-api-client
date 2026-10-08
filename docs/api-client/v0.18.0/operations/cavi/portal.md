@@ -4,14 +4,12 @@ documentedVersion: 0.18.0
 
 # Portal operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The portal folder is the client for per-agent CAVI **portal** plugins: a
 dashboard aggregate, a generic `/api/plugins/portal/{portal}/…` dispatcher, a
 portal-memory snapshot read, and a text-to-speech surface. Portal TTS routes are
 **agent-specific and supplied by the caller** (resolved from the team manifest);
-the package binds no concrete agent's TTS routes. Two of the TTS helpers overlap
-with the core gateway media client and are flagged **Needs decision** below.
+the package binds no concrete agent's TTS routes. Use the core gateway media
+client for gateway-wide TTS and these helpers for caller-configured portal paths.
 
 Route owners: `resolvePortalApiPath`, `CAVI_CONTROL_API_ENDPOINTS.portalMemorySnapshot`
 in `extensions/cavi/contracts/paths.ts`;
@@ -38,9 +36,6 @@ Source: `extensions/cavi/portal/`.
 
 ### PortalApiClient.getPortalMemorySnapshot
 
-> Needs decision — value-add unclear. See
-> [Removal Candidates](../removal-candidates.md).
-
 **Signature** `client.getPortalMemorySnapshot<T>(teamSlug, memberId, memoryKey): Promise<T>`
 **HTTP** `GET` `CAVI_CONTROL_API_ENDPOINTS.portalMemorySnapshot(teamSlug, memberId, memoryKey)`
 **Capability** n/a
@@ -51,9 +46,6 @@ Source: `extensions/cavi/portal/`.
 
 ### requestPortalTtsProviders
 
-> Needs decision — value-add unclear. See
-> [Removal Candidates](../removal-candidates.md).
-
 **Signature** `requestPortalTtsProviders(requestJson: PortalTtsJsonRequester, providersPath: string): Promise<unknown>`
 **HTTP** `GET` `<caller-supplied providersPath>`
 **Capability** n/a
@@ -61,9 +53,6 @@ Source: `extensions/cavi/portal/`.
 **CAVI value-add** unclear — verify. This is an identity pass-through (`requestJson(providersPath)`) against a manifest-supplied per-agent path. Core gateway media already lists providers/voices; the open question is whether per-agent portal TTS is a genuine divergence or should unify onto the media client.
 
 ### requestPortalTtsAudio
-
-> Needs decision — value-add unclear. See
-> [Removal Candidates](../removal-candidates.md).
 
 **Signature** `requestPortalTtsAudio(transport: PortalTtsAudioTransport, ttsPath: string, body: PortalTtsAudioRequest): Promise<Blob>`
 **HTTP** `POST` `<caller-supplied ttsPath>` (returns audio Blob)

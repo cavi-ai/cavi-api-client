@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Gateway WebSocket RPC methods
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 These methods dispatch over the gateway JSON-RPC WebSocket transport
 (`{{gatewayWsUrl}}/api/ws`), not over REST — so every operation's `**HTTP**`
 line is the RPC method name, not a path. `OpenClawWebSocketClient` keeps the

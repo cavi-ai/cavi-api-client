@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { buildDocumentationInTemporaryRoot } from "./build.mjs";
 import { resolveStableTarball } from "./fetch-stable.mjs";
 import { DOCUMENTED_SOURCE_DATE_EPOCH, resolveDocumentationRelease } from "./types.mjs";
+import { validateMarkdownLinks } from "./links.mjs";
 
 function parseArguments(argv) {
   const allowedOptions = new Set(["package", "out", "output-root", "source-date-epoch", "root", "version", "tag", "repository", "commit", "npm-integrity", "tarball-sha256"]);
@@ -38,21 +39,6 @@ async function filePaths(directory, prefix = "") {
     return entry.isFile() ? [relative] : [];
   }));
   return nested.flat().sort();
-}
-
-async function validateRelativeMarkdownLinks(directory, files) {
-  const fileSet = new Set(files);
-  for (const relativePath of files.filter((file) => file.endsWith(".md"))) {
-    const contents = await readFile(path.join(directory, relativePath), "utf8");
-    for (const match of contents.matchAll(/\[[^\]]*\]\(([^)]+)\)/gu)) {
-      const target = match[1].split("#", 1)[0].split("?", 1)[0];
-      if (!target || /^(?:[a-z]+:|\/)/iu.test(target)) continue;
-      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(relativePath), target));
-      if (resolved.startsWith("../") || !fileSet.has(resolved)) {
-        throw new Error(`invalid relative Markdown link: ${relativePath} -> ${target}`);
-      }
-    }
-  }
 }
 
 async function validateContentIntegrity(directory, files) {
@@ -98,7 +84,13 @@ export async function checkDocumentation(argv = process.argv.slice(2)) {
       ]);
       if (!actual.equals(expected)) throw new Error(`generated documentation drift: ${relativePath}`);
     }
-    await validateRelativeMarkdownLinks(committed, committedFiles);
+    await validateMarkdownLinks(committed, committedFiles, { requireListedTargets: true });
+    const repository = path.resolve(options.root);
+    const guideNames = await readdir(path.join(repository, "docs/guides"));
+    await validateMarkdownLinks(repository, [
+      "README.md", "API.md", "ARCHITECTURE.md", "MIGRATION.md",
+      ...guideNames.filter((name) => name.endsWith(".md")).map((name) => `docs/guides/${name}`),
+    ], { allowDirectories: true });
     await validateContentIntegrity(committed, committedFiles);
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });

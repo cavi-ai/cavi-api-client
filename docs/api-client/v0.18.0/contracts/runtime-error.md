@@ -1,13 +1,5 @@
 # Runtime error
 
-Package: @cavi-ai/api-client
-Verified by: declaration + fixture + conformance test
-Contract: runtime-error
-Version: 0.18.0
-Stability: stable
-Source of truth: upstream-compatible-mirror
-Capability: supported
-
 Typed client errors exposed by this compatible client mirror.
 
 ## Purpose and lifecycle
@@ -73,6 +65,16 @@ Provider error payloads are not canonicalized beyond the packed client type.
 ## Public symbols
 
 - `./core/errors:ApiClientError`
+
+## Package and verification metadata
+
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
+Contract: runtime-error
+Version: 0.18.0
+Stability: stable
+Source of truth: upstream-compatible-mirror
+Capability: supported
 
 ## Verification evidence
 

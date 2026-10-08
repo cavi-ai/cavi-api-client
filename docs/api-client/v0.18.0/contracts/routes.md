@@ -1,13 +1,5 @@
 # Runtime routes
 
-Package: @cavi-ai/api-client
-Verified by: declaration + fixture + conformance test
-Contract: routes
-Version: 0.18.0
-Stability: stable
-Source of truth: upstream-compatible-mirror
-Capability: supported
-
 Route keys mirrored for compatible gateway integrations.
 
 ## Purpose and lifecycle
@@ -67,6 +59,16 @@ Actual endpoint behavior remains owned by the compatible gateway.
 ## Public symbols
 
 - `./contracts:TeamRouteKey`
+
+## Package and verification metadata
+
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
+Contract: routes
+Version: 0.18.0
+Stability: stable
+Source of truth: upstream-compatible-mirror
+Capability: supported
 
 ## Verification evidence
 

@@ -66,14 +66,6 @@ function renderContractPage(contract, packageName) {
   return [
     `# ${contract.title}`,
     "",
-    `Package: ${packageName}`,
-    "Verified by: declaration + fixture + conformance test",
-    `Contract: ${contract.id}`,
-    `Version: ${contract.version}`,
-    `Stability: ${contract.stability}`,
-    `Source of truth: ${contract.sourceOfTruth}`,
-    `Capability: ${contract.capability}`,
-    "",
     contract.summary,
     "",
     "## Purpose and lifecycle", "", contract.purpose, "", contract.lifecycle,
@@ -89,6 +81,16 @@ function renderContractPage(contract, packageName) {
     "",
     symbols,
     "",
+    "## Package and verification metadata",
+    "",
+    `Package: ${packageName}`,
+    "Verified by: declaration + fixture + conformance test",
+    `Contract: ${contract.id}`,
+    `Version: ${contract.version}`,
+    `Stability: ${contract.stability}`,
+    `Source of truth: ${contract.sourceOfTruth}`,
+    `Capability: ${contract.capability}`,
+    "",
     "## Verification evidence",
     "",
     evidence,
@@ -97,7 +99,7 @@ function renderContractPage(contract, packageName) {
 }
 
 /**
- * @param {{manifest: ReleaseManifest, contracts: import("./contracts.mjs").ContractRecord[], navigation: unknown, curatedRoot: string, sourceDateEpoch: number|string, release?: {packageName:string}}} input
+ * @param {{manifest: ReleaseManifest, contracts: import("./contracts.mjs").ContractRecord[], navigation: unknown, curatedRoot: string, sourceDateEpoch: number|string, release?: {packageName:string}, changelog?: string}} input
  * @returns {Map<string, string>}
  */
 export function renderDocumentation(input) {
@@ -129,22 +131,16 @@ export function renderDocumentation(input) {
             kind: "asset",
             target: releaseExport.target,
           });
-    // Expand the Type reference section so hosts get a full page list, not an empty shell.
-    if (Array.isArray(navigation.sections)) {
-      for (const section of navigation.sections) {
-        if (!section || typeof section !== "object") continue;
-        const isTypeReference =
-          section.id === "type-reference" ||
-          (typeof section.title === "string" && /^type reference$/iu.test(section.title));
-        if (!isTypeReference) continue;
-        section.pages = navigation.reference
-          .filter((entry) => entry.kind === "declaration" && typeof entry.path === "string")
-          .map((entry) => ({
-            title: entry.subpath === "." ? "Package root (.)" : entry.subpath,
-            path: entry.path,
-          }));
-      }
-    }
+    // Keep the authored learning path; exhaustive export coverage lives in the hub.
+    const declarations = navigation.reference.filter((entry) => entry.kind === "declaration");
+    output.set("reference/exports.md", [
+      "# Import and symbol index", "",
+      "Choose an entry below for its complete declaration reference. For setup and",
+      "examples, start with [provider setup](../guides/providers.md) or",
+      "[import guidance](../guides/imports.md).", "",
+      ...declarations.map((entry) => `- [${entry.subpath === "." ? "Package root" : entry.subpath}](${entry.path.slice("reference/".length)})`),
+      "",
+    ].join("\n"));
   }
   output.set("navigation.json", `${JSON.stringify(navigation, null, 2)}\n`);
 
@@ -163,14 +159,20 @@ export function renderDocumentation(input) {
   for (const pagePath of navigationPaths(input.navigation)) {
     normalizedRelativePath(pagePath, "navigation path");
     if (!pagePath.startsWith("reference/") && !pagePath.startsWith("contracts/")) {
-      output.set(
-        pagePath,
-        resolveDocumentedVersionToken(
+      let page = resolveDocumentedVersionToken(
           readContainedFile(path.join(input.curatedRoot, "pages"), pagePath, "curated page path"),
           input.manifest.version,
           `curated page ${pagePath}`,
-        ),
       );
+      if (pagePath === "release/changelog.md") {
+        const lines = (input.changelog ?? "").split(/\r?\n/u);
+        const heading = `## [${input.manifest.version}]`;
+        const start = lines.findIndex((line) => line === heading || line.startsWith(`${heading} `));
+        if (start < 0) throw new Error(`missing changelog entry for ${input.manifest.version}`);
+        const next = lines.findIndex((line, index) => index > start && /^## \[/u.test(line));
+        page += `\n${lines.slice(start, next < 0 ? undefined : next).join("\n").trim()}\n`;
+      }
+      output.set(pagePath, page);
     }
   }
 

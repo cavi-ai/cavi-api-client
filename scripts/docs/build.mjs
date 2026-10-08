@@ -104,6 +104,7 @@ async function buildDocumentationAt({ options, root, outputDirectory, allowedRoo
     contracts,
     navigation,
     curatedRoot: path.join(root, "docs/api-client/source"),
+    changelog: await readFile(path.join(root, "CHANGELOG.md"), "utf8"),
     sourceDateEpoch: options["source-date-epoch"],
     release,
   });

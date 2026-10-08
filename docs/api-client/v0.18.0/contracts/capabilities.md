@@ -1,13 +1,5 @@
 # Runtime capabilities
 
-Package: @cavi-ai/api-client
-Verified by: declaration + fixture + conformance test
-Contract: capabilities
-Version: 0.18.0
-Stability: stable
-Source of truth: upstream-compatible-mirror
-Capability: supported
-
 Capability declarations mirrored for compatible runtime clients.
 
 ## Purpose and lifecycle
@@ -76,6 +68,16 @@ Capabilities are observations of an upstream implementation, not protocol owners
 ## Public symbols
 
 - `./core/runtime:RuntimeCapabilities`
+
+## Package and verification metadata
+
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
+Contract: capabilities
+Version: 0.18.0
+Stability: stable
+Source of truth: upstream-compatible-mirror
+Capability: supported
 
 ## Verification evidence
 

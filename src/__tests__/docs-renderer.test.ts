@@ -35,6 +35,7 @@ let contracts: Awaited<ReturnType<typeof loadContracts>>;
 let navigation: unknown;
 
 let curatedPaths: string[];
+let changelog: string;
 
 async function markdownPaths(directory: string, prefix = ""): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -63,6 +64,7 @@ beforeAll(async () => {
     await readFile("docs/api-client/source/navigation.json", "utf8"),
   );
   curatedPaths = await markdownPaths("docs/api-client/source/pages");
+  changelog = await readFile("CHANGELOG.md", "utf8");
 });
 
 afterEach(async () => {
@@ -78,10 +80,35 @@ function render() {
     navigation,
     curatedRoot: path.join(root, "docs/api-client/source"),
     sourceDateEpoch: 1_700_000_000,
+    changelog,
   });
 }
 
 describe("renderDocumentation", () => {
+  it("keeps exhaustive declarations behind a reference hub", () => {
+    const output = render();
+    const nav = JSON.parse(output.get("navigation.json")!);
+    const section = nav.sections.find((item: { id?: string }) => item.id === "type-reference");
+    expect(section.pages.map((page: { path: string }) => page.path)).toEqual(["reference/exports.md"]);
+    const hub = output.get("reference/exports.md");
+    expect(hub).toBeDefined();
+    for (const entry of nav.reference.filter((item: { kind: string }) => item.kind === "declaration")) {
+      expect(hub).toContain(`(${entry.path.replace("reference/", "")})`);
+      expect(output.has(entry.path)).toBe(true);
+    }
+  });
+  it("renders only the selected release notes from the canonical changelog", () => {
+    const output = renderDocumentation({
+      manifest, contracts, navigation,
+      curatedRoot: path.join(root, "docs/api-client/source"),
+      sourceDateEpoch: 1_700_000_000,
+      changelog: `# Changelog\n\n## [Unreleased]\n\nfuture notes\n\n## [${manifest.version}] - 2026-10-02\n\nselected release notes\n\n## [0.1.0] - 2026-01-01\n\nolder notes\n`,
+    });
+    const page = output.get("release/changelog.md");
+    expect(page).toContain("selected release notes");
+    expect(page).not.toContain("future notes");
+    expect(page).not.toContain("older notes");
+  });
   it("renders byte-identical portable output from the same stable inputs", () => {
     expect([...render()]).toEqual([...render()]);
     expect([...render().keys()]).toEqual(
@@ -228,10 +255,9 @@ describe("renderDocumentation", () => {
     );
 
     for (const pagePath of curatedPaths) {
-      const page = output.get(pagePath)!;
-      expect(page, pagePath).toMatch(stamp);
-      expect(page, pagePath).toContain(notice);
+      expect(output.get(pagePath), pagePath).toMatch(stamp);
     }
+    expect(output.get("introduction/overview.md")).toContain(notice);
   });
 
   it("renders validated contract metadata and source-derived generation time", () => {
@@ -239,7 +265,8 @@ describe("renderDocumentation", () => {
     const metadata = JSON.parse(render().get("manifest.json")!);
 
     expect(request).toContain("Source of truth: upstream-compatible-mirror");
-    expect(request).toMatch(/^# Runtime request\n\nPackage: @cavi-ai\/api-client\nVerified by: declaration \+ fixture \+ conformance test\n/u);
+    expect(request).toMatch(/^# Runtime request\n\n/u);
+    expect(request).toContain("Package: @cavi-ai/api-client\nVerified by: declaration + fixture + conformance test");
     expect(request).toContain("Capability: supported");
     expect(request).toContain("RuntimeRunStartBody");
     expect(metadata).toMatchObject({
@@ -260,6 +287,7 @@ describe("renderDocumentation", () => {
       const page = output.get(`contracts/${contract.id}.md`)!;
       expect(page, contract.id).toContain("Package: @cavi-ai/api-client");
       expect(page, contract.id).toContain("Verified by: declaration + fixture + conformance test");
+      expect(page.indexOf(contract.summary), contract.id).toBeLessThan(page.indexOf("Package:"));
     }
   });
 

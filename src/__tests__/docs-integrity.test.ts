@@ -30,7 +30,7 @@ const changelog = read("CHANGELOG.md");
 const readme = read("README.md");
 const api = read("API.md");
 const architecture = read("ARCHITECTURE.md");
-const exportsGuide = read("docs/guides/exports.md");
+const exportsGuide = read("docs/api-client/source/pages/guides/imports.md");
 const developmentGuide = read("docs/guides/development.md");
 // Control-plane facade + OpenClaw adapter docs migrated from API.md into the
 // operation reference pipeline (API.md is now an index/pointer).

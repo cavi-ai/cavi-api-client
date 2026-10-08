@@ -50,10 +50,10 @@ contentIntegrity: manifest.contentSha256
 Run the package helper (from a checkout with the unpacked tree or archive):
 
 ```bash
-pnpm run docs:host-ingest-check -- --dir path/to/unpacked-docs
+pnpm run docs:host-ingest-check --dir path/to/unpacked-docs
 # or
 DOCS_VERSION="$(node -p 'require("./package.json").version')"
-pnpm run docs:host-ingest-check -- --archive "cavi-api-client-docs-v${DOCS_VERSION}.tar.gz"
+pnpm run docs:host-ingest-check --archive "cavi-api-client-docs-v${DOCS_VERSION}.tar.gz"
 ```
 
 ## Navigation contract
@@ -64,7 +64,7 @@ pnpm run docs:host-ingest-check -- --archive "cavi-api-client-docs-v${DOCS_VERSI
 | --- | --- |
 | `sections[].title` | Top-level nav groups (Introduction, Concepts, Guides, Operations, Type reference, …) |
 | `sections[].pages[]` | `{ title, path }` entries; paths are relative to `publicBasePath` |
-| `reference[]` | Full declaration export index (subpath → `reference/*.md`); mirrors Type reference pages |
+| `reference[]` | Full declaration export index (subpath → `reference/*.md`); linked from the Type reference hub |
 
 Hosts must skip empty sections and must not invent pages absent from the artifact.
 

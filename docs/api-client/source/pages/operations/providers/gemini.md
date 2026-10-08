@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Gemini (Google) operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Runtime-only provider over the Gemini Developer API
 (`generativelanguage.googleapis.com`). Auth: `x-goog-api-key`. The model is
 part of the URL path, not the body, and an explicit model is **required** — no

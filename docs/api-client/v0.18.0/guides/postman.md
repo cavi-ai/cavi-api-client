@@ -7,8 +7,6 @@ documentedVersion: 0.18.0
 Use the generated Postman collection to prove that every **gateway / CAVI surface
 contract** this package declares exists on a live backend.
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 ## Files
 
 In the package repository (and convenience copies under `docs/postman/`):

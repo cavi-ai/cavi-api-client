@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Registry operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The registry folder is CAVI's **team registry** — it turns a runtime-supplied
 `TeamManifest` (or explicit team config) into lookup, resolution, and
 portal/library/session helpers. Everything here is client-side (`n/a`

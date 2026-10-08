@@ -21,7 +21,7 @@ subpath exports.
 | React bindings | `@cavi-ai/api-client/frameworks/react` |
 | Conformance helpers | `@cavi-ai/api-client/testing` |
 
-See [Exports and import paths](docs/guides/exports.md) for the complete catalog
+See [Exports and import paths](https://cavi-ai.xyz/docs/api-client) for the complete catalog
 and recommended narrow provider entries.
 
 ## Replace the removed Hermes mirror classes (0.13.0)
@@ -43,7 +43,7 @@ Runtime behavior — including the `hermes-*` surface tags — is unchanged. Mos
 callers should not construct these at all: `HERMES_PROVIDER_MODULE` and
 `createApiClient` already supply the configuration.
 
-## Import team registries from the CAVI extension (Unreleased)
+## Import team registries from the CAVI extension (0.18.0)
 
 The deprecated team-registry forwarding exports are removed from the provider
 subpaths. Import them from the CAVI extension instead; behavior is unchanged.
@@ -91,9 +91,9 @@ extension and should not be treated as a universal runtime capability.
 Provider-specific request mapping and credentials are documented outside this
 guide:
 
-- [Providers and setup](docs/guides/providers.md)
-- [Claude integrations](docs/guides/claude.md)
-- [Operation reference](API.md)
+- [Provider setup](https://cavi-ai.xyz/docs/api-client)
+- [Claude integrations](https://cavi-ai.xyz/docs/api-client)
+- [Operation reference](https://cavi-ai.xyz/docs/api-client)
 
 The package mirrors upstream-compatible behavior; it does not redefine an
 upstream runtime's canonical wire contract.

@@ -1,12 +1,11 @@
-import { createRuntimeClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini/runtime";
+import { createApiClient } from "@cavi-ai/api-client";
 
-export function createBrowserRuntime(apiKey: string) {
-  const registry = createRuntimeProviderRegistry({
-    modules: [createGeminiProviderModule({ apiKey })],
-  });
-  return createRuntimeClient("google", {
-    registry,
-    clientOptions: { baseUrl: "https://generativelanguage.googleapis.com", fetchImpl: fetch },
+export function createBrowserGateway(baseUrl: string, token: string) {
+  // Supply a user-scoped gateway token; keep provider API keys on your server.
+  return createApiClient("openclaw", {
+    baseUrl,
+    token,
+    clientMode: "webchat",
+    requestedScopes: ["operator.read"],
   });
 }

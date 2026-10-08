@@ -1,271 +1,117 @@
 <h1 align="center">
-  <img src="docs/brand/logo-wordmark.png" alt="cavi-ai/api-client" width="440">
+  <img src="docs/brand/logo-wordmark.png" alt="@cavi-ai/api-client" width="440">
 </h1>
 
-<p align="center">
-  <strong>One TypeScript client for every agent runtime. 🛰️</strong><br>
-  Build against <code>RuntimeClient</code>, discover capabilities at runtime, and
-  keep provider and transport details at the application boundary.
-  <strong>Swap providers, not your code.</strong>
-</p>
-
-<p align="center">
-  <strong><a href="https://cavi-ai.xyz/docs/api-client">Read the online documentation</a></strong>
-</p>
+<p align="center"><strong>Build your agent workflow once. Connect the runtime it needs.</strong></p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml/badge.svg)](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml)
-![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![Types](https://img.shields.io/badge/types-included-blue)
-![ESM](https://img.shields.io/badge/module-ESM-blueviolet)
 
-<p align="center">
-  <img src="docs/assets/api-client-hero.svg" alt="@cavi-ai/api-client provider-agnostic architecture diagram" width="100%">
-</p>
+Agent runtimes disagree about how to start work, stream output, cancel runs, and
+report failures. `@cavi-ai/api-client` gives your TypeScript application a common
+client for those workflows, with provider adapters handling the wire details.
 
-`@cavi-ai/api-client` is a provider-agnostic TypeScript package for agent
-runtimes. Every implementation exposes the same core run contract. Optional
-features such as streaming, cancellation, batch processing, gateway resources,
-and runtime control are discovered through capabilities instead of assumptions.
+Use it when you are building an agent UI, connecting several runtimes, or
+letting users choose their backend. Your application can consume the same run
+and event shapes while discovering which features its configured runtime
+actually provides.
 
-This package mirrors provider and gateway APIs for its consumers. Upstream
-runtimes remain the owners of their wire protocols.
+- **Run and stream:** normalized execution across Claude, Codex, AGY, OpenCode,
+  Hermes, and OpenClaw; Gemini remains available for legacy compatibility.
+- **Handle missing features:** the capability facade returns a structured gap
+  for unsupported or unavailable operations instead of fabricated results.
+- **Connect gateways:** access sessions, models, tasks, workspace, and other
+  resources when the backend provides them.
+- **Keep dependencies small:** ESM, TypeScript declarations, no runtime
+  dependencies, and optional React bindings.
 
-## Install
+Provider credentials, models, tools, and lifecycle differences still matter.
+This is a client library; it does not host runtimes or make every provider
+support every operation.
+
+## Get your first result
+
+Use Node.js 20 or later. Keep API keys on your server.
 
 ```sh
 npm install @cavi-ai/api-client
 ```
 
-The package is ESM, includes TypeScript declarations, has no runtime
-dependencies, and supports Node.js 20 or a compatible runtime with the required
-web APIs. React bindings are an optional peer dependency.
-
-## Use the universal contract
-
-Application logic can depend only on `RuntimeClient`. Provider selection,
-credentials, base URLs, and concrete transports stay in composition code.
+Save this as `run.mjs`. Set `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` to an
+API key and a model your account can use, then run `node run.mjs`.
 
 ```ts
-import {
-  runtimeSupports,
-  type RuntimeClient,
-  type RuntimeRunStartBody,
-} from "@cavi-ai/api-client";
+import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 
-export async function runTask(
-  client: RuntimeClient,
-  request: RuntimeRunStartBody,
-) {
-  const capabilities = await client.getRuntimeCapabilities();
+const apiKey = process.env.ANTHROPIC_API_KEY;
+const model = process.env.ANTHROPIC_MODEL;
+if (!apiKey || !model) {
+  throw new Error("Set ANTHROPIC_API_KEY and ANTHROPIC_MODEL.");
+}
 
-  if (runtimeSupports(capabilities, "streaming") && client.streamRun) {
-    return client.streamRun(request, {
-      onEvent: (event) => console.log(event),
-    });
+const registry = createRuntimeProviderRegistry({
+  modules: [createClaudeProviderModule({ apiKey })],
+});
+const client = createApiClient("claude", { registry, defaultTimeoutMs: 30_000 });
+
+try {
+  const result = await client.startRun({
+    model,
+    input: "Explain capability checks in one sentence.",
+  });
+  if (!result.ok) {
+    console.error(result.gap.reason, result.gap.note);
+    process.exitCode = 1;
+  } else if (result.data.status === "completed") {
+    console.log(result.data.output ?? result.data.response);
+  } else {
+    console.error(result.data.status, result.data.error);
+    process.exitCode = 1;
   }
-
-  return client.startRun(request);
+} catch (error) {
+  // Authentication and unclassified errors still reject.
+  console.error(error);
+  process.exitCode = 1;
+} finally {
+  await client.dispose();
 }
 ```
 
-Choose and configure a concrete implementation outside this function. See
-[Providers and setup](docs/guides/providers.md) for the available adapters and
-their configuration requirements.
+A successful run prints the generated sentence. Claude Messages returns a
+terminal result from `startRun`; providers such as Codex can return an active
+run that you retrieve later. The [consumer documentation](https://cavi-ai.xyz/docs/api-client)
+covers both lifecycles, streaming, cancellation, and provider setup.
 
-## Use the capability client
+## Pick the interface your application needs
 
-`createApiClient(provider, options)` is the single front door. It returns a
-`CapabilityClient` on which **every** capability accessor exists for **every**
-provider — no accessor is ever missing, so there is nothing to feature-detect
-before calling.
+Prefer `createApiClient` for application integrations. Its `CapabilityClient`
+always exposes the same accessors. Check `result.ok`; an unsuccessful call has
+`data: null` and a `gap` explaining the failure. Authentication errors and
+unclassified errors still throw, so keep an exception boundary.
 
-The facade is non-throwing. Each call resolves a `CapabilityResult`: either
-`{ ok: true, data, source: "live" }`, or `{ ok: false, data: null, gap }` with a
-structured `ContractGap` explaining why nothing happened — unsupported by the
-provider, supported but unwired, or the backend call failed. Only authentication
-errors (401/403) and unknown-classified errors still throw.
+Use `RuntimeClient` and `createRuntimeClient` when you need the lower-level
+execution contract or are implementing an adapter. Raw methods return run
+statuses directly, can throw, and optional operations require both a capability
+check and a method-presence check. These are separate return contracts.
 
-```ts
-import { createApiClient } from "@cavi-ai/api-client";
+For streams, a successful call does not imply a successful run:
+`result.data.outcome` can be `"failed"`. Handle both layers.
 
-const client = createApiClient("hermes", {
-  baseUrl: process.env.GATEWAY_URL,
-  token: process.env.GATEWAY_TOKEN,
-});
+## Learn and integrate
 
-const sessions = await client.sessions.listSessions();
-if (sessions.ok) {
-  for (const session of sessions.data.data) console.log(session.id);
-} else {
-  console.warn(sessions.gap.reason, sessions.gap.note);
-}
+- [Documentation](https://cavi-ai.xyz/docs/api-client): installation, provider
+  setup, complete workflows, troubleshooting, and API reference.
+- [Migration](MIGRATION.md): upgrade imports and client construction.
+- [Changelog](CHANGELOG.md): changes by release.
+- [Architecture](ARCHITECTURE.md): package boundaries and adapter ownership.
+- [Contributing](CONTRIBUTING.md): development and verification.
+- [Security](SECURITY.md): credential handling and vulnerability reporting.
 
-await client.dispose();
-```
-
-Runtime-only HTTP clients can accept provider-neutral request policy through the
-same front door:
-
-AGY (Antigravity) is the active successor direction for new compatible
-orchestration integrations. The Gemini example below remains available as a
-legacy compatibility surface for existing consumers.
-
-```ts
-import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini";
-
-const registry = createRuntimeProviderRegistry({
-  modules: [createGeminiProviderModule({ apiKey: process.env.GEMINI_API_KEY ?? "" })],
-});
-const client = createApiClient("gemini", {
-  registry,
-  defaultTimeoutMs: 20_000,
-  cache: "no-store",
-  credentials: "same-origin",
-  onTrace: (trace) => console.debug(trace),
-});
-```
-
-OpenCode is an additional opt-in harness available from its provider subpath.
-It requires an absolute `http(s)` server URL and an absolute scoped directory;
-the optional workspace narrows that scope. Basic authentication is optional;
-when a password is supplied, the username defaults to `opencode`.
-
-```ts
-import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import {
-  createOpenCodeProviderModule,
-} from "@cavi-ai/api-client/providers/opencode";
-
-const registry = createRuntimeProviderRegistry({
-  modules: [createOpenCodeProviderModule({
-    baseUrl: "http://127.0.0.1:4096",
-    scope: {
-      directory: "/absolute/path/to/project",
-      workspace: "/absolute/path/to/workspace",
-    },
-    username: process.env.OPENCODE_USERNAME,
-    password: process.env.OPENCODE_PASSWORD,
-  })],
-});
-
-const client = createApiClient("opencode", {
-  registry,
-  defaultTimeoutMs: 20_000,
-  cache: "no-store",
-});
-```
-
-The OpenCode client targets server `1.18.27` and the verified
-`legacy-http-sse` endpoint family. It advertises runs and streaming only (no
-batch or gateway resources). See the [OpenCode integration guide](docs/guides/opencode.md)
-for lifecycle, streaming, cancellation, and compatibility details.
-
-These settings apply to runtime HTTP clients. Provider credentials and required
-headers remain provider-owned; retries and control-plane connections are
-configured separately.
-
-`streamRun` is unified across providers. Runtime-only providers (Claude, Codex,
-AGY, legacy-compatible Gemini, and OpenCode) stream through their own
-`RuntimeClient`; gateway providers are bridged
-over their event transport — Hermes over SSE run events, OpenClaw over
-control-plane WebSocket frames. It resolves a `CapabilityResult<RunStreamOutcome>`
-whose `ok` reflects the streaming *call*, while the payload carries the run's own
-terminal state, so a run that ends as a `run.failed` event is still `ok: true`.
-Aborting via `options.signal` resolves `ok: false` with a `request-aborted` gap
-and issues a best-effort `cancelRun` so no gateway run is orphaned.
-
-Call `getCapabilityMap()` to inspect the merged (runtime over static) profile
-ahead of time, or simply call and branch on `result.ok`.
-
-## What the package provides
-
-- A single `createApiClient` front door returning a non-throwing
-  `CapabilityClient` whose every accessor exists on every provider.
-- A universal `RuntimeClient` contract for capabilities, runs, streaming, and
-  optional batch operations.
-- A `GatewayApiClient` tier for gateway-owned resources such as teams, kanban,
-  workspace, media, wiki, and operator surfaces (also reachable via
-  `createApiClient` as a `CapabilityClient`).
-- Provider registries and factories for runtime selection without branching in
-  application logic.
-- Typed HTTP, SSE, WebSocket, JSON-RPC, framing, lifecycle, and error
-  infrastructure.
-- Capability-aware React bindings and conformance helpers for consumers and
-  third-party provider adapters.
-- CAVI extension adapters that remain outside the provider-neutral core.
-
-Provider-specific behavior is isolated in provider modules. Core interfaces,
-configuration, and routing do not make one provider the default.
-
-## Documentation
-
-- [Online documentation](https://cavi-ai.xyz/docs/api-client) — guides,
-  concepts, and the browsable API reference.
-- [API reference index](API.md) — operation and generated type references.
-- [Exports and import paths](docs/guides/exports.md) — root and subpath entry
-  points.
-- [Providers and setup](docs/guides/providers.md) — selecting and configuring
-  runtime and gateway adapters.
-- [Claude integrations](docs/guides/claude.md) — Messages API and Managed
-  Agents documentation.
-- [Architecture](ARCHITECTURE.md) — package boundaries, ownership, and
-  transport design.
-- [Migration guide](MIGRATION.md) — supported import migrations.
-- [Development and release verification](docs/guides/development.md) — local
-  checks and documentation artifacts.
-- [Changelog](CHANGELOG.md) — released and unreleased changes.
-
-Product docs for the committed version live under
-`docs/api-client/v<package.json version>`. The **docs site** ingests the GitHub
-release asset `cavi-api-client-docs-vX.Y.Z.tar.gz` ([consumer
-contract](docs/api-client/CONSUMER.md)). The npm package may include the same
-tree for offline reading. Repo guides under [`docs/guides`](docs/guides) are for
-contributors and are not the host navigation IA.
-
-## Capability-first behavior
-
-There are two ways to reach a provider, and they gate differently.
-
-On the raw `RuntimeClient` contract, optional methods are only usable when the
-selected provider both advertises the capability and implements the method.
-Callers gate optional operations with `runtimeSupports` and a method-presence
-check, as shown above.
-
-On the `CapabilityClient` returned by `createApiClient`, gating moves into the
-return value: every accessor is present, and an unsupported, unwired, or failed
-call resolves `{ ok: false, gap }` instead of being absent or throwing. Branch on
-`result.ok` rather than probing for methods.
-
-Either way, unsupported features fail truthfully or return the documented typed
-degradation shape. The package does not silently claim that every runtime
-supports every surface, and it never substitutes fabricated data for a call that
-did not happen.
-
-## Security
-
-Keep provider credentials in trusted application infrastructure. Provider
-modules accept their own authentication configuration; the universal runtime
-contract does not require or expose a particular provider's credential scheme.
-Errors and diagnostic metadata redact secret-bearing fields.
-
-Credentialed HTTP and SSE transports accept only URLs on their configured
-origin and reject redirects. Inbound SSE and WebSocket data is bounded (16 MiB
-by default), and the limits can be lowered through
-`SseStreamOptions.maxBufferBytes`, `SseTransportOptions.maxBufferBytes`,
-`WebSocketTransportOptions.maxFrameBytes`, or
-`GatewayRpcClientOptions.maxFrameBytes`. Gemini resumable uploads likewise
-remain on the configured API origin, reject redirects, and honor cancellation
-and timeout options.
-
-Report vulnerabilities through [SECURITY.md](SECURITY.md).
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, public API
-rules, provider-author guidance, and required verification gates. Participation
-is covered by the [Code of Conduct](CODE_OF_CONDUCT.md).
+For offline reading, the generated documentation is included under
+`docs/api-client/v<package.json version>`. The site consumes the versioned
+GitHub release docs artifact; [host ingestion](docs/api-client/CONSUMER.md)
+describes its integrity checks.
 
 ## License
 

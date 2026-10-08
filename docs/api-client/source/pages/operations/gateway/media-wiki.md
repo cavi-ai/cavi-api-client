@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Gateway media & wiki operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Gateway media (`GATEWAY_MEDIA_API_ENDPOINTS`, base `/v1/media`) and wiki
 (`GATEWAY_WIKI_API_ENDPOINTS`, base `/v1/wiki`) surfaces. Both maps are aliased
 for Hermes and OpenClaw, but note OpenClaw does not serve `/v1/media/*` or

@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Codex (OpenAI) operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Runtime-only provider over the OpenAI Responses API. Auth: `Authorization:
 Bearer <apiKey>`. providerKind `codex-responses`, protocolVersion
 `responses-v1`. Default model `gpt-5-codex` (`CODEX_DEFAULT_MODEL`) when a run

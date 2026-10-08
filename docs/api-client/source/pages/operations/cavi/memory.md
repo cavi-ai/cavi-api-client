@@ -4,8 +4,6 @@ documentedVersion: {{documentedVersion}}
 
 # Memory operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The memory folder holds a single manifest-aware helper that maps a
 harness-native agent/team name onto its canonical `MemoryScope`. The `MemoryScope`
 shape and the `MemoryStore` contract (`remember`/`recall`) are **core**

@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Claude (Anthropic) operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Runtime-only provider over the Anthropic Messages API. Auth: `x-api-key` +
 `anthropic-version`. Messages runs are synchronous; `getRun`/`cancelRun` return
 the client-remembered terminal status via `SynchronousRunStore`. Supports the

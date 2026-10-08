@@ -1,13 +1,5 @@
 # Runtime request
 
-Package: @cavi-ai/api-client
-Verified by: declaration + fixture + conformance test
-Contract: runtime-request
-Version: 0.18.0
-Stability: stable
-Source of truth: upstream-compatible-mirror
-Capability: supported
-
 Request accepted by a compatible runtime client.
 
 ## Purpose and lifecycle
@@ -79,6 +71,16 @@ Provider-specific metadata remains owned by the upstream runtime.
 ## Public symbols
 
 - `./core/runtime:RuntimeRunStartBody`
+
+## Package and verification metadata
+
+Package: @cavi-ai/api-client
+Verified by: declaration + fixture + conformance test
+Contract: runtime-request
+Version: 0.18.0
+Stability: stable
+Source of truth: upstream-compatible-mirror
+Capability: supported
 
 ## Verification evidence
 

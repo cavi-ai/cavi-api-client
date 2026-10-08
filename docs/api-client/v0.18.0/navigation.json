@@ -3,36 +3,77 @@
   "version": "0.18.0",
   "sections": [
     {
-      "title": "Introduction",
+      "title": "Start here",
       "pages": [
         {
-          "title": "Overview",
+          "title": "Why use this client",
           "path": "introduction/overview.md"
         },
         {
-          "title": "Installation",
+          "title": "Install",
           "path": "introduction/installation.md"
         },
         {
-          "title": "Quickstart",
+          "title": "First response",
           "path": "introduction/quickstart.md"
+        },
+        {
+          "title": "Choose a provider",
+          "path": "guides/providers.md"
+        },
+        {
+          "title": "Import paths",
+          "path": "guides/imports.md"
         }
       ]
     },
     {
-      "title": "Concepts",
+      "title": "Run and integrate",
       "pages": [
         {
-          "title": "Runtime client",
+          "title": "Requests and cancellation",
+          "path": "guides/requests.md"
+        },
+        {
+          "title": "Streaming",
+          "path": "guides/streaming.md"
+        },
+        {
+          "title": "Errors and troubleshooting",
+          "path": "guides/errors.md"
+        },
+        {
+          "title": "Batch processing",
+          "path": "guides/batching.md"
+        },
+        {
+          "title": "Provider files",
+          "path": "guides/files.md"
+        },
+        {
+          "title": "Gateway resources",
+          "path": "guides/gateway.md"
+        },
+        {
+          "title": "React",
+          "path": "guides/react.md"
+        }
+      ]
+    },
+    {
+      "title": "Understand the contracts",
+      "pages": [
+        {
+          "title": "Facade versus raw runtime",
           "path": "concepts/runtime-client.md"
+        },
+        {
+          "title": "Capabilities",
+          "path": "concepts/routing-and-capabilities.md"
         },
         {
           "title": "Providers and transports",
           "path": "concepts/providers-and-transports.md"
-        },
-        {
-          "title": "Routing and capabilities",
-          "path": "concepts/routing-and-capabilities.md"
         },
         {
           "title": "Compatibility",
@@ -41,38 +82,18 @@
       ]
     },
     {
-      "title": "Guides",
+      "title": "Advanced integration",
       "pages": [
-        {
-          "title": "Requests",
-          "path": "guides/requests.md"
-        },
-        {
-          "title": "Streaming",
-          "path": "guides/streaming.md"
-        },
-        {
-          "title": "Files",
-          "path": "guides/files.md"
-        },
-        {
-          "title": "Batching",
-          "path": "guides/batching.md"
-        },
         {
           "title": "Manifests",
           "path": "guides/manifests.md"
         },
         {
-          "title": "React",
-          "path": "guides/react.md"
-        },
-        {
-          "title": "Testing",
+          "title": "Testing adapters",
           "path": "guides/testing.md"
         },
         {
-          "title": "Postman",
+          "title": "Gateway Postman checks",
           "path": "guides/postman.md"
         }
       ]
@@ -115,6 +136,10 @@
         {
           "title": "Claude Managed Agents (beta)",
           "path": "operations/providers/claude-managed-agents.md"
+        },
+        {
+          "title": "OpenCode",
+          "path": "operations/providers/opencode.md"
         },
         {
           "title": "Gateway · Control plane",
@@ -163,10 +188,6 @@
         {
           "title": "CAVI · Memory",
           "path": "operations/cavi/memory.md"
-        },
-        {
-          "title": "Removal candidates",
-          "path": "operations/removal-candidates.md"
         }
       ]
     },
@@ -175,140 +196,8 @@
       "id": "type-reference",
       "pages": [
         {
-          "title": "Package root (.)",
-          "path": "reference/index.md"
-        },
-        {
-          "title": "./contracts",
-          "path": "reference/contracts.md"
-        },
-        {
-          "title": "./core/data",
-          "path": "reference/core-data.md"
-        },
-        {
-          "title": "./core/env",
-          "path": "reference/core-env.md"
-        },
-        {
-          "title": "./core/errors",
-          "path": "reference/core-errors.md"
-        },
-        {
-          "title": "./core/gateway",
-          "path": "reference/core-gateway.md"
-        },
-        {
-          "title": "./core/http",
-          "path": "reference/core-http.md"
-        },
-        {
-          "title": "./core/kanban",
-          "path": "reference/core-kanban.md"
-        },
-        {
-          "title": "./core/memory",
-          "path": "reference/core-memory.md"
-        },
-        {
-          "title": "./core/runtime",
-          "path": "reference/core-runtime.md"
-        },
-        {
-          "title": "./core/runtime/providers",
-          "path": "reference/core-runtime-providers.md"
-        },
-        {
-          "title": "./core/sse",
-          "path": "reference/core-sse.md"
-        },
-        {
-          "title": "./core/teams",
-          "path": "reference/core-teams.md"
-        },
-        {
-          "title": "./core/transport",
-          "path": "reference/core-transport.md"
-        },
-        {
-          "title": "./core/transport/node",
-          "path": "reference/core-transport-node.md"
-        },
-        {
-          "title": "./core/ws",
-          "path": "reference/core-ws.md"
-        },
-        {
-          "title": "./extensions/cavi",
-          "path": "reference/extensions-cavi.md"
-        },
-        {
-          "title": "./frameworks/react",
-          "path": "reference/frameworks-react.md"
-        },
-        {
-          "title": "./providers/agy",
-          "path": "reference/providers-agy.md"
-        },
-        {
-          "title": "./providers/claude",
-          "path": "reference/providers-claude.md"
-        },
-        {
-          "title": "./providers/claude/managed-agents",
-          "path": "reference/providers-claude-managed-agents.md"
-        },
-        {
-          "title": "./providers/claude/messages",
-          "path": "reference/providers-claude-messages.md"
-        },
-        {
-          "title": "./providers/codex",
-          "path": "reference/providers-codex.md"
-        },
-        {
-          "title": "./providers/codex/files",
-          "path": "reference/providers-codex-files.md"
-        },
-        {
-          "title": "./providers/codex/runtime",
-          "path": "reference/providers-codex-runtime.md"
-        },
-        {
-          "title": "./providers/gemini",
-          "path": "reference/providers-gemini.md"
-        },
-        {
-          "title": "./providers/gemini/files",
-          "path": "reference/providers-gemini-files.md"
-        },
-        {
-          "title": "./providers/gemini/runtime",
-          "path": "reference/providers-gemini-runtime.md"
-        },
-        {
-          "title": "./providers/hermes",
-          "path": "reference/providers-hermes.md"
-        },
-        {
-          "title": "./providers/hermes/runtime",
-          "path": "reference/providers-hermes-runtime.md"
-        },
-        {
-          "title": "./providers/openclaw",
-          "path": "reference/providers-openclaw.md"
-        },
-        {
-          "title": "./providers/openclaw/runtime",
-          "path": "reference/providers-openclaw-runtime.md"
-        },
-        {
-          "title": "./providers/opencode",
-          "path": "reference/providers-opencode.md"
-        },
-        {
-          "title": "./testing",
-          "path": "reference/testing.md"
+          "title": "Import and symbol index",
+          "path": "reference/exports.md"
         }
       ]
     },

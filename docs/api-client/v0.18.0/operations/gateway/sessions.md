@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Gateway sessions & agent config operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 Session REST routes (`GATEWAY_SESSION_API_PATHS`) are HTTP fallbacks for the
 WebSocket RPC session methods — see [rpc-methods](rpc-methods.md). Agent config and
 profile routes come from `GATEWAY_AGENT_CONFIG_API_ENDPOINTS`. Core snapshot

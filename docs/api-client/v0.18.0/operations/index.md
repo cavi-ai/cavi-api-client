@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # API Reference
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 This reference documents the operations you call on `@cavi-ai/api-client` —
 each with its method signature, the HTTP endpoint it maps to, request body,
 response, and a runnable example. It is the operation-level companion to the
@@ -23,17 +21,16 @@ type declarations.
   null-check or gate on capabilities before calling.
 - **Request body / Parameters**, **Response**, **Example** — as named.
 
-Errors follow the canonical taxonomy in the
-[errors reference](../reference/core-errors.md): `HttpApiError`,
-`EndpointNotFound`, and `withFallback` degrade-to-mock semantics (401/403 and
-`unknown`-classified errors always throw).
+Raw errors follow the [errors reference](../reference/core-errors.md). Facade
+calls use structured gaps with auth/unclassified exceptions; some CAVI
+extension helpers use their own fallback envelopes.
 
-## CAVI extension operations
+## Client contracts
 
-CAVI-extension operations additionally declare **Upstream equivalent** and
-**CAVI value-add**. An operation with no value-add beyond its upstream
-equivalent is marked deprecated and listed under
-[Removal candidates](removal-candidates.md).
+These signatures document the raw runtime/provider methods. The application
+facade wraps values in CapabilityResult and keeps accessors present. See
+[client contracts](../concepts/runtime-client.md) and [error handling](../guides/errors.md)
+for the distinct result and exception conventions.
 
 ## Capability matrix
 
@@ -45,6 +42,8 @@ equivalent is marked deprecated and listed under
 | Antigravity (AGY) | ✅ | ✅ client-local (sync) | ✅ | ❌ |
 | Hermes (gateway) | ✅ | ✅ | ✅ | ❌ |
 | OpenClaw (gateway) | ✅ | ✅ | ✅ | ❌ |
+| Claude Managed Agents (beta) | ✅ | ✅ server-side | ✅ | ❌ |
+| OpenCode | ✅ | ✅ server-side/cached | ✅ | ❌ |
 
 Synchronous providers (Claude Messages, Gemini, AGY) implement `getRun` /
 `cancelRun` over a client-side `SynchronousRunStore`: they return the remembered

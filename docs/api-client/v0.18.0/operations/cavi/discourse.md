@@ -4,8 +4,6 @@ documentedVersion: 0.18.0
 
 # Discourse operations
 
-This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
-
 The discourse surface loads the per-task discourse tree (agent messages,
 blockers, resolutions, completion outcomes) for the cavi-control operator plane.
 It is a divergence point: it prefers the native WebSocket RPC `discourse.tree`,
