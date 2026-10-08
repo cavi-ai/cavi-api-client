@@ -6,7 +6,11 @@ documentedVersion: {{documentedVersion}}
 
 This reference documents the operations you call on `@cavi-ai/api-client` —
 each with its method signature, the HTTP endpoint it maps to, request body,
-response, and a runnable example. It is the operation-level companion to the
+response, and focused usage snippets. Snippets assume the named clients and
+transports are already configured; they are not standalone programs. Use
+[provider setup](../guides/providers.md), [server requests](../guides/server.md),
+and [streaming](../guides/streaming.md) for complete application examples.
+This is the operation-level companion to the
 generated [symbol reference](../reference/index.md), which carries exhaustive
 type declarations.
 
@@ -18,7 +22,7 @@ type declarations.
   CI.
 - **Capability** — the `RuntimeCapabilities.supports` flag gating the operation.
   Optional methods (`getRun?`, `submitBatch?`, …) are absent when unsupported;
-  null-check or gate on capabilities before calling.
+  check both advertised support and method presence before calling.
 - **Request body / Parameters**, **Response**, **Example** — as named.
 
 Raw errors follow the [errors reference](../reference/core-errors.md). Facade

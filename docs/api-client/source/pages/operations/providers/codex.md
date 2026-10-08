@@ -23,13 +23,9 @@ Maps the universal body to an OpenAI Responses request; `output`/`tokens` are
 normalized from the response. See [runtime · startRun](../runtime.md#startrun)
 for the full field tables.
 
-### Example
-
-```ts
-import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex";
-// … construct the runtime client, then:
-const run = await client.startRun({ input: "Hi", model: "gpt-5-codex" });
-```
+For application construction, see [provider setup](../../guides/providers.md#codex);
+use [run handling](../../guides/requests.md) or [streaming](../../guides/streaming.md)
+to consume the result.
 
 ## getRun
 

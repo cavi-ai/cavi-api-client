@@ -1,19 +1,22 @@
 import {
   createRuntimeClient,
   createRuntimeProviderRegistry,
+  type RuntimeClient,
   type RuntimeProviderModule,
 } from "@cavi-ai/api-client";
 
-const customProvider: RuntimeProviderModule = {
-  kind: "acme",
-  capabilities: { runs: true },
-  createClient: () => ({
-    getRuntimeCapabilities: async () => ({ providerKind: "acme", supports: { runs: true } }),
-    startRun: async () => ({ run_id: "acme-run", status: "started" }),
-  }),
-};
-
-export const customClient = createRuntimeClient("acme", {
-  registry: createRuntimeProviderRegistry({ modules: [customProvider] }),
-  clientOptions: { baseUrl: "https://runtime.acme.example" },
-});
+// Supply your real request/mapping implementation; this adapter does not invent a run.
+export function createCustomRuntime(baseUrl: string, startRun: RuntimeClient["startRun"]) {
+  const module: RuntimeProviderModule = {
+    kind: "acme",
+    capabilities: { runs: true },
+    createClient: () => ({
+      getRuntimeCapabilities: async () => ({ providerKind: "acme", supports: { runs: true } }),
+      startRun,
+    }),
+  };
+  return createRuntimeClient(module.kind, {
+    registry: createRuntimeProviderRegistry({ modules: [module] }),
+    clientOptions: { baseUrl },
+  });
+}

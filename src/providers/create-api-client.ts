@@ -55,7 +55,7 @@ import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
  * `cancelRun`/`streamRun`/batch) — no accessor is ever missing, regardless of
  * provider.
  *
- * The facade is fully non-throwing: every call resolves a `CapabilityResult`
+ * Classified calls return a `CapabilityResult`
  * — `{ ok: true, data, source: "live" }` on success, or `{ ok: false, data:
  * null, gap }` with a structured `ContractGap` when the capability is
  * unsupported, unwired, or the backend call failed. There is no missing

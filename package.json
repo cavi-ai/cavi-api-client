@@ -58,7 +58,7 @@
     "SECURITY.md",
     "MIGRATION.md",
     "docs/api-client/CONSUMER.md",
-    "docs/api-client/v*",
+    "docs/api-client/v*/**",
     "docs/assets",
     "docs/brand/logo-wordmark.png",
     "docs/cavi-team-manifest.example.ts",

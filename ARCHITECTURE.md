@@ -54,8 +54,8 @@ provider implements — `getRuntimeCapabilities`, `startRun`, optional
 `getRun`/`cancelRun`, optional `streamRun`, and an optional batch surface
 (`submitBatch`/`getBatch`/`cancelBatch`/`getBatchResults`). **`GatewayApiClient`** extends it for
 gateway backends, adding teams, kanban, workspace, and operator surfaces. Each
-provider declares a capability profile; calling an unsupported surface returns a
-typed `EndpointNotFound` rather than crashing.
+provider declares a capability profile; raw calls to unsupported surfaces can
+throw typed errors. The application facade represents known failures as gaps.
 
 Above those tiers sits a single front door. `createApiClient(provider, options)`
 (`src/providers/create-api-client.ts`) resolves the provider, constructs its
@@ -65,7 +65,7 @@ every capability accessor exists for every provider. Gating moves from method
 presence into the return value: each call resolves a `CapabilityResult`, either
 `{ ok: true, data, source: "live" }` or `{ ok: false, data: null, gap }` carrying
 the same `ContractGap` vocabulary the degradation envelope uses. This is the
-non-throwing counterpart to the tiered contracts below, which still throw
+result-returning counterpart to the tiered contracts below, which still throw
 `EndpointNotFound`; the facade's only remaining throws are the envelope's
 carve-outs, authentication (401/403) and unknown-classified errors.
 

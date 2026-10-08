@@ -2,39 +2,47 @@
 documentedVersion: 0.18.0
 ---
 
-# Build an application across agent runtimes
+# Keep your application independent of its agent runtime
 
-An agent application needs to start work, show progress, handle failures, and
-clean up connections. Different runtimes expose different APIs for those jobs.
-`@cavi-ai/api-client` supplies common run and stream shapes plus provider
-adapters, so your workflow code can depend on a stable client interface.
+A runtime selector should change backend configuration, not your progress
+renderer and every job handler. `@cavi-ai/api-client` translates provider APIs
+into common run states, stream events, token usage, and capability results.
 
-Use the package for an agent UI, a gateway integration, or a service that lets
-users choose a runtime. It is an ESM TypeScript library with no runtime
-dependencies. React bindings are optional.
+## What you can build
 
-## Get a useful result
+| Application need | Start with |
+| --- | --- |
+| Return an answer from a server | [Answer service](quickstart.md) and [server handler](../guides/server.md) |
+| Show text and tool progress while work runs | [Streaming](../guides/streaming.md) |
+| Resume a background job after the initiating request | [Run retrieval](../guides/requests.md) |
+| Process many inputs and correlate individual outcomes | [Batch collection](../guides/batching.md) |
+| Browse a gateway's sessions and workspace | [Gateway resources](../guides/gateway.md) |
+| Show which actions the selected backend can perform | [Capability discovery](../concepts/routing-and-capabilities.md) |
 
-1. [Install](installation.md) and keep credentials on a trusted backend.
-2. [Run the quickstart](quickstart.md) to print your first generated response.
-3. [Choose a provider](../guides/providers.md) for your deployment.
-4. [Stream output](../guides/streaming.md) and [handle failures](../guides/errors.md).
-5. [Retrieve and cancel runs](../guides/requests.md) when the provider has a
-   server-side lifecycle.
-
-Start with `createApiClient`, the application facade. It exposes the same
-accessors across providers and returns either a live result or a structured
-capability gap. Authentication and unclassified errors still throw.
-
-## What stays provider-specific
-
-Credentials, model access, tool definitions, and run persistence belong to the
-selected provider. A common interface does not make these interchangeable:
-Claude Messages returns a terminal result, Codex can return a background run,
-and gateways add resources that runtime-only providers do not supply.
-
-Use [capabilities](../concepts/routing-and-capabilities.md) to make those
-differences visible in your application. Unsupported operations do not receive
-invented successful results.
+The package is ESM with TypeScript declarations, no runtime dependencies,
+and optional React gateway bindings.
 
 This client mirrors and verifies upstream-compatible behavior. Upstream runtimes remain the canonical protocol owners.
+
+## Decide whether you need the abstraction
+
+Use this client when several runtimes must feed the same application workflow,
+or when a backend may change later. For one provider's native API without a
+shared integration boundary, a direct provider SDK may be simpler.
+
+Portability covers result/event shapes, not credentials, model names, native
+tool schemas, or persistence. Claude Messages finishes within `startRun`;
+Codex may return a background handle; gateways may expose sessions and
+workspace resources that runtime-only providers do not have.
+
+## Make the boundary explicit
+
+Start with `createApiClient`, which returns the application
+`CapabilityClient`. Discover support for feature visibility, then inspect
+every call's `ok`. A successful call can still contain a failed run.
+Authentication and unclassified failures remain exceptions.
+
+Choose a [provider](../guides/providers.md), keep credentials on a trusted
+backend, and let one application owner control the client's lifetime.
+[Install](installation.md) · [Build your first service](quickstart.md) ·
+[Facade versus raw runtime](../concepts/runtime-client.md)

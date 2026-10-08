@@ -54,7 +54,8 @@ describe("documentation release pins", () => {
     expect(manifest.name).toBe(DOCUMENTED_PACKAGE);
     // Guards the exact miss from 0.12.0: pins bumped, `files` left behind, so the
     // published tarball would carry a reference directory for the wrong version.
-    expect(manifest.files).toContain("docs/api-client/v*");
+    // A directory-only glob omits its descendants from npm pack.
+    expect(manifest.files).toContain("docs/api-client/v*/**");
   });
 
   it("has the documented reference and release manifest present on disk", () => {

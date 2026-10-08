@@ -15,10 +15,12 @@ Use `gap.reason` for application decisions and `gap.note` for diagnostics.
 
 | Situation | Response |
 | --- | --- |
-| Unsupported capability or unwired backend | Hide/disable the feature or explain the gap |
+| capability-unsupported | Hide/disable the feature or explain the gap |
+| backend-not-configured | Configure the required backend at the application boundary |
 | request-invalid | Correct input, required session fields, or configuration |
 | endpoint-not-found | Check backend version, route, plugin, and permissions |
 | backend-unavailable | Report availability; reconcile writes before retrying |
+| transport-disconnected | Restore the connection and reconcile known work |
 | request-aborted | Stop the local wait; verify upstream state if necessary |
 
 A structured gap does not prove a write had no side effects: a connection can
@@ -37,6 +39,12 @@ error for diagnostics. `isApiClientError` is available from the root and
 Never treat an exception as an empty successful result. Fix authentication
 rather than retrying it indefinitely. Avoid logging secrets, headers, or
 unfiltered provider request bodies.
+
+The [server handler](server.md) keeps detailed errors in application telemetry
+and returns a controlled response to the caller. The
+[answer service](../introduction/quickstart.md) preserves gaps while rejecting
+non-completed runs and absent text; that rejection is example application
+policy, not a change to the client's result contract.
 
 ## Run outcomes
 

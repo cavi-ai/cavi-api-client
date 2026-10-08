@@ -25,13 +25,9 @@ Starts a run on the gateway and normalizes the status to the universal
 `RuntimeRunStatus`. See [runtime · startRun](../runtime.md#startrun) for the
 full field tables.
 
-### Example
-
-```ts
-import { HERMES_PROVIDER_MODULE } from "@cavi-ai/api-client/providers/hermes";
-// … construct the gateway client via the provider module, then:
-const run = await client.startRun({ input: "Hi", model: "…" });
-```
+For application construction, see [provider setup](../../guides/providers.md#hermes);
+use [run handling](../../guides/requests.md) or [streaming](../../guides/streaming.md)
+to consume the result.
 
 ## getRun
 

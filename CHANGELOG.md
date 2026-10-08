@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Include the versioned offline documentation tree in the npm package.
+
 - Codex run statuses, successful batch responses, and completed stream events
   now normalize native message `output_text` content when the response has no
   string `output_text` field. Text is concatenated in wire order without added
@@ -19,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-text items retain their existing handling.
 
 ### Changed
+
+- Replace CLI-style documentation demos with reusable answer services, server
+  handlers, streaming callbacks, background-run retrieval, and batch collection.
+  Provider setup now returns usable clients with explicit application ownership.
 
 - Documentation checks now validate runtime-provider HTTP verbs and full route
   shapes, including wrapped HTTP lines. Gemini route labels show collection

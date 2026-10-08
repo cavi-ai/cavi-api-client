@@ -10,6 +10,7 @@ adapter or managing its execution interface directly.
 | Need | Editable source |
 | --- | --- |
 | Choose and configure a provider | [Provider setup](docs/api-client/source/pages/guides/providers.md) |
+| Connect an application endpoint | [Server requests](docs/api-client/source/pages/guides/server.md) |
 | Run, retrieve, and cancel work | [Requests](docs/api-client/source/pages/guides/requests.md) |
 | Handle stream events and terminal states | [Streaming](docs/api-client/source/pages/guides/streaming.md) |
 | Handle gaps and exceptions | [Error handling](docs/api-client/source/pages/guides/errors.md) |

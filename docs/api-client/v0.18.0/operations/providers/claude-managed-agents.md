@@ -76,7 +76,7 @@ sessions can no longer reference it.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `name` | `string` | yes | Display name. |
-| `model` | `string` | yes | Model id (e.g. `claude-opus-4-8`). |
+| `model` | `string` | yes | Model id available to your account. |
 | `system` | `string` | no | System prompt. |
 | `description` | `string` | no | Free-text description. |
 | `tools` | `Record<string, unknown>[]` | no | Tool definitions. |
@@ -95,7 +95,7 @@ if you pin sessions to a specific one).
 ```ts
 const agent = await client.createAgent({
   name: "researcher",
-  model: "claude-opus-4-8",
+  model: configuredModel,
   system: "You are a meticulous research assistant.",
   tools: [{ type: "web_search_20250305", name: "web_search" }],
 });
@@ -391,7 +391,7 @@ onto sessions. Field-level run/stream semantics are documented under
 ```ts
 await client.streamRun(
   { input: "Draft the release notes.", metadata: { agent_id: "agt_…", environment_id: "env_…" } },
-  { onEvent: (e) => console.log(e.event), onError: (err) => console.error(err) },
+  handlers, // Application-owned RunEventStreamHandlers for text, tools, and failures.
 );
 ```
 
