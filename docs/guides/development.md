@@ -36,7 +36,7 @@ under `scripts/docs/`. Maintainer release evidence is local-only under
 | Tree | Audience | Role |
 | --- | --- | --- |
 | `docs/api-client/source` → `docs/api-client/v*` | Product docs / docs host | Generated immutable set; site ingest is the GitHub release docs artifact |
-| `docs/guides`, `docs/examples` | Contributors | Pointers and checked examples; consumer guidance belongs in source/pages |
+| `docs/guides`, `docs/examples`, `examples` | Contributors and development consumers | Unreleased workflows and checked examples; release-pinned guidance belongs in source/pages |
 | `docs/postman` | Integrators | Generated gateway surface verification |
 | `docs/maintainers`, `docs/compatibility` | Maintainers | Process / ledgers; not packed for the host |
 | `docs/brand`, `docs/assets` | Packaging / site chrome | Logos and assets |

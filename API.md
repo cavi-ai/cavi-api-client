@@ -123,6 +123,8 @@ The deadline and signal bound local waits on pending retrievals, without
 aborting the request or cancelling backend work. Late results and rejections
 are safely ignored. Set transport timeouts separately. See
 [the development guide](docs/guides/run-results.md) for the complete example.
+The [authorized background workflow](docs/guides/owned-background-runs.md)
+demonstrates read/cancel permissions and authorization before every poll.
 
 ## Unreleased execution failure details
 
