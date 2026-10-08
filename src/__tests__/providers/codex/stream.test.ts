@@ -11,6 +11,32 @@ const sse = (event: string, data: unknown) => ({
 });
 
 describe("mapOpenAIResponseStreamEvent", () => {
+  it("includes native text on the completed event", () => {
+    expect(mapOpenAIResponseStreamEvent(sse("response.completed", {
+      response: { output: [
+        { type: "message", content: [{ type: "output_text", text: "First " }] },
+        { type: "function_call", arguments: "ignore" },
+        { type: "message", content: [{ type: "output_text", text: "second." }] },
+      ] },
+    }), "resp_native")).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "resp_native", output: "First second.",
+    });
+  });
+
+  it.each(["explicit", ""])("preserves explicit completed output_text %j", (output_text) => {
+    expect(mapOpenAIResponseStreamEvent(sse("response.completed", {
+      response: { output_text, output: [{ type: "message", content: [{ type: "output_text", text: "native" }] }] },
+    }), "resp_native")).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "resp_native", ...(output_text ? { output: output_text } : {}),
+    });
+  });
+
+  it("keeps a failed event failed even when partial native text exists", () => {
+    expect(mapOpenAIResponseStreamEvent(sse("response.failed", {
+      response: { output: [{ type: "message", content: [{ type: "output_text", text: "partial" }] }], error: { message: "failed" } },
+    }), "resp_failed")).toEqual({ event: RUN_STREAM_EVENT_NAMES.RUN_FAILED, runId: "resp_failed", error: "failed" });
+  });
+
   it("reads the run id from response.created", () => {
     expect(readOpenAIResponseRunId(sse("response.created", {
       type: "response.created",

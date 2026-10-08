@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Codex run statuses, successful batch responses, and completed stream events
+  now normalize native message `output_text` content when the response has no
+  string `output_text` field. Text is concatenated in wire order without added
+  separators; explicit text (including an empty string), failure states, and
+  non-text items retain their existing handling.
+
 ### Changed
 
 - Reorganized consumer documentation around provider setup, execution workflows,

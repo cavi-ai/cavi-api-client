@@ -20,9 +20,13 @@ then inspect `result.data.status`. A live call can return a failed run.
 
 A run ID from client-local storage is not durable across process restarts.
 Unknown IDs can yield an `unknown` status; do not treat that as completion.
-Output fields are optional. In particular, the current Codex mapper reads
+Output fields are optional. In particular, the documented release's Codex mapper reads
 `output_text` without flattening native `output` items; completion alone does
 not guarantee that normalized text is present.
+
+Unreleased development adds native message-text normalization. Check the
+[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
+for release availability; it is not part of the pinned artifact described here.
 
 ## Bound background polling
 

@@ -80,7 +80,7 @@ const nativeOnly = await runQuickstart("fixture-key", "fixture-model", {
   fetchImpl: async () => Response.json({ id: "native-response", status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "native text" }] }] }),
 });
 assert.equal(nativeOnly.status, "completed");
-assert.equal(nativeOnly.output, undefined); // Current mapper does not flatten native output items.
+assert.equal(nativeOnly.output, "native text");
 
 requests = [];
 await assert.rejects(runQuickstart("fixture-key", "fixture-model", { maxPolls: 0, fetchImpl: async (input, init) => {

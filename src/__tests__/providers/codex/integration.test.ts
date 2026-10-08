@@ -61,7 +61,7 @@ function writeSse(res: ServerResponse): void {
     'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":" UI"}\n\n',
   );
   res.end(
-    'event: response.completed\ndata: {"type":"response.completed","response":{"output_text":"Built UI"}}\n\n',
+    'event: response.completed\ndata: {"type":"response.completed","response":{"output":[{"type":"message","content":[{"type":"output_text","text":"Built UI"}]}]}}\n\n',
   );
 }
 
@@ -98,7 +98,7 @@ async function startCodexFixture(): Promise<CodexFixture> {
           id: RESPONSE_ID,
           status: "completed",
           model: CODEX_DEFAULT_MODEL,
-          output_text: "Built UI",
+          output: [{ type: "message", content: [{ type: "output_text", text: "Built UI" }] }],
           usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
         });
         return;

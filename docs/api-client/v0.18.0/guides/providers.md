@@ -89,10 +89,15 @@ Choose an account-accessible model on your run request. `startRun` may return
 `started` or `running`; retrieve the run until it reaches a terminal state.
 Use a bounded poll and explicitly decide whether to cancel on timeout.
 
-The current mapper populates normalized text from the response's `output_text`
+The documented release populates normalized text from the response's `output_text`
 field; it does not flatten native `output` items. A completed response can
 therefore have no normalized text. Do not print `undefined` as a successful
 answer; keep this limitation visible when choosing the adapter.
+
+Unreleased development also normalizes native message text when there is no
+explicit string `output_text`. Check the
+[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
+for release availability before relying on that behavior.
 
 [Request lifecycle](requests.md) · [Codex operations](../operations/providers/codex.md)
 

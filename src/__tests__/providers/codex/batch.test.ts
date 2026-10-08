@@ -36,7 +36,7 @@ describe("mapOpenAIBatch", () => {
 describe("parseOpenAIBatchOutput", () => {
   it("maps 2xx lines to succeeded runs and error lines to errored", () => {
     const jsonl = [
-      JSON.stringify({ custom_id: "a", response: { status_code: 200, body: { id: "r", status: "completed", model: "m", output_text: "ok", usage: { input_tokens: 3, output_tokens: 2 } } }, error: null }),
+      JSON.stringify({ custom_id: "a", response: { status_code: 200, body: { id: "r", status: "completed", model: "m", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }], usage: { input_tokens: 3, output_tokens: 2 } } }, error: null }),
       JSON.stringify({ custom_id: "b", response: { status_code: 400, body: { error: { message: "bad request" } } }, error: null }),
       "",
       JSON.stringify({ custom_id: "c", response: null, error: { message: "request failed" } }),
