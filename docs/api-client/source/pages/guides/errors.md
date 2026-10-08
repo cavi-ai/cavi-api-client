@@ -40,11 +40,10 @@ Never treat an exception as an empty successful result. Fix authentication
 rather than retrying it indefinitely. Avoid logging secrets, headers, or
 unfiltered provider request bodies.
 
-The [server handler](server.md) keeps detailed errors in application telemetry
-and returns a controlled response to the caller. The
-[answer service](../introduction/quickstart.md) preserves gaps while rejecting
-non-completed runs and absent text; that rejection is example application
-policy, not a change to the client's result contract.
+The [server handler](server.md) uses `isAuthError` to distinguish server-owned
+provider credential failures and returns a controlled response. Keep the
+original error in protected telemetry; do not send its message or `cause` to
+the frontend.
 
 ## Run outcomes
 
@@ -52,6 +51,54 @@ policy, not a change to the client's result contract.
 `streamRun` can return `ok: true` with `outcome: "failed"`.
 Use the run error/event to explain execution failure, separately from transport
 or capability failure. An `unknown` state or null stream outcome is not success.
+
+The [answer service](../introduction/quickstart.md) uses `ApiClientError` with
+`type: "run"` when the application requires a completed text answer. It retains
+the run ID and state in `cause`. The streaming helper follows the same codes:
+
+| Code | Meaning | Application action |
+| --- | --- | --- |
+| `run_failed` | The backend reported execution failure | Inspect protected diagnostics; show a failed answer |
+| `run_cancelled` | The backend reported cancellation | Show cancellation; do not confuse it with local request abort |
+| `run_incomplete` | Completion was not observed | Keep the run ID and reconcile; work may still be active |
+| `run_output_missing` | A completed run lacks required text | Report a missing answer; empty text is still a valid string |
+
+Development adds `ApiClientErrorType.Run` and `ApiClientErrorCode.RunFailed`,
+`RunCancelled`, `RunIncomplete`, and `RunOutputMissing`. These enum members are
+unreleased. The examples use their string values so they also work with the
+pinned release, whose error constructor accepts string types and codes.
+Providers still return run states; the application chooses whether to reject
+an outcome that cannot satisfy its workflow.
+
+## Give callers an actionable failure
+
+Narrow errors and branch on codes, never message text. This mapper returns only
+application-owned messages. Unknown exceptions remain failures; it does not
+retry submissions or expose provider diagnostics.
+
+```ts
+import { isApiClientError, isAuthError } from "@cavi-ai/api-client";
+
+export function answerFailure(error: unknown) {
+  if (isAuthError(error)) return { kind: "unavailable", message: "The runtime needs authentication." };
+  if (isApiClientError(error)) {
+    switch (error.code) {
+      case "run_cancelled": return { kind: "cancelled", message: "The answer was cancelled." };
+      case "run_incomplete": return { kind: "incomplete", message: "No completed answer was observed. Check the run state." };
+      case "run_output_missing": return { kind: "failed", message: "The run completed without a text answer." };
+      case "run_failed": return { kind: "failed", message: "The runtime could not produce an answer." };
+    }
+  }
+  return { kind: "failed", message: "The answer request failed." };
+}
+```
+
+Use this in your application's `catch` boundary after recording the original
+error in protected telemetry. `serializeError` retains `name`, `message`,
+`type`, and `code` without copying `cause`; the message still needs your
+telemetry's redaction policy. `getRuntimeErrorMetadata` exposes available
+provider, transport, operation, and retry hints for diagnostics. A retry hint
+does not make replaying a run submission safe.
 
 ## Timeouts and retries
 

@@ -1,4 +1,4 @@
-import type { CapabilityClient, StreamRunBody } from "@cavi-ai/api-client";
+import { ApiClientError, ApiClientErrorCode, type CapabilityClient, type StreamRunBody } from "@cavi-ai/api-client";
 
 export async function streamText(
   client: CapabilityClient,
@@ -25,10 +25,14 @@ export async function streamText(
       reportError?.(error);
     },
   }, { signal });
-  if (!result.ok) throw new Error(`${result.gap.reason}: ${result.gap.note}`, { cause: result.gap });
+  if (!result.ok) throw new ApiClientError(result.gap.note, {
+    code: ApiClientErrorCode.RequestFailed, cause: result.gap,
+  });
   if (result.data.outcome !== "completed") {
-    throw new Error(`Stream ended with outcome ${result.data.outcome ?? "unknown"}`, {
-      cause: runError ?? transportError ?? result.data,
+    const code = result.data.outcome === "failed" ? "run_failed"
+      : result.data.outcome === "cancelled" ? "run_cancelled" : "run_incomplete";
+    throw new ApiClientError(`Stream ended with outcome ${result.data.outcome ?? "unknown"}`, {
+      type: "run", code, cause: { ...result.data, error: runError, transportError },
     });
   }
   return { ...result.data, text: terminalText ?? text };

@@ -12,7 +12,7 @@ outcome. It borrows the client and accepts the caller's cancellation signal.
 Download [streamText](../examples/runtime-streaming.ts).
 
 ```ts
-import type { CapabilityClient, StreamRunBody } from "@cavi-ai/api-client";
+import { ApiClientError, ApiClientErrorCode, type CapabilityClient, type StreamRunBody } from "@cavi-ai/api-client";
 
 export async function streamText(
   client: CapabilityClient,
@@ -39,10 +39,14 @@ export async function streamText(
       reportError?.(error);
     },
   }, { signal });
-  if (!result.ok) throw new Error(`${result.gap.reason}: ${result.gap.note}`, { cause: result.gap });
+  if (!result.ok) throw new ApiClientError(result.gap.note, {
+    code: ApiClientErrorCode.RequestFailed, cause: result.gap,
+  });
   if (result.data.outcome !== "completed") {
-    throw new Error(`Stream ended with outcome ${result.data.outcome ?? "unknown"}`, {
-      cause: runError ?? transportError ?? result.data,
+    const code = result.data.outcome === "failed" ? "run_failed"
+      : result.data.outcome === "cancelled" ? "run_cancelled" : "run_incomplete";
+    throw new ApiClientError(`Stream ended with outcome ${result.data.outcome ?? "unknown"}`, {
+      type: "run", code, cause: { ...result.data, error: runError, transportError },
     });
   }
   return { ...result.data, text: terminalText ?? text };
@@ -52,8 +56,10 @@ export async function streamText(
 Call it with your run body, output callback, and an `AbortSignal`.
 Use the optional `reportError` callback for server diagnostics; it must not
 throw. It observes parse/transport errors, including recoverable malformed
-frames. A `run.failed` event is captured separately and becomes the failure
-error's cause.
+frames. A `run.failed` event is captured separately. The typed exception retains
+the run ID, outcome, run error, and any transport error in `cause`; callers
+branch on `run_failed`, `run_cancelled`, or `run_incomplete`. The enum aliases
+are unreleased, so the example uses compatible string values.
 
 The returned `text` uses a terminal output snapshot when one is supplied,
 otherwise the accumulated deltas. Do not append a terminal snapshot as another

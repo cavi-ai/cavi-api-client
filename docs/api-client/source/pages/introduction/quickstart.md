@@ -5,8 +5,8 @@ documentedVersion: {{documentedVersion}}
 # Build an answer service
 
 Turn a question into text your application can return, save, or render.
-This example uses Claude Messages: its `startRun` resolves with a terminal
-run. For Codex and other background backends, use
+This example uses Claude Messages and requires a completed response from
+`startRun`. For Codex and other background backends, use
 [background run retrieval](../guides/requests.md).
 
 ## Install and configure
@@ -23,7 +23,7 @@ the [complete service](../examples/text-service.ts). Configuration is passed
 to the factory; importing the module does not start a run.
 
 ```ts
-import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { ApiClientError, createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 
 export function createAssistant(config: { apiKey: string; model: string }) {
@@ -39,11 +39,17 @@ export function createAssistant(config: { apiKey: string; model: string }) {
 
       const run = result.data;
       if (run.status !== "completed") {
-        throw new Error(`Run ${run.run_id} ended as ${run.status}`, { cause: run });
+        const code = run.status === "failed" ? "run_failed"
+          : run.status === "cancelled" ? "run_cancelled" : "run_incomplete";
+        throw new ApiClientError(`Run ${run.run_id} has no completed answer (status: ${run.status})`, {
+          type: "run", code, cause: run,
+        });
       }
       const text = run.output ?? run.response;
       if (text === undefined) {
-        throw new Error(`Run ${run.run_id} completed with no text`, { cause: run });
+        throw new ApiClientError(`Run ${run.run_id} completed with no text`, {
+          type: "run", code: "run_output_missing", cause: run,
+        });
       }
       return {
         ok: true as const,
@@ -83,9 +89,18 @@ response:
 
 The factory preserves facade gaps. It deliberately rejects a non-completed run
 or a completed run without text because this application needs an answer.
-Those errors carry the run in `cause`; they are example application policy.
-The client itself returns a run status. Empty text is a string and remains
-distinct from absent text.
+Those are `ApiClientError` instances with `type: "run"` and codes
+`run_failed`, `run_cancelled`, `run_incomplete`, or `run_output_missing`.
+They carry the run in `cause` for protected diagnostics and reconciliation.
+An active or unknown run is incomplete, not a reported failure. The client
+itself returns a run status. Empty text remains distinct from absent text.
+When an adapter supplies `output: ""`, the service accepts it. Claude's current
+mapper omits empty-only text, so that response triggers `run_output_missing`.
+
+Use `isApiClientError` to narrow exceptions and `isAuthError` for provider
+authentication failures. The [error guide](../guides/errors.md) shows a caller
+mapper and the unreleased enum aliases for these codes. String values keep
+this example compatible with the pinned published release.
 
 The service owns its client. Reuse it within one credential/configuration scope,
 then call `assistant.dispose()` during shutdown. Do not dispose it after every

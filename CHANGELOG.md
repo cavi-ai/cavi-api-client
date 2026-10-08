@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Run outcome error vocabulary: `ApiClientErrorType.Run` and
+  `ApiClientErrorCode.RunFailed`, `RunCancelled`, `RunIncomplete`, and
+  `RunOutputMissing`. These additive codes distinguish execution failures,
+  cancellation, unobserved completion, and absent required output without
+  changing provider return values.
+
 ### Fixed
 
 - Include the versioned offline documentation tree in the npm package.
@@ -21,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-text items retain their existing handling.
 
 ### Changed
+
+- Answer and streaming examples use typed errors with retained run identity;
+  error guidance shows guards, safe caller messages, and protected diagnostics.
 
 - Replace CLI-style documentation demos with reusable answer services, server
   handlers, streaming callbacks, background-run retrieval, and batch collection.

@@ -32,6 +32,28 @@ import { OpenClawWireError } from "../../providers/openclaw/control-plane/wire";
 import { WebhookVerificationError } from "../../providers/claude/managed-agents/webhooks";
 
 describe("core error helpers", () => {
+  it.each([
+    ["RunFailed", "run_failed"],
+    ["RunCancelled", "run_cancelled"],
+    ["RunIncomplete", "run_incomplete"],
+    ["RunOutputMissing", "run_output_missing"],
+  ] as const)("supports portable %s errors without exposing the run in serialization", (name, code) => {
+    const run = { run_id: "run-1", status: "failed", error: "private provider details" };
+    const error = new ApiClientError("Answer unavailable", {
+      type: ApiClientErrorType.Run,
+      code: ApiClientErrorCode[name],
+      cause: run,
+    });
+    expect(ApiClientErrorCode[name]).toBe(code);
+    expect(isApiClientError(error)).toBe(true);
+    expect(error.cause).toBe(run);
+    expect(isAbortError(error)).toBe(false);
+    expect(isAuthError(error)).toBe(false);
+    expect(serializeError(error)).toEqual({
+      name: "ApiClientError", message: "Answer unavailable", type: "run", code,
+    });
+  });
+
   it("exposes stable generic error type and code enums", () => {
     expect(ApiClientErrorType.Http).toBe("http");
     expect(ApiClientErrorType.GatewayRpc).toBe("gateway_rpc");
