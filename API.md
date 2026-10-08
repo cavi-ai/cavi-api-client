@@ -45,6 +45,18 @@ The required package gate is `pnpm run verify`. Operation endpoint checks
 validate static path prefixes against owning source files; they do not by
 themselves prove provider behavior or live backend compatibility.
 
+## Unreleased Codex normalization
+
+Development builds preserve an explicit string `output_text`, including an
+empty string. Otherwise, run statuses, successful batch responses, and completed
+stream events concatenate `output_text` content from native `message` items in
+wire order, without inserted separators. Tool calls, reasoning, refusals, and
+malformed items are excluded. Empty text remains an absent normalized `output`.
+Partial text does not change a failed or incomplete run into a successful one.
+
+The versioned docs still describe the pinned published package. Check the
+[changelog](CHANGELOG.md#unreleased) before relying on this development change.
+
 ## Maintainer references
 
 - [Architecture](ARCHITECTURE.md): layers and ownership.

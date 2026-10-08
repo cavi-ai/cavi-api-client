@@ -5,6 +5,7 @@ import {
 } from "../../core/runtime/run-stream.js";
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { flattenOpenAIUsage } from "./usage.js";
+import { readCodexOutputText } from "./output.js";
 
 function parse(data: string): Record<string, unknown> | null {
   try {
@@ -65,7 +66,7 @@ export function mapOpenAIResponseStreamEvent(
       return null;
     }
     case "response.completed": {
-      const output = response.output_text;
+      const output = readCodexOutputText(response);
       const tokens = normalizeRuntimeUsage(
         flattenOpenAIUsage(response.usage),
         "codex-responses",
