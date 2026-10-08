@@ -70,6 +70,10 @@ pnpm run verify
 ```
 
 Generation retains exhaustive reference pages and places their links in a hub.
+Runtime HTTP provider operations are checked against source transport calls and
+built path helpers for verbs and complete route shapes. Run the build before
+standalone `docs:check`. Gateway/CAVI pages keep prefix checks; query parameters,
+wire schemas, and deployed behavior require separate checks.
 Complete introduction, concept, and guide TypeScript snippets are checked against
 the pinned release declarations; operation examples can be contextual fragments.
 Do not patch generated pages independently or replace an already published

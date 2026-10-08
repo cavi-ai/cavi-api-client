@@ -41,9 +41,11 @@ pnpm run build
 pnpm docs:check
 ```
 
-The required package gate is `pnpm run verify`. Operation endpoint checks
-validate static path prefixes against owning source files; they do not by
-themselves prove provider behavior or live backend compatibility.
+The required package gate is `pnpm run verify`. For runtime HTTP providers,
+operation checks compare verbs and complete route shapes against owning
+transport calls and built path helpers. Gateway and CAVI pages retain static
+prefix checks. These checks do not validate query parameters, wire schemas,
+or live backend compatibility.
 
 ## Unreleased Codex normalization
 

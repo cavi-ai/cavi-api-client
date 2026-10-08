@@ -16,17 +16,14 @@ terminal status via `SynchronousRunStore` (they do not throw
 Capability (`GEMINI_RUNTIME_SUPPORT`): runs ✅ · getRun ✅ (client-local) ·
 cancelRun ✅ (client-local) · streamRun ✅ · batch ✅.
 
-> **Path notation.** Gemini route helpers build paths as
-> `/${GEMINI_API_VERSION}/${resource}` — the version prefix is a constant and
-> the model/batch resource is interpolated. The `**HTTP**` lines below write
-> that resource as a leading path variable (`:model` = `models/<id>`,
-> `:batch` = `batches/<id>`) after the `/v1beta` prefix; the only static path
-> literal in `gemini/paths.ts` is the files-upload path.
+> **Path notation.** Collection segments are shown explicitly; `:model` and
+> `:id` stand for resource IDs. The path helpers apply their encoding and
+> resource-name handling. Streaming also requires the `alt=sse` query parameter.
 
 ## startRun
 
 **Signature** `client.startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus>`
-**HTTP** `POST /v1beta/:model:generateContent`
+**HTTP** `POST /v1beta/models/:model:generateContent`
 **Capability** `supports.runs`
 
 Requires `model`; maps the universal body to a Gemini `generateContent`
@@ -44,7 +41,7 @@ const run = await client.startRun({ input: "Hi", model: "gemini-2.5-pro" });
 ## streamRun
 
 **Signature** `client.streamRun(body: RuntimeRunStartBody, handlers: RunEventStreamHandlers): Promise<void>`
-**HTTP** `POST /v1beta/:model:streamGenerateContent` (SSE, `?alt=sse`)
+**HTTP** `POST /v1beta/models/:model:streamGenerateContent` (SSE, `?alt=sse`)
 **Capability** `supports.streaming`
 
 Streams `streamGenerateContent` SSE chunks, normalized to canonical run-stream
@@ -64,8 +61,8 @@ not throw). Field tables per [runtime · getRun](../runtime.md#getrun) /
 
 ## submitBatch / getBatch / cancelBatch / getBatchResults
 
-**HTTP** `POST /v1beta/:model:batchGenerateContent` · `GET /v1beta/:batch` ·
-`POST /v1beta/:batch:cancel`
+**HTTP** `POST /v1beta/models/:model:batchGenerateContent` · `GET /v1beta/batches/:id` ·
+`POST /v1beta/batches/:id:cancel`
 **Capability** `supports.batch`
 
 `submitBatch` posts to `batchGenerateContent`; `getBatch`/`cancelBatch` act on
