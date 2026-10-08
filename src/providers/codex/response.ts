@@ -2,6 +2,7 @@ import type { RuntimeRunStartBody, RuntimeRunStatus } from "../../core/runtime/r
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { flattenOpenAIUsage } from "./usage.js";
 import { readCodexOutputText } from "./output.js";
+import { readNativeRunErrorDetails } from "../../core/runtime/run-error-details.js";
 
 export type OpenAIResponse = {
   id: string;
@@ -70,6 +71,8 @@ export function mapOpenAIResponseToRunStatus(response: OpenAIResponse): RuntimeR
   const usage = flattenOpenAIUsage(response.usage);
   const tokens = normalizeRuntimeUsage(usage, "codex-responses");
   const output = readCodexOutputText(response);
+  const errorDetails = status === "failed"
+    ? readNativeRunErrorDetails(response.error ?? response.incomplete_details) : undefined;
   return {
     run_id: response.id,
     status,
@@ -78,6 +81,7 @@ export function mapOpenAIResponseToRunStatus(response: OpenAIResponse): RuntimeR
     ...(status === "failed"
       ? { error: errorMessageOf(response.error ?? response.incomplete_details) ?? "codex response failed" }
       : {}),
+    ...(errorDetails ? { errorDetails } : {}),
     ...(usage ? { usage } : {}),
     ...(tokens ? { tokens } : {}),
   };

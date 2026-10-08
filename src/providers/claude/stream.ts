@@ -1,4 +1,5 @@
 import type { SseMessage } from "../../core/sse/index.js";
+import { readNativeRunErrorDetails } from "../../core/runtime/run-error-details.js";
 import {
   RUN_STREAM_EVENT_NAMES,
   type RunStreamEvent,
@@ -39,9 +40,12 @@ export function mapAnthropicStreamEvent(
       return { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId };
     case "error": {
       const error = data.error as { message?: unknown } | undefined;
+      const errorDetails = readNativeRunErrorDetails(data.error);
       const message =
         typeof error?.message === "string" ? error.message : "claude stream error";
-      return { event: RUN_STREAM_EVENT_NAMES.RUN_FAILED, runId, error: message };
+      return { event: RUN_STREAM_EVENT_NAMES.RUN_FAILED, runId, error: message,
+        ...(errorDetails ? { errorDetails } : {}),
+      };
     }
     default:
       return null;

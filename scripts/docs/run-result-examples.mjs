@@ -33,6 +33,13 @@ const streamText: string = requireStreamText(completedStream);
 requireStreamText({ runId: null, outcome: "completed", output: "", diagnostic: new Error("detail") });
 requireRunText({ run_id: "extended", status: "completed", output: "", sessionKey: "session" });
 import { waitForRun, type RunWaitOptions, type RunWaitResult } from "@cavi-ai/api-client/contracts";
+import type { RuntimeRunErrorDetails } from "@cavi-ai/api-client";
+import type { RuntimeRunErrorDetails as SubpathRunErrorDetails, RunStreamRunFailedEvent } from "@cavi-ai/api-client/core/runtime";
+const details: RuntimeRunErrorDetails = { providerCode: "server_error", providerType: "backend_error", reason: "worker_unavailable" };
+const subpathDetails: SubpathRunErrorDetails = details;
+const failedRun: RuntimeRunStatus = { run_id: "failed", status: "failed", error: "Failure", errorDetails: details };
+const failedEvent: RunStreamRunFailedEvent = { event: "run.failed", runId: "failed", error: "Failure", errorDetails: details };
+const failedStream: RunStreamOutcome = { runId: "failed", outcome: "failed", errorDetails: details };
 const options: RunWaitOptions = { maxPolls: 2, pollIntervalMs: 0, maxWaitMs: 1_000, signal: new AbortController().signal };
 declare const reader: import("@cavi-ai/api-client").CapabilityClient;
 const pending: Promise<RunWaitResult> = waitForRun(reader, run, options);
@@ -52,7 +59,8 @@ if (waited.reason === "gap") {
   command(path.join(root, "node_modules/.bin/tsc"), ["-p", "tsconfig.run-results.json"], consumer);
   writeFileSync(path.join(consumer, "run-result-journeys.mjs"), `
 import assert from "node:assert/strict";
-import { ApiClientError, ApiClientErrorCode, createCapabilityClient, isApiClientError } from "@cavi-ai/api-client";
+import { ApiClientError, ApiClientErrorCode, createApiClient, createCapabilityClient, createRuntimeProviderRegistry, isApiClientError } from "@cavi-ai/api-client";
+import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
 import { createAnswerService } from "./answer-service.js";
 import { streamAnswer } from "./stream-answer.js";
 import { awaitBackgroundAnswer } from "./background-answer.js";
@@ -160,6 +168,38 @@ for (const [event, code] of [["run.failed", "run_failed"], ["run.cancelled", "ru
 }
 await client.dispose();
 await unsupported.dispose();
+
+const observedFailure = { code: "server_error", message: "Private provider diagnostic", request: { authorization: "secret" }, retryable: true };
+const diagnosticClient = createApiClient("codex", {
+  registry: createRuntimeProviderRegistry({ modules: [createCodexProviderModule({ apiKey: "fixture-key" })] }),
+  fetchImpl: async (_url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : {};
+    if (!body.stream) return Response.json({ id: "diagnostic-1", status: "failed", error: observedFailure });
+    const frames = [
+      ["response.created", { response: { id: "diagnostic-1" } }],
+      ["response.failed", { response: { error: observedFailure } }],
+    ].map(([event, data]) => "event: " + event + "\\ndata: " + JSON.stringify(data) + "\\n\\n").join("");
+    return new Response(frames, { headers: { "Content-Type": "text/event-stream" } });
+  },
+});
+const failedRun = await diagnosticClient.getRun("diagnostic-1");
+assert.equal(failedRun.ok, true);
+assert.equal(failedRun.data.status, "failed");
+assert.equal(failedRun.data.error, observedFailure.message);
+assert.deepEqual(failedRun.data.errorDetails, { providerCode: "server_error" });
+await assert.rejects(createAnswerService(diagnosticClient, "fixture-model").answer("Fail"), (error) => {
+  assert.equal(error.code, "run_failed");
+  assert.deepEqual(error.cause.errorDetails, { providerCode: "server_error" });
+  return true;
+});
+await assert.rejects(streamAnswer(diagnosticClient, { input: "Fail" }, () => {}, new AbortController().signal, () => {}), (error) => {
+  assert.equal(error.code, "run_failed");
+  assert.equal(error.cause.runId, "diagnostic-1");
+  assert.equal(error.cause.error, observedFailure.message);
+  assert.deepEqual(error.cause.errorDetails, { providerCode: "server_error" });
+  return true;
+});
+await diagnosticClient.dispose();
 `);
   command(process.execPath, ["run-result-journeys.mjs"], consumer);
 }

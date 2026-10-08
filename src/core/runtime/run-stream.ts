@@ -2,7 +2,7 @@
 // (Anthropic SSE, gateway WebSocket, run-detail poll, mock) into these types.
 
 import type { RuntimeUsage } from "./usage.js";
-import type { RuntimeRunState } from "./run.js";
+import type { RuntimeRunErrorDetails, RuntimeRunState } from "./run.js";
 
 export const RUN_STREAM_EVENT_NAMES = {
   MESSAGE_DELTA: "message.delta",
@@ -56,6 +56,8 @@ export type RunStreamRunFailedEvent = {
   event: typeof RUN_STREAM_EVENT_NAMES.RUN_FAILED;
   runId: string;
   error: string;
+  /** Observed backend identifiers alongside the existing diagnostic message. */
+  errorDetails?: RuntimeRunErrorDetails;
   at?: number;
 };
 

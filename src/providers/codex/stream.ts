@@ -6,6 +6,7 @@ import {
 import { normalizeRuntimeUsage } from "../../core/runtime/usage.js";
 import { flattenOpenAIUsage } from "./usage.js";
 import { readCodexOutputText } from "./output.js";
+import { readNativeRunErrorDetails } from "../../core/runtime/run-error-details.js";
 
 function parse(data: string): Record<string, unknown> | null {
   try {
@@ -78,13 +79,17 @@ export function mapOpenAIResponseStreamEvent(
         ...(tokens ? { usage: tokens } : {}),
       };
     }
-    case "response.failed":
+    case "response.failed": {
+      const errorDetails = readNativeRunErrorDetails(response.error ?? data.error);
       return {
         event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
         runId,
         error: errorMessageOf(response.error ?? data.error, "codex response failed"),
+        ...(errorDetails ? { errorDetails } : {}),
       };
-    case "response.incomplete":
+    }
+    case "response.incomplete": {
+      const errorDetails = readNativeRunErrorDetails(response.incomplete_details ?? data.incomplete_details);
       return {
         event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
         runId,
@@ -92,15 +97,21 @@ export function mapOpenAIResponseStreamEvent(
           response.incomplete_details ?? data.incomplete_details,
           "codex response incomplete",
         ),
+        ...(errorDetails ? { errorDetails } : {}),
       };
+    }
     case "response.cancelled":
       return { event: RUN_STREAM_EVENT_NAMES.RUN_CANCELLED, runId };
-    case "error":
+    case "error": {
+      // The envelope's type is "error"; only a nested type describes the backend failure.
+      const errorDetails = readNativeRunErrorDetails(data.error ?? { code: data.code });
       return {
         event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
         runId,
         error: errorMessageOf(data.error ?? data.message, "codex stream error"),
+        ...(errorDetails ? { errorDetails } : {}),
       };
+    }
     default:
       return null;
   }

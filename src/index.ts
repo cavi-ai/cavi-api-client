@@ -80,6 +80,7 @@ export {
 export {
   type RuntimeRunStartBody,
   type RuntimeRunStatus,
+  type RuntimeRunErrorDetails,
   type RuntimeRunMessage,
   type RuntimeRunInput,
   type RuntimeRunState,
