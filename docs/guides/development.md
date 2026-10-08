@@ -14,6 +14,10 @@ TypeScript build, it validates the locked documentation artifact and packed
 consumer declarations. Documentation verification therefore requires the exact
 stable package tarball for the documented release.
 
+The documented consumer contract tests also compile and run against that exact
+stable package and the development pack. Snippets can import sibling application
+downloads; those imports are resolved and checked alongside the snippet.
+
 That artifact is provisioned for you: the documentation scripts fetch it into a
 gitignored `.cache/docs-stable/` and verify it against the sha256 from the
 source release manifest for `package.json` `version`, so `pnpm run verify`

@@ -7,6 +7,7 @@ import { transpileModule, ModuleKind, ScriptTarget } from "typescript";
 import { validateMarkdownLinks } from "./links.mjs";
 import { verifyRunResultExamples } from "./run-result-examples.mjs";
 import { verifyOwnedRunExample } from "./owned-run-example.mjs";
+import { verifyConsumerTestsExample } from "./consumer-tests-example.mjs";
 
 const root = path.resolve(".");
 const temporary = mkdtempSync(path.join(tmpdir(), "cavi-docs-consumer-"));
@@ -282,6 +283,7 @@ await unsupported.dispose();
   command(process.execPath, ["journeys.mjs"], consumer);
   verifyRunResultExamples({ root, consumer, command });
   verifyOwnedRunExample({ root, consumer, command });
+  verifyConsumerTestsExample({ root, installed, consumer, command });
   process.stdout.write("packed documentation quickstart and fixture journeys passed\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });
