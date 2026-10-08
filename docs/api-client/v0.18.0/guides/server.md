@@ -112,3 +112,5 @@ before every poll, and retained wait outcomes. It uses development `waitForRun`;
 that helper is not in this page's pinned release.
 
 [Background runs](requests.md) · [Errors](errors.md) · [React](react.md)
+[Runnable handler tests](testing.md) cover response policy with installed-package
+HTTP fixtures and application-owned client cleanup.

@@ -127,6 +127,9 @@ Create one service per credential/configuration scope, reuse it, and call
 
 ## Integrate the workflow you need
 
+- [Test your server integration](https://cavi-ai.xyz/docs/api-client/guides/testing):
+  runnable application tests for answers, progress, validation, and safe failures.
+
 - [First response](https://cavi-ai.xyz/docs/api-client/introduction/quickstart):
   reusable service and result handling.
 - [Server requests](https://cavi-ai.xyz/docs/api-client/guides/server):

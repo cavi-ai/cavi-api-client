@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add runnable consumer contract tests for the server handler, checked against
+  the exact published package and the development pack. The testing guide
+  covers answer/progress states, input validation, safe failures, and client
+  cleanup through the public provider and facade entry points.
+
 - Add an executable authorized background-run workflow with separate read and
   cancellation permissions, per-poll authorization, retained wait outcomes,
   and packed-consumer checks for denied access and explicit cancellation.

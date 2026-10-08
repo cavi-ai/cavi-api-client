@@ -1,13 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { resolveStableTarball } from "./fetch-stable.mjs";
 import { DOCUMENTED_TAG } from "./types.mjs";
+import { verifyConsumerTestsExample } from "./consumer-tests-example.mjs";
 
 // The pinned version and its sha256 live in types.mjs; obtaining + verifying the
-// artifact lives in fetch-stable.mjs. This script only type-checks against it.
+// artifact lives in fetch-stable.mjs. Validate declarations and the runnable
+// application tests against that exact package.
 const tarball = resolveStableTarball();
 
 const workspace = mkdtempSync(path.join(tmpdir(), "cavi-docs-stable-"));
@@ -26,6 +28,10 @@ try {
     path.resolve("docs/examples/contracts/**/*.ts"),
   ];
   // Check the complete adoption examples shown to readers, not just download files.
+  // Stage sibling downloads so snippets can import application examples exactly
+  // as readers do after saving them together (e.g. ./server-handler.js).
+  const snippetDirectory = path.join(workspace, "examples");
+  cpSync(path.resolve(`docs/api-client/${DOCUMENTED_TAG}/examples`), snippetDirectory, { recursive: true });
   const markdown = ["README.md"];
   for (const section of ["introduction", "concepts", "guides"]) {
     const directory = `docs/api-client/${DOCUMENTED_TAG}/${section}`;
@@ -34,7 +40,7 @@ try {
   for (const [pageIndex, page] of markdown.entries()) {
     const source = readFileSync(page, "utf8");
     for (const [snippetIndex, match] of [...source.matchAll(/^```(ts|tsx)\s*\n([\s\S]*?)^```/gmu)].entries()) {
-      const snippet = path.join(workspace, `page-${pageIndex}-snippet-${snippetIndex}.${match[1]}`);
+      const snippet = path.join(snippetDirectory, `page-${pageIndex}-snippet-${snippetIndex}.${match[1]}`);
       writeFileSync(snippet, `${match[2]}\nexport {};\n`);
       config.include.push(snippet);
     }
@@ -43,6 +49,16 @@ try {
   writeFileSync(generatedConfig, `${JSON.stringify(config, null, 2)}\n`);
   execFileSync(path.resolve("node_modules/.bin/tsc"), ["--noEmit", "-p", generatedConfig], {
     stdio: "inherit",
+  });
+  const consumer = path.join(workspace, "consumer");
+  const installed = path.join(consumer, "node_modules/@cavi-ai/api-client");
+  mkdirSync(path.dirname(installed), { recursive: true });
+  symlinkSync(path.join(workspace, "package"), installed, "dir");
+  writeFileSync(path.join(consumer, "package.json"), '{"type":"module"}\n');
+  verifyConsumerTestsExample({
+    root: path.resolve("."), installed, consumer,
+    docsRoot: path.resolve(`docs/api-client/${DOCUMENTED_TAG}`),
+    command: (executable, args, cwd) => execFileSync(executable, args, { cwd, stdio: "inherit" }),
   });
 } finally {
   rmSync(workspace, { recursive: true, force: true });
