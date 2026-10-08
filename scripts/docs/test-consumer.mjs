@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { transpileModule, ModuleKind, ScriptTarget } from "typescript";
@@ -17,7 +17,11 @@ try {
   const extracted = path.join(temporary, "extracted");
   const consumer = path.join(temporary, "consumer");
   for (const directory of [pack, extracted, consumer]) mkdirSync(directory, { recursive: true });
-  const name = command("npm", ["pack", "--ignore-scripts", "--pack-destination", pack]).trim().split("\n").at(-1);
+  command("npm", ["pack", "--ignore-scripts", "--pack-destination", pack]);
+  // Lifecycle output can share a line with npm's filename (notably HUSKY=0).
+  const archives = readdirSync(pack).filter((name) => name.endsWith(".tgz"));
+  assert.equal(archives.length, 1, "npm pack must create exactly one archive");
+  const [name] = archives;
   command("tar", ["-xzf", path.join(pack, name), "-C", extracted]);
   const installed = path.join(consumer, "node_modules/@cavi-ai/api-client");
   mkdirSync(path.dirname(installed), { recursive: true });
