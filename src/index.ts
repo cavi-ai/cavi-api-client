@@ -85,6 +85,12 @@ export {
   type RuntimeRunState,
 } from "./core/runtime/run.js";
 export {
+  requireCompletedRun,
+  requireRunText,
+  requireCompletedStream,
+  requireStreamText,
+} from "./core/runtime/run-results.js";
+export {
   estimateUsageCost,
   normalizeRuntimeUsage,
   type RuntimeUsage,

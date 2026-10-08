@@ -82,6 +82,24 @@ returning lifecycle states; these codes do not automatically turn a run into
 a thrown exception. Versioned examples use the matching string values to stay
 compatible with the pinned release.
 
+## Unreleased result helpers
+
+The root and `core/runtime` export `requireCompletedRun`, `requireRunText`,
+`requireCompletedStream`, and `requireStreamText`. Completion helpers return
+the original object with a narrowed completion state and preserve extra fields.
+Text helpers require completion, accept an explicit empty string, and throw
+`RunOutputMissing` for absent output. Run text prefers `output` over legacy
+`response`; stream text consumes caller-collected `output`.
+
+Failed and cancelled outcomes use `RunFailed` and `RunCancelled`. All other
+uncompleted outcomes use `RunIncomplete`, including unknown states, null
+stream outcomes, and `dry_run` run states. The original input is retained in
+`cause`. Helpers neither validate nullable stream identity nor perform polling,
+retries, cancellation, or disposal. Existing client methods are unchanged.
+
+See [complete development examples](docs/guides/run-results.md) for service and
+streaming integration. These helpers are not in the pinned published release.
+
 ## Maintainer references
 
 - [Architecture](ARCHITECTURE.md): layers and ownership.

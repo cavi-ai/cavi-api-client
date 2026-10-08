@@ -102,6 +102,11 @@ authentication failures. The [error guide](../guides/errors.md) shows a caller
 mapper and the unreleased enum aliases for these codes. String values keep
 this example compatible with the pinned published release.
 
+Unreleased development builds provide `requireRunText` to replace these
+execution checks. See the
+[development service example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
+Use this page's compatible implementation with the documented release.
+
 The service owns its client. Reuse it within one credential/configuration scope,
 then call `assistant.dispose()` during shutdown. Do not dispose it after every
 request or share one user's credentials with another user.

@@ -101,6 +101,12 @@ unreleased; the example uses their string values to work on npm's pinned
 release. See [error handling](https://cavi-ai.xyz/docs/api-client/guides/errors)
 for guards and safe application responses.
 
+Development builds add `requireRunText(run)` and `requireStreamText(stream)`
+to replace those execution checks with package APIs. Completion-only helpers
+also support tool-oriented runs without requiring text. See the
+[development guide and complete examples](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
+These helpers are unreleased; the quickstart above remains compatible with npm.
+
 The factory above is example application code, not an exported package API.
 It uses Claude Messages' synchronous lifecycle. Background adapters need
 retrieval; they do not promise an answer when `startRun` returns.

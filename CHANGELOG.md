@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in `requireCompletedRun`, `requireRunText`, `requireCompletedStream`, and
+  `requireStreamText` helpers from the root and `core/runtime`. They enforce
+  observed completion and required text with typed run errors, retain original
+  error causes, preserve explicit empty output, and leave provider behavior
+  unchanged. Development examples demonstrate answer services and streaming.
+
 - Run outcome error vocabulary: `ApiClientErrorType.Run` and
   `ApiClientErrorCode.RunFailed`, `RunCancelled`, `RunIncomplete`, and
   `RunOutputMissing`. These additive codes distinguish execution failures,

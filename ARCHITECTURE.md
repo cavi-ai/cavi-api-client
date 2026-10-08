@@ -338,6 +338,15 @@ provider return values or facade gaps. Incomplete observations do not prove
 backend failure; cancellation is separate from local request abort. Retain
 run identity in `cause` for reconciliation and keep it out of public responses.
 
+`core/runtime/run-results.ts` supplies opt-in completion and text requirements
+for run statuses and caller-collected stream outcomes. It uses core error
+classes and structural stream inputs, without importing application contracts.
+Completion checks preserve the original object and narrow its type; output
+checks preserve explicit empty strings. These pure helpers perform no transport
+or lifecycle operations and never alter raw provider or facade results.
+Development examples borrow caller-owned clients and use these helpers at the
+application boundary; release-pinned examples keep their compatible checks.
+
 ## Runtime Boundaries
 
 Filesystem integrations must receive an explicit `repoRoot` or resolve
