@@ -1,4 +1,4 @@
-import type { CapabilityClient } from "@cavi-ai/api-client";
+import { isAuthError, type CapabilityClient } from "@cavi-ai/api-client";
 
 export function createRunHandler(
   client: CapabilityClient,
@@ -36,6 +36,10 @@ export function createRunHandler(
       }, { status });
     } catch (error) {
       reportError(error);
+      if (isAuthError(error)) {
+        // These are server-owned provider credentials, not the caller's login.
+        return Response.json({ error: "Runtime authentication unavailable." }, { status: 503 });
+      }
       return Response.json({ error: "Run request failed." }, { status: 502 });
     }
   };

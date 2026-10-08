@@ -331,6 +331,13 @@ Transport and parsing failures should preserve the package's error classes:
 Callers branch with guards such as `isAuthError`, `isAbortError`, and
 `getErrorStatus`.
 
+Run outcome codes (`RunFailed`, `RunCancelled`, `RunIncomplete`, and
+`RunOutputMissing`) and the `Run` error type are an additive vocabulary for
+application policies that require completed output. They do not change
+provider return values or facade gaps. Incomplete observations do not prove
+backend failure; cancellation is separate from local request abort. Retain
+run identity in `cause` for reconciliation and keep it out of public responses.
+
 ## Runtime Boundaries
 
 Filesystem integrations must receive an explicit `repoRoot` or resolve

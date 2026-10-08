@@ -13,7 +13,7 @@ construct or dispose a client per request. Download the
 [complete handler](../examples/server-handler.ts).
 
 ```ts
-import type { CapabilityClient } from "@cavi-ai/api-client";
+import { isAuthError, type CapabilityClient } from "@cavi-ai/api-client";
 
 export function createRunHandler(
   client: CapabilityClient,
@@ -51,6 +51,10 @@ export function createRunHandler(
       }, { status });
     } catch (error) {
       reportError(error);
+      if (isAuthError(error)) {
+        // These are server-owned provider credentials, not the caller's login.
+        return Response.json({ error: "Runtime authentication unavailable." }, { status: 503 });
+      }
       return Response.json({ error: "Run request failed." }, { status: 502 });
     }
   };
@@ -75,6 +79,7 @@ semantics.
 | 202, started/running/stopping | Keep `runId`; show progress and retrieve it through an authenticated application endpoint |
 | 400/405 | Correct the request |
 | 503 with `reason` | Display availability/validation feedback; let server diagnostics retain the full gap |
+| 503, runtime authentication unavailable | Show service unavailability; the operator fixes server-owned provider credentials |
 | 502 | Show failure; do not turn missing/unknown outcomes into success |
 
 A completed run may have no text. A tool-oriented application can still consume
@@ -82,6 +87,11 @@ that completion; a text-only application should treat absent text as a missing
 answer, as the [answer service](../introduction/quickstart.md) does.
 The handler forwards only the accepted input field and a server-selected model,
 not arbitrary tool definitions or caller-supplied credentials.
+
+`isAuthError` recognizes provider authentication without parsing messages.
+That failure is a server configuration issue here; it does not mean the
+frontend user needs to log in again. The exception boundary reports the
+original error and returns only an application-owned message.
 
 ## Own the lifecycle
 
