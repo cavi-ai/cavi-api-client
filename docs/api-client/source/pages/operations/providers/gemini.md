@@ -30,13 +30,9 @@ Requires `model`; maps the universal body to a Gemini `generateContent`
 request and normalizes `output`/`tokens` from the response. See
 [runtime · startRun](../runtime.md#startrun) for the full field tables.
 
-### Example
-
-```ts
-import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini";
-// … construct the runtime client (explicit model required), then:
-const run = await client.startRun({ input: "Hi", model: "gemini-2.5-pro" });
-```
+For application construction, see [provider setup](../../guides/providers.md#gemini-legacy-compatibility);
+use [run handling](../../guides/requests.md) or [streaming](../../guides/streaming.md)
+to consume the result.
 
 ## streamRun
 

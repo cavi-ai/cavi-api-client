@@ -14,7 +14,7 @@
           "path": "introduction/installation.md"
         },
         {
-          "title": "First response",
+          "title": "Build an answer service",
           "path": "introduction/quickstart.md"
         },
         {
@@ -30,6 +30,10 @@
     {
       "title": "Run and integrate",
       "pages": [
+        {
+          "title": "Server requests",
+          "path": "guides/server.md"
+        },
         {
           "title": "Requests and cancellation",
           "path": "guides/requests.md"
@@ -118,7 +122,7 @@
           "path": "operations/providers/codex.md"
         },
         {
-          "title": "Gemini (Google)",
+          "title": "Gemini (legacy)",
           "path": "operations/providers/gemini.md"
         },
         {
@@ -140,7 +144,12 @@
         {
           "title": "OpenCode",
           "path": "operations/providers/opencode.md"
-        },
+        }
+      ]
+    },
+    {
+      "title": "Gateway reference",
+      "pages": [
         {
           "title": "Gateway \u00b7 Control plane",
           "path": "operations/gateway/control-plane.md"
@@ -160,7 +169,12 @@
         {
           "title": "Gateway \u00b7 WebSocket RPC methods",
           "path": "operations/gateway/rpc-methods.md"
-        },
+        }
+      ]
+    },
+    {
+      "title": "CAVI extensions",
+      "pages": [
         {
           "title": "CAVI \u00b7 Project board",
           "path": "operations/cavi/project-board.md"

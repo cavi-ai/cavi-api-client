@@ -7,8 +7,8 @@ import type { RuntimeSurface } from "./capabilities.js";
  * It is the union of the two legacy axes: runtime SURFACES (`RUNTIME_SURFACES`)
  * and control-plane MODULES, de-duplicated (`workspace` appeared in both).
  * Every provider declares support for each key in ONE place; an unsupported
- * capability's call still exists on the client and throws a uniform, notated
- * `CapabilityUnavailable`.
+ * capability's call still exists on the application facade and returns a
+ * structured capability gap. Raw clients use their own error contract.
  *
  * This module is purely additive: it introduces the taxonomy alongside the two
  * legacy axes it will replace. The `satisfies` bridges below are a compile-time

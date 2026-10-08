@@ -38,7 +38,7 @@ Source:
 
 ```ts
 const caps = withCaviControlOperatorCapabilities(openClawClient.capabilities);
-console.log(caps.features.caviControlOperator); // true
+const operatorControlsDeclared = caps.features.caviControlOperator; // Not proof of deployment availability.
 ```
 
 ### loadOperatorControlSection
@@ -73,7 +73,7 @@ const section = await loadOperatorControlSection({
   expectedContract: "WS operator.tasks.list",
   note: "Operator tasks unavailable",
 });
-console.log(section.status.available, section.contractGap);
+const view = { available: section.status.available, gap: section.contractGap, data: section.data };
 ```
 
 ## Empty-snapshot / status builders

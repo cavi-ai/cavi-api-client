@@ -48,9 +48,7 @@ Source:
 
 ```ts
 const snapshot = await loadTaskDiscourseLive(requestJson, wsClient, "task_42");
-for (const event of snapshot.events) {
-  console.log(event.type, event.at);
-}
+const timeline = snapshot.events.map((event) => ({ type: event.type, at: event.at }));
 ```
 
 ## Normalization helpers

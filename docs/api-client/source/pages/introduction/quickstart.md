@@ -2,75 +2,98 @@
 documentedVersion: {{documentedVersion}}
 ---
 
-# Get your first response
+# Build an answer service
 
-This example uses Claude Messages because `startRun` returns a terminal result:
-you can see the full request and error-handling flow without a polling loop.
-For a background provider, follow [request lifecycles](../guides/requests.md).
+Turn a question into text your application can return, save, or render.
+This example uses Claude Messages: its `startRun` resolves with a terminal
+run. For Codex and other background backends, use
+[background run retrieval](../guides/requests.md).
 
-## Prepare
+## Install and configure
 
-Use Node.js 20 or later and an Anthropic API key with access to your chosen
-model. Set `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in your trusted server
-environment. Choose a model available to that account.
+Use Node.js 20 or later. Keep your Anthropic API key in server configuration
+and choose a model that account can access.
 
 ```sh
 npm install @cavi-ai/api-client@{{documentedVersion}}
-node run.mjs
 ```
 
-Create `run.mjs` with the following code before running the command:
+Save the following as `assistant.ts` in your TypeScript application, or download
+the [complete service](../examples/text-service.ts). Configuration is passed
+to the factory; importing the module does not start a run.
 
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
-const model = process.env.ANTHROPIC_MODEL;
-if (!apiKey || !model) {
-  throw new Error("Set ANTHROPIC_API_KEY and ANTHROPIC_MODEL.");
-}
-const registry = createRuntimeProviderRegistry({
-  modules: [createClaudeProviderModule({ apiKey })],
-});
-const client = createApiClient("claude", { registry, defaultTimeoutMs: 30_000 });
-
-try {
-  const result = await client.startRun({
-    model,
-    input: "Explain capability checks in one sentence.",
+export function createAssistant(config: { apiKey: string; model: string }) {
+  const registry = createRuntimeProviderRegistry({
+    modules: [createClaudeProviderModule({ apiKey: config.apiKey })],
   });
-  if (!result.ok) {
-    console.error(result.gap.reason, result.gap.note);
-    process.exitCode = 1;
-  } else if (result.data.status === "completed") {
-    console.log(result.data.output ?? result.data.response);
-  } else {
-    console.error(result.data.status, result.data.error);
-    process.exitCode = 1;
-  }
-} catch (error) {
-  console.error(error);
-  process.exitCode = 1;
-} finally {
-  await client.dispose();
+  const client = createApiClient("claude", { registry, defaultTimeoutMs: 30_000 });
+
+  return {
+    async answer(question: string) {
+      const result = await client.startRun({ model: config.model, input: question });
+      if (!result.ok) return result;
+
+      const run = result.data;
+      if (run.status !== "completed") {
+        throw new Error(`Run ${run.run_id} ended as ${run.status}`, { cause: run });
+      }
+      const text = run.output ?? run.response;
+      if (text === undefined) {
+        throw new Error(`Run ${run.run_id} completed with no text`, { cause: run });
+      }
+      return {
+        ok: true as const,
+        source: result.source,
+        data: { runId: run.run_id, text, tokens: run.tokens },
+      };
+    },
+    dispose: () => client.dispose(),
+  };
 }
 ```
 
-## Read the result
+## Use it at your application boundary
 
-A successful run prints a generated sentence. The wording depends on the
-provider. `result.ok` describes the client call; `result.data.status`
-describes the run. A completed call can still report a failed run.
+Create the service with `createAssistant({ apiKey, model })` during server
+startup. Call `assistant.answer(question)` from an authenticated request or
+job. A successful result has this shape; token counts depend on the provider
+response:
 
-A missing environment variable stops execution before a request. A structured
-gap is printed with its reason and note. Authentication or unclassified errors
-reach `catch`; fix credentials or investigate the original error instead of
-silently retrying. Set a shorter request timeout if your application requires it.
+```json
+{
+  "ok": true,
+  "source": "live",
+  "data": {
+    "runId": "msg_example",
+    "text": "The generated answer.",
+    "tokens": { "inputTokens": 12, "outputTokens": 8, "totalTokens": 20 }
+  }
+}
+```
 
-## Continue
+| Result | What the caller does |
+| --- | --- |
+| `ok: true` | Return or save `data.text`; retain `data.runId` and optional `data.tokens` |
+| `ok: false` | Handle `gap.reason`; keep the full gap for server diagnostics |
+| Rejected promise | Use the server's exception boundary; report failure without exposing credentials or provider payloads |
 
-- [Provider setup](../guides/providers.md): configure a different backend.
-- [Streaming](../guides/streaming.md): show incremental output.
-- [Errors and troubleshooting](../guides/errors.md): decide what to display or retry.
-- [Raw runtime contract](../concepts/runtime-client.md): lower-level adapter use.
+The factory preserves facade gaps. It deliberately rejects a non-completed run
+or a completed run without text because this application needs an answer.
+Those errors carry the run in `cause`; they are example application policy.
+The client itself returns a run status. Empty text is a string and remains
+distinct from absent text.
+
+The service owns its client. Reuse it within one credential/configuration scope,
+then call `assistant.dispose()` during shutdown. Do not dispose it after every
+request or share one user's credentials with another user.
+
+## Connect it to a product
+
+- [Server requests](../guides/server.md): a framework-independent HTTP handler.
+- [Streaming](../guides/streaming.md): deliver deltas instead of waiting for text.
+- [Provider setup](../guides/providers.md): configure a different runtime.
+- [Errors](../guides/errors.md): choose application responses and retry behavior.

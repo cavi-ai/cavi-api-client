@@ -22,13 +22,9 @@ Maps `input`→`messages`, `instructions`→`system`, `model`→`model`. Respons
 `output`/`tokens` normalized from the Messages response. See
 [runtime · startRun](../runtime.md#startrun) for the full field tables.
 
-### Example
-
-```ts
-import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude";
-// … construct the runtime client, then:
-const run = await client.startRun({ input: "Hi", model: "claude-opus-4-8" });
-```
+For application construction, see [provider setup](../../guides/providers.md#claude-messages);
+use [run handling](../../guides/requests.md) or [streaming](../../guides/streaming.md)
+to consume the result.
 
 ## getRun / cancelRun
 

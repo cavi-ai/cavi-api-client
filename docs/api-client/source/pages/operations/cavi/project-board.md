@@ -44,7 +44,7 @@ Source:
 ```ts
 const helpers = createProjectBoardLiveHelpers(requestJson, { workboardRpc });
 const workspace = await helpers.loadProjectBoardWorkspaceLive();
-console.log(workspace.backlog.length);
+const backlogCount = workspace.backlog.length;
 ```
 
 ### loadProjectBoardProfileForEmailMutation
@@ -134,5 +134,5 @@ const ack = await mutations.callProjectBoard({
   requestedBy: "operator@cavi",
   metadata: { cardId: "card_123" },
 });
-console.log(ack.data.status); // "queued" | ...
+const dispatchStatus = ack.data.status; // A queued acknowledgement is not completion.
 ```

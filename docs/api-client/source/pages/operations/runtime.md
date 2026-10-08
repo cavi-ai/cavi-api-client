@@ -5,8 +5,8 @@ documentedVersion: {{documentedVersion}}
 # Runtime operations
 
 The universal `RuntimeClient` contract every provider implements. Optional
-methods are absent on providers that do not support them — null-check
-(`client.getRun?.(id)`) or gate on `getRuntimeCapabilities()`.
+methods can be absent. Check both advertised support and method presence before
+calling; optional chaining alone can hide an unavailable operation.
 
 ## getRuntimeCapabilities
 
@@ -42,7 +42,7 @@ if (caps.supports.batch) { /* … */ }
 | ----- | ---- | -------- | ----------- |
 | input | string \| RuntimeRunMessage[] | yes | Prompt string or conversation messages (`{ role, content }`). |
 | instructions | string | no | System / developer instructions (Anthropic `system`). |
-| model | string | no | Model id; provider default used when omitted (Gemini requires it). |
+| model | string | no | Model id; configure an available default or supply it explicitly. Gemini requires an explicit model. |
 | tools | Record<string, unknown>[] | no | Provider-native tool definitions. |
 | metadata | Record<string, unknown> | no | Opaque caller metadata. |
 | dryRun | boolean | no | Validate/echo without executing; yields `status: "dry_run"`. |
@@ -65,9 +65,9 @@ if (caps.supports.batch) { /* … */ }
 ```ts
 const run = await client.startRun({
   input: "Summarize the changelog.",
-  model: "claude-opus-4-8",
+  model,
 });
-console.log(run.status, run.output);
+const view = { runId: run.run_id, status: run.status, text: run.output };
 ```
 
 ## getRun
@@ -115,7 +115,7 @@ Optional. Gateways use a subscribe-by-runId model and omit this, exposing a
 
 ```ts
 await client.streamRun?.(
-  { input: "Write a haiku.", model: "gpt-5-codex" },
+  { input: "Write a haiku.", model },
   { onEvent: (e) => process.stdout.write(e.event) },
 );
 ```

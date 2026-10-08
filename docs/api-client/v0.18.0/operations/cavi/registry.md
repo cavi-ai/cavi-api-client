@@ -31,7 +31,8 @@ Source: `extensions/cavi/registry/`.
 ```ts
 const registry = createTeamRegistry({ manifest });
 const team = registry.resolveTeam("sigmund");
-console.log(team?.teamSlug);
+if (!team) throw new Error("Configured team not found.");
+const teamSlug = team.teamSlug;
 ```
 
 ### createTeamRegistryFromSnapshot

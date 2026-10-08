@@ -17,7 +17,8 @@ transport. CommonJS `require()` is not the package entry point.
 
 Keep provider API keys in server-side configuration. Import the application
 facade from the root and the provider module from its documented subpath.
-See the [quickstart](quickstart.md) for a complete executable example.
+See the [answer service](quickstart.md) for reusable application code and
+[server requests](../guides/server.md) for the HTTP boundary.
 
 ## Browser and React applications
 

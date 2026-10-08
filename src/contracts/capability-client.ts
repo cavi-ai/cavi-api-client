@@ -108,8 +108,8 @@ export type RunStreamOutcome = {
 
 /**
  * The single client surface (the redesign's core invariant): every capability
- * accessor exists on every provider. Gated surfaces never throw and never go
- * missing — an unsupported or failed call resolves `ok: false` with a
+ * accessor exists on every provider. Gated surfaces remain present; an
+ * unsupported or classified failed call resolves `ok: false` with a
  * structured `ContractGap` (the same notation the throwing gate once carried),
  * while a supported call resolves `ok: true` with a live result. The only
  * throws left on a gated call are the envelope contract's carve-outs: auth

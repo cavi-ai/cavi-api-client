@@ -99,7 +99,7 @@ describe("docs integrity", () => {
     expect(consumer).toContain("docs:host-ingest-check");
 
     expect(pkg.files).toContain("docs/api-client/CONSUMER.md");
-    expect(pkg.files).toContain("docs/api-client/v*");
+    expect(pkg.files).toContain("docs/api-client/v*/**");
     expect(pkg.files).toContain("!docs/api-client/source");
     expect(pkg.files).toContain("!docs/api-client/source/**");
     expect(pkg.files).not.toContain("docs");

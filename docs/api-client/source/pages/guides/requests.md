@@ -2,13 +2,13 @@
 documentedVersion: {{documentedVersion}}
 ---
 
-# Start, retrieve, and cancel work
+# Start work and retrieve a background run
 
-Configure a [provider](providers.md) first. On the application facade,
-`startRun` returns `CapabilityResult<RuntimeRunStatus>`. Check `result.ok`,
-then inspect `result.data.status`. A live call can return a failed run.
+`startRun` returns a call result and, on success, a run status.
+`result.ok` answers whether the client call succeeded; `data.status` answers
+where execution stands. A live call can report a failed run.
 
-## Understand the lifecycle
+## Choose the lifecycle
 
 | Backend | What startRun returns | Retrieval |
 | --- | --- | --- |
@@ -18,42 +18,69 @@ then inspect `result.data.status`. A live call can return a failed run.
 | Hermes/OpenClaw | Gateway run handle | Gateway lifecycle |
 | OpenCode | Synchronous scoped message result | Cached terminal state or server session reconciliation |
 
-A run ID from client-local storage is not durable across process restarts.
-Unknown IDs can yield an `unknown` status; do not treat that as completion.
-Output fields are optional. In particular, the documented release's Codex mapper reads
-`output_text` without flattening native `output` items; completion alone does
-not guarantee that normalized text is present.
+Use a configured client from [provider setup](providers.md).
+The following function takes application input rather than a fixed demo prompt,
+bounds retrieval, and returns the last observed run to its caller.
+Download [runAndWait](../examples/runtime-node.ts).
 
-Unreleased development adds native message-text normalization. Check the
+```ts
+import type { CapabilityClient, RuntimeRunStartBody } from "@cavi-ai/api-client";
+
+export async function runAndWait(
+  client: CapabilityClient,
+  body: RuntimeRunStartBody,
+  options: { maxPolls?: number; pollIntervalMs?: number } = {},
+) {
+  const { maxPolls = 60, pollIntervalMs = 1_000 } = options;
+  if (!Number.isInteger(maxPolls) || maxPolls < 0 || !Number.isFinite(pollIntervalMs) || pollIntervalMs < 0) {
+    throw new Error("Use a non-negative poll count and interval.");
+  }
+  let result = await client.startRun(body);
+  if (!result.ok) throw new Error(result.gap.note, { cause: result.gap });
+  let run = result.data;
+  const active = (status: string) => ["started", "running", "stopping"].includes(status);
+  for (let poll = 0; active(run.status) && poll < maxPolls; poll += 1) {
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    result = await client.getRun(run.run_id);
+    if (!result.ok) throw new Error(result.gap.note, { cause: result.gap });
+    run = result.data;
+  }
+  // A limited wait returns the last observed state; callers decide whether to cancel.
+  return run;
+}
+```
+
+Pass `{ model, input }` as the body, then inspect the returned `status`.
+Only `completed` means completion. If the run remains active when the local
+poll budget expires, keep its ID and continue in a later worker, or explicitly
+call `cancelRun` according to your application's policy. The helper does not
+cancel work as a side effect of reaching the poll limit.
+
+This is a poll-count budget, not a wall-clock deadline. Each request also needs
+a configured HTTP timeout. The helper borrows the client; its owner disposes it.
+
+## Keep identity and state
+
+Persist server-side run IDs with their application owner so a later worker can
+retrieve or cancel them. Client-local terminal IDs do not survive client/process
+replacement. An unknown status is neither completion nor a reason to poll forever.
+
+Use `input` for a string or role/content messages, `instructions` for shared
+instructions, and `model` for provider configuration. Native tools and metadata
+remain provider-specific.
+
+Text and usage are optional. In the pinned release, the Codex mapper reads
+`output_text` without flattening native `output` items, so a completed
+response can have no normalized text. Unreleased development adds native
+message-text normalization; check the
 [repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
-for release availability; it is not part of the pinned artifact described here.
-
-## Bound background polling
-
-The [complete Codex polling example](../examples/runtime-node.ts) takes an API
-key and model, bounds the number of polls, checks every facade result, and
-attempts cancellation if work remains active at the limit.
-
-Use a request timeout as well as a poll limit. Stop on an unsuccessful call or
-an unfamiliar state instead of looping forever. Persist server-side run IDs
-only where the provider supports later retrieval.
+for availability.
 
 ## Cancel deliberately
 
-Facade `cancelRun(runId)` returns a result that must be inspected. A local
-timeout or a disposed client does not prove the backend stopped. A successful
-cancel response can indicate a transition rather than an already terminal run;
-reconcile status when your workflow needs confirmation.
+Inspect the result of `cancelRun(runId)`. A local timeout, aborted wait, or
+disposed client does not prove backend termination. For synchronous providers,
+cancellation of a remembered terminal run cannot undo completed work.
 
-For synchronous providers, cancellation of a remembered terminal run cannot
-undo work that already finished. For streams, use the caller signal and
-[stream cancellation](streaming.md#cancellation-and-cleanup).
-
-## Request portability
-
-Use `input` for a string or role/content messages, `instructions` for shared
-instructions, and `model` for provider configuration. Native tool records and
-metadata do not become portable just because the body accepts them.
-
-[Raw method reference](../operations/runtime.md) documents request/status fields.
-[Error handling](errors.md) covers gaps, exceptions, and retry decisions.
+[Server requests](server.md) · [Streaming](streaming.md) ·
+[Error handling](errors.md) · [Raw runtime methods](../operations/runtime.md)

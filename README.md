@@ -2,116 +2,129 @@
   <img src="docs/brand/logo-wordmark.png" alt="@cavi-ai/api-client" width="440">
 </h1>
 
-<p align="center"><strong>Build your agent workflow once. Connect the runtime it needs.</strong></p>
+<p align="center"><strong>One application. Several agent runtimes.</strong></p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml/badge.svg)](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml)
 
-Agent runtimes disagree about how to start work, stream output, cancel runs, and
-report failures. `@cavi-ai/api-client` gives your TypeScript application a common
-client for those workflows, with provider adapters handling the wire details.
+Give users a choice of runtime without writing another progress renderer, batch
+collector, or failure handler for each backend. `@cavi-ai/api-client` adapts
+Claude, Codex, AGY, OpenCode, Hermes, and OpenClaw to shared TypeScript contracts.
+Gemini remains available for existing integrations.
 
-Use it when you are building an agent UI, connecting several runtimes, or
-letting users choose their backend. Your application can consume the same run
-and event shapes while discovering which features its configured runtime
-actually provides.
+Your application consumes run IDs, statuses, text, token usage, and stream
+events. Provider adapters own the HTTP, SSE, or WebSocket mapping. Capabilities
+tell your application which features to offer; unsuccessful calls carry a
+structured gap.
 
-- **Run and stream:** normalized execution across Claude, Codex, AGY, OpenCode,
-  Hermes, and OpenClaw; Gemini remains available for legacy compatibility.
-- **Handle missing features:** the capability facade returns a structured gap
-  for unsupported or unavailable operations instead of fabricated results.
-- **Connect gateways:** access sessions, models, tasks, workspace, and other
-  resources when the backend provides them.
-- **Keep dependencies small:** ESM, TypeScript declarations, no runtime
-  dependencies, and optional React bindings.
+## Where it helps
 
-Provider credentials, models, tools, and lifecycle differences still matter.
-This is a client library; it does not host runtimes or make every provider
-support every operation.
+| You are building | The package gives you |
+| --- | --- |
+| An assistant UI with a runtime selector | One stream event handler for text, tools, approvals, and terminal states |
+| A service that starts background work | A shared run/status contract for retrieval and cancellation |
+| A batch processing job | Request correlation by `customId` and per-item success/failure results |
+| A gateway dashboard | Sessions, models, usage, tasks, and workspace access, gated by the configured backend |
 
-## Get your first result
+The package is ESM, includes TypeScript declarations, has no runtime
+dependencies, and keeps React optional. Models, credentials, native tools,
+and persistence still belong to the provider. Installing the package does not
+install a runtime.
 
-Use Node.js 20 or later. Keep API keys on your server.
+If your application only needs one provider's native API and no shared workflow,
+its direct SDK may be simpler. This package is useful when the integration
+boundary needs to survive another backend.
+
+## Build an answer service
+
+Use Node.js 20 or later and keep provider credentials on your server.
 
 ```sh
 npm install @cavi-ai/api-client
 ```
 
-Save this as `run.mjs`. Set `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` to an
-API key and a model your account can use, then run `node run.mjs`.
+Put this factory in your server application. Supply your Anthropic API key and
+an account-accessible model from server configuration. It creates a reusable
+service that returns text, run identity, and usage to its caller.
 
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
-const model = process.env.ANTHROPIC_MODEL;
-if (!apiKey || !model) {
-  throw new Error("Set ANTHROPIC_API_KEY and ANTHROPIC_MODEL.");
-}
-
-const registry = createRuntimeProviderRegistry({
-  modules: [createClaudeProviderModule({ apiKey })],
-});
-const client = createApiClient("claude", { registry, defaultTimeoutMs: 30_000 });
-
-try {
-  const result = await client.startRun({
-    model,
-    input: "Explain capability checks in one sentence.",
+export function createAssistant(config: { apiKey: string; model: string }) {
+  const registry = createRuntimeProviderRegistry({
+    modules: [createClaudeProviderModule({ apiKey: config.apiKey })],
   });
-  if (!result.ok) {
-    console.error(result.gap.reason, result.gap.note);
-    process.exitCode = 1;
-  } else if (result.data.status === "completed") {
-    console.log(result.data.output ?? result.data.response);
-  } else {
-    console.error(result.data.status, result.data.error);
-    process.exitCode = 1;
-  }
-} catch (error) {
-  // Authentication and unclassified errors still reject.
-  console.error(error);
-  process.exitCode = 1;
-} finally {
-  await client.dispose();
+  const client = createApiClient("claude", { registry, defaultTimeoutMs: 30_000 });
+
+  return {
+    async answer(question: string) {
+      const result = await client.startRun({ model: config.model, input: question });
+      if (!result.ok) return result;
+
+      const run = result.data;
+      if (run.status !== "completed") {
+        throw new Error(`Run ${run.run_id} ended as ${run.status}`, { cause: run });
+      }
+      const text = run.output ?? run.response;
+      if (text === undefined) {
+        throw new Error(`Run ${run.run_id} completed with no text`, { cause: run });
+      }
+      return {
+        ok: true as const,
+        source: result.source,
+        data: { runId: run.run_id, text, tokens: run.tokens },
+      };
+    },
+    dispose: () => client.dispose(),
+  };
 }
 ```
 
-A successful run prints the generated sentence. Claude Messages returns a
-terminal result from `startRun`; providers such as Codex can return an active
-run that you retrieve later. The [consumer documentation](https://cavi-ai.xyz/docs/api-client)
-covers both lifecycles, streaming, cancellation, and provider setup.
+Call `assistant.answer(question)` on the service returned by `createAssistant`.
+When `result.ok` is true, use `result.data.text` in your HTTP response, saved
+record, or UI. When it is false, handle `result.gap.reason`; retain the gap for
+diagnostics. Authentication errors, unclassified failures, unsuccessful runs,
+and missing text reject, so use your server's exception boundary.
 
-## Pick the interface your application needs
+The factory above is example application code, not an exported package API.
+It uses Claude Messages' synchronous lifecycle. Background adapters need
+retrieval; they do not promise an answer when `startRun` returns.
+Create one service per credential/configuration scope, reuse it, and call
+`assistant.dispose()` when its owner shuts down.
 
-Prefer `createApiClient` for application integrations. Its `CapabilityClient`
-always exposes the same accessors. Check `result.ok`; an unsuccessful call has
-`data: null` and a `gap` explaining the failure. Authentication errors and
-unclassified errors still throw, so keep an exception boundary.
+## Integrate the workflow you need
 
-Use `RuntimeClient` and `createRuntimeClient` when you need the lower-level
-execution contract or are implementing an adapter. Raw methods return run
-statuses directly, can throw, and optional operations require both a capability
-check and a method-presence check. These are separate return contracts.
+- [First response](https://cavi-ai.xyz/docs/api-client/introduction/quickstart):
+  reusable service and result handling.
+- [Server requests](https://cavi-ai.xyz/docs/api-client/guides/server):
+  validate input and return run state through an application endpoint.
+- [Provider setup](https://cavi-ai.xyz/docs/api-client/guides/providers):
+  credentials, model selection, and backend requirements.
+- [Streaming](https://cavi-ai.xyz/docs/api-client/guides/streaming):
+  send deltas to your UI and distinguish call failure from run failure.
+- [Background runs](https://cavi-ai.xyz/docs/api-client/guides/requests) and
+  [batches](https://cavi-ai.xyz/docs/api-client/guides/batching):
+  bound local waits and preserve IDs for later retrieval.
+- [Errors](https://cavi-ai.xyz/docs/api-client/guides/errors):
+  gaps, exceptions, and safe retry decisions.
 
-For streams, a successful call does not imply a successful run:
-`result.data.outcome` can be `"failed"`. Handle both layers.
+Prefer `createApiClient` for applications. Its `CapabilityClient` keeps
+accessors present and returns `CapabilityResult<T>`. Use the raw
+`RuntimeClient` when implementing an adapter or managing the execution
+contract directly; its optional methods return raw values and can throw.
 
-## Learn and integrate
+## Project references
 
-- [Documentation](https://cavi-ai.xyz/docs/api-client): installation, provider
-  setup, complete workflows, troubleshooting, and API reference.
-- [Migration](MIGRATION.md): upgrade imports and client construction.
-- [Changelog](CHANGELOG.md): changes by release.
-- [Architecture](ARCHITECTURE.md): package boundaries and adapter ownership.
-- [Contributing](CONTRIBUTING.md): development and verification.
-- [Security](SECURITY.md): credential handling and vulnerability reporting.
+[Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) ·
+[Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) ·
+[Security](SECURITY.md)
 
-For offline reading, the generated documentation is included under
-`docs/api-client/v<package.json version>`. The site consumes the versioned
-GitHub release docs artifact; [host ingestion](docs/api-client/CONSUMER.md)
-describes its integrity checks.
+Versioned documentation ships in the package under
+`docs/api-client/v<package.json version>` for offline reading. The site ingests
+the GitHub release docs artifact; merging documentation changes alone does not
+refresh an already published release. See the
+[host ingestion contract](docs/api-client/CONSUMER.md).
 
 ## License
 

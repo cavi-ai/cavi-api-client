@@ -38,11 +38,11 @@ function gatewayRpcCodeReason(code: string): ContractGapReason | null {
 }
 
 /**
- * The non-throwing capability contract (design decision 2026-07-21): every
- * facade method resolves one of these. `ok: false` states honestly that
- * nothing happened and why — there is no mock data and no fabricated success.
- * The only throws left on the facade are auth errors (401/403) and
- * unknown-classified errors, the same carve-outs as `withFallback`.
+ * The result contract for classified capability calls. `ok: false` identifies
+ * a failed or unavailable call; it does not prove that a backend accepted no
+ * work before a connection failed. No mock data substitutes for live results.
+ * Auth errors (401/403) and unclassified errors still reject, as they do in
+ * `withFallback`.
  */
 export type CapabilityResult<T> =
   | { ok: true; data: T; source: "live" }

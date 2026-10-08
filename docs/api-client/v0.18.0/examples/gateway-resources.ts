@@ -3,7 +3,7 @@ import type { CapabilityClient } from "@cavi-ai/api-client";
 export async function listGatewaySessions(client: CapabilityClient) {
   const result = await client.sessions.listSessions();
   if (!result.ok) {
-    return { sessions: [], gap: result.gap };
+    return { kind: "unavailable" as const, gap: result.gap };
   }
-  return { sessions: result.data.data, gap: null };
+  return { kind: "sessions" as const, sessions: result.data.data, nextCursor: result.data.nextCursor };
 }

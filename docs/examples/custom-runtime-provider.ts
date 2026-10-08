@@ -1,39 +1,12 @@
 import {
   createRuntimeClient,
   createRuntimeProviderRegistry,
-  type RuntimeControlPlane,
   type RuntimeProviderModule,
 } from "@cavi-ai/api-client";
+import type { RuntimeClientOptions } from "@cavi-ai/api-client/core/runtime/providers";
 
-const controlPlane: RuntimeControlPlane = {
-  transports: {
-    http: {
-      kind: "http",
-      stability: "stable",
-      authenticated: true,
-    },
-  },
-};
-
-const customProvider: RuntimeProviderModule = {
-  kind: "acme",
-  capabilities: { runs: true },
-  controlPlane: {
-    transports: controlPlane.transports,
-    modules: {},
-  },
-  createClient: () => ({
-    getRuntimeCapabilities: async () => ({ providerKind: "acme", supports: { runs: true } }),
-    startRun: async () => ({ run_id: "acme-run", status: "started" }),
-  }),
-  createControlPlane: () => controlPlane,
-};
-
-export const customClient = createRuntimeClient("acme", {
-  registry: createRuntimeProviderRegistry({ modules: [customProvider] }),
-  clientOptions: { baseUrl: "https://runtime.acme.example" },
-});
-
-export const customControlPlane = customProvider.createControlPlane?.({
-  baseUrl: "https://runtime.acme.example",
-});
+// The application supplies a module with real transports and declared capabilities.
+export function connectCustomRuntime(module: RuntimeProviderModule, clientOptions: RuntimeClientOptions) {
+  const registry = createRuntimeProviderRegistry({ modules: [module] });
+  return createRuntimeClient(module.kind, { registry, clientOptions });
+}

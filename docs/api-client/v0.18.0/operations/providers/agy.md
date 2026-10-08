@@ -24,13 +24,9 @@ Maps the universal body to an Antigravity run request and normalizes
 `output`/`tokens` from the response. See
 [runtime · startRun](../runtime.md#startrun) for the full field tables.
 
-### Example
-
-```ts
-import { createAgyProviderModule } from "@cavi-ai/api-client/providers/agy";
-// … construct the runtime client with baseUrl (+ apiKey), then:
-const run = await client.startRun({ input: "Hi", model: "default" });
-```
+For application construction, see [provider setup](../../guides/providers.md#agy);
+use [run handling](../../guides/requests.md) or [streaming](../../guides/streaming.md)
+to consume the result.
 
 ## getRun
 

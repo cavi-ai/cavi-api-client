@@ -2,165 +2,158 @@
 documentedVersion: 0.18.0
 ---
 
-# Choose and configure a provider
+# Choose a backend and keep workflows reusable
 
-Start with the backend your application needs. Runtime-only modules must be
-registered explicitly; the default facade registry contains Hermes and
-OpenClaw. Supplying credentials to the facade does not create an unregistered
-runtime-only module.
+Construct clients at your application's configuration boundary. Pass the
+resulting `CapabilityClient` into your run, stream, or batch functions.
+Those functions should accept application input, not provider credentials.
 
-| Provider | Execution lifecycle | Batch | Additional setup |
+| Provider | Execution lifecycle | Batch | Required configuration |
 | --- | --- | --- | --- |
-| Claude Messages | Synchronous; terminal status remembered locally | Yes | Anthropic API key and available model |
-| Claude Managed Agents | Server-side sessions | No | Beta access, existing agent, optional environment |
-| Codex | Stored background responses | Yes | OpenAI API key and available model |
-| AGY | Synchronous; terminal status remembered locally | No | Service URL, API key, agent ID as model |
+| Claude Messages | Synchronous; terminal state remembered locally | Yes | Anthropic key and available model |
+| Claude Managed Agents | Server-side sessions | No | Beta access and persisted agent ID |
+| Codex | Stored background responses | Yes | OpenAI key and available model |
+| AGY | Synchronous; terminal state remembered locally | No | Service URL, API key, agent ID as model |
 | OpenCode | Scoped server sessions | No | Compatible server and absolute project directory |
-| Hermes | Gateway runs; SSE event bridge | No | Gateway URL, token, session key for streaming |
-| OpenClaw | Native gateway RPC; WebSocket event bridge | No | Gateway URL, authentication and granted scopes |
-| Gemini (legacy compatibility) | Synchronous; terminal status remembered locally | Yes | Google API key and explicit model |
+| Hermes | Gateway runs; SSE stream bridge | No | Gateway URL/token; session key for streaming |
+| OpenClaw | Gateway RPC; WebSocket stream bridge | No | Gateway URL/authentication and granted scopes |
+| Gemini (legacy compatibility) | Synchronous; terminal state remembered locally | Yes | Google key and explicit model |
 
-This is orientation. Resolved capabilities and each call's result determine
-what your configured instance can actually do. Runtime-only modules do not
-supply gateway resources just because those accessors exist on the facade.
+Runtime-only modules must be registered explicitly. The default registry
+contains Hermes and OpenClaw. Credentials supplied to the facade do not
+register an adapter. Resolved capabilities and each call's result determine
+what an instance can actually do.
 
-## Claude Messages
+## Claude Messages and Codex at one boundary
 
-Use the [quickstart](../introduction/quickstart.md) for complete setup and a first
-response. Import `createClaudeProviderModule` from
-`@cavi-ai/api-client/providers/claude/messages`, register it with
-`createRuntimeProviderRegistry`, and select `"claude"`.
+This factory chooses the adapter from server configuration. Both clients can
+be passed into the same [stream handler](streaming.md) or
+[run retrieval helper](requests.md).
 
-Pass your API key to the module. Supply a model available to your account.
-`startRun` returns a terminal result; `getRun` remembers it on this client
-rather than polling Anthropic. Use `streamRun` for incremental events.
+```ts
+import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
+import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
+import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
+
+export function createBackend(config: { provider: "claude" | "codex"; apiKey: string }) {
+  const module = config.provider === "claude"
+    ? createClaudeProviderModule({ apiKey: config.apiKey })
+    : createCodexProviderModule({ apiKey: config.apiKey });
+  const registry = createRuntimeProviderRegistry({ modules: [module] });
+  return createApiClient(config.provider, { registry, defaultTimeoutMs: 30_000 });
+}
+```
+
+The returned client belongs to its application owner. Reuse it within the
+selected credential/configuration scope; dispose when that owner shuts down.
+Supply a provider-compatible model and tools in your run body. Changing the
+adapter does not translate native tool schemas or grant model access.
+
+### Claude Messages
+
+`startRun` returns a terminal response. `getRun` reads remembered state from
+this client rather than polling Anthropic; it is not durable across restarts.
+Use `streamRun` for incremental events. The
+[answer service](../introduction/quickstart.md) returns text and usage to a caller.
 
 [Messages operations](../operations/providers/claude-anthropic.md)
 
+### Codex
+
+The adapter uses the OpenAI Responses API, not a local Codex CLI.
+`startRun` can return an active run. Persist its ID and retrieve it later,
+or use a [bounded local wait](requests.md). Decide explicitly whether a local
+timeout should request cancellation.
+
+The pinned release normalizes the response's `output_text` field, not native
+`output` items. A completed response can have no normalized text.
+Unreleased development adds native message-text normalization; check the
+[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
+before relying on it.
+
+[Codex operations](../operations/providers/codex.md)
+
 ## Claude Managed Agents
 
-This is a separate stateful beta integration. Obtain provider access and an
-existing agent before starting a run. An environment can also be configured.
+Use this stateful beta adapter when you already have provider access and a
+persisted agent. Configure an optional environment at the same boundary.
 
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createClaudeManagedAgentProviderModule } from "@cavi-ai/api-client/providers/claude/managed-agents";
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
-const agentId = process.env.ANTHROPIC_AGENT_ID;
-if (!apiKey || !agentId) throw new Error("Set the API key and persisted agent ID.");
-
-const registry = createRuntimeProviderRegistry({
-  modules: [createClaudeManagedAgentProviderModule({
-    apiKey,
-    agentId,
-    environmentId: process.env.ANTHROPIC_ENVIRONMENT_ID,
-  })],
-});
-const client = createApiClient("claude-managed-agents", { registry });
-// Use client.startRun / client.streamRun, then dispose when its owner shuts down.
-await client.dispose();
+export function createManagedBackend(config: {
+  apiKey: string; agentId: string; environmentId?: string;
+}) {
+  const registry = createRuntimeProviderRegistry({
+    modules: [createClaudeManagedAgentProviderModule(config)],
+  });
+  return createApiClient("claude-managed-agents", { registry });
+}
 ```
 
-The provider module declares runs and streaming, not batch. Use the concrete
-Managed Agents client for provider-specific agent, environment, vault, and
-deployment operations; those are not universal facade resources.
+The module declares runs and streaming, not batch. Use the concrete Managed
+Agents client for agent, environment, vault, and deployment administration.
+Those operations are not universal facade resources.
 
 [Managed Agents operations](../operations/providers/claude-managed-agents.md)
 
-## Codex
-
-The Codex adapter uses the OpenAI Responses API, not a local Codex CLI.
-
-```ts
-import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
-
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) throw new Error("Set OPENAI_API_KEY.");
-const registry = createRuntimeProviderRegistry({
-  modules: [createCodexProviderModule({ apiKey })],
-});
-const client = createApiClient("codex", { registry, defaultTimeoutMs: 30_000 });
-await client.dispose();
-```
-
-Choose an account-accessible model on your run request. `startRun` may return
-`started` or `running`; retrieve the run until it reaches a terminal state.
-Use a bounded poll and explicitly decide whether to cancel on timeout.
-
-The documented release populates normalized text from the response's `output_text`
-field; it does not flatten native `output` items. A completed response can
-therefore have no normalized text. Do not print `undefined` as a successful
-answer; keep this limitation visible when choosing the adapter.
-
-Unreleased development also normalizes native message text when there is no
-explicit string `output_text`. Check the
-[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
-for release availability before relying on that behavior.
-
-[Request lifecycle](requests.md) · [Codex operations](../operations/providers/codex.md)
-
 ## AGY
 
-AGY is the active successor direction for new compatible orchestration
-integrations. The caller supplies the orchestration service URL.
+Supply the orchestration service URL. Set the run's `model` to the configured
+agent ID, or configure a module `defaultModel`.
 
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createAgyProviderModule } from "@cavi-ai/api-client/providers/agy";
 
-const baseUrl = process.env.AGY_BASE_URL;
-const apiKey = process.env.AGY_API_KEY;
-if (!baseUrl || !apiKey) throw new Error("Set AGY_BASE_URL and AGY_API_KEY.");
-const registry = createRuntimeProviderRegistry({
-  modules: [createAgyProviderModule({ apiKey })],
-});
-const client = createApiClient("agy", { registry, baseUrl });
-await client.dispose();
+export function createAgyBackend(config: { baseUrl: string; apiKey: string }) {
+  const registry = createRuntimeProviderRegistry({
+    modules: [createAgyProviderModule({ apiKey: config.apiKey })],
+  });
+  return createApiClient("agy", { registry, baseUrl: config.baseUrl });
+}
 ```
 
-Set `body.model` to the configured AGY agent ID (or provide `defaultModel`
-in the module). Input becomes the orchestration context. Runs are synchronous;
-retrieval/cancellation use remembered terminal state. Streaming handles upstream
-failed runs separately from transport errors and does not fabricate completion
-on premature EOF.
+Runs are synchronous; retrieval and cancellation use remembered terminal state.
+Streaming distinguishes upstream failed runs from transport errors and does
+not infer completion from premature EOF. AGY is the active successor direction
+for new compatible orchestration integrations.
 
 [AGY operations](../operations/providers/agy.md)
 
 ## OpenCode
 
-This opt-in adapter targets the server version declared by `OPENCODE_SERVER_VERSION` and the `legacy-http-sse` endpoint
-family. Run the compatible server separately. Supply an absolute HTTP(S) URL
-without embedded credentials, query, or fragment, and an absolute scoped
-project directory.
+Run the server separately. The adapter targets `OPENCODE_SERVER_VERSION` and
+the `legacy-http-sse` endpoint family. Supply an absolute HTTP(S) URL without
+embedded credentials, query, or fragment, and an absolute project directory.
 
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createOpenCodeProviderModule } from "@cavi-ai/api-client/providers/opencode";
 
-const baseUrl = process.env.OPENCODE_URL;
-const directory = process.env.OPENCODE_DIRECTORY;
-if (!baseUrl || !directory) throw new Error("Set OPENCODE_URL and OPENCODE_DIRECTORY.");
-const registry = createRuntimeProviderRegistry({
-  modules: [createOpenCodeProviderModule({
-    baseUrl,
-    scope: { directory, workspace: process.env.OPENCODE_WORKSPACE },
-    username: process.env.OPENCODE_USERNAME,
-    password: process.env.OPENCODE_PASSWORD,
-  })],
-});
-const client = createApiClient("opencode", { registry });
-await client.dispose();
+export function createOpenCodeBackend(config: {
+  baseUrl: string; directory: string; workspace?: string;
+  username?: string; password?: string;
+}) {
+  const registry = createRuntimeProviderRegistry({
+    modules: [createOpenCodeProviderModule({
+      baseUrl: config.baseUrl,
+      scope: { directory: config.directory, workspace: config.workspace },
+      username: config.username,
+      password: config.password,
+    })],
+  });
+  return createApiClient("opencode", { registry });
+}
 ```
 
-Workspace is optional; scope strings are encoded in requests. A password enables
-Basic authentication and the username defaults to `opencode`. A username alone
-does not enable authentication. Treat scopes as configuration, not a sandbox
-guarantee.
+A password enables Basic authentication; username defaults to `opencode`.
+Username alone does not enable authentication. Scoping selects server resources;
+it is not a sandbox guarantee.
 
-OpenCode has runs and streaming, without batch or gateway resources. Streaming
-subscribes before sending the prompt; it does not reconnect or replay.
+OpenCode provides runs and streaming, without batch or gateway resources.
+Streaming subscribes before submission and has no reconnect/replay.
 Cancellation requests a server session abort.
 
 [OpenCode operations](../operations/providers/opencode.md)
@@ -170,18 +163,15 @@ Cancellation requests a server session abort.
 ```ts
 import { createApiClient } from "@cavi-ai/api-client";
 
-const baseUrl = process.env.GATEWAY_URL;
-const token = process.env.GATEWAY_TOKEN;
-if (!baseUrl || !token) throw new Error("Set GATEWAY_URL and GATEWAY_TOKEN.");
-const client = createApiClient("hermes", { baseUrl, token });
-await client.dispose();
+export function createHermesBackend(baseUrl: string, token: string) {
+  return createApiClient("hermes", { baseUrl, token });
+}
 ```
 
-Use your deployed gateway origin and the authentication it accepts.
-For facade `streamRun`, provide the gateway's `sessionKey` in the run body.
-Without it the call returns a `request-invalid` gap and starts no run.
-Streaming bridges SSE run events. Resources and plugins depend on the instance;
-teams also require an available manifest or explicit backend.
+Use your deployed gateway origin and accepted authentication. For
+`streamRun`, supply the gateway's `sessionKey` in the body. Without it,
+the call returns a `request-invalid` gap and starts no run.
+Resources depend on the instance; teams also need a manifest or explicit backend.
 
 [Gateway resources](gateway.md) · [Hermes operations](../operations/providers/hermes.md)
 
@@ -190,26 +180,24 @@ teams also require an available manifest or explicit backend.
 ```ts
 import { createApiClient } from "@cavi-ai/api-client";
 
-const baseUrl = process.env.GATEWAY_URL;
-const token = process.env.GATEWAY_TOKEN;
-if (!baseUrl || !token) throw new Error("Set GATEWAY_URL and GATEWAY_TOKEN.");
-const client = createApiClient("openclaw", {
-  baseUrl,
-  token,
-  clientMode: "cli",
-  requestedScopes: ["operator.read", "operator.write"],
-});
-await client.dispose();
+export function createOpenClawBackend(baseUrl: string, token: string) {
+  return createApiClient("openclaw", {
+    baseUrl,
+    token,
+    clientMode: "cli",
+    requestedScopes: ["operator.read", "operator.write"],
+  });
+}
 ```
 
-The WebSocket URL is derived from the base URL unless you supply
-`webSocketUrl`. Origin-gated deployments require an allowlisted
-`clientOrigin`; the default uses the gateway's own origin. Scope requests
-must also be allowed by the gateway. Requesting a scope does not grant it.
+This is a headless server configuration. The WebSocket URL is derived from
+`baseUrl` unless supplied. In CLI mode no origin is derived automatically;
+for origin-gated configurations supply an allowlisted `clientOrigin`.
+Requesting scopes does not grant them.
 
-The facade bridges native events into `streamRun`. Media/wiki support depends
-on native RPC and installed plugins, not invented REST endpoints.
-Dispose the client when its owner shuts down.
+The facade bridges native events into `streamRun`. Media/wiki depend on
+native RPC and installed plugins. Browser applications need gateway-approved
+identity/origin settings and browser-user credentials.
 
 [OpenClaw operations](../operations/providers/openclaw.md)
 
@@ -222,25 +210,15 @@ for new orchestration integrations.
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
 import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini/runtime";
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) throw new Error("Set GEMINI_API_KEY.");
-const registry = createRuntimeProviderRegistry({
-  modules: [createGeminiProviderModule({ apiKey })],
-});
-const client = createApiClient("gemini", { registry });
-await client.dispose();
+export function createGeminiBackend(apiKey: string) {
+  const registry = createRuntimeProviderRegistry({
+    modules: [createGeminiProviderModule({ apiKey })],
+  });
+  return createApiClient("gemini", { registry });
+}
 ```
 
-Every run requires an explicit model. Runs are synchronous, with client-local
-terminal retrieval. Files and batch processing are provider-specific.
-[Gemini operations](../operations/providers/gemini.md)
+Every run needs an explicit model. Runs are synchronous with client-local
+retrieval. Files and batch processing retain provider-specific requirements.
 
-## Recover from setup failures
-
-Unknown provider: register the runtime-only module and use a declared kind or
-alias. Missing model or scope: correct module/run configuration before retrying.
-401/403: verify credentials and granted permissions. Resource gap: inspect the
-capability map and the deployment's plugins rather than checking method presence.
-
-Continue with [requests](requests.md), [streaming](streaming.md), and
-[error handling](errors.md).
+[Gemini operations](../operations/providers/gemini.md) · [Setup failures](errors.md)
