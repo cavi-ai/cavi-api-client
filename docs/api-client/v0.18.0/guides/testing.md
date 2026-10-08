@@ -159,6 +159,10 @@ starts before validation.
 | Batch workers | Item correlation by custom ID and retention of errored/cancelled/expired items |
 | Client ownership | Reuse within a credential scope and shutdown after in-flight work settles |
 
+The [batch collection tests](batching.md#run-the-collection-tests) cover resumed
+jobs, terminal states, mixed item outcomes, and ambiguous correlation IDs through
+the installed Claude and Codex adapters.
+
 The [authorized background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 includes development checks for access denial, revocation before polling,
 retrieval gaps, and local abort without backend cancellation.

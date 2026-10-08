@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make the documented batch collector distinguish pending work from terminal
+  batches without results, retain batch context, and reject ambiguous result
+  IDs with a typed error. Add runnable Claude/Codex collection fixtures checked
+  against the pinned stable package and development pack.
+
 - Add runnable consumer contract tests for the server handler, checked against
   the exact published package and the development pack. The testing guide
   covers answer/progress states, input validation, safe failures, and client

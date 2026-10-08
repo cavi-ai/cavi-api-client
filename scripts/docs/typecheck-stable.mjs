@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { resolveStableTarball } from "./fetch-stable.mjs";
 import { DOCUMENTED_TAG } from "./types.mjs";
-import { verifyConsumerTestsExample } from "./consumer-tests-example.mjs";
+import { verifyConsumerTestsExample, verifyBatchCollectorExample } from "./consumer-tests-example.mjs";
 
 // The pinned version and its sha256 live in types.mjs; obtaining + verifying the
 // artifact lives in fetch-stable.mjs. Validate declarations and the runnable
@@ -55,11 +55,13 @@ try {
   mkdirSync(path.dirname(installed), { recursive: true });
   symlinkSync(path.join(workspace, "package"), installed, "dir");
   writeFileSync(path.join(consumer, "package.json"), '{"type":"module"}\n');
-  verifyConsumerTestsExample({
+  const testOptions = {
     root: path.resolve("."), installed, consumer,
     docsRoot: path.resolve(`docs/api-client/${DOCUMENTED_TAG}`),
     command: (executable, args, cwd) => execFileSync(executable, args, { cwd, stdio: "inherit" }),
-  });
+  };
+  verifyConsumerTestsExample(testOptions);
+  verifyBatchCollectorExample(testOptions);
 } finally {
   rmSync(workspace, { recursive: true, force: true });
 }
