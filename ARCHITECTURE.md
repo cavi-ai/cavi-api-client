@@ -358,6 +358,15 @@ application facade or its gap envelopes.
 
 ## Runtime Boundaries
 
+`RuntimeRunErrorDetails` carries observed provider error code/type/reason
+strings on run statuses and failed stream events. An internal projection
+copies only non-empty own data properties; it omits arbitrary native payloads
+and infers no retry policy. Codex responses/streams and Claude error streams
+populate details when available. The facade forwards events and retains
+failed-event details in `RunStreamOutcome`; completion helpers preserve them
+through the original error cause. This execution data is separate from the
+client/transport `RuntimeErrorMetadata` contract.
+
 Filesystem integrations must receive an explicit `repoRoot` or resolve
 `REPO_ROOT` through `src/core/env/repo-root.ts`. This package must not assume a
 host checkout layout, mobile repo structure, or product gateway installation.

@@ -1,4 +1,5 @@
 import { ApiClientError, ApiClientErrorCode, isAuthError } from "../core/errors.js";
+import type { RuntimeRunErrorDetails } from "../core/runtime/run.js";
 import type {
   RuntimeClient,
   RuntimeRunStartBody,
@@ -104,6 +105,8 @@ export type StreamRunBody = RuntimeRunStartBody & {
 export type RunStreamOutcome = {
   runId: string | null;
   outcome: "completed" | "failed" | "cancelled" | null;
+  /** Details from the observed failed terminal event, when supplied by the provider. */
+  errorDetails?: RuntimeRunErrorDetails;
 };
 
 /**
@@ -697,14 +700,22 @@ export function createCapabilityClient(
       // this observation becomes the run's own outcome data.
       let runId: string | null = null;
       let outcome: RunStreamOutcome["outcome"] = null;
+      let errorDetails: RuntimeRunErrorDetails | undefined;
       let sawError = false;
       let lastError: unknown;
       const wrapped: RunEventStreamHandlers = {
         onEvent: (event) => {
           if (runId === null && event.runId) runId = event.runId;
-          if (event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED) outcome = "completed";
-          else if (event.event === RUN_STREAM_EVENT_NAMES.RUN_FAILED) outcome = "failed";
-          else if (event.event === RUN_STREAM_EVENT_NAMES.RUN_CANCELLED) outcome = "cancelled";
+          if (event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED) {
+            outcome = "completed";
+            errorDetails = undefined;
+          } else if (event.event === RUN_STREAM_EVENT_NAMES.RUN_FAILED) {
+            outcome = "failed";
+            errorDetails = event.errorDetails;
+          } else if (event.event === RUN_STREAM_EVENT_NAMES.RUN_CANCELLED) {
+            outcome = "cancelled";
+            errorDetails = undefined;
+          }
           handlers.onEvent(event);
         },
         onError: (error) => {
@@ -768,7 +779,9 @@ export function createCapabilityClient(
       if (streamOptions?.signal?.aborted) return abortedGap();
       // (a) clean resolve: a terminal was seen, or the stream ended without any
       // onError — the streaming call succeeded; report the run's outcome.
-      if (outcome !== null || !sawError) return liveResult({ runId, outcome });
+      if (outcome !== null || !sawError) return liveResult({ runId, outcome,
+        ...(errorDetails ? { errorDetails } : {}),
+      });
       // (b) resolved but an onError with no terminal → the run-stream was torn
       // down mid-flight. An abort reported THROUGH the handler is still an abort,
       // not an unknown fault, so route an AbortError-class onError to the same

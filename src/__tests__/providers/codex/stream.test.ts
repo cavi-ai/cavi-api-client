@@ -91,6 +91,7 @@ describe("mapOpenAIResponseStreamEvent", () => {
       event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
       runId: "resp_1",
       error: "max_output_tokens",
+      errorDetails: { reason: "max_output_tokens" },
     });
     expect(mapOpenAIResponseStreamEvent(
       sse("response.cancelled", { type: "response.cancelled" }),

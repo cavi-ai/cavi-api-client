@@ -70,6 +70,14 @@ pinned release, whose error constructor accepts string types and codes.
 Providers still return run states; the application chooses whether to reject
 an outcome that cannot satisfy its workflow.
 
+Development builds also add optional `errorDetails` with observed provider
+code/type/reason strings on runs and failed stream outcomes. Codex
+responses/streams and Claude Messages error streams populate available fields;
+providers without structured information leave it absent. Existing statuses
+and error strings remain unchanged. See the
+[development guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md#make-execution-decisions-from-structured-details)
+for handling them without parsing messages or inferring retry safety.
+
 ## Give callers an actionable failure
 
 Narrow errors and branch on codes, never message text. This mapper returns only

@@ -199,6 +199,42 @@ known IDs before retrying ambiguous submissions. Run cancellation and local
 request abort are different events; a locally incomplete observation does not
 prove backend termination.
 
+## Make execution decisions from structured details
+
+Development builds add optional `errorDetails` to `RuntimeRunStatus`,
+`run.failed` events, and the facade's `RunStreamOutcome`. The
+`RuntimeRunErrorDetails` type is exported from the root and `core/runtime`.
+Existing run/event `error` strings remain available for protected diagnostics.
+The facade preserves details from the last observed failed terminal event;
+it forwards the original event to the application.
+
+| Field | Observed value | How to use it |
+| --- | --- | --- |
+| `providerCode` | Native error `code`, such as Codex's `server_error` | Branch within the configured provider's code vocabulary |
+| `providerType` | Native error `type`, such as Claude's `overloaded_error` | Distinguish provider failure categories without parsing messages |
+| `reason` | Native failure/incompletion `reason`, such as `max_output_tokens` | Explain or adjust a later request deliberately |
+
+The initial mappings cover Codex failed/incomplete responses and error SSE
+frames, and Claude Messages error SSE frames. Other providers may omit details.
+Absent details mean unavailable information, not an unknown code or a retry
+instruction. Only non-empty string fields are projected; arbitrary provider
+payloads, headers, and claimed retry flags are not copied into this object.
+The values remain provider-specific and are not sanitized for public display.
+
+For a configured Codex workflow, inspect `run.errorDetails?.reason` for
+`max_output_tokens` before deciding whether to request more output. Codex
+continues mapping an incomplete response to the existing `failed` run state.
+For streaming, read `result.data.errorDetails` after checking `result.ok` and
+`outcome`; the collector above retains those details in the typed error's
+`cause` automatically. No text-message parsing or new submission is required
+to identify the observed category.
+
+Run details describe execution, while `getRuntimeErrorMetadata` describes
+client/transport exceptions. Completion helpers retain the original details
+in `cause` and keep their existing `run_failed`/`run_cancelled` codes. Never
+treat a provider code as permission to replay a submission. Keep raw values
+in protected diagnostics and return application-owned messages to callers.
+
 An explicit empty string is valid output and is never trimmed or replaced by
 legacy text. Absent text triggers `RunOutputMissing`. Helpers consume the
 adapter's normalized values; they do not change how a provider maps empty or

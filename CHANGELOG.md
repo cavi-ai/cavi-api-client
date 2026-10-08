@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Optional `RuntimeRunErrorDetails` on run statuses, failed stream events, and
+  facade stream outcomes, carrying observed provider code/type/reason strings.
+  Codex response/stream and Claude Messages stream mappings preserve available
+  details alongside existing diagnostic messages and lifecycle behavior.
+
 - `waitForRun`, `RunWaitOptions`, and `RunWaitResult` from the root and
   `contracts`: bounded sequential retrieval of an existing run with a local
   deadline, poll budget, and caller cancellation. Stopped waits retain the last

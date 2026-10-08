@@ -112,6 +112,11 @@ time and poll budgets, caller cancellation, and the last observed run retained.
 Stopping a local wait leaves backend work running. The development guide
 includes a complete background answer example.
 
+Development builds also expose structured execution failure details for Codex
+responses/streams and Claude Messages error streams. Branch on observed
+provider codes or reasons without parsing diagnostic messages; completion
+helpers retain those details in their error causes.
+
 The factory above is example application code, not an exported package API.
 It uses Claude Messages' synchronous lifecycle. Background adapters need
 retrieval; they do not promise an answer when `startRun` returns.

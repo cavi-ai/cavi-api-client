@@ -34,6 +34,16 @@ export type RuntimeRunState =
   | "dry_run"
   | (string & {});
 
+/** Observed backend failure identifiers; values are provider-specific, not retry instructions. */
+export type RuntimeRunErrorDetails = {
+  /** Observed native error code, in the configured provider's vocabulary. */
+  providerCode?: string;
+  /** Observed native error type; distinct from ApiClientErrorType. */
+  providerType?: string;
+  /** Observed native failure/incompletion reason, without interpreting message text. */
+  reason?: string;
+};
+
 /** The UNIVERSAL run status. Gateway-only fields live on `GatewayRunStatus`. */
 export type RuntimeRunStatus = {
   run_id: string;
@@ -42,6 +52,8 @@ export type RuntimeRunStatus = {
   output?: string;
   response?: string;
   error?: string;
+  /** Optional observed failure identifiers. Absence means no structured details were supplied. */
+  errorDetails?: RuntimeRunErrorDetails;
   /**
    * @deprecated Raw provider-native token counts. Use `tokens` for portable,
    * normalized usage. Still populated for backward compatibility.

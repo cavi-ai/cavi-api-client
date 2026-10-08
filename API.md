@@ -124,6 +124,22 @@ aborting the request or cancelling backend work. Late results and rejections
 are safely ignored. Set transport timeouts separately. See
 [the development guide](docs/guides/run-results.md) for the complete example.
 
+## Unreleased execution failure details
+
+`RuntimeRunErrorDetails` is exported from the root and `core/runtime`.
+`RuntimeRunStatus`, `run.failed` events, and `RunStreamOutcome` accept optional
+`errorDetails` with observed `providerCode`, `providerType`, and `reason`
+strings. These values retain their provider vocabulary; they are distinct
+from package `ApiClientErrorCode` values and client `RuntimeErrorMetadata`.
+
+Codex response and stream mappings project native error codes/types and
+incompletion reasons; Claude Messages stream mappings project native error
+types. Missing or malformed fields remain absent. Existing statuses, error
+strings, and exception behavior are unchanged. The facade retains failed-event
+details in its settled outcome, and opt-in completion helpers retain the
+original outcome in `cause`. No retry safety or public-safe text is inferred.
+See [the development guide](docs/guides/run-results.md) for application handling.
+
 ## Maintainer references
 
 - [Architecture](ARCHITECTURE.md): layers and ownership.
