@@ -111,6 +111,8 @@ For background workflows, development builds also provide `waitForRun` with
 time and poll budgets, caller cancellation, and the last observed run retained.
 Stopping a local wait leaves backend work running. The development guide
 includes a complete background answer example.
+The [authorized background workflow](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
+shows stored-owner checks for retrieval, polling, and explicit cancellation.
 
 Development builds also expose structured execution failure details for Codex
 responses/streams and Claude Messages error streams. Branch on observed

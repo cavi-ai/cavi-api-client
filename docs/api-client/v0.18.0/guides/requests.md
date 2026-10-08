@@ -71,6 +71,9 @@ reason with the last observed run. See the
 [development background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
 That API is not in the pinned release; use the compatible helper above with
 this page's documented version.
+For server-owned run IDs, the
+[authorized background integration](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
+shows read/cancel permissions and authorization before each retrieval.
 
 ## Keep identity and state
 

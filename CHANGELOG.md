@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add an executable authorized background-run workflow with separate read and
+  cancellation permissions, per-poll authorization, retained wait outcomes,
+  and packed-consumer checks for denied access and explicit cancellation.
+
 - Answer and streaming examples use typed errors with retained run identity;
   error guidance shows guards, safe caller messages, and protected diagnostics.
 

@@ -180,6 +180,9 @@ The helper removes its timers and caller signal listener on every exit.
 Keep stopped snapshots and gaps in application state or protected diagnostics;
 do not send raw provider payloads to the frontend. Authorize stored IDs before
 retrieval or explicit cancellation.
+See [authorized background integration](owned-background-runs.md) for a
+complete service that rechecks read access before each poll and checks
+cancellation permission separately.
 
 ## Handle the three failure layers
 
