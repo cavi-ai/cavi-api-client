@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add a complete React consumer request workflow with validated handler
+  responses, pending and failed run IDs, local cancellation, and stale-response
+  protection. Seven mounted UI tests exercise the installed package and
+  documented server handler against stable and development artifacts.
+
 - Make the provider-file guide demonstrate reusable clients, persisted upload
   IDs, and explicit cleanup with validated deletion receipts. Add seven
   runnable file lifecycle tests against the pinned stable package and

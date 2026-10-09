@@ -170,6 +170,10 @@ The [file lifecycle tests](files.md#run-the-file-lifecycle-tests) cover multipar
 uploads, saved IDs, explicit deletion receipts, and cleanup failures through the
 installed public file client.
 
+The [React workflow tests](react.md#run-the-react-workflow-tests) mount the UI
+against the server handler and cover local cancellation, stale responses,
+endpoint changes, and unmount cleanup.
+
 The [authorized background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 includes development checks for access denial, revocation before polling,
 retrieval gaps, and local abort without backend cancellation.
