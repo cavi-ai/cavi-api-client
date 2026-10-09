@@ -89,6 +89,10 @@
       "title": "Advanced integration",
       "pages": [
         {
+          "title": "HTTP integration",
+          "path": "guides/http.md"
+        },
+        {
           "title": "Manifests",
           "path": "guides/manifests.md"
         },

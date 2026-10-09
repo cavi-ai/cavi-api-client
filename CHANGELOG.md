@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Canonical HTTP integration guide with explicit published/development boundaries
+  and native HTTP consumer examples checked against the packed candidate.
+
 - `RawHttpApiClient.consumeResponse` for consuming a response while retaining
   caller cancellation and the HTTP request deadline.
 

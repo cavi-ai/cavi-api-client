@@ -50,11 +50,22 @@ export function verifyFileExample({ root, installed, consumer, command, docsRoot
   compileAndRun({ root, consumer, command, docs, names: ["file-tests", "batch-files"] });
 }
 
-function compileAndRun({ root, consumer, command, docs, names }) {
+/** Exercise unreleased HTTP guidance only against the packed development candidate. */
+export function verifyHttpExample({ root, consumer, command }) {
+  const guide = readFileSync(path.join(root, "docs/api-client/source/pages/guides/http.md"), "utf8");
+  for (const name of ["http-tests", "http-workflow"]) {
+    assert.ok(guide.includes(`/docs/examples/development/${name}.ts`), "HTTP guide must link its tested download");
+  }
+  compileAndRun({ root, consumer, command, docs: path.join(root, "docs"),
+    exampleDirectory: "examples/development", names: ["http-tests", "http-workflow"],
+  });
+}
+
+function compileAndRun({ root, consumer, command, docs, names, exampleDirectory = "examples" }) {
   const directory = path.join(consumer, "application-tests");
   mkdirSync(directory, { recursive: true });
   for (const name of names) {
-    const source = readFileSync(path.join(docs, `examples/${name}.ts`), "utf8");
+    const source = readFileSync(path.join(docs, exampleDirectory, `${name}.ts`), "utf8");
     writeFileSync(path.join(directory, `${name}.ts`), source);
   }
   const output = path.join(directory, "built");
