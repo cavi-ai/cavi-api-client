@@ -167,7 +167,10 @@ export async function fetchGatewayExpectOk(
   path: string,
   options: GatewayHttpFetchOptions,
 ): Promise<void> {
-  await requestGatewayRaw(path, options);
+  await requestGatewayResponse(path, options, async (response) => {
+    // Disposal failures must not replace a successful acknowledgement.
+    await response.body?.cancel().catch(() => undefined);
+  });
 }
 
 export async function fetchGatewayBlob(

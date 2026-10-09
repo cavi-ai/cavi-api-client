@@ -81,6 +81,11 @@ headers once on the streaming call so both requests use the same configuration.
 
 ## Unreleased HTTP and stream lifetimes
 
+`fetchGatewayExpectOk`, `resolveHermesChatRunApproval`, and its
+`resolveGatewayChatRunApproval` alias cancel unread successful response bodies
+before returning. Body disposal is best effort and preserves acknowledgement
+results; raw response and stream helpers retain caller-owned bodies.
+
 `fetchGatewayJson`, `fetchGatewayBlob`, and `fetchGatewayFormDataJson` retain
 caller cancellation and the HTTP deadline through response body consumption.
 `requestGatewayRaw` continues to transfer body ownership to its caller.
