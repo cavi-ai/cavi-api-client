@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep Hermes chat run-start deadlines and caller cancellation active during
+  response parsing. Remove chat stream abort listeners and dispose subscriptions
+  when the stream completes, fails, or its consumer throws.
+
 - Publish a fresh tarball from the verified release checkout rather than the
   pinned documentation reference artifact. Keep stable docs verification and
   npm publication inputs separate.
