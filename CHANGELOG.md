@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve Fetch's `redirect` policy through core and gateway HTTP requests,
+  so explicit `manual` and `error` policies prevent following redirects.
+
 - Release unread successful response bodies in Claude Managed Agents environment,
   session, resource, memory-store, memory, vault, and credential deletion helpers.
   Preserve bodyless acknowledgements and successful results if disposal rejects.

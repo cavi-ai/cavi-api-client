@@ -24,6 +24,8 @@ export type HttpApiRequestInit = {
   idempotencyKey?: string;
   cache?: RequestCache;
   credentials?: RequestCredentials;
+  /** Fetch redirect policy; omitted requests retain Fetch's default follow behavior. */
+  redirect?: RequestRedirect;
 };
 
 export type HttpApiTrace = {
