@@ -27,7 +27,7 @@ describe("mapOpenAIResponseStreamEvent", () => {
     expect(mapOpenAIResponseStreamEvent(sse("response.completed", {
       response: { output_text, output: [{ type: "message", content: [{ type: "output_text", text: "native" }] }] },
     }), "resp_native")).toEqual({
-      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "resp_native", ...(output_text ? { output: output_text } : {}),
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "resp_native", output: output_text,
     });
   });
 

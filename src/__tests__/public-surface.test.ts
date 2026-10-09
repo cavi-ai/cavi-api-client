@@ -46,16 +46,12 @@ describe("public surface — dropped symbols still reachable via subpaths", () =
     const claude = await import("../providers/claude/messages");
     const codex = await import("../providers/codex/runtime");
     const codexFiles = await import("../providers/codex/files-entry");
-    const gemini = await import("../providers/gemini/runtime");
-    const geminiFiles = await import("../providers/gemini/files-entry");
     const hermes = await import("../providers/hermes/runtime");
     const openclaw = await import("../providers/openclaw/runtime");
 
     expect(claude.ClaudeApiClient).toBeDefined();
     expect(codex.CodexApiClient).toBeDefined();
     expect(codexFiles.CodexFilesClient).toBeDefined();
-    expect(gemini.GeminiApiClient).toBeDefined();
-    expect(geminiFiles.GeminiFilesClient).toBeDefined();
     expect(hermes.HERMES_PROVIDER_MODULE).toBeDefined();
     expect(openclaw.OPENCLAW_PROVIDER_MODULE).toBeDefined();
     expect((hermes as Record<string, unknown>).createHermesTeamRegistry).toBeUndefined();

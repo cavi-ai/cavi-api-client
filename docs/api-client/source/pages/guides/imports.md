@@ -54,7 +54,6 @@ entries when an application needs only one provider surface.
 | --- | --- | --- |
 | Claude | `@cavi-ai/api-client/providers/claude` | `@cavi-ai/api-client/providers/claude/messages`, `@cavi-ai/api-client/providers/claude/managed-agents` |
 | Codex | `@cavi-ai/api-client/providers/codex` | `@cavi-ai/api-client/providers/codex/runtime`, `@cavi-ai/api-client/providers/codex/files` |
-| Gemini (legacy compatibility) | `@cavi-ai/api-client/providers/gemini` | `@cavi-ai/api-client/providers/gemini/runtime`, `@cavi-ai/api-client/providers/gemini/files` |
 | Antigravity (AGY, active successor direction) | `@cavi-ai/api-client/providers/agy` | |
 | Hermes | `@cavi-ai/api-client/providers/hermes` | `@cavi-ai/api-client/providers/hermes/runtime` |
 | OpenClaw | `@cavi-ai/api-client/providers/openclaw` | `@cavi-ai/api-client/providers/openclaw/runtime` |

@@ -7,8 +7,7 @@ documentedVersion: {{documentedVersion}}
 Runtime-only provider over the Antigravity orchestration API. Auth:
 `x-agy-api-key`. `baseUrl` is required. Runs are synchronous request/response
 (`POST /v1/agents/run`); `getRun`/`cancelRun` return the client-remembered
-terminal status via `SynchronousRunStore` (same pattern as Claude Messages and
-Gemini). Streaming uses `POST /v1/agents/stream` (SSE). Batch is not supported
+terminal status via `SynchronousRunStore` (same pattern as Claude Messages). Streaming uses `POST /v1/agents/stream` (SSE). Batch is not supported
 in the initial surface.
 
 Capability (`AGY_RUNTIME_SUPPORT`): runs ✅ · getRun ✅ (client-local) ·

@@ -33,7 +33,7 @@ if (caps.supports.batch) { /* … */ }
 ## startRun
 
 **Signature** `client.startRun(body: RuntimeRunStartBody): Promise<RuntimeRunStatus>`
-**HTTP** `POST /v1/messages` (Claude) · `POST /v1/responses` (Codex) · `POST /v1beta/models/:model:generateContent` (Gemini) · gateway RPC (Hermes/OpenClaw)
+**HTTP** `POST /v1/messages` (Claude) · `POST /v1/responses` (Codex) · gateway RPC (Hermes/OpenClaw)
 **Capability** `supports.runs`
 
 ### Request body / Parameters
@@ -42,7 +42,7 @@ if (caps.supports.batch) { /* … */ }
 | ----- | ---- | -------- | ----------- |
 | input | string \| RuntimeRunMessage[] | yes | Prompt string or conversation messages (`{ role, content }`). |
 | instructions | string | no | System / developer instructions (Anthropic `system`). |
-| model | string | no | Model id; configure an available default or supply it explicitly. Gemini requires an explicit model. |
+| model | string | no | Model id; configure an available default or supply it explicitly. |
 | tools | Record<string, unknown>[] | no | Provider-native tool definitions. |
 | metadata | Record<string, unknown> | no | Opaque caller metadata. |
 | dryRun | boolean | no | Validate/echo without executing; yields `status: "dry_run"`. |
@@ -77,7 +77,7 @@ const view = { runId: run.run_id, status: run.status, text: run.output };
 **Capability** `supports.runs` + stateful provider
 
 Optional on the type, but implemented by every shipping provider. Synchronous
-providers (Claude Messages, Gemini, AGY) serve `getRun` from a client-side
+providers (Claude Messages, AGY) serve `getRun` from a client-side
 `SynchronousRunStore` (remembered terminal status; unknown ids degrade without
 throwing). Codex and gateway providers poll real upstream run handles. Returns
 the same `RuntimeRunStatus` shape as `startRun`.
@@ -105,7 +105,7 @@ Optional. Same availability rules as `getRun`.
 ## streamRun
 
 **Signature** `client.streamRun?(body: RuntimeRunStartBody, handlers: RunEventStreamHandlers, options?: { signal?: AbortSignal }): Promise<void>`
-**HTTP** `POST /v1/messages?stream=1` (Claude) · `POST /v1/responses` (SSE, Codex) · `POST /v1beta/models/:model:streamGenerateContent` (Gemini)
+**HTTP** `POST /v1/messages?stream=1` (Claude) · `POST /v1/responses` (SSE, Codex)
 **Capability** `supports.streaming`
 
 Optional. Gateways use a subscribe-by-runId model and omit this, exposing a
@@ -123,12 +123,12 @@ await client.streamRun?.(
 ## submitBatch
 
 **Signature** `client.submitBatch?(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus>`
-**HTTP** `POST /v1/messages/batches` (Claude) · `POST /v1/batches` (Codex) · `POST /v1beta/models/:model:batchGenerateContent` (Gemini)
+**HTTP** `POST /v1/messages/batches` (Claude) · `POST /v1/batches` (Codex)
 **Capability** `supports.batch`
 
-Implemented by Claude, Codex, and Gemini. Provider-specific batch endpoints and
+Implemented by Claude and Codex. Provider-specific batch endpoints and
 result retrieval differ — see [Claude](providers/claude-anthropic.md),
-[Codex](providers/codex.md), and [Gemini](providers/gemini.md).
+[Codex](providers/codex.md).
 
 ### Request body / Parameters
 

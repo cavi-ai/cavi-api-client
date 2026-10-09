@@ -1,3 +1,4 @@
+import { combineAbortSignalsWithCleanup } from "../../core/sse/abort-signals.js";
 import { BaseHttpApiClient } from "../../core/http/client.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 import { apiKeyCredentials } from "../../core/http/credentials.js";
@@ -92,10 +93,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
     }
     
     const controller = new AbortController();
-    if (options.signal) {
-      if (options.signal.aborted) controller.abort();
-      else options.signal.addEventListener("abort", () => controller.abort(), { once: true });
-    }
+    const { signal, dispose } = combineAbortSignalsWithCleanup(controller.signal, options.signal);
 
     const runId = newAgyRunId();
     
@@ -103,7 +101,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       const response = await this.requestRaw(agyStreamPath(), {
         method: "POST",
         body: payload,
-        signal: controller.signal,
+        signal,
       });
       
       if (!response.body) {
@@ -113,7 +111,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       }
 
       let completed = false;
-      await consumeSseStream(response.body, controller.signal, (sse) => {
+      await consumeSseStream(response.body, signal, (sse) => {
         if (completed) return;
         let parsed: AgyGenerateResponse;
         try {
@@ -145,7 +143,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
           }
         }
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (!completed) {
         throw new ApiClientError("agy: stream ended before a terminal event", {
           code: ApiClientErrorCode.RequestFailed,
@@ -155,6 +153,8 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
     } catch (error) {
       if (handlers.onError) handlers.onError(toError(error));
       else throw error;
+    } finally {
+      dispose();
     }
   }
 

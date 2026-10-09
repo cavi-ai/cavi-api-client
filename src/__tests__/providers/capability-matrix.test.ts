@@ -11,7 +11,6 @@ describe("runtime provider capability matrix", () => {
       "claude",
       "claude-managed-agents",
       "codex",
-      "gemini",
       "hermes",
       "openclaw",
       "opencode",
@@ -57,7 +56,6 @@ describe("runtime provider capability matrix", () => {
       claude: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
       "claude-managed-agents": { runtime: { runs: true, streaming: true }, transports: { http, sse }, controlPlane: {} },
       codex: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
-      gemini: { runtime: { runs: true, streaming: true, batch: true }, transports: { http, sse }, controlPlane: {} },
       hermes: {
         runtime: gatewayRuntime,
         transports: { http, sse, websocket: { ...websocket, stability: "experimental" } },
@@ -95,7 +93,7 @@ describe("runtime provider capability matrix", () => {
     expect(getRuntimeProviderCapabilityRow("codex-responses")).toBe(
       RUNTIME_PROVIDER_CAPABILITY_MATRIX.codex,
     );
-    for (const kind of ["agy", "gemini", "claude-managed-agents", "hermes", "openclaw"] as const) {
+    for (const kind of ["agy", "claude-managed-agents", "hermes", "openclaw"] as const) {
       expect(getRuntimeProviderCapabilityRow(kind)).toBeDefined();
     }
     expect(getRuntimeProviderCapabilityRow("nope")).toBeUndefined();

@@ -46,7 +46,6 @@ function baseModules(hermesFactory?: RuntimeProviderModule["createRuntimeControl
     available("openclaw", ["open-claw"]),
     available("codex-responses", ["codex", "openai-codex"]),
     available("claude-sdk", ["claude", "anthropic"]),
-    available("gemini", ["google", "google-gemini"]),
   ].map((module) => module.kind === "hermes" && hermesFactory
     ? { ...module, createRuntimeControlClient: hermesFactory }
     : module);
@@ -107,7 +106,7 @@ describe("withCaviRuntimeControlProviders", () => {
       ["hermes", "https://dashboard.test|dashboard-token|https://core.call.test|call-token"],
       [" HERMES-API-SERVER ", "https://dashboard.test|dashboard-token|https://core.call.test|call-token"],
       ["openclaw", "openclaw"], ["open-claw", "openclaw"],
-      ["codex", "codex-responses"], ["claude", "claude-sdk"], ["gemini", "gemini"],
+      ["codex", "codex-responses"], ["claude", "claude-sdk"],
     ] as const) {
       await expect(listSessions(provider, registry)).resolves.toMatchObject({ data: [{ id: expected }] });
     }

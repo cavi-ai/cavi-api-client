@@ -66,7 +66,7 @@ test("preserves an explicitly supplied empty normalized snapshot", async (t) => 
 });
 
 test("rejects completion with no observed text rather than inventing an empty answer", async (t) => {
-  for (const response of [{}, { output_text: "" }]) {
+  for (const response of [{}]) {
     const app = fixture(t, [["response.completed", { response }]]);
     await assert.rejects(app.collect(), (error) => {
       assert.ok(isApiClientError(error));

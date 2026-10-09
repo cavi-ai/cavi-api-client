@@ -54,11 +54,29 @@ Development builds preserve an explicit string `output_text`, including an
 empty string. Otherwise, run statuses, successful batch responses, and completed
 stream events concatenate `output_text` content from native `message` items in
 wire order, without inserted separators. Tool calls, reasoning, refusals, and
-malformed items are excluded. Empty text remains an absent normalized `output`.
+malformed items are excluded. An observed empty text string remains `output: ""`;
+no observed text remains an absent normalized `output`.
 Partial text does not change a failed or incomplete run into a successful one.
 
 The versioned docs still describe the pinned published package. Check the
 [changelog](CHANGELOG.md#unreleased) before relying on this development change.
+
+## Unreleased HTTP and stream lifetimes
+
+HTTP JSON, blob, file, and batch-result reads retain the request timeout and
+caller cancellation until body consumption settles. Caller cancellation keeps
+its original reason; timeout failures use `HttpApiError`. Other body/parser
+failures retain their existing error contract.
+Raw HTTP responses transfer body ownership to their caller, so the request
+deadline does not bound a long-lived SSE stream.
+
+HTTP subclasses can use the protected `requestWithResponse(path, init, consume)`
+method to keep a body consumer inside the request lifetime. The callback must
+await its body read. Claude, Codex, and AGY stream calls detach their caller
+abort listeners when they settle, including transport and handler failures.
+
+The next major release removes Gemini's provider and file entries. See
+[migration guidance](MIGRATION.md#remove-gemini-integrations-next-major-release).
 
 ## Unreleased run outcome errors
 

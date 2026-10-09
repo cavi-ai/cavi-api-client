@@ -75,7 +75,7 @@ export function mapOpenAIResponseStreamEvent(
       return {
         event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
         runId,
-        ...(typeof output === "string" && output ? { output } : {}),
+        ...(output !== undefined ? { output } : {}),
         ...(tokens ? { usage: tokens } : {}),
       };
     }

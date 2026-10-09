@@ -37,28 +37,29 @@ export class JsonHttpApiClient extends BaseHttpApiClient {
     init?: HttpApiRequestInit,
   ): Promise<TData> {
     try {
-      const response = await this.requestRaw(path, init);
-      const text = await response.text();
-      if (response.status === 204 || !text.trim()) {
-        return {} as TData;
-      }
-      try {
-        return JSON.parse(text) as TData;
-      } catch (error) {
-        const contentType = response.headers.get("content-type") ?? "unknown";
-        const preview = redactPreviewText(text.trim(), 500);
-        const parseMessage = error instanceof Error ? error.message : String(error);
-        const method = init?.method ?? "GET";
-        const safePath = redactPreviewText(path, 2_000);
-        throw new HttpApiError({
-          message: `${method} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
-          path,
-          url: path,
-          method,
-          status: response.status,
-          body: text,
-        });
-      }
+      return await this.requestWithResponse(path, init, async (response) => {
+        const text = await response.text();
+        if (response.status === 204 || !text.trim()) {
+          return {} as TData;
+        }
+        try {
+          return JSON.parse(text) as TData;
+        } catch (error) {
+          const contentType = response.headers.get("content-type") ?? "unknown";
+          const preview = redactPreviewText(text.trim(), 500);
+          const parseMessage = error instanceof Error ? error.message : String(error);
+          const method = init?.method ?? "GET";
+          const safePath = redactPreviewText(path, 2_000);
+          throw new HttpApiError({
+            message: `${method} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
+            path,
+            url: path,
+            method,
+            status: response.status,
+            body: text,
+          });
+        }
+      });
     } catch (error) {
       if (error instanceof HttpApiError && error.message.includes("returned invalid JSON")) {
         throw error;

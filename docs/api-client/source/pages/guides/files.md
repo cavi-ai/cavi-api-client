@@ -8,7 +8,7 @@ There is no provider-neutral files API in this release. File IDs, uploads,
 retention, and prompt references belong to the provider. Never reuse a file ID
 from one backend on another.
 
-Use the narrow Codex or Gemini file entry on your server. Configure a reusable
+Use the narrow Codex file entry on your server. Configure a reusable
 `CodexFilesClient` with your server-owned API key and request timeout, then pass
 it to these helpers. They upload prepared OpenAI batch JSONL and remove a saved
 file ID in a later worker, without relying on an in-memory cleanup callback.
@@ -101,13 +101,6 @@ HTTP fixtures exercise the installed public file client, multipart input,
 metadata retention, cleanup from a saved ID, invalid acknowledgments, and
 authentication/availability failures. The file client has no owned socket to
 close; each fixture creates an isolated client and finite HTTP responses.
-
-## Legacy Gemini file compatibility
-
-Gemini's [file client](../reference/providers-gemini-files.md) has a different
-upload contract. Resumable uploads stay on the configured API origin, reject
-redirects, and honor cancellation/timeout options. Failures use a status-only
-`ApiClientError`; its cause does not retain raw response bodies.
 
 [Codex file methods](../reference/providers-codex-files.md) ·
 [Gateway workspace access](gateway.md)

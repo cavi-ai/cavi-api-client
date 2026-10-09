@@ -4,7 +4,7 @@ const DEFAULT_CAPACITY = 256;
 
 /**
  * A small bounded cache of terminal run statuses for synchronous providers
- * (Claude SDK, Gemini) whose runs complete during `startRun` and have no
+ * (Claude Messages, AGY) whose runs complete during `startRun` and have no
  * server-side retrieval. It lets `getRun`/`cancelRun` degrade gracefully —
  * returning the already-terminal status instead of throwing — so the
  * `RuntimeClient` contract is uniform across providers ("swap providers, not

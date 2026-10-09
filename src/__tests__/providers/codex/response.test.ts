@@ -53,19 +53,23 @@ describe("mapOpenAIResponseToRunStatus", () => {
   it.each(["explicit", "", " "])("preserves explicit output_text %j over native items", (output_text) => {
     const response = { id: "resp_precedence", status: "completed", output_text, output };
     const status = mapOpenAIResponseToRunStatus(response);
-    if (output_text) expect(status.output).toBe(output_text);
-    else expect(status).not.toHaveProperty("output");
+    expect(status.output).toBe(output_text);
   });
 
   it.each([
     undefined, null, {}, [], [null, 3, "text"],
     [{ type: "message", content: null }],
     [{ type: "message", content: [{ type: "output_text", text: 3 }, null, { type: "refusal", text: "ignore" }] }],
-    [{ type: "message", content: [{ type: "output_text", text: "" }] }],
     [{ type: "function_call", text: "ignore", arguments: "ignore" }],
-  ])("omits output for empty, non-text, or malformed native items %j", (output) => {
+  ])("omits output for absent, non-text, or malformed native items %j", (output) => {
     const response = { id: "resp_empty", status: "completed", output };
     expect(mapOpenAIResponseToRunStatus(response)).toEqual({ run_id: "resp_empty", status: "completed" });
+  });
+
+  it("preserves an observed empty native message", () => {
+    expect(mapOpenAIResponseToRunStatus({ id: "empty", status: "completed", output: [
+      { type: "message", content: [{ type: "output_text", text: "" }] },
+    ] })).toEqual({ run_id: "empty", status: "completed", output: "" });
   });
 
   it("skips malformed entries without dropping valid message text", () => {

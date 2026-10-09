@@ -51,5 +51,5 @@ npx newman run docs/postman/cavi-api-client.postman_collection.json \
 
 ## Scope
 
-Gateway + CAVI surfaces on one host with bearer auth. Claude / Codex / Gemini /
+Gateway + CAVI surfaces on one host with bearer auth. Claude / Codex /
 other provider HTTP APIs are out of scope here — use provider conformance tests.

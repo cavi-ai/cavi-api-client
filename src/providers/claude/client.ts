@@ -1,3 +1,4 @@
+import { combineAbortSignalsWithCleanup } from "../../core/sse/abort-signals.js";
 import { BaseHttpApiClient } from "../../core/http/client.js";
 import type { HttpApiClientOptions, HttpApiTransport } from "../../core/http/types.js";
 import { apiKeyCredentials } from "../../core/http/credentials.js";
@@ -125,16 +126,13 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     }
 
     const controller = new AbortController();
-    if (options.signal) {
-      if (options.signal.aborted) controller.abort();
-      else options.signal.addEventListener("abort", () => controller.abort(), { once: true });
-    }
+    const { signal, dispose } = combineAbortSignalsWithCleanup(controller.signal, options.signal);
 
     try {
       const response = await this.requestRaw(CLAUDE_API_ENDPOINTS.messages, {
         method: "POST",
         body: payload,
-        signal: controller.signal,
+        signal,
       });
       if (!response.body) {
         throw new ApiClientError("claude-sdk: streaming response had no body", {
@@ -144,7 +142,7 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
 
       let runId = "";
       let usageAcc: Record<string, number> = {};
-      await consumeSseStream(response.body, controller.signal, (sse) => {
+      await consumeSseStream(response.body, signal, (sse) => {
         const startId = readAnthropicRunId(sse);
         if (startId) runId = startId;
         const usageDelta = readAnthropicStreamUsage(sse);
@@ -162,6 +160,8 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
     } catch (error) {
       if (handlers.onError) handlers.onError(error);
       else throw error;
+    } finally {
+      dispose();
     }
   }
 
@@ -206,9 +206,9 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
   }
 
   async getBatchResults(batchId: string): Promise<RuntimeBatchResult[]> {
-    let response: Response;
+    let text: string;
     try {
-      response = await this.requestRaw(claudeMessageBatchResultsPath(batchId), { method: "GET" });
+      text = await this.requestWithResponse(claudeMessageBatchResultsPath(batchId), { method: "GET" }, (response) => response.text());
     } catch (error) {
       if (error instanceof HttpApiError && error.status === 404) {
         throw new ApiClientError(
@@ -218,7 +218,6 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
       }
       throw error;
     }
-    const text = await response.text();
     return parseMessageBatchResults(text, mapAnthropicMessageToRunStatus);
   }
 

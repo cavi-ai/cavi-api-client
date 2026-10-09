@@ -65,7 +65,7 @@ import { OpenClawWikiApiClient } from "./openclaw/wiki.js";
  * `getCapabilityMap()`, or just call and branch on `result.ok`.
  *
  * `streamRun` works on all providers: runtime-only providers (Claude, Codex,
- * Gemini, Claude Managed Agents) stream directly through their `RuntimeClient`;
+ * AGY, Claude Managed Agents) stream directly through their `RuntimeClient`;
  * gateway providers (Hermes, OpenClaw) have no native `streamRun` and are
  * bridged over their event transport instead — Hermes over SSE run events
  * (the run body must carry a `sessionKey` — pass it on the exported

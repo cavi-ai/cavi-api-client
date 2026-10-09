@@ -18,6 +18,7 @@ export type HttpApiRequestInit = {
   rawBody?: BodyInit;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Request deadline, including owned body reads; raw responses transfer body ownership. */
   timeoutMs?: number;
   idempotencyKey?: string;
   cache?: RequestCache;
@@ -59,6 +60,7 @@ export type HttpApiClientOptions = {
   /** Send the X-Portal-Client-Id header. Default true; set false for non-gateway backends. */
   includePortalClientIdHeader?: boolean;
   auth?: HttpApiClientAuth;
+  /** Default request deadline; JSON/blob reads keep it active through body consumption. */
   defaultTimeoutMs?: number;
   fetchImpl?: typeof fetch;
   cache?: RequestCache;

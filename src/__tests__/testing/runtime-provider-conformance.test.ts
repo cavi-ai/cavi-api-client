@@ -5,7 +5,6 @@ import { createClaudeProviderModule } from "../../providers/claude/provider-modu
 import { createClaudeManagedAgentProviderModule } from "../../providers/claude/managed-agents/provider-module";
 import { createCodexProviderModule } from "../../providers/codex/provider-module";
 import { createAgyProviderModule } from "../../providers/agy/provider-module";
-import { createGeminiProviderModule } from "../../providers/gemini/provider-module";
 import { createOpenCodeProviderModule } from "../../providers/opencode/provider-module";
 import { inspectRuntimeProviderConformance } from "../../testing/index";
 
@@ -220,17 +219,6 @@ describe("inspectRuntimeProviderConformance", () => {
       });
       expect(report.valid).toBe(true);
       expect(report.checks.find((c) => c.id === "streaming-path")?.message).toMatch(/streamRun/);
-      expect(report.checks.find((c) => c.id === "run-lifecycle-sync-store")?.status).toBe("pass");
-    });
-
-    it("gemini is sync-store + streamRun", async () => {
-      const module = createGeminiProviderModule({ apiKey: "test-key" });
-      const report = await inspectRuntimeProviderConformance({
-        module,
-        clientOptions: { baseUrl: "https://generativelanguage.googleapis.com" },
-        runLifecycleSemantics: "sync-store",
-      });
-      expect(report.valid).toBe(true);
       expect(report.checks.find((c) => c.id === "run-lifecycle-sync-store")?.status).toBe("pass");
     });
 

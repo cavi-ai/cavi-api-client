@@ -323,7 +323,7 @@ const collectionDescription = [
   "",
   "## Out of scope",
   "",
-  "Claude / Codex / Gemini HTTP APIs are not included (separate hosts and auth). Use the package provider conformance tests for those.",
+  "Claude / Codex HTTP APIs are not included (separate hosts and auth). Use the package provider conformance tests for those.",
   "",
   "Regenerate: `pnpm run build && pnpm run postman:generate`",
 ].join("\n");

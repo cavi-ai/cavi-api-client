@@ -112,7 +112,7 @@ await assistant.dispose();
   }).outputText);
   writeFileSync(path.join(consumer, "journeys.mjs"), `
 import assert from "node:assert/strict";
-import { ApiClientError, ApiClientErrorCode, createApiClient, createCapabilityClient, createRuntimeProviderRegistry, isApiClientError } from "@cavi-ai/api-client";
+import { ApiClientError, ApiClientErrorCode, createApiClient, createCapabilityClient, createRuntimeProviderRegistry, isApiClientError, requireRunText } from "@cavi-ai/api-client";
 import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
 import { runAndWait } from "./runtime-node.mjs";
 import { createCodexProviderModule } from "@cavi-ai/api-client/providers/codex/runtime";
@@ -146,6 +146,21 @@ const nativeOnly = await runAndWait(nativeClient, { model: "fixture-model", inpu
 assert.equal(nativeOnly.status, "completed");
 assert.equal(nativeOnly.output, "native text");
 await nativeClient.dispose();
+
+const emptyClient = codexClient(async () => Response.json({ id: "empty-response", status: "completed", output_text: "" }));
+const emptyRun = await runAndWait(emptyClient, { model: "fixture-model", input: "Empty answer" });
+assert.equal(requireRunText(emptyRun), "");
+await emptyClient.dispose();
+
+const emptyStreamClient = codexClient(async () => new Response(
+  'event: response.created\\ndata: {"response":{"id":"empty-stream"}}\\n\\n' +
+  'event: response.completed\\ndata: {"response":{"output_text":""}}\\n\\n',
+  { headers: { "content-type": "text/event-stream" } },
+));
+const emptyStream = await streamText(emptyStreamClient, { model: "fixture-model", input: "Empty answer" }, () => {}, new AbortController().signal);
+assert.equal(emptyStream.text, "");
+assert.equal(emptyStream.runId, "empty-stream");
+await emptyStreamClient.dispose();
 
 requests = [];
 const activeClient = codexClient(async (input, init) => {

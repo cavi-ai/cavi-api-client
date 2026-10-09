@@ -12,7 +12,6 @@ const OWNER_PATHS_GLOBS = [
   "src/providers/claude/paths.ts",
   "src/providers/claude/managed-agents/paths.ts",
   "src/providers/codex/paths.ts",
-  "src/providers/gemini/paths.ts",
   "src/providers/agy/paths.ts",
   "src/providers/opencode/paths.ts",
 ];
@@ -132,7 +131,7 @@ export function extractSourceHttpOperations(source, routes) {
   function visit(node) {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
       && node.expression.expression.kind === ts.SyntaxKind.ThisKeyword
-      && ["request", "requestRaw", "requestChecked"].includes(node.expression.name.text)) {
+      && ["request", "requestRaw", "requestChecked", "requestWithResponse"].includes(node.expression.name.text)) {
       const route = resolve(node.arguments[0]);
       if (typeof route === "string") {
         const options = node.arguments[1];
@@ -159,7 +158,7 @@ export function findUnknownOperations(documented, implemented) {
 
 /**
  * True when a documented static path prefix corresponds to a source literal.
- * Version-prefixed API paths (e.g. Gemini `/v1beta/models/...`) are assembled in
+ * Version-prefixed API paths (e.g. provider `/v1/models/...`) are assembled in
  * source from a version constant plus the remainder, so the full prefix is not a
  * contiguous literal — accept those when the version-stripped remainder is.
  */
@@ -196,7 +195,6 @@ async function main() {
     "claude-anthropic.md": { directory: "claude", files: ["client.ts"] },
     "claude-managed-agents.md": { directory: "claude/managed-agents", files: ["client.ts"] },
     "codex.md": { directory: "codex", files: ["client.ts", "files.ts"] },
-    "gemini.md": { directory: "gemini", files: ["client.ts", "files.ts"] },
     "agy.md": { directory: "agy", files: ["client.ts"] },
     "opencode.md": { directory: "opencode", files: ["client.ts"] },
   };
