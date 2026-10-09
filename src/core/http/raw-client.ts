@@ -44,13 +44,14 @@ export function createRawHttpApiClient(params: {
   });
 }
 
+/** Preserve Fetch headers unless an explicit replacement header record is supplied. */
 export function toHttpRequestInit(
   init: RequestInit | undefined,
   headers?: Record<string, string>,
 ): HttpApiRequestInit {
   return {
     method: normalizeHttpMethod(init?.method),
-    headers,
+    headers: headers ?? (init?.headers ? Object.fromEntries(new Headers(init.headers)) : undefined),
     rawBody: init?.body ?? undefined,
     signal: init?.signal ?? undefined,
     cache: init?.cache ?? undefined,

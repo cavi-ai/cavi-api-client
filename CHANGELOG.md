@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve Fetch `RequestInit.headers` when converting with `toHttpRequestInit`,
+  including records, tuple lists, and `Headers` instances. An explicit second
+  argument retains its existing replacement behavior.
+
 - Omit engine-generated response excerpts from HTTP invalid-JSON error messages
   so truncated credentials cannot bypass the redacted body preview. Preserve
   response status and the original body on `HttpApiError`.
