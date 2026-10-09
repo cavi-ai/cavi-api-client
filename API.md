@@ -117,6 +117,11 @@ headers once on the streaming call so both requests use the same configuration.
 
 ## Unreleased HTTP and stream lifetimes
 
+While awaiting an HTTP response, caller cancellation preserves the original
+`AbortSignal.reason`, including string, number, boolean, and null reasons.
+Transport failures and timeouts retain their `HttpApiError` classification;
+a late caller cancellation does not replace an earlier failure or timeout.
+
 Claude Managed Agents deletion helpers dispose unread successful response
 bodies before returning. Bodyless 204 responses and existing deletion error
 types are preserved; disposal failures do not replace successful acknowledgements.
