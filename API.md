@@ -73,6 +73,15 @@ only when no content type is already supplied.
 list, or `Headers` instance. Its optional second argument replaces those headers,
 including when an empty record is supplied.
 
+## Unreleased HTTP request controls
+
+`HttpApiRequestInit` and `toHttpRequestInit` preserve `integrity`,
+`keepalive`, `mode`, `priority`, `referrer`, and `referrerPolicy`. Gateway Fetch
+helpers forward the same controls. Explicit `false` and empty-string values
+are retained; omitted options use the Fetch implementation's defaults.
+The Fetch implementation enforces integrity and platform-specific restrictions,
+including browser CORS and referrer behavior.
+
 ## Unreleased HTTP redirect policy
 
 HTTP requests and `toHttpRequestInit` preserve Fetch's `redirect` option.
