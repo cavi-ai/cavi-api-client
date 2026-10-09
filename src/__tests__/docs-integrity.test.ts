@@ -63,6 +63,16 @@ describe("docs integrity", () => {
     )).toContain('--manifest "$MANIFEST"');
   });
 
+  it("requires archive ingestion validation before release upload or dispatch", () => {
+    const workflow = read(".github/workflows/publish.yml");
+    const build = workflow.indexOf("Build and verify deterministic docs release");
+    const check = workflow.indexOf("pnpm run docs:host-ingest-check");
+    const dryRun = workflow.indexOf("Report non-mutating dry run");
+    expect(check).toBeGreaterThan(build);
+    expect(check).toBeLessThan(dryRun);
+    expect(workflow.slice(build, dryRun)).toContain('--archive "$ARTIFACT" --expect-version "$VERSION"');
+  });
+
   it("commits the generated reference artifact for the package version", () => {
     // Independent sides: the COMMITTED artifact's own contents vs the pin. Fails
     // when a bump lands without regenerating the reference.

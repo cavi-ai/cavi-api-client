@@ -41,6 +41,13 @@ input; it is never the npm publication artifact. The release tag must match
 `package.json` `version`. An already published version is skipped, and the docs
 job resolves the exact published npm bytes separately before building its asset.
 
+`release:dry-run-report` compares the supplied `cavi-release.json` with the
+manifest embedded in the documentation archive before emitting a report.
+Equivalent JSON formatting is accepted; differing provenance is rejected.
+Archive inspection and the reported digest use the same captured archive bytes.
+The documentation release workflow also requires host ingestion validation of
+the generated archive before uploading assets or dispatching downstream ingestion.
+
 ## Documentation model
 
 | Tree | Audience | Role |

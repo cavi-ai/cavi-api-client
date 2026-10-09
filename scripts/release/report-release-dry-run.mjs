@@ -1,14 +1,13 @@
 #!/usr/bin/env node
-import { execFile } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
+import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { formatDocumentationReleaseDryRunReport } from "./release-artifact.mjs";
 
-const execFileAsync = promisify(execFile);
 const HELP = "usage: pnpm run release:dry-run-report -- --artifact <docs.tar.gz> --manifest <cavi-release.json> --envelope <release-envelope.json>\n";
 
 function parseArguments(argv) {
@@ -52,20 +51,32 @@ export async function runReleaseDryRunReportCli(
   const artifact = path.resolve(required(options.artifact, "--artifact"));
   const manifestPath = path.resolve(required(options.manifest, "--manifest"));
   const envelopePath = path.resolve(required(options.envelope, "--envelope"));
-  const [archive, manifestText, envelopeText, listing] = await Promise.all([
+  const [archive, manifestText, envelopeText] = await Promise.all([
     readFile(artifact),
     readFile(manifestPath, "utf8"),
     readFile(envelopePath, "utf8"),
-    execFileAsync("tar", ["-tzf", artifact]),
   ]);
-  const members = listing.stdout.split("\n").filter(Boolean);
-  stdout.write(formatDocumentationReleaseDryRunReport({
+  // Inspect the captured bytes used for the digest, rather than reopening a path.
+  const tarOptions = { input: archive, encoding: "utf8" };
+  const members = execFileSync("tar", ["-tzf", "-"], tarOptions).split("\n").filter(Boolean);
+  const manifest = JSON.parse(manifestText);
+  const report = formatDocumentationReleaseDryRunReport({
     artifactName: path.basename(artifact),
     artifactSha256: createHash("sha256").update(archive).digest("hex"),
     members,
-    manifest: JSON.parse(manifestText),
+    manifest,
     envelope: JSON.parse(envelopeText),
-  }));
+  });
+  let embeddedManifest;
+  try {
+    embeddedManifest = JSON.parse(execFileSync("tar", ["-xOzf", "-", "cavi-release.json"], tarOptions));
+  } catch {
+    throw new Error("invalid archive release manifest");
+  }
+  if (!isDeepStrictEqual(manifest, embeddedManifest)) {
+    throw new Error("manifest does not match archive provenance");
+  }
+  stdout.write(report);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

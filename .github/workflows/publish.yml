@@ -239,6 +239,7 @@ jobs:
           SIDECAR="${ARTIFACT}.sha256"
           ARTIFACT_SHA256="$(tr -d '\n' < "$SIDECAR")"
           printf '%s  %s\n' "$ARTIFACT_SHA256" "$ARTIFACT" | sha256sum --check --status
+          pnpm run docs:host-ingest-check --archive "$ARTIFACT" --expect-version "$VERSION"
           MANIFEST="$RUNNER_TEMP/cavi-release-${VERSION}.json"
           tar -xOzf "$ARTIFACT" cavi-release.json > "$MANIFEST"
           jq -e \

@@ -322,6 +322,53 @@ describe("buildDocumentationReleaseArtifact", () => {
     await expect(readFile(target)).resolves.toEqual(contents[winners[0]!]!);
   });
 
+  it.each(["matching", "documentation", "npm"])("checks %s detached provenance against the archive before reporting", async (variant) => {
+    const output = await makeTemporaryDirectory("cavi-docs-release-report-");
+    const input = await artifactInput(output);
+    const result = await buildDocumentationReleaseArtifact({
+      ...input, documentationDirectory: await preRenderedDocumentationDirectory(),
+    });
+    const { stdout: embedded } = await execFileAsync("tar", ["-xOzf", result.artifactPath, "cavi-release.json"]);
+    const manifest = JSON.parse(embedded);
+    if (variant === "documentation") manifest.documentation.contentSha256 = "f".repeat(64);
+    if (variant === "npm") manifest.npm.tarballSha256 = "f".repeat(64);
+    const manifestPath = path.join(output, "manifest.json");
+    // Different formatting and key order must not make equivalent provenance fail.
+    await writeFile(manifestPath, JSON.stringify(Object.fromEntries(Object.entries(manifest).reverse())));
+    const envelopePath = path.join(output, "envelope.json");
+    await writeFile(envelopePath, JSON.stringify(createReleaseEnvelope({
+      version: input.release.version, tag: input.release.tag,
+      repository: input.release.repository, commit: input.release.commit,
+      artifactSha256: result.sha256,
+    })));
+    const report = execFileAsync(process.execPath, ["scripts/release/report-release-dry-run.mjs",
+      "--artifact", result.artifactPath, "--manifest", manifestPath, "--envelope", envelopePath,
+    ]);
+    if (variant === "matching") {
+      const { stdout } = await report;
+      expect(stdout).toContain(result.sha256);
+      expect(stdout).toContain(result.contentSha256);
+      expect(stdout).toContain("validated archive members");
+    } else {
+      await expect(report).rejects.toMatchObject({
+        code: 1, stdout: "", stderr: expect.stringContaining("manifest does not match archive provenance"),
+      });
+    }
+  });
+
+  it("validates the canonical release archive through the host ingestion CLI", async () => {
+    const output = await makeTemporaryDirectory("cavi-docs-release-host-");
+    const input = await artifactInput(output);
+    await writeFile(path.join(input.root, "docs/api-client/source/navigation.json"), JSON.stringify({
+      sections: [{ title: "Reference", pages: [{ title: "Imports", path: "reference/exports.md" }] }],
+    }));
+    const result = await buildDocumentationReleaseArtifact(input);
+    const { stdout } = await execFileAsync(process.execPath, ["scripts/docs/check-host-ingest.mjs",
+      "--archive", result.artifactPath, "--expect-version", input.release.version,
+    ]);
+    expect(stdout).toContain("docs:host-ingest-check — ok @cavi-ai/api-client@0.15.0");
+  });
+
   it("formats a validated secret-free dry-run archive and provenance report before the envelope", () => {
     const format = (releaseArtifactModule as unknown as {
       formatDocumentationReleaseDryRunReport: (input: Record<string, unknown>) => string;
