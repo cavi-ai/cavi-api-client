@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Accept mixed-case JSON content types in gateway JSON and form-data response
+  parsing instead of rejecting valid JSON responses as protocol mismatches.
+
 - Forward Fetch integrity, keepalive, mode, priority, referrer, and referrer-policy
   controls through core and gateway HTTP requests instead of silently discarding
   them. Add optional matching fields to `HttpApiRequestInit`.
