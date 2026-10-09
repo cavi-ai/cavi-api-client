@@ -69,6 +69,10 @@ take precedence over both. An explicit `idempotencyKey` overrides a same-named
 header regardless of casing. JSON requests add `Content-Type: application/json`
 only when no content type is already supplied.
 
+`toHttpRequestInit` preserves `RequestInit.headers` supplied as a record, tuple
+list, or `Headers` instance. Its optional second argument replaces those headers,
+including when an empty record is supplied.
+
 ## Unreleased Hermes chat headers
 
 `streamHermesChatRun` and its `streamGatewayChatRun` alias forward `headers` to
