@@ -50,6 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Release dry-run reports reject detached manifests that differ from archive
+  provenance. Archive inspection and hashing use the same captured bytes.
+
+- Host ingestion checks accept the canonical `docs/api-client/v{VERSION}`
+  release archive layout, preserve root and single-folder layouts, reject
+  ambiguous documentation roots, and clean up failed extraction attempts.
+  Documentation releases require this check before asset upload and dispatch.
+
 - Preserve caller-supplied `HttpApiError` cancellation reasons through JSON and
   gateway Fetch helpers instead of converting them into `GatewayHttpError`.
 

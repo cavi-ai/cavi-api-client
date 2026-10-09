@@ -55,20 +55,33 @@ async function contentDigest(root) {
 
 async function unpackArchive(archive) {
   const scratch = await mkdtemp(path.join(tmpdir(), "docs-host-ingest-"));
-  execFileSync("tar", ["-xzf", archive, "-C", scratch], { stdio: ["ignore", "ignore", "inherit"] });
-  const top = await readdir(scratch, { withFileTypes: true });
-  for (const entry of top) {
-    if (!entry.isDirectory()) continue;
-    const candidate = path.join(scratch, entry.name);
+  try {
+    execFileSync("tar", ["-xzf", archive, "-C", scratch], { stdio: ["ignore", "ignore", "inherit"] });
+    const top = await readdir(scratch, { withFileTypes: true });
+    const candidates = [scratch, ...top.filter((entry) => entry.isDirectory()).map((entry) => path.join(scratch, entry.name))];
+    const canonical = path.join(scratch, "docs", "api-client");
     try {
-      await stat(path.join(candidate, "manifest.json"));
-      return { root: candidate, cleanup: scratch };
-    } catch {
-      // continue
+      const versions = await readdir(canonical, { withFileTypes: true });
+      candidates.push(...versions.filter((entry) => entry.isDirectory()).map((entry) => path.join(canonical, entry.name)));
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
     }
+    const roots = [];
+    for (const candidate of candidates) {
+      try {
+        const manifest = await stat(path.join(candidate, "manifest.json"));
+        const navigation = await stat(path.join(candidate, "navigation.json"));
+        if (manifest.isFile() && navigation.isFile()) roots.push(candidate);
+      } catch (error) {
+        if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
+      }
+    }
+    if (roots.length !== 1) throw new Error(`archive must contain exactly one documentation root; found ${roots.length}`);
+    return { root: roots[0], cleanup: scratch };
+  } catch (error) {
+    await rm(scratch, { recursive: true, force: true });
+    throw error;
   }
-  await stat(path.join(scratch, "manifest.json"));
-  return { root: scratch, cleanup: scratch };
 }
 
 function requireString(value, label) {

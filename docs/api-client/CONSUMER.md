@@ -34,6 +34,11 @@ sourceIntegrity: manifest.sourceTarballSha256
 contentIntegrity: manifest.contentSha256
 ```
 
+The validation helper accepts the canonical nested release layout, a docs tree
+at the archive root, or a tree inside one top-level folder. An archive must
+contain exactly one documentation tree with both manifest and navigation files;
+multiple candidate roots are rejected.
+
 ## Host checklist
 
 1. Download `cavi-api-client-docs-v{VERSION}.tar.gz` from the `v{VERSION}` GitHub release.
