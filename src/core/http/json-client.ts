@@ -19,7 +19,14 @@ export function withQuery(
     search.set(key, String(value));
   }
   const query = search.toString();
-  return query ? `${path}?${query}` : path;
+  if (!query) return path;
+  const fragmentIndex = path.indexOf("#");
+  const target = fragmentIndex === -1 ? path : path.slice(0, fragmentIndex);
+  const fragment = fragmentIndex === -1 ? "" : path.slice(fragmentIndex);
+  const separator = target.includes("?")
+    ? (target.endsWith("?") || target.endsWith("&") ? "" : "&")
+    : "?";
+  return `${target}${separator}${query}${fragment}`;
 }
 
 export type JsonHttpRequest = <TData>(

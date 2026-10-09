@@ -77,6 +77,14 @@ HTTP clients accept `HEAD` and `OPTIONS` alongside `GET`, `POST`, `PUT`, `PATCH`
 and `DELETE`. `toHttpRequestInit` normalizes casing and surrounding whitespace
 while preserving these methods on the wire.
 
+## Unreleased HTTP query composition
+
+`withQuery` appends parameters to an existing query string and inserts them
+before any URL fragment. Existing query encoding and repeated parameters are
+preserved. For example, `withQuery("/items?mode=fast#details", { limit: 2 })`
+returns `/items?mode=fast&limit=2#details`. Undefined parameters are omitted;
+when no parameters remain, the original path is returned unchanged.
+
 ## Unreleased Hermes chat headers
 
 `streamHermesChatRun` and its `streamGatewayChatRun` alias forward `headers` to
