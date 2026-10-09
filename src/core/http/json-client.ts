@@ -44,14 +44,14 @@ export class JsonHttpApiClient extends BaseHttpApiClient {
         }
         try {
           return JSON.parse(text) as TData;
-        } catch (error) {
+        } catch {
           const contentType = response.headers.get("content-type") ?? "unknown";
           const preview = redactPreviewText(text.trim(), 500);
-          const parseMessage = error instanceof Error ? error.message : String(error);
           const method = init?.method ?? "GET";
           const safePath = redactPreviewText(path, 2_000);
+          // Parser messages may contain unredacted, truncated response excerpts.
           throw new HttpApiError({
-            message: `${method} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
+            message: `${method} ${safePath} returned invalid JSON (content-type=${contentType}; preview=${preview})`,
             path,
             url: path,
             method,

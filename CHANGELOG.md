@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Omit engine-generated response excerpts from HTTP invalid-JSON error messages
+  so truncated credentials cannot bypass the redacted body preview. Preserve
+  response status and the original body on `HttpApiError`.
+
 - Reuse dependency parsing and resolution within ownership guardrail scans to
   reduce scan timeouts. Each scan uses fresh caches; boundary assertions and
   timeout limits are unchanged.

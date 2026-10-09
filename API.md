@@ -77,6 +77,11 @@ headers once on the streaming call so both requests use the same configuration.
 
 ## Unreleased HTTP and stream lifetimes
 
+Invalid JSON responses throw `HttpApiError` with the response status, content
+type, and a redacted body preview in the message. Engine parser messages are
+omitted because they can contain credential fragments. The `body` property
+retains the original response for explicit inspection; redact it before logging.
+
 Hermes chat run starts retain their deadline and caller signal through response
 parsing. Chat streams remove abort listeners when they settle and dispose their
 subscriptions, including when an event handler throws.
