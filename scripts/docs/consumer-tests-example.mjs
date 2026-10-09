@@ -38,6 +38,18 @@ export function verifyStreamingExample({ root, installed, consumer, command, doc
   compileAndRun({ root, consumer, command, docs, names: ["streaming-tests", "runtime-streaming"] });
 }
 
+/** Check persisted file IDs and explicit cleanup through the public file client. */
+export function verifyFileExample({ root, installed, consumer, command, docsRoot }) {
+  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
+  const guide = readFileSync(path.join(docs, "guides/files.md"), "utf8");
+  const snippet = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
+  assert.ok(snippet, "files guide must include its lifecycle helpers");
+  const example = readFileSync(path.join(docs, "examples/batch-files.ts"), "utf8");
+  assert.equal(snippet[1].trim(), example.trim(), "downloadable helpers must match the files guide");
+  compileAndRun({ root, consumer, command, docs, names: ["file-tests", "batch-files"] });
+}
+
 function compileAndRun({ root, consumer, command, docs, names }) {
   const directory = path.join(consumer, "application-tests");
   mkdirSync(directory, { recursive: true });

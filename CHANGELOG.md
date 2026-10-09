@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make the provider-file guide demonstrate reusable clients, persisted upload
+  IDs, and explicit cleanup with validated deletion receipts. Add seven
+  runnable file lifecycle tests against the pinned stable package and
+  development pack, with typed input and protocol errors in the helpers.
+
 - Make the documented text-stream helper reject completed streams without
   observed text using `run_output_missing`, while preserving supplied empty
   snapshots. Add runnable streaming tests against the pinned stable package

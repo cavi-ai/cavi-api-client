@@ -166,6 +166,10 @@ the installed Claude and Codex adapters.
 The [streaming tests](streaming.md#run-the-streaming-tests) cover snapshot/delta
 handling, missing answers, partial failures, availability gaps, and authentication.
 
+The [file lifecycle tests](files.md#run-the-file-lifecycle-tests) cover multipart
+uploads, saved IDs, explicit deletion receipts, and cleanup failures through the
+installed public file client.
+
 The [authorized background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 includes development checks for access denial, revocation before polling,
 retrieval gaps, and local abort without backend cancellation.
