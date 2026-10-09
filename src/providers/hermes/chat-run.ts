@@ -13,7 +13,8 @@ import {
   type RunPreviewSnapshotFetcher,
 } from "../../core/gateway/run/event-stream.js";
 import { ApiClientErrorType, toError } from "../../core/errors.js";
-import { createRawHttpApiClient } from "../../core/http/raw-client.js";
+import { RawHttpApiClient } from "../../core/http/raw-client.js";
+import type { HttpApiRequestInit } from "../../core/http/types.js";
 
 /**
  * Provider-neutral metadata bag attached to a Hermes chat run. Free-form by
@@ -204,6 +205,13 @@ export type StartHermesChatRunParams = {
 };
 export type StartGatewayChatRunParams = StartHermesChatRunParams;
 
+class HermesChatRunHttpClient extends RawHttpApiClient {
+  startRun(init: HttpApiRequestInit): Promise<unknown> {
+    return this.requestWithResponse(HERMES_API_ENDPOINTS.runs, init,
+      (response) => parseJsonResponse(response, "run start"));
+  }
+}
+
 function createHermesChatRunHttpClient(params: {
   httpBase: string;
   authToken: string;
@@ -211,11 +219,10 @@ function createHermesChatRunHttpClient(params: {
   headers?: Record<string, string>;
   fetchImpl?: typeof fetch;
 }) {
-  return createRawHttpApiClient({
-    surface: "hermes-chat-run",
+  return new HermesChatRunHttpClient("hermes-chat-run", {
     baseUrl: params.httpBase,
-    authToken: params.authToken,
-    clientId: params.clientId,
+    allowRelativeBaseUrl: true,
+    auth: { bearerToken: params.authToken, clientId: params.clientId },
     defaultHeaders: params.headers,
     fetchImpl: params.fetchImpl,
   });
@@ -278,7 +285,7 @@ export async function startHermesChatRun(
     body.attachments = serializeAttachments(params.attachments);
   }
 
-  const response = await createHermesChatRunHttpClient(params).raw(HERMES_API_ENDPOINTS.runs, {
+  const payload = await createHermesChatRunHttpClient(params).startRun({
     method: "POST",
     headers: { "X-Hermes-Session-Key": sessionKey },
     body,
@@ -286,7 +293,6 @@ export async function startHermesChatRun(
     signal: params.signal,
   });
 
-  const payload = await parseJsonResponse(response, "run start");
   const runId = isDict(payload) && typeof payload.run_id === "string"
     ? payload.run_id
     : "";
@@ -413,14 +419,28 @@ export async function streamHermesChatRun(
   return await new Promise<StreamHermesChatRunResult>((resolve, reject) => {
     let subscription: RunEventStreamSubscription | null = null;
     let settled = false;
+    let abortListener: (() => void) | undefined;
+    const disposeSubscription = (sub: RunEventStreamSubscription): void => {
+      try {
+        void Promise.resolve(sub.dispose()).catch(() => undefined);
+      } catch {
+        // Cleanup must not replace the chat outcome or consumer's error.
+      }
+    };
+    const cleanup = (): void => {
+      if (abortListener) params.signal?.removeEventListener("abort", abortListener);
+      if (subscription) disposeSubscription(subscription);
+    };
     const settleResolve = (): void => {
       if (settled) return;
       settled = true;
+      cleanup();
       resolve({ sawAssistantResponseEvent });
     };
     const settleReject = (error: unknown): void => {
       if (settled) return;
       settled = true;
+      cleanup();
       reject(toError(error));
     };
 
@@ -429,6 +449,7 @@ export async function streamHermesChatRun(
         { runId, signal: params.signal },
         {
           onEvent: (event) => {
+            if (settled) return;
             if (
               event.event === RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA ||
               event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED ||
@@ -450,16 +471,16 @@ export async function streamHermesChatRun(
       .then((sub) => {
         subscription = sub;
         if (settled) {
-          void Promise.resolve(sub.dispose());
+          disposeSubscription(sub);
         }
       })
       .catch(settleReject);
 
-    if (params.signal) {
+    if (params.signal && !settled) {
       const onAbort = (): void => {
-        if (subscription) void Promise.resolve(subscription.dispose());
         settleReject(abortError("aborted"));
       };
+      abortListener = onAbort;
       if (params.signal.aborted) {
         onAbort();
       } else {

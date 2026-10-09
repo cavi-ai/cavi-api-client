@@ -63,6 +63,10 @@ The versioned docs still describe the pinned published package. Check the
 
 ## Unreleased HTTP and stream lifetimes
 
+Hermes chat run starts retain their deadline and caller signal through response
+parsing. Chat streams remove abort listeners when they settle and dispose their
+subscriptions, including when an event handler throws.
+
 HTTP JSON, blob, file, and batch-result reads retain the request timeout and
 caller cancellation until body consumption settles. Caller cancellation keeps
 its original reason; timeout failures use `HttpApiError`. Other body/parser
