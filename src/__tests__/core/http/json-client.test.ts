@@ -11,6 +11,19 @@ describe("json HTTP client", () => {
 
     it("returns path unchanged when all values undefined", () => {
       expect(withQuery("/p", { x: undefined })).toBe("/p");
+      expect(withQuery("/p?a=%2f#details", { x: undefined })).toBe("/p?a=%2f#details");
+    });
+
+    it.each([
+      ["/p?mode=fast", "/p?mode=fast&limit=2"],
+      ["/p#details", "/p?limit=2#details"],
+      ["/p?mode=fast#details", "/p?mode=fast&limit=2#details"],
+      ["/p#details?view=raw", "/p?limit=2#details?view=raw"],
+      ["/p?", "/p?limit=2"],
+      ["/p?mode=fast&", "/p?mode=fast&limit=2"],
+      ["/p?tag=a%2Fb&tag=c+", "/p?tag=a%2Fb&tag=c+&limit=2"],
+    ])("appends parameters to %s without altering existing components", (path, expected) => {
+      expect(withQuery(path, { limit: 2 })).toBe(expected);
     });
 
     it("stringifies numbers and builds query string", () => {
