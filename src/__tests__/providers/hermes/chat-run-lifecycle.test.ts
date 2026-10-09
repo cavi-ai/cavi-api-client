@@ -1,5 +1,5 @@
 import { getEventListeners, once } from "node:events";
-import { createServer } from "node:http";
+import { createServer, type IncomingHttpHeaders } from "node:http";
 import { describe, expect, it } from "vitest";
 import { startHermesChatRun, streamHermesChatRun } from "../../../providers/hermes/chat-run.js";
 
@@ -15,6 +15,45 @@ const fetchStream: typeof fetch = async (input) => String(input).endsWith("/even
   : Response.json({ run_id: "run-1" });
 
 describe("Hermes chat lifecycle", () => {
+  it("sends caller routing headers on both native chat-start and event requests", async () => {
+    const requests: Array<{ method: string | undefined; headers: IncomingHttpHeaders }> = [];
+    const server = createServer((request, response) => {
+      request.resume();
+      requests.push({ method: request.method, headers: request.headers });
+      if (request.headers["x-gateway-provider"] !== "hermes" || request.headers["x-tenant-id"] !== "tenant-1") {
+        response.writeHead(403).end("Missing caller routing headers");
+      } else if (request.url?.endsWith("/events")) {
+        response.writeHead(200, { "content-type": "text/event-stream" });
+        response.end('data: {"event":"run.completed","output":"answer"}\n\n');
+      } else {
+        response.writeHead(202, { "content-type": "application/json" });
+        response.end('{"run_id":"run-1"}');
+      }
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Expected a TCP address");
+    try {
+      await expect(streamHermesChatRun({
+        ...chat, httpBase: `http://127.0.0.1:${address.port}`,
+        headers: { "X-Gateway-Provider": "hermes", "X-Tenant-Id": "tenant-1" },
+        onEvent: () => undefined,
+      })).resolves.toEqual({ sawAssistantResponseEvent: true });
+      expect(requests.map(({ method }) => method)).toEqual(["POST", "GET"]);
+      for (const { headers } of requests) {
+        expect(headers).toMatchObject({
+          "x-gateway-provider": "hermes", "x-tenant-id": "tenant-1",
+          authorization: "Bearer test-token", "x-portal-client-id": "chat-client",
+          "x-hermes-session-key": "session-1",
+        });
+      }
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("preserves caller cancellation while native run-start response text is pending", async () => {
     const server = createServer((_request, response) => {
       response.writeHead(202, { "content-type": "application/json" });

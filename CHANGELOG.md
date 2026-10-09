@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Forward caller headers to the run-start request in `streamHermesChatRun`
+  and its `streamGatewayChatRun` alias, keeping routing and tenant headers
+  consistent with the subsequent event stream.
+
 - Keep Hermes chat run-start deadlines and caller cancellation active during
   response parsing. Remove chat stream abort listeners and dispose subscriptions
   when the stream completes, fails, or its consumer throws.
