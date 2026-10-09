@@ -43,6 +43,7 @@ export class JsonHttpApiClient extends BaseHttpApiClient {
     path: string,
     init?: HttpApiRequestInit,
   ): Promise<TData> {
+    let parseError: HttpApiError | undefined;
     try {
       return await this.requestWithResponse(path, init, async (response) => {
         const text = await response.text();
@@ -57,7 +58,7 @@ export class JsonHttpApiClient extends BaseHttpApiClient {
           const method = init?.method ?? "GET";
           const safePath = redactPreviewText(path, 2_000);
           // Parser messages may contain unredacted, truncated response excerpts.
-          throw new HttpApiError({
+          parseError = new HttpApiError({
             message: `${method} ${safePath} returned invalid JSON (content-type=${contentType}; preview=${preview})`,
             path,
             url: path,
@@ -65,10 +66,14 @@ export class JsonHttpApiClient extends BaseHttpApiClient {
             status: response.status,
             body: text,
           });
+          throw parseError;
         }
       });
     } catch (error) {
-      if (error instanceof HttpApiError && error.message.includes("returned invalid JSON")) {
+      if (init?.signal?.aborted && error === init.signal.reason) {
+        throw error;
+      }
+      if (parseError !== undefined && error === parseError) {
         throw error;
       }
       if (error instanceof HttpApiError && error.status > 0) {
