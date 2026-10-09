@@ -92,14 +92,19 @@ jobs:
             echo "::notice::@cavi-ai/api-client@${PKG_VERSION} is already published — skipping publish (idempotent)."
             exit 0
           fi
-          if [ -z "$CAVI_API_CLIENT_STABLE_TARBALL" ] || [ ! -f "$CAVI_API_CLIENT_STABLE_TARBALL" ]; then
-            echo "::error::CAVI_API_CLIENT_STABLE_TARBALL must point at the verified pack from the provision step"
+          # The stable documentation pin is an older reference artifact. Publish
+          # a fresh pack of this verified release checkout instead.
+          PACK_DIRECTORY="$RUNNER_TEMP/npm-release"
+          mkdir -p "$PACK_DIRECTORY"
+          pnpm pack --pack-destination "$PACK_DIRECTORY"
+          TARBALL="$PACK_DIRECTORY/cavi-ai-api-client-${PKG_VERSION}.tgz"
+          if [ ! -f "$TARBALL" ]; then
+            echo "::error::pnpm pack did not produce ${TARBALL}"
             exit 1
           fi
           npm install -g npm@11
           npm --version
-          # Publish the exact verified tarball so registry bytes match the docs pin.
-          npm publish "$CAVI_API_CLIENT_STABLE_TARBALL" --access public --provenance
+          npm publish "$TARBALL" --access public --provenance
 
   docs:
     name: Publish npm-derived documentation

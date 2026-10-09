@@ -35,6 +35,12 @@ Release orchestration lives under `scripts/release/`. Docs build/check stays
 under `scripts/docs/`. Maintainer release evidence is local-only under
 `.artifacts/runtime-control/` (gitignored), not under `docs/`.
 
+The npm release workflow verifies the checkout, then packs that checkout for
+publication. `CAVI_API_CLIENT_STABLE_TARBALL` is only the documentation reference
+input; it is never the npm publication artifact. The release tag must match
+`package.json` `version`. An already published version is skipped, and the docs
+job resolves the exact published npm bytes separately before building its asset.
+
 ## Documentation model
 
 | Tree | Audience | Role |
