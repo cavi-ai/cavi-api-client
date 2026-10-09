@@ -85,6 +85,9 @@ headers once on the streaming call so both requests use the same configuration.
 caller cancellation and the HTTP deadline through response body consumption.
 `requestGatewayRaw` continues to transfer body ownership to its caller.
 
+`fetchLibraryApiJson` also retains caller cancellation and the HTTP deadline
+through its JSON body read, preserving existing payload and error parsing.
+
 `RawHttpApiClient.consumeResponse(path, init, consume)` keeps an asynchronous
 response consumer inside the request lifetime. Await body reads inside the
 callback so cancellation and deadlines remain active until consumption settles.
