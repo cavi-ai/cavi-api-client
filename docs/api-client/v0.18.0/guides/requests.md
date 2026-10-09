@@ -65,12 +65,11 @@ cancel work as a side effect of reaching the poll limit.
 This is a poll-count budget, not a wall-clock deadline. Each request also needs
 a configured HTTP timeout. The helper borrows the client; its owner disposes it.
 
-Unreleased development builds add `waitForRun` with both time and poll budgets,
+Use `waitForRun` when exported for both time and poll budgets,
 caller cancellation during delays or pending retrievals, and an explicit stop
 reason with the last observed run. See the
 [development background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
-That API is not in the pinned release; use the compatible helper above with
-this page's documented version.
+The compatible helper above also supports releases without that API.
 For server-owned run IDs, the
 [authorized background integration](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 shows read/cancel permissions and authorization before each retrieval.
@@ -85,11 +84,10 @@ Use `input` for a string or role/content messages, `instructions` for shared
 instructions, and `model` for provider configuration. Native tools and metadata
 remain provider-specific.
 
-Text and usage are optional. In the pinned release, the Codex mapper reads
-`output_text` without flattening native `output` items, so a completed
-response can have no normalized text. Unreleased development adds native
-message-text normalization; check the
-[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
+Text and usage are optional. Older Codex releases read `output_text` without
+flattening native `output` items, so a completed response can have no normalized
+text. Check the
+[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md)
 for availability.
 
 ## Cancel deliberately

@@ -3,7 +3,8 @@ import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 export function verifyReactExample({ root, installed, consumer, command, docsRoot }) {
-  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const pkg = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"));
+  const version = pkg.documentation?.version ?? pkg.version;
   const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
   const guide = readFileSync(path.join(docs, "guides/react.md"), "utf8");
   const snippet = [...guide.matchAll(/^```tsx\s*\n([\s\S]*?)^```/gmu)][0];

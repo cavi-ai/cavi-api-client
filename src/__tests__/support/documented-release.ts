@@ -7,7 +7,7 @@ import {
  * Test-side derivations of the documentation release pins.
  *
  * The pins live once, in `scripts/docs/types.mjs`. Tests derive from them rather
- * than restating them, so a release bump is a one-file edit and can only fail on
+ * than restating them, so advancing the published baseline can only fail on
  * artifacts that genuinely need regenerating — never on a stale copy of a version
  * string. See `docs-pins.test.ts` for the pins' own consistency checks.
  */

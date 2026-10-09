@@ -65,8 +65,8 @@ throw. It observes parse/transport errors, including recoverable malformed
 frames. A `run.failed` event is captured separately. The typed exception retains
 the run ID, outcome, run error, and any transport error in `cause`; callers
 branch on `run_failed`, `run_cancelled`, `run_incomplete`, or
-`run_output_missing`. The enum aliases
-are unreleased, so the example uses compatible string values.
+`run_output_missing`. The example uses string values to also support releases
+without the corresponding enum aliases.
 
 The returned `text` uses a terminal output snapshot when one is supplied,
 otherwise the accumulated deltas. Do not append a terminal snapshot as another
@@ -102,12 +102,12 @@ A normalized event fixture checks explicit empty snapshots independently of
 provider normalization. Tests reuse the borrowed client and dispose it through
 the test cleanup hook. A failed stream is submitted once, without replay.
 
-Unreleased development builds add `requireCompletedStream` and
-`requireStreamText` for applications that require completed output. The
+Use `requireCompletedStream` and `requireStreamText` when the release exports
+them and your application requires completed output. The
 [development collector](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md)
 preserves facade gaps, handles text snapshots, and returns normalized usage
-when supplied by the terminal event. These helpers are not in the pinned
-release; use the compatible implementation above with that release.
+when supplied by the terminal event. The implementation above also supports
+releases without these helpers.
 
 ## Render more than text
 

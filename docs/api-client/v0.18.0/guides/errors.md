@@ -63,14 +63,14 @@ the run ID and state in `cause`. The streaming helper follows the same codes:
 | `run_incomplete` | Completion was not observed | Keep the run ID and reconcile; work may still be active |
 | `run_output_missing` | A completed run lacks required text | Report a missing answer; empty text is still a valid string |
 
-Development adds `ApiClientErrorType.Run` and `ApiClientErrorCode.RunFailed`,
-`RunCancelled`, `RunIncomplete`, and `RunOutputMissing`. These enum members are
-unreleased. The examples use their string values so they also work with the
-pinned release, whose error constructor accepts string types and codes.
+Use `ApiClientErrorType.Run` and `ApiClientErrorCode.RunFailed`,
+`RunCancelled`, `RunIncomplete`, and `RunOutputMissing` when the release exports
+these enum members. The examples use string values to also support older
+releases whose error constructor accepts string types and codes.
 Providers still return run states; the application chooses whether to reject
 an outcome that cannot satisfy its workflow.
 
-Development builds also add optional `errorDetails` with observed provider
+Releases that expose optional `errorDetails` preserve observed provider
 code/type/reason strings on runs and failed stream outcomes. Codex
 responses/streams and Claude Messages error streams populate available fields;
 providers without structured information leave it absent. Existing statuses

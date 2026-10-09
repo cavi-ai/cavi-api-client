@@ -99,13 +99,13 @@ mapper omits empty-only text, so that response triggers `run_output_missing`.
 
 Use `isApiClientError` to narrow exceptions and `isAuthError` for provider
 authentication failures. The [error guide](../guides/errors.md) shows a caller
-mapper and the unreleased enum aliases for these codes. String values keep
+mapper and package enum aliases for these codes, when exported. String values keep
 this example compatible with the pinned published release.
 
-Unreleased development builds provide `requireRunText` to replace these
+If the release exports `requireRunText`, use it to replace these
 execution checks. See the
 [development service example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
-Use this page's compatible implementation with the documented release.
+The implementation above also supports releases without that helper.
 
 The service owns its client. Reuse it within one credential/configuration scope,
 then call `assistant.dispose()` during shutdown. Do not dispose it after every

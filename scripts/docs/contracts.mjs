@@ -4,6 +4,7 @@ import path from "node:path";
 import { CAPABILITY_STATES, resolveDocumentationRelease } from "./types.mjs";
 import { normalizedRelativePath, safeSlug } from "./paths.mjs";
 import { resolveDocumentedVersionToken } from "./version-tokens.mjs";
+import { subpathSlug } from "./render.mjs";
 
 const CONTRACTS_DIRECTORY = "docs/api-client/source/contracts";
 const REQUIRED_KEYS = ["id", "title", "version", "stability", "sourceOfTruth", "symbols", "capability", "evidence", "summary", "purpose", "lifecycle", "fieldConstraints", "behavior", "dependencies", "examples", "compatibilityNotes"];
@@ -57,6 +58,14 @@ export async function loadContracts(root, manifest, release = resolveDocumentati
 
   if (manifest.package !== release.packageName) {
     diagnostics.push({ contractId: "registry", requirement: `manifest package to equal ${release.packageName}`, observed: shown(manifest.package), action: `use the ${release.packageName} release manifest` });
+  }
+
+  if (release.isExplicitRelease) {
+    for (const [field, expected] of Object.entries({
+      version: release.version, tag: release.tag, commit: release.commit, sha256: release.tarballSha256,
+    })) {
+      if (manifest[field] !== expected) diagnostics.push({ contractId: "registry", requirement: `manifest ${field} to equal selected release ${expected}`, observed: shown(manifest[field]), action: "inspect the selected release artifact" });
+    }
   }
 
   for (const filename of filenames) {
@@ -137,6 +146,10 @@ export async function loadContracts(root, manifest, release = resolveDocumentati
         diagnostics.push({ contractId: id, requirement: "evidence path to be repository-relative", observed: shown(evidenceValue), action: "use a path contained by the repository root" });
         continue;
       }
+      // The selected archive's inspected declarations are authoritative for a
+      // new release. Their rendered reference pages replace a source snapshot
+      // that cannot be committed before that release exists.
+      if (release.isExplicitRelease && evidenceType === "declaration" && evidenceValue === release.sourceManifestPath) continue;
       try {
         const resolvedEvidencePath = await realpath(evidencePath);
         const relativeEvidencePath = path.relative(resolvedRoot, resolvedEvidencePath);
@@ -171,7 +184,16 @@ export async function loadContracts(root, manifest, release = resolveDocumentati
         if (!evidenceTypes.has(requiredType)) diagnostics.push({ contractId: id, requirement: `evidence to include ${requiredType}`, observed: "missing", action: `add repository-backed ${requiredType} evidence` });
       }
     }
-    if (release.isExplicitRelease) record.version = manifest.version;
+    if (release.isExplicitRelease) {
+      record.version = manifest.version;
+      if (Array.isArray(record.evidence) && Array.isArray(record.symbols)) {
+        record.evidence = record.evidence.flatMap((item) =>
+          item?.type === "declaration" && item.path === release.sourceManifestPath
+            ? [...new Set(record.symbols.map((symbol) => symbol.subpath))]
+                .map((subpath) => ({ type: "declaration", path: `${release.outputDirectory}/reference/${subpathSlug(subpath)}.md` }))
+            : [item]);
+      }
+    }
     if (Array.isArray(record.symbols)) record.symbols = record.symbols.map((symbol) => ({ ...symbol, signature: manifest.symbols.find((item) => item.subpath === symbol.subpath && item.name === symbol.name)?.signature ?? "" }));
     records.push(/** @type {ContractRecord} */ (record));
   }

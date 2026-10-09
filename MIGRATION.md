@@ -4,12 +4,12 @@ The package root is a curated provider-neutral API. Concrete providers,
 extensions, framework bindings, and lower-level infrastructure are published as
 subpath exports.
 
-## Remove Gemini integrations (next major release)
+## Remove Gemini integrations (0.19.0)
 
-Development builds remove `providers/gemini`, `providers/gemini/runtime`, and
+Version 0.19.0 removes `providers/gemini`, `providers/gemini/runtime`, and
 `providers/gemini/files`, including their clients, factories, and constants.
 Older published packages retain their existing API. Remove those imports and
-provider registrations before upgrading to the next major release.
+provider registrations before upgrading to 0.19.0.
 
 AGY uses a separate orchestration service and is not a drop-in endpoint change.
 Configure its service URL, authentication, and agent identifier using the

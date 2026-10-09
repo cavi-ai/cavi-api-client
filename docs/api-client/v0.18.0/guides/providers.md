@@ -64,10 +64,9 @@ The adapter uses the OpenAI Responses API, not a local Codex CLI.
 or use a [bounded local wait](requests.md). Decide explicitly whether a local
 timeout should request cancellation.
 
-The pinned release normalizes the response's `output_text` field, not native
-`output` items. A completed response can have no normalized text.
-Unreleased development adds native message-text normalization; check the
-[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased)
+Older releases normalize the response's `output_text` field without flattening
+native `output` items. A completed response can have no normalized text. Check the
+[repository changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md)
 before relying on it.
 
 [Codex operations](../operations/providers/codex.md)

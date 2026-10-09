@@ -4,7 +4,8 @@ import path from "node:path";
 
 /** Execute the documented application tests through the installed package. */
 export function verifyConsumerTestsExample({ root, installed, consumer, command, docsRoot }) {
-  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const pkg = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"));
+  const version = pkg.documentation?.version ?? pkg.version;
   const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
   const guide = readFileSync(path.join(docs, "guides/testing.md"), "utf8");
   const snippets = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)];
@@ -16,7 +17,8 @@ export function verifyConsumerTestsExample({ root, installed, consumer, command,
 
 /** Check resumed batch collection against native HTTP fixtures. */
 export function verifyBatchCollectorExample({ root, installed, consumer, command, docsRoot }) {
-  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const pkg = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"));
+  const version = pkg.documentation?.version ?? pkg.version;
   const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
   const guide = readFileSync(path.join(docs, "guides/batching.md"), "utf8");
   const snippet = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
@@ -28,7 +30,8 @@ export function verifyBatchCollectorExample({ root, installed, consumer, command
 
 /** Verify text-stream decisions and cleanup through installed entry points. */
 export function verifyStreamingExample({ root, installed, consumer, command, docsRoot }) {
-  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const pkg = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"));
+  const version = pkg.documentation?.version ?? pkg.version;
   const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
   const guide = readFileSync(path.join(docs, "guides/streaming.md"), "utf8");
   const snippet = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
@@ -40,7 +43,8 @@ export function verifyStreamingExample({ root, installed, consumer, command, doc
 
 /** Check persisted file IDs and explicit cleanup through the public file client. */
 export function verifyFileExample({ root, installed, consumer, command, docsRoot }) {
-  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const pkg = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"));
+  const version = pkg.documentation?.version ?? pkg.version;
   const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
   const guide = readFileSync(path.join(docs, "guides/files.md"), "utf8");
   const snippet = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];

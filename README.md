@@ -95,25 +95,24 @@ and missing text reject, so use your server's exception boundary.
 The service's exceptions use `ApiClientError`: `run_failed`, `run_cancelled`,
 `run_incomplete`, or `run_output_missing`. Narrow with `isApiClientError` and
 branch on `code`; keep `cause` in protected diagnostics for run reconciliation.
-The new `ApiClientErrorCode.Run*` members and `ApiClientErrorType.Run` are
-unreleased; the example uses their string values to work on npm's pinned
-release. See [error handling](https://cavi-ai.xyz/docs/api-client/guides/errors)
+Version 0.19.0 adds `ApiClientErrorCode.Run*` and `ApiClientErrorType.Run`;
+the example uses string values to also support older releases. See [error handling](https://cavi-ai.xyz/docs/api-client/guides/errors)
 for guards and safe application responses.
 
-Development builds add `requireRunText(run)` and `requireStreamText(stream)`
+Version 0.19.0 adds `requireRunText(run)` and `requireStreamText(stream)`
 to replace those execution checks with package APIs. Completion-only helpers
 also support tool-oriented runs without requiring text. See the
 [development guide and complete examples](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
-These helpers are unreleased; the quickstart above remains compatible with npm.
+The quickstart above also supports releases without these helpers.
 
-For background workflows, development builds also provide `waitForRun` with
+For background workflows, 0.19.0 also provides `waitForRun` with
 time and poll budgets, caller cancellation, and the last observed run retained.
 Stopping a local wait leaves backend work running. The development guide
 includes a complete background answer example.
 The [authorized background workflow](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 shows stored-owner checks for retrieval, polling, and explicit cancellation.
 
-Development builds also expose structured execution failure details for Codex
+Version 0.19.0 exposes structured execution failure details for Codex
 responses/streams and Claude Messages error streams. Branch on observed
 provider codes or reasons without parsing diagnostic messages; completion
 helpers retain those details in their error causes.
@@ -157,7 +156,7 @@ contract directly; its optional methods return raw values and can throw.
 [Security](SECURITY.md)
 
 Versioned documentation ships in the package under
-`docs/api-client/v<package.json version>` for offline reading. The site ingests
+`docs/api-client/v<documented version>` for offline reading. The site ingests
 the GitHub release docs artifact; merging documentation changes alone does not
 refresh an already published release. See the
 [host ingestion contract](docs/api-client/CONSUMER.md).

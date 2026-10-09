@@ -105,11 +105,11 @@ If you add retrieval or cancellation endpoints, authorize the caller against
 the stored run's owner before using its ID. Persist IDs only for providers with
 server-side retrieval; synchronous Messages run IDs are client-local.
 
-The unreleased
+The
 [authorized background workflow](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 provides a complete service with separate read/cancel permissions, access checks
-before every poll, and retained wait outcomes. It uses development `waitForRun`;
-that helper is not in this page's pinned release.
+before every poll, and retained wait outcomes. It requires a package release
+that exports `waitForRun`.
 
 [Background runs](requests.md) · [Errors](errors.md) · [React](react.md)
 [Runnable handler tests](testing.md) cover response policy with installed-package

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-09
+
 ### Added
 
 - Canonical HTTP integration guide with explicit published/development boundaries
@@ -42,13 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **Breaking — next major release:** remove the discontinued Gemini provider,
+- **Breaking in 0.19.0:** remove the discontinued Gemini provider,
   its runtime/files subpath exports, and its capability declarations. Gemini
   configuration is not redirected to AGY; migrate explicitly with AGY service
   configuration or another supported provider. Historical published declarations
   remain in versioned references.
 
 ### Fixed
+
+- Generate new-release contract evidence from the inspected npm declarations
+  without requiring a pre-existing source manifest. Preserve strict validation
+  for unrelated missing evidence files and release identity mismatches.
 
 - Release dry-run reports reject detached manifests that differ from archive
   provenance. Archive inspection and hashing use the same captured bytes.
@@ -142,6 +148,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-text items retain their existing handling.
 
 ### Changed
+
+- Qualify consumer guidance by available exports rather than assuming development
+  APIs remain unreleased in future documentation assets.
+
+- Pin the published documentation baseline independently of the working package
+  version. Release preparation retains verified historical docs; release assets
+  are generated from the exact published npm artifact.
 
 - Add a complete React consumer request workflow with validated handler
   responses, pending and failed run IDs, local cancellation, and stale-response
@@ -1183,7 +1196,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.15.0...v0.16.0

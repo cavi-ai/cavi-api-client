@@ -15,16 +15,16 @@ they do not create runtime capabilities or validate your service's data schema.
 | Need | Choose | Your responsibility |
 | --- | --- | --- |
 | Decode a finite JSON response | `JsonHttpApiClient.request<unknown>` | Validate the decoded value before using it |
-| Consume a finite non-JSON response | Development: `RawHttpApiClient.consumeResponse` | Await the body read inside the callback |
+| Consume a finite non-JSON response | `RawHttpApiClient.consumeResponse` when exported | Await the body read inside the callback |
 | Own a raw response or long-lived stream | `RawHttpApiClient.raw` | Consume or cancel the body and bound its lifetime |
 | Call an existing provider operation | Its provider client or the runtime facade | Handle its documented result and capability contract |
 
-The versioned reference describes published `{{documentedVersion}}`. The
-sections below describe **unreleased development behavior**: owned body
-deadlines, exact caller cancellation reasons, header precedence, Fetch controls,
-HEAD/OPTIONS, streamed uploads, and query composition. Do not assume these
-changes exist in the published package. See the
-[development changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md#unreleased).
+The versioned reference describes published `{{documentedVersion}}`. Response
+ownership, cancellation, header precedence, Fetch controls, HEAD/OPTIONS,
+streamed uploads, and query composition have changed across releases. Check the
+[release changelog](https://github.com/cavi-ai/cavi-api-client/blob/main/CHANGELOG.md)
+before relying on these guarantees with an older package. `consumeResponse`
+requires a release whose export declarations include that method.
 
 ## Bound a complete read
 
@@ -117,15 +117,15 @@ leaves the original path unchanged.
 For Hermes chat or its gateway alias, set tenant/routing headers once on the
 streaming call. Both the run-start request and event stream receive them.
 
-## Run the development consumer example
+## Run the HTTP consumer example
 
 Download
 [http-workflow.ts](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/examples/development/http-workflow.ts)
 and
 [http-tests.ts](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/examples/development/http-tests.ts)
-into `examples/` in an ESM Node project. Install the locally built candidate
-tarball and development tools; these examples require the **development
-package**, not published `{{documentedVersion}}`:
+into `examples/` in an ESM Node project. These examples require a package
+that exports `RawHttpApiClient.consumeResponse`. To check a locally built
+candidate, install its tarball and development tools:
 
 ```sh
 npm install /absolute/path/to/cavi-ai-api-client-candidate.tgz
