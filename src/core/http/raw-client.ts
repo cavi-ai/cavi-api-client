@@ -18,6 +18,15 @@ export class RawHttpApiClient extends BaseHttpApiClient {
   raw(path: string, init?: HttpApiRequestInit): Promise<Response> {
     return this.requestRaw(path, init);
   }
+
+  /** Keep cancellation and the request deadline active until the consumer settles. */
+  consumeResponse<T>(
+    path: string,
+    init: HttpApiRequestInit | undefined,
+    consume: (response: Response) => Promise<T>,
+  ): Promise<T> {
+    return this.requestWithResponse(path, init, consume);
+  }
 }
 
 export function createRawHttpApiClient(params: {

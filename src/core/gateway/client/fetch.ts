@@ -102,10 +102,11 @@ function throwGatewayHttpErrorFromCore(
   });
 }
 
-export async function requestGatewayRaw(
+async function requestGatewayResponse<T>(
   path: string,
   options: GatewayHttpFetchOptions,
-): Promise<Response> {
+  consume: (response: Response) => Promise<T>,
+): Promise<T> {
   const {
     httpBaseUrl,
     clientId,
@@ -128,7 +129,7 @@ export async function requestGatewayRaw(
   });
 
   try {
-    return await client.raw(
+    return await client.consumeResponse(
       path,
       toHttpRequestInit(
         {
@@ -137,6 +138,7 @@ export async function requestGatewayRaw(
         },
         extraHeaders,
       ),
+      consume,
     );
   } catch (error) {
     if (error instanceof HttpApiError && error.status > 0) {
@@ -146,12 +148,19 @@ export async function requestGatewayRaw(
   }
 }
 
+export async function requestGatewayRaw(
+  path: string,
+  options: GatewayHttpFetchOptions,
+): Promise<Response> {
+  return requestGatewayResponse(path, options, async (response) => response);
+}
+
 export async function fetchGatewayJson<T>(
   path: string,
   options: GatewayHttpFetchOptions,
 ): Promise<T> {
-  const res = await requestGatewayRaw(path, options);
-  return parseGatewayJsonResponse<T>(res, path, options.apiLabel);
+  return requestGatewayResponse(path, options, (res) =>
+    parseGatewayJsonResponse<T>(res, path, options.apiLabel));
 }
 
 export async function fetchGatewayExpectOk(
@@ -165,8 +174,7 @@ export async function fetchGatewayBlob(
   path: string,
   options: GatewayHttpFetchOptions,
 ): Promise<Blob> {
-  const res = await requestGatewayRaw(path, options);
-  return res.blob();
+  return requestGatewayResponse(path, options, (res) => res.blob());
 }
 
 export async function fetchGatewayFormDataJson<T>(
@@ -175,10 +183,9 @@ export async function fetchGatewayFormDataJson<T>(
     body: FormData;
   },
 ): Promise<T> {
-  const res = await requestGatewayRaw(path, {
+  return requestGatewayResponse(path, {
     ...options,
     method: "POST",
     body: options.body,
-  });
-  return parseGatewayJsonResponse<T>(res, path, options.apiLabel);
+  }, (res) => parseGatewayJsonResponse<T>(res, path, options.apiLabel));
 }
