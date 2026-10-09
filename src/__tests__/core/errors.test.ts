@@ -263,7 +263,7 @@ describe("single error root", () => {
     },
     {
       name: "CapabilityUnavailable",
-      error: new CapabilityUnavailable("gemini", "controlPlane.usage.get"),
+      error: new CapabilityUnavailable("codex", "controlPlane.usage.get"),
       type: ApiClientErrorType.Unknown,
       code: ApiClientErrorCode.CapabilityUnavailable,
     },

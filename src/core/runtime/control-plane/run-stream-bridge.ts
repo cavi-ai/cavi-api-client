@@ -65,7 +65,7 @@ function stringifyToolResult(result: unknown): string {
  * run-stream union. Stateful in two ways: tool.completed frames omit the tool
  * name, so the translator remembers it from tool.started; and usage.updated
  * frames carry usage on their own, so the last-seen usage is remembered and
- * attached to the terminal RUN_COMPLETED event (matching the Gemini provider's
+ * attached to the terminal RUN_COMPLETED event (matching the runtime providers'
  * precedent of surfacing accumulated usage on the terminal event). Events with
  * no run-visible projection (reasoning deltas, usage ticks, stream
  * housekeeping) map to null.

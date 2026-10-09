@@ -53,14 +53,13 @@ export class CodexFilesClient extends BaseHttpApiClient {
     form.append("file", new Blob([content], { type: "application/jsonl" }), filename);
     // rawBody bypasses JSON serialization; with no `body` set, buildHeaders does NOT
     // force Content-Type, so fetch sets multipart/form-data with the boundary.
-    const response = await this.requestRaw(CODEX_API_ENDPOINTS.files, { method: "POST", rawBody: form });
-    return (await response.json()) as CodexFileObject;
+    return this.requestWithResponse(CODEX_API_ENDPOINTS.files, { method: "POST", rawBody: form },
+      async (response) => (await response.json()) as CodexFileObject);
   }
 
   /** Download raw file content (e.g. a batch output/error file's JSONL). */
   async downloadFileContent(fileId: string): Promise<string> {
-    const response = await this.requestRaw(codexFileContentPath(fileId), { method: "GET" });
-    return response.text();
+    return this.requestWithResponse(codexFileContentPath(fileId), { method: "GET" }, (response) => response.text());
   }
 
   retrieveFile(fileId: string): Promise<CodexFileObject> {

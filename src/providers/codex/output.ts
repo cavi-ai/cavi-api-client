@@ -16,5 +16,5 @@ export function readCodexOutputText(response: { output_text?: unknown; output?: 
       }
     }
   }
-  return texts.join("") || undefined;
+  return texts.length ? texts.join("") : undefined;
 }

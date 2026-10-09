@@ -26,6 +26,7 @@ Pin your package version, review [migration guidance](../release/migration-and-s
 and exercise the workflows your application consumes against its target backend.
 Beta integrations and OpenCode's pinned server contract require special attention.
 
-Gemini is retained for legacy compatibility; AGY is the active successor
-direction for new compatible orchestration integrations. Existing exports are
-not removed by that documentation distinction.
+Gemini is removed from the development package for the next major release.
+Older published references retain their original declarations. Review the
+repository migration guide before upgrading an existing Gemini integration;
+AGY requires its own service URL and authentication.

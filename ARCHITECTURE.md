@@ -11,7 +11,7 @@ product extension, or UI framework needs custom behavior behind the boundary.
 src/index.ts
   -> core/
   -> contracts/
-  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/gemini | providers/agy | providers/opencode
+  -> providers/hermes | providers/openclaw | providers/claude | providers/codex | providers/agy | providers/opencode
   -> extensions/cavi
   -> frameworks/react
 ```
@@ -25,9 +25,8 @@ src/index.ts
   `TeamRouteResolver`, and a `TeamManifestSource` seam (host-supplied data).
 - `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
   providers (Hermes, OpenClaw) implement `GatewayApiClient`; runtime-only providers
-  (Claude / Anthropic, Codex / OpenAI Responses, Gemini / Google, AGY / Antigravity,
-  OpenCode) implement `RuntimeClient`. Gemini is retained as a legacy compatibility
-  surface; AGY is the active successor direction for new compatible orchestration
+  (Claude / Anthropic, Codex / OpenAI Responses, AGY / Antigravity,
+  OpenCode) implement `RuntimeClient`. AGY supports compatible orchestration
   integrations. OpenCode is the next added harness, not an AGY replacement. They
   may customize endpoint maps, headers, auth scheme, default surfaces, and
   transport method mapping, but they reuse the core transports and error handling.
@@ -76,7 +75,7 @@ authoritative, the static table is the conservative fallback.
 Consumers build one client and choose a provider through a runtime-owned registry.
 `createGatewayProviderRegistry` holds gateway providers; the generic
 `createRuntimeProviderRegistry` also accepts runtime-only modules. Built-in
-modules live under `src/providers/{hermes,openclaw,claude,codex,gemini,agy,opencode}`;
+modules live under `src/providers/{hermes,openclaw,claude,codex,agy,opencode}`;
 host applications can supply their own `RuntimeProviderModule` /
 `GatewayProviderModule`. OpenCode is explicitly registered from
 `@cavi-ai/api-client/providers/opencode`; there is no default OpenCode module.
@@ -110,21 +109,14 @@ Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch
 (JSONL upload → batch creation → poll → download), with results mapped to
 `RuntimeRunStatus` by `customId`; downloaded result JSONL is parsed strictly so
 malformed provider files fail with `invalid_json` instead of silently dropping rows.
-Gemini also implements the batch surface (`supports.batch`) over the Gemini
-`batchGenerateContent` API (inline requests under ~18MB, otherwise JSONL file
-upload via `GeminiFilesClient`), with the same canonical batch methods and strict
-result JSONL parsing.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (full agent/environment/session lifecycle) with SSE steering,
 outcomes, threads, memory, vaults, session resources, scheduled deployments,
 webhook verification, and a `TeamManifest`→teams mapper. It is additive and re-exported from the same `providers/claude` entry, so
 the stateless Messages-API client is unchanged. Codex (`providers/codex`, OpenAI
-Responses, default `gpt-5-codex`), Gemini (`providers/gemini`, the Gemini
-Developer API — model in the URL path, `x-goog-api-key`, explicit model
-required), and OpenCode (`providers/opencode`, server `1.18.27`,
-`legacy-http-sse`) are additional runtime-only providers; Gemini remains a
-legacy compatibility surface. AGY (`providers/agy`) is the active successor
+Responses, default `gpt-5-codex`), and OpenCode (`providers/opencode`, server `1.18.27`,
+`legacy-http-sse`) are additional runtime-only providers. AGY (`providers/agy`) is the active successor
 direction for new compatible orchestration integrations, and OpenCode is the
 next added harness rather than an AGY replacement. OpenCode supports `runs` and
 `streaming` only: its lifecycle is health → scoped session → synchronous

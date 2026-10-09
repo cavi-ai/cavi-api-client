@@ -17,7 +17,6 @@ Those functions should accept application input, not provider credentials.
 | OpenCode | Scoped server sessions | No | Compatible server and absolute project directory |
 | Hermes | Gateway runs; SSE stream bridge | No | Gateway URL/token; session key for streaming |
 | OpenClaw | Gateway RPC; WebSocket stream bridge | No | Gateway URL/authentication and granted scopes |
-| Gemini (legacy compatibility) | Synchronous; terminal state remembered locally | Yes | Google key and explicit model |
 
 Runtime-only modules must be registered explicitly. The default registry
 contains Hermes and OpenClaw. Credentials supplied to the facade do not
@@ -200,25 +199,3 @@ native RPC and installed plugins. Browser applications need gateway-approved
 identity/origin settings and browser-user credentials.
 
 [OpenClaw operations](../operations/providers/openclaw.md)
-
-## Gemini legacy compatibility
-
-Keep this adapter for existing consumers. It is not the package's direction
-for new orchestration integrations.
-
-```ts
-import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import { createGeminiProviderModule } from "@cavi-ai/api-client/providers/gemini/runtime";
-
-export function createGeminiBackend(apiKey: string) {
-  const registry = createRuntimeProviderRegistry({
-    modules: [createGeminiProviderModule({ apiKey })],
-  });
-  return createApiClient("gemini", { registry });
-}
-```
-
-Every run needs an explicit model. Runs are synchronous with client-local
-retrieval. Files and batch processing retain provider-specific requirements.
-
-[Gemini operations](../operations/providers/gemini.md) · [Setup failures](errors.md)

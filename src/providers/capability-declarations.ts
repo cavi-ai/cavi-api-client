@@ -29,7 +29,6 @@ export const PROVIDER_CAPABILITIES = {
   claude: support("runs", "streaming", "batch"),
   "claude-managed-agents": support("runs", "streaming"),
   codex: support("runs", "streaming", "batch"),
-  gemini: support("runs", "streaming", "batch"),
   agy: support("runs", "streaming"),
   opencode: support("runs", "streaming"),
 

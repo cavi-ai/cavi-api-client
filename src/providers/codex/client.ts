@@ -1,3 +1,4 @@
+import { combineAbortSignalsWithCleanup } from "../../core/sse/abort-signals.js";
 import { ApiClientError, ApiClientErrorCode } from "../../core/errors.js";
 import { BaseHttpApiClient } from "../../core/http/client.js";
 import { bearerCredentials } from "../../core/http/credentials.js";
@@ -188,16 +189,13 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     }
 
     const controller = new AbortController();
-    if (options.signal) {
-      if (options.signal.aborted) controller.abort();
-      else options.signal.addEventListener("abort", () => controller.abort(), { once: true });
-    }
+    const { signal, dispose } = combineAbortSignalsWithCleanup(controller.signal, options.signal);
 
     try {
       const response = await this.requestRaw(CODEX_API_ENDPOINTS.responses, {
         method: "POST",
         body: payload,
-        signal: controller.signal,
+        signal,
       });
       if (!response.body) {
         throw new ApiClientError("codex-responses: streaming response had no body", {
@@ -206,7 +204,7 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
       }
 
       let runId = "";
-      await consumeSseStream(response.body, controller.signal, (sse) => {
+      await consumeSseStream(response.body, signal, (sse) => {
         const startId = readOpenAIResponseRunId(sse);
         if (startId) runId = startId;
         const event = mapOpenAIResponseStreamEvent(sse, runId);
@@ -224,6 +222,8 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
     } catch (error) {
       if (handlers.onError) handlers.onError(error);
       else throw error;
+    } finally {
+      dispose();
     }
   }
 

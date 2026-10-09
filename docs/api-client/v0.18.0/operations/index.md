@@ -42,14 +42,13 @@ for the distinct result and exception conventions.
 | -------- | ---- | ---------------- | --------- | ----- |
 | Claude (Anthropic) | ✅ | ✅ client-local (sync) | ✅ | ✅ |
 | Codex (OpenAI) | ✅ | ✅ | ✅ | ✅ |
-| Gemini (Google) | ✅ | ✅ client-local (sync) | ✅ | ✅ |
 | Antigravity (AGY) | ✅ | ✅ client-local (sync) | ✅ | ❌ |
 | Hermes (gateway) | ✅ | ✅ | ✅ | ❌ |
 | OpenClaw (gateway) | ✅ | ✅ | ✅ | ❌ |
 | Claude Managed Agents (beta) | ✅ | ✅ server-side | ✅ | ❌ |
 | OpenCode | ✅ | ✅ server-side/cached | ✅ | ❌ |
 
-Synchronous providers (Claude Messages, Gemini, AGY) implement `getRun` /
+Synchronous providers (Claude Messages, AGY) implement `getRun` /
 `cancelRun` over a client-side `SynchronousRunStore`: they return the remembered
 terminal status from `startRun` / `streamRun` and do not poll an upstream run
 resource. Codex and gateway providers serve real server-side run handles.

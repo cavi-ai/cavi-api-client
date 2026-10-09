@@ -77,7 +77,7 @@ export function mapOpenAIResponseToRunStatus(response: OpenAIResponse): RuntimeR
     run_id: response.id,
     status,
     ...(response.model ? { model: response.model } : {}),
-    ...(output ? { output } : {}),
+    ...(output !== undefined ? { output } : {}),
     ...(status === "failed"
       ? { error: errorMessageOf(response.error ?? response.incomplete_details) ?? "codex response failed" }
       : {}),

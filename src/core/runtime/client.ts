@@ -40,7 +40,7 @@ export interface RuntimeClient {
    * - **omit** — method absent; consumers null-check (`client.getRun?.(id)`).
    * - **server** — real backend retrieval/cancel (Codex background responses,
    *   Claude Managed Agents sessions, `GatewayApiClient` HTTP runs).
-   * - **sync-store** — synchronous providers (Claude Messages, Gemini) keep a
+   * - **sync-store** — synchronous providers (Claude Messages, AGY) keep a
    *   local `SynchronousRunStore` of terminal statuses from `startRun`;
    *   `getRun` returns the remembered status or an honest `unknown` status for
    *   foreign ids and **does not throw**. `cancelRun` is a no-op success on

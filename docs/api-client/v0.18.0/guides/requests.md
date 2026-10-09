@@ -12,7 +12,7 @@ where execution stands. A live call can report a failed run.
 
 | Backend | What startRun returns | Retrieval |
 | --- | --- | --- |
-| Claude Messages, AGY, Gemini | Terminal response | Client-remembered terminal state |
+| Claude Messages, AGY | Terminal response | Client-remembered terminal state |
 | Codex | Background response, possibly active | Upstream response resource |
 | Claude Managed Agents | Server-side session status | Upstream session |
 | Hermes/OpenClaw | Gateway run handle | Gateway lifecycle |

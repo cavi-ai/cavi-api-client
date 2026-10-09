@@ -1,7 +1,7 @@
 {
   "name": "@cavi-ai/api-client",
   "version": "0.18.0",
-  "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Gemini, Antigravity (AGY), Hermes, OpenClaw, and OpenCode, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
+  "description": "Provider-agnostic TypeScript client for AI agent runtimes — one RuntimeClient contract spanning Claude (incl. Claude Managed Agents, beta), Codex via OpenAI Responses, Antigravity (AGY), Hermes, OpenClaw, and OpenCode, with HTTP + WebSocket RPC, SSE, manifest-driven routing, and graceful degradation. ESM, zero runtime deps, optional React bindings.",
   "type": "module",
   "packageManager": "pnpm@10.32.1",
   "sideEffects": false,
@@ -36,8 +36,6 @@
     "openai",
     "codex",
     "responses",
-    "gemini",
-    "google",
     "mcp",
     "hermes",
     "openclaw",
@@ -212,21 +210,6 @@
       "types": "./dist/providers/agy/index.d.ts",
       "import": "./dist/providers/agy/index.js",
       "default": "./dist/providers/agy/index.js"
-    },
-    "./providers/gemini": {
-      "types": "./dist/providers/gemini/index.d.ts",
-      "import": "./dist/providers/gemini/index.js",
-      "default": "./dist/providers/gemini/index.js"
-    },
-    "./providers/gemini/runtime": {
-      "types": "./dist/providers/gemini/runtime.d.ts",
-      "import": "./dist/providers/gemini/runtime.js",
-      "default": "./dist/providers/gemini/runtime.js"
-    },
-    "./providers/gemini/files": {
-      "types": "./dist/providers/gemini/files-entry.d.ts",
-      "import": "./dist/providers/gemini/files-entry.js",
-      "default": "./dist/providers/gemini/files-entry.js"
     },
     "./providers/hermes/runtime": {
       "types": "./dist/providers/hermes/runtime.d.ts",

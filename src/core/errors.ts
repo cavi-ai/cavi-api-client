@@ -239,7 +239,7 @@ export function isAuthError(error: unknown): boolean {
 /**
  * True when an error is a synthesized `EndpointNotFound` failure — the
  * everyday cross-provider branch for a surface a provider declares
- * unsupported (Gemini `getRun`/`cancelRun`, OpenClaw wiki/media).
+ * unsupported (OpenClaw wiki/media).
  */
 export function isEndpointNotFoundError(error: unknown): boolean {
   return getErrorCode(error) === ApiClientErrorCode.EndpointNotFound;

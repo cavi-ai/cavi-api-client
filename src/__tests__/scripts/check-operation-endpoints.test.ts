@@ -70,8 +70,8 @@ describe("exact provider operations", () => {
   });
 
   it("does not erase version, action, or static route differences", () => {
-    const gemini = { generatePath: (id: string) => `/v1beta/models/${id}:generateContent` };
-    const known = extractSourceHttpOperations('import { generatePath } from "./paths.js"; this.request(generatePath(model), { method: "POST" });', gemini);
+    const versionedRoutes = { generatePath: (id: string) => `/v1beta/models/${id}:generateContent` };
+    const known = extractSourceHttpOperations('import { generatePath } from "./paths.js"; this.request(generatePath(model), { method: "POST" });', versionedRoutes);
     const wrong = extractHttpOperations("**HTTP** `POST /v2/models/:model:generateContent` · `POST /v1beta/:model:generateContent` · `POST /v1beta/models/:model:streamGenerateContent`");
     expect(findUnknownOperations(wrong, known)).toEqual(wrong);
     expect(findUnknownOperations(extractHttpOperations("**HTTP** `POST /v1beta/models/:model:generateContent`"), known)).toEqual([]);
@@ -117,6 +117,14 @@ describe("exact provider operations", () => {
   });
 });
 
+it("checks body-consuming requests against their owning route and method", () => {
+  const routes = { API: { files: "/v1/files" } };
+  const source = 'import { API } from "./paths.js"; this.requestWithResponse(API.files, { method: "POST" }, response => response.json());';
+  const known = extractSourceHttpOperations(source, routes);
+  expect(findUnknownOperations(extractHttpOperations("**HTTP** `POST /v1/files`"), known)).toEqual([]);
+  expect(findUnknownOperations(extractHttpOperations("**HTTP** `GET /v1/files`"), known)).toHaveLength(1);
+});
+
 describe("findOrphanPaths", () => {
   it("flags a path absent from the owner literal corpus", () => {
     const corpus = '"/v1/messages" "/v1/batches"';
@@ -131,9 +139,9 @@ describe("findOrphanPaths", () => {
   });
 
   it("accepts a version-prefixed assembled path via its version-stripped remainder", () => {
-    // Gemini builds `/${GEMINI_API_VERSION}/models/...`, so `/v1beta/models` is
+    // A versioned provider builds `/${API_VERSION}/models/...`, so `/v1beta/models` is
     // not a contiguous literal but `/models` is.
-    const corpus = 'const GEMINI_API_VERSION = "v1beta"; `/models/${x}:generateContent`';
+    const corpus = 'const API_VERSION = "v1beta"; `/models/${x}:generateContent`';
     expect(isKnownPath("/v1beta/models", corpus)).toBe(true);
     expect(findOrphanPaths(["/v1beta/models"], corpus)).toEqual([]);
   });

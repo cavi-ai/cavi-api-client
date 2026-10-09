@@ -98,7 +98,7 @@ describe("canonical control-plane conformance", () => {
     expect(transport.request).toHaveBeenCalledWith("models.list", { view: "configured" }, { signal: undefined });
   });
 
-  it.each(["claude", "codex", "gemini", "unknown"])(
+  it.each(["claude", "codex", "agy", "unknown"])(
     "validates the shipped/default unavailable path for %s",
     async (providerId) => {
       const report = await runRuntimeControlClientConformance({
@@ -171,7 +171,7 @@ describe("canonical control-plane conformance", () => {
 
     await expect(renderSessions(await createRuntimeControlClient("openclaw", { transport: fixtureTransport() })))
       .resolves.toEqual(["session-1"]);
-    for (const provider of ["claude", "codex", "gemini", "unknown"]) {
+    for (const provider of ["claude", "codex", "agy", "unknown"]) {
       await expect(renderSessions(await createRuntimeControlClient(provider))).resolves.toEqual(["unavailable"]);
     }
   });

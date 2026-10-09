@@ -43,7 +43,7 @@ describe("createRuntimeControlClient", () => {
     const fixture: RuntimeProviderModule = { kind: "fixture" };
     const registry = createRuntimeProviderRegistry({ modules: [fixture] });
 
-    const plane = await createRuntimeControlClient(" GEMINI ", { registry });
+    const plane = await createRuntimeControlClient(" CODEX ", { registry });
 
     expect(plane).toMatchObject({
       authStatus: expect.any(Object),
@@ -57,7 +57,7 @@ describe("createRuntimeControlClient", () => {
     });
     await expect(plane.sessions.listSessions()).rejects.toMatchObject<CapabilityUnavailable>({
       name: "CapabilityUnavailable",
-      providerId: "gemini",
+      providerId: "codex",
       capability: "controlPlane.sessions.list",
     });
     await expect(plane.dispose()).resolves.toBeUndefined();

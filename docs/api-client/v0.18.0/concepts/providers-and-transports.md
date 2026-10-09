@@ -10,8 +10,7 @@ create support for a provider operation.
 
 ## Runtime-only providers
 
-Claude Messages, Claude Managed Agents, Codex, AGY, OpenCode, and the legacy
-Gemini adapter implement the execution contract. Configure credentials in their
+Claude Messages, Claude Managed Agents, Codex, AGY, and OpenCode implement the execution contract. Configure credentials in their
 provider modules, register those modules, and pass the registry to the factory.
 The default registry contains only Hermes and OpenClaw.
 

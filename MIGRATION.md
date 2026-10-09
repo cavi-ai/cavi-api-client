@@ -4,6 +4,23 @@ The package root is a curated provider-neutral API. Concrete providers,
 extensions, framework bindings, and lower-level infrastructure are published as
 subpath exports.
 
+## Remove Gemini integrations (next major release)
+
+Development builds remove `providers/gemini`, `providers/gemini/runtime`, and
+`providers/gemini/files`, including their clients, factories, and constants.
+Older published packages retain their existing API. Remove those imports and
+provider registrations before upgrading to the next major release.
+
+AGY uses a separate orchestration service and is not a drop-in endpoint change.
+Configure its service URL, authentication, and agent identifier using the
+[AGY setup guide](https://cavi-ai.xyz/docs/api-client/guides/providers#agy). AGY
+supports runs and streaming; it has no batch or file-client replacement. Use a
+supported provider with those capabilities when your application needs them.
+
+Existing Gemini run IDs, batch IDs, and uploaded files do not migrate to AGY.
+Reconcile them through the old integration before removing it. Provider
+selection never silently redirects Gemini configuration to another backend.
+
 ## Move concrete implementations to subpaths
 
 | Previously imported from the root | Import from |
@@ -13,7 +30,6 @@ subpath exports.
 | OpenClaw clients and provider modules | `@cavi-ai/api-client/providers/openclaw` |
 | Claude clients and provider modules | `@cavi-ai/api-client/providers/claude` |
 | Codex clients, provider modules, and files | `@cavi-ai/api-client/providers/codex` |
-| Gemini clients, provider modules, and files | `@cavi-ai/api-client/providers/gemini` |
 | HTTP clients and redaction helpers | `@cavi-ai/api-client/core/http` |
 | Gateway resource clients | `@cavi-ai/api-client/core/gateway` |
 | Shared transport factories | `@cavi-ai/api-client/core/transport` |

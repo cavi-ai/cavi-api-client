@@ -34,7 +34,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cancellation, unobserved completion, and absent required output without
   changing provider return values.
 
+### Removed
+
+- **Breaking — next major release:** remove the discontinued Gemini provider,
+  its runtime/files subpath exports, and its capability declarations. Gemini
+  configuration is not redirected to AGY; migrate explicitly with AGY service
+  configuration or another supported provider. Historical published declarations
+  remain in versioned references.
+
 ### Fixed
+
+- Keep HTTP timeouts and caller cancellation active through JSON, blob, file,
+  and batch-result body reads. Raw responses retain caller-owned stream lifetimes.
+- Detach Claude, Codex, and AGY stream abort listeners on completion and failure.
+- Preserve explicitly empty Codex text in run statuses, batch results, and
+  completed stream snapshots; missing text remains distinct from an empty answer.
 
 - Pin patched development dependencies for Dependabot alerts #40–#42:
   `source-map-js` 1.2.2, `katex` 0.18.2, and `smol-toml` 1.9.0.

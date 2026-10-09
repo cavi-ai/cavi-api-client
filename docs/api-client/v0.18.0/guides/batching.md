@@ -4,8 +4,8 @@ documentedVersion: 0.18.0
 
 # Collect a batch without losing individual failures
 
-Batching is for asynchronous groups of requests. Claude Messages, Codex, and
-the legacy Gemini adapter declare batch support; Managed Agents, AGY, OpenCode,
+Batching is for asynchronous groups of requests. Claude Messages and Codex
+declare batch support; Managed Agents, AGY, OpenCode,
 and gateways do not.
 
 Give every request a unique `customId` from your application's record identity.
@@ -113,8 +113,7 @@ your request array and returns every result. It preserves the batch ID in the
 error if its poll budget expires; stopping that wait does not cancel the
 backend batch. It borrows the client.
 
-Codex uses uploaded JSONL and result files; Claude uses Message Batches;
-Gemini has an inline/file flow. Provider limits and asynchronous timing differ.
+Codex uses uploaded JSONL and result files; Claude uses Message Batches. Provider limits and asynchronous timing differ.
 The normalized request/result contract does not remove those limits.
 
 Facade callers inspect `result.ok`; raw callers must check both

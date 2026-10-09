@@ -122,10 +122,6 @@
           "path": "operations/providers/codex.md"
         },
         {
-          "title": "Gemini (legacy)",
-          "path": "operations/providers/gemini.md"
-        },
-        {
           "title": "Antigravity (AGY)",
           "path": "operations/providers/agy.md"
         },

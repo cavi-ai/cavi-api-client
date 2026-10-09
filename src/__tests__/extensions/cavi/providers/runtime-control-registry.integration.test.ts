@@ -73,7 +73,7 @@ describe("CAVI runtime-control registry real integration", () => {
     const registry = withCaviRuntimeControlProviders(createBuiltInRuntimeProviderRegistry());
     await expect(consume("openclaw", registry)).resolves.toMatchObject({ data: [] });
     await expect(consume("open-claw", registry)).resolves.toMatchObject({ data: [] });
-    for (const provider of ["hermes", "hermes-api-server", "codex", "claude", "gemini", "unknown"]) {
+    for (const provider of ["hermes", "hermes-api-server", "codex", "claude", "agy", "unknown"]) {
       await expect(consume(provider, registry)).rejects.toBeInstanceOf(CapabilityUnavailable);
     }
   });

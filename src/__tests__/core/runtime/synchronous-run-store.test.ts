@@ -45,10 +45,10 @@ describe("SynchronousRunStore", () => {
   });
 
   it("unknownSynchronousRun is an honest, non-throwing terminal status", () => {
-    const s = unknownSynchronousRun("gemini", "x");
+    const s = unknownSynchronousRun("codex", "x");
     expect(s.run_id).toBe("x");
     expect(s.status).toBe("unknown");
     expect(typeof s.error).toBe("string");
-    expect(s.error).toContain("gemini");
+    expect(s.error).toContain("codex");
   });
 });

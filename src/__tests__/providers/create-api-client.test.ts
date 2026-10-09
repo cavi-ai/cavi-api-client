@@ -48,14 +48,14 @@ class FakeSharedSocket {
 
 const fakeRuntime: RuntimeClient = {
   getRuntimeCapabilities: async () => ({
-    providerKind: "gemini",
+    providerKind: "codex",
     supports: { runs: true },
   }),
   startRun: async () => ({ id: "run-9", status: "queued" }) as never,
 };
 
-const geminiRegistry = createRuntimeProviderRegistry({
-  modules: [{ kind: "gemini", createClient: () => fakeRuntime }],
+const codexRegistry = createRuntimeProviderRegistry({
+  modules: [{ kind: "codex", createClient: () => fakeRuntime }],
 });
 
 const HERMES_ENVELOPE = {
@@ -122,7 +122,7 @@ describe("createApiClient — the one front door", () => {
   });
 
   it("returns the full surface for a runtime-only provider; unsupported is notated", async () => {
-    const client = createApiClient("gemini", { registry: geminiRegistry });
+    const client = createApiClient("codex", { registry: codexRegistry });
     await expect(client.startRun({} as never)).resolves.toMatchObject({
       ok: true,
       data: { id: "run-9" },
@@ -132,20 +132,20 @@ describe("createApiClient — the one front door", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
     const note = result.gap.note;
-    expect(note).toContain('provider "gemini" does not support capability "kanban"');
+    expect(note).toContain('provider "codex" does not support capability "kanban"');
     expect(note).toContain("hermes");
     expect(note).toContain("openclaw");
   });
 
   it("uses the static declarations as the fallback profile", async () => {
-    const client = createApiClient("gemini", { registry: geminiRegistry });
+    const client = createApiClient("codex", { registry: codexRegistry });
     const map = await client.getCapabilityMap();
-    // Gemini's declaration: execution only.
+    // Codex's declaration: execution only.
     expect(map.supports).toEqual({ runs: true, streaming: true, batch: true });
   });
 
   it("throws the standard configuration error for unknown providers", () => {
-    expect(() => createApiClient("nonsense", { registry: geminiRegistry })).toThrow(
+    expect(() => createApiClient("nonsense", { registry: codexRegistry })).toThrow(
       /Unknown runtime provider/,
     );
   });
@@ -183,8 +183,8 @@ describe("createApiClient — the one front door", () => {
 
   it("caller-supplied backends override the auto-wiring", async () => {
     const kanban = { listBoards: vi.fn(async () => [{ id: "b9" }]) };
-    const client = createApiClient("gemini", {
-      registry: geminiRegistry,
+    const client = createApiClient("codex", {
+      registry: codexRegistry,
       fallbackSupports: { runs: true, kanban: true },
       backends: { kanban: kanban as never },
     });

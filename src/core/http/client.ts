@@ -180,16 +180,26 @@ export class BaseHttpApiClient {
   }
 
   protected async requestRaw(path: string, init?: HttpApiRequestInit): Promise<Response> {
+    return this.requestWithResponse(path, init, async (response) => response);
+  }
+
+  /** Keep the request deadline and caller signal active until the body consumer settles. */
+  protected async requestWithResponse<T>(
+    path: string,
+    init: HttpApiRequestInit | undefined,
+    consume: (response: Response) => Promise<T>,
+  ): Promise<T> {
     const normalizedPath = this.resolvePath(path);
     const method: HttpApiHttpMethod = init?.method ?? "GET";
     const startedAt = Date.now();
     const timeoutMs = init?.timeoutMs ?? this.defaultTimeoutMs;
-    const abortSignal = createRequestAbortSignal(timeoutMs, init?.signal);
     const headers = this.buildHeaders(init);
     const body = this.buildBody(init);
     const url = this.resolveUrl(normalizedPath);
     const tracePath = previewTraceText(normalizedPath);
     const traceUrl = previewTraceText(url);
+    const abortSignal = createRequestAbortSignal(timeoutMs, init?.signal);
+    let consumingBody = false;
 
     try {
       if (init?.signal?.aborted) {
@@ -234,7 +244,8 @@ export class BaseHttpApiClient {
         durationMs: Date.now() - startedAt,
       });
 
-      return response;
+      consumingBody = true;
+      return await consume(response);
     } catch (error) {
       if (error instanceof HttpApiError) {
         throw error;
@@ -242,6 +253,9 @@ export class BaseHttpApiClient {
       if (abortSignal.source() === "caller" && init?.signal && (error === init.signal.reason || isAbortError(error))) {
         throw init.signal.reason;
       }
+      // Existing body/parser failures belong to their consumer. Only the
+      // request deadline introduces a new transport failure during that phase.
+      if (consumingBody && abortSignal.source() !== "timeout") throw error;
       const message = getErrorMessage(error);
       const safeMessage = previewErrorBody(message);
       this.emitTrace({
@@ -268,32 +282,32 @@ export class BaseHttpApiClient {
   }
 
   protected async requestJson<TResponse>(path: string, init?: HttpApiRequestInit): Promise<TResponse> {
-    const response = await this.requestRaw(path, init);
-    const text = await response.text();
-    if (!text.trim()) {
-      return {} as TResponse;
-    }
-    try {
-      return JSON.parse(text) as TResponse;
-    } catch (error) {
-      const contentType = response.headers.get("content-type") ?? "unknown";
-      const preview = previewErrorBody(text.trim());
-      const parseMessage = getErrorMessage(error);
-      const safePath = previewTraceText(this.resolvePath(path));
-      throw new HttpApiError({
-        message: `${init?.method ?? "GET"} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
-        path: this.resolvePath(path),
-        url: this.resolveUrl(path),
-        method: init?.method ?? "GET",
-        status: response.status,
-        body: text,
-      });
-    }
+    return this.requestWithResponse(path, init, async (response) => {
+      const text = await response.text();
+      if (!text.trim()) {
+        return {} as TResponse;
+      }
+      try {
+        return JSON.parse(text) as TResponse;
+      } catch (error) {
+        const contentType = response.headers.get("content-type") ?? "unknown";
+        const preview = previewErrorBody(text.trim());
+        const parseMessage = getErrorMessage(error);
+        const safePath = previewTraceText(this.resolvePath(path));
+        throw new HttpApiError({
+          message: `${init?.method ?? "GET"} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
+          path: this.resolvePath(path),
+          url: this.resolveUrl(path),
+          method: init?.method ?? "GET",
+          status: response.status,
+          body: text,
+        });
+      }
+    });
   }
 
   protected async requestBlob(path: string, init?: HttpApiRequestInit): Promise<Blob> {
-    const response = await this.requestRaw(path, init);
-    return response.blob();
+    return this.requestWithResponse(path, init, (response) => response.blob());
   }
 
   createTransport(): HttpApiTransport {

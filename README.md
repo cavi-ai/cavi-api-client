@@ -10,7 +10,6 @@
 Give users a choice of runtime without writing another progress renderer, batch
 collector, or failure handler for each backend. `@cavi-ai/api-client` adapts
 Claude, Codex, AGY, OpenCode, Hermes, and OpenClaw to shared TypeScript contracts.
-Gemini remains available for existing integrations.
 
 Your application consumes run IDs, statuses, text, token usage, and stream
 events. Provider adapters own the HTTP, SSE, or WebSocket mapping. Capabilities

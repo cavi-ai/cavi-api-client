@@ -1310,11 +1310,7 @@ describe("package hardening", () => {
       import: "./dist/providers/codex/index.js",
       default: "./dist/providers/codex/index.js",
     });
-    expect(packageJson.exports["./providers/gemini"]).toEqual({
-      types: "./dist/providers/gemini/index.d.ts",
-      import: "./dist/providers/gemini/index.js",
-      default: "./dist/providers/gemini/index.js",
-    });
+    expect(Object.keys(packageJson.exports).some((entry) => entry.startsWith("./providers/gemini"))).toBe(false);
     expect(packageJson.exports["./providers/opencode"]).toEqual({
       types: "./dist/providers/opencode/index.d.ts",
       import: "./dist/providers/opencode/index.js",

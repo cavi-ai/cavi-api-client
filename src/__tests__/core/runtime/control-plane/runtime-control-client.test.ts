@@ -8,7 +8,7 @@ import {
 
 describe("canonical runtime control plane", () => {
   it("always exposes every required control-plane surface", () => {
-    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("codex", new Set());
 
     expect(Object.keys(plane)).toEqual(expect.arrayContaining([
       "authStatus",
@@ -27,7 +27,7 @@ describe("canonical runtime control plane", () => {
   });
 
   it("rejects every client method with its typed capability name", async () => {
-    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("codex", new Set());
     const calls: ReadonlyArray<[string, () => Promise<unknown>]> = [
       ["controlPlane.authStatus.list", () => plane.authStatus.listAuthStatus()],
       ["controlPlane.sessions.list", () => plane.sessions.listSessions({})],
@@ -49,14 +49,14 @@ describe("canonical runtime control plane", () => {
     for (const [capability, call] of calls) {
       await expect(call()).rejects.toMatchObject({
         name: "CapabilityUnavailable",
-        providerId: "gemini",
+        providerId: "codex",
         capability,
       });
     }
   });
 
   it("creates a fresh CapabilityUnavailable for every rejection", async () => {
-    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("codex", new Set());
     const first = await plane.sessions.listSessions({}).catch((error: unknown) => error);
     const second = await plane.sessions.listSessions({}).catch((error: unknown) => error);
 
@@ -66,7 +66,7 @@ describe("canonical runtime control plane", () => {
   });
 
   it("has an idempotent side-effect-free dispose", async () => {
-    const plane = createUnavailableRuntimeControlClient("gemini", new Set());
+    const plane = createUnavailableRuntimeControlClient("codex", new Set());
 
     await expect(plane.dispose()).resolves.toBeUndefined();
     await expect(plane.dispose()).resolves.toBeUndefined();

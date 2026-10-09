@@ -56,7 +56,7 @@ function fakeKanban(withExtended = false): KanbanClient {
 describe("capability client — non-throwing single surface", () => {
   it("every accessor exists; unsupported calls resolve ok:false with a notated gap", async () => {
     const client = createCapabilityClient({
-      providerKind: "gemini",
+      providerKind: "codex",
       runtime,
       fallbackSupports: { runs: true },
       availableOn: (key) => (key === "sessions" ? ["hermes", "openclaw"] : []),
@@ -67,7 +67,7 @@ describe("capability client — non-throwing single surface", () => {
     if (result.ok) throw new Error("unreachable");
     expect(result.data).toBeNull();
     expect(result.gap.reason).toBe("capability-unsupported");
-    expect(result.gap.note).toContain('provider "gemini" does not support capability "sessions"');
+    expect(result.gap.note).toContain('provider "codex" does not support capability "sessions"');
     expect(result.gap.note).toContain("available on     : hermes, openclaw");
     expect(result.gap.note).toContain("client.sessions.listSessions()");
     expect(result.gap.note).toContain('capability "sessions" is not declared');
@@ -378,7 +378,7 @@ describe("capability client — non-throwing single surface", () => {
     expect(listed.data).toHaveLength(1);
 
     const unsupported = createCapabilityClient({
-      providerKind: "gemini",
+      providerKind: "codex",
       runtime,
       fallbackSupports: {},
       backends: { teams: directory },
@@ -395,7 +395,7 @@ describe("capability client — non-throwing single surface", () => {
     process.on("unhandledRejection", onUnhandled);
     try {
       const client = createCapabilityClient({
-        providerKind: "gemini",
+        providerKind: "codex",
         runtime,
         fallbackSupports: {},
         resolver: async () => {

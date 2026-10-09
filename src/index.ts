@@ -2,7 +2,7 @@
 //
 // Provider modules, the CAVI extension, framework bindings, and low-level core
 // primitives are NOT re-exported here. Import them from their subpaths:
-// ./providers/{hermes,openclaw,claude,codex,gemini,agy,opencode} ·
+// ./providers/{hermes,openclaw,claude,codex,agy,opencode} ·
 // ./extensions/cavi · ./frameworks/react · ./core/http · ./core/sse ·
 // ./core/ws · ./core/data · ./core/env · ./core/gateway. See MIGRATION.md.
 //
