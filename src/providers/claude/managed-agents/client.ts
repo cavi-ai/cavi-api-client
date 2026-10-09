@@ -64,6 +64,11 @@ import { isTerminalRunStreamEvent, mapManagedAgentStreamEvent } from "./stream.j
  */
 const DEFAULT_STREAM_TIMEOUT_MS = 600_000;
 
+async function discardDeletionResponse(response: Response): Promise<void> {
+  // Disposal failures must not replace a successful acknowledgement.
+  await response.body?.cancel().catch(() => undefined);
+}
+
 export type ClaudeManagedAgentClientOptions = {
   /** Developer Platform API key — sent as `x-api-key`. Provide this or `authToken`. */
   apiKey?: string;
@@ -628,7 +633,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
 
   /** Delete an environment (returns 204). */
   async deleteEnvironment(environmentId: string): Promise<void> {
-    await this.requestRaw(claudeEnvironmentPath(environmentId), { method: "DELETE" });
+    await this.requestWithResponse(claudeEnvironmentPath(environmentId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   /** Archive an environment — terminal: read-only, new sessions can't reference it. */
@@ -694,7 +699,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
 
   /** Delete a session (permanent — removes event history, container, checkpoints). */
   async deleteSession(sessionId: string): Promise<void> {
-    await this.requestRaw(claudeSessionPath(sessionId), { method: "DELETE" });
+    await this.requestWithResponse(claudeSessionPath(sessionId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   // ── Session resources (attach files / repos to a live session) ────────────
@@ -741,7 +746,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
 
   /** Remove a resource from a session. */
   async deleteResource(sessionId: string, resourceId: string): Promise<void> {
-    await this.requestRaw(claudeSessionResourcePath(sessionId, resourceId), { method: "DELETE" });
+    await this.requestWithResponse(claudeSessionResourcePath(sessionId, resourceId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   /** Send one or more events (user.message, user.interrupt, tool results) to a session. */
@@ -927,7 +932,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   }
 
   async deleteMemoryStore(storeId: string): Promise<void> {
-    await this.requestRaw(claudeMemoryStorePath(storeId), { method: "DELETE" });
+    await this.requestWithResponse(claudeMemoryStorePath(storeId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   /** Archive a store (permanent — read-only, no unarchive). */
@@ -989,7 +994,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   }
 
   async deleteMemory(storeId: string, memoryId: string): Promise<void> {
-    await this.requestRaw(claudeMemoryPath(storeId, memoryId), { method: "DELETE" });
+    await this.requestWithResponse(claudeMemoryPath(storeId, memoryId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   /** List immutable per-mutation versions (audit trail), optionally filtered by memory. */
@@ -1061,7 +1066,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   }
 
   async deleteVault(vaultId: string): Promise<void> {
-    await this.requestRaw(claudeVaultPath(vaultId), { method: "DELETE" });
+    await this.requestWithResponse(claudeVaultPath(vaultId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   /** Archive a vault (cascades to credentials; secrets purged, records retained). */
@@ -1119,7 +1124,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   }
 
   async deleteCredential(vaultId: string, credentialId: string): Promise<void> {
-    await this.requestRaw(claudeVaultCredentialPath(vaultId, credentialId), { method: "DELETE" });
+    await this.requestWithResponse(claudeVaultCredentialPath(vaultId, credentialId), { method: "DELETE" }, discardDeletionResponse);
   }
 
   /** Archive a credential (purges the secret; frees the mcp_server_url for a replacement). */

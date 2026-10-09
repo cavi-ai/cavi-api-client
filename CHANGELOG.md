@@ -49,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preserve `HEAD` and `OPTIONS` when converting Fetch requests instead of
   silently sending `GET`. Extend `HttpApiHttpMethod` with both methods.
+- Release unread successful response bodies in Claude Managed Agents environment,
+  session, resource, memory-store, memory, vault, and credential deletion helpers.
+  Preserve bodyless acknowledgements and successful results if disposal rejects.
 
 - Release unread successful response bodies in gateway status acknowledgements
   and Hermes approval resolution, including its gateway alias. Body cleanup
