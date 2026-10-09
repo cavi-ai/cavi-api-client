@@ -163,6 +163,9 @@ The [batch collection tests](batching.md#run-the-collection-tests) cover resumed
 jobs, terminal states, mixed item outcomes, and ambiguous correlation IDs through
 the installed Claude and Codex adapters.
 
+The [streaming tests](streaming.md#run-the-streaming-tests) cover snapshot/delta
+handling, missing answers, partial failures, availability gaps, and authentication.
+
 The [authorized background example](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
 includes development checks for access denial, revocation before polling,
 retrieval gaps, and local abort without backend cancellation.

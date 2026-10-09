@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make the documented text-stream helper reject completed streams without
+  observed text using `run_output_missing`, while preserving supplied empty
+  snapshots. Add runnable streaming tests against the pinned stable package
+  and development pack for snapshots, deltas, partial failures, and gaps.
+
 - Make the documented batch collector distinguish pending work from terminal
   batches without results, retain batch context, and reject ambiguous result
   IDs with a typed error. Add runnable Claude/Codex collection fixtures checked
