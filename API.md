@@ -81,6 +81,10 @@ headers once on the streaming call so both requests use the same configuration.
 
 ## Unreleased HTTP and stream lifetimes
 
+Claude Managed Agents deletion helpers dispose unread successful response
+bodies before returning. Bodyless 204 responses and existing deletion error
+types are preserved; disposal failures do not replace successful acknowledgements.
+
 `fetchGatewayExpectOk`, `resolveHermesChatRunApproval`, and its
 `resolveGatewayChatRunApproval` alias cancel unread successful response bodies
 before returning. Body disposal is best effort and preserves acknowledgement
