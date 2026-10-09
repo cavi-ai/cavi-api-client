@@ -45,6 +45,8 @@ import {
 | `@cavi-ai/api-client/core/env` | Environment and repository-root helpers |
 | `@cavi-ai/api-client/contracts` | Route, surface, and manifest contracts |
 
+For direct HTTP integration, see [response ownership, cancellation, and typed errors](http.md).
+
 ## Provider subpaths
 
 Broad provider entries remain available for compatibility. Prefer narrow

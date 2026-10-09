@@ -140,6 +140,8 @@ Create one service per credential/configuration scope, reuse it, and call
 - [Background runs](https://cavi-ai.xyz/docs/api-client/guides/requests) and
   [batches](https://cavi-ai.xyz/docs/api-client/guides/batching):
   bound local waits and preserve IDs for later retrieval.
+- [HTTP integration](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/http.md):
+  response ownership, typed errors, and tested development examples.
 - [Errors](https://cavi-ai.xyz/docs/api-client/guides/errors):
   gaps, exceptions, and safe retry decisions.
 

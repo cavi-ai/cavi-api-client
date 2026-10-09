@@ -7,7 +7,7 @@ import { transpileModule, ModuleKind, ScriptTarget } from "typescript";
 import { validateMarkdownLinks } from "./links.mjs";
 import { verifyRunResultExamples } from "./run-result-examples.mjs";
 import { verifyOwnedRunExample } from "./owned-run-example.mjs";
-import { verifyConsumerTestsExample, verifyBatchCollectorExample, verifyStreamingExample, verifyFileExample } from "./consumer-tests-example.mjs";
+import { verifyConsumerTestsExample, verifyBatchCollectorExample, verifyStreamingExample, verifyFileExample, verifyHttpExample } from "./consumer-tests-example.mjs";
 import { verifyReactExample } from "./react-example.mjs";
 
 const root = path.resolve(".");
@@ -308,6 +308,7 @@ await unsupported.dispose();
   verifyStreamingExample({ root, installed, consumer, command });
   verifyFileExample({ root, installed, consumer, command });
   verifyReactExample({ root, installed, consumer, command });
+  verifyHttpExample({ root, consumer, command });
   process.stdout.write("packed documentation quickstart and fixture journeys passed\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });

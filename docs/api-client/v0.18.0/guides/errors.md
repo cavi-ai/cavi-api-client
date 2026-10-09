@@ -108,6 +108,9 @@ telemetry's redaction policy. `getRuntimeErrorMetadata` exposes available
 provider, transport, operation, and retry hints for diagnostics. A retry hint
 does not make replaying a run submission safe.
 
+For direct HTTP clients, see [HTTP integration](http.md#handle-typed-errors-and-cancellation)
+for typed response failures and original caller cancellation reasons.
+
 ## Timeouts and retries
 
 `defaultTimeoutMs` controls supported runtime HTTP requests through the facade.

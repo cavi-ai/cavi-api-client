@@ -14,6 +14,7 @@ adapter or managing its execution interface directly.
 | Run, retrieve, and cancel work | [Requests](docs/api-client/source/pages/guides/requests.md) |
 | Handle stream events and terminal states | [Streaming](docs/api-client/source/pages/guides/streaming.md) |
 | Handle gaps and exceptions | [Error handling](docs/api-client/source/pages/guides/errors.md) |
+| Integrate a service with HTTP | [HTTP integration](docs/api-client/source/pages/guides/http.md) |
 | Select an import path | [Imports](docs/api-client/source/pages/guides/imports.md) |
 | Inspect raw method signatures and mappings | [Operations](docs/api-client/source/pages/operations/index.md) |
 | Upgrade a consumer | [Migration](MIGRATION.md) |
@@ -61,117 +62,12 @@ Partial text does not change a failed or incomplete run into a successful one.
 The versioned docs still describe the pinned published package. Check the
 [changelog](CHANGELOG.md#unreleased) before relying on this development change.
 
-## Unreleased HTTP header precedence
+## HTTP integration
 
-HTTP header names match case-insensitively. Per-request `headers` override
-`defaultHeaders`; configured bearer credentials or credential-resolver headers
-take precedence over both. An explicit `idempotencyKey` overrides a same-named
-header regardless of casing. JSON requests add `Content-Type: application/json`
-only when no content type is already supplied.
-
-`toHttpRequestInit` preserves `RequestInit.headers` supplied as a record, tuple
-list, or `Headers` instance. Its optional second argument replaces those headers,
-including when an empty record is supplied.
-
-## Unreleased HTTP request controls
-
-`HttpApiRequestInit` and `toHttpRequestInit` preserve `integrity`,
-`keepalive`, `mode`, `priority`, `referrer`, and `referrerPolicy`. Gateway Fetch
-helpers forward the same controls. Explicit `false` and empty-string values
-are retained; omitted options use the Fetch implementation's defaults.
-The Fetch implementation enforces integrity and platform-specific restrictions,
-including browser CORS and referrer behavior.
-
-Gateway JSON and form-data helpers recognize `application/json` regardless of
-media-type casing, including values such as `Application/JSON; charset=utf-8`.
-Malformed JSON still produces the existing typed invalid-JSON error.
-
-`JsonHttpApiClient` reports non-success responses as `GatewayHttpError` with
-the response status and backend error code. Malformed successful responses
-remain `HttpApiError`. Request-path text does not alter that classification.
-
-## Unreleased HTTP redirect policy
-
-HTTP requests and `toHttpRequestInit` preserve Fetch's `redirect` option.
-Use `redirect: "error"` to reject redirects or `redirect: "manual"` to prevent
-following them. Existing non-success response handling applies to manual
-redirect responses. Omitting the option retains Fetch's default follow behavior.
-Gateway Fetch helpers forward the same option.
-HTTP clients accept `HEAD` and `OPTIONS` alongside `GET`, `POST`, `PUT`, `PATCH`,
-and `DELETE`. `toHttpRequestInit` normalizes casing and surrounding whitespace
-while preserving these methods on the wire.
-
-## Unreleased streamed HTTP uploads
-
-Core HTTP clients and gateway Fetch helpers accept `ReadableStream` request
-bodies through `rawBody` or Fetch's `body` option. The transport supplies
-`duplex: "half"` for these streams, as required by native Node Fetch, without
-buffering them into a string or adding duplex settings to other body types.
-Browser support and Fetch restrictions still apply.
-
-## Unreleased HTTP query composition
-
-`withQuery` appends parameters to an existing query string and inserts them
-before any URL fragment. Existing query encoding and repeated parameters are
-preserved. For example, `withQuery("/items?mode=fast#details", { limit: 2 })`
-returns `/items?mode=fast&limit=2#details`. Undefined parameters are omitted;
-when no parameters remain, the original path is returned unchanged.
-
-## Unreleased Hermes chat headers
-
-`streamHermesChatRun` and its `streamGatewayChatRun` alias forward `headers` to
-both the run-start request and the event stream. Set gateway routing or tenant
-headers once on the streaming call so both requests use the same configuration.
-
-## Unreleased HTTP and stream lifetimes
-
-While awaiting an HTTP response, caller cancellation preserves the original
-`AbortSignal.reason`, including string, number, boolean, and null reasons.
-Caller-supplied `HttpApiError` reasons also retain their original identity,
-status, code, and body through JSON clients and gateway Fetch helpers.
-Transport failures and timeouts retain their `HttpApiError` classification;
-a late caller cancellation does not replace an earlier failure or timeout.
-
-Claude Managed Agents deletion helpers dispose unread successful response
-bodies before returning. Bodyless 204 responses and existing deletion error
-types are preserved; disposal failures do not replace successful acknowledgements.
-
-`fetchGatewayExpectOk`, `resolveHermesChatRunApproval`, and its
-`resolveGatewayChatRunApproval` alias cancel unread successful response bodies
-before returning. Body disposal is best effort and preserves acknowledgement
-results; raw response and stream helpers retain caller-owned bodies.
-
-`fetchGatewayJson`, `fetchGatewayBlob`, and `fetchGatewayFormDataJson` retain
-caller cancellation and the HTTP deadline through response body consumption.
-`requestGatewayRaw` continues to transfer body ownership to its caller.
-
-`fetchLibraryApiJson` also retains caller cancellation and the HTTP deadline
-through its JSON body read, preserving existing payload and error parsing.
-
-`RawHttpApiClient.consumeResponse(path, init, consume)` keeps an asynchronous
-response consumer inside the request lifetime. Await body reads inside the
-callback so cancellation and deadlines remain active until consumption settles.
-
-Invalid JSON responses throw `HttpApiError` with the response status, content
-type, and a redacted body preview in the message. Engine parser messages are
-omitted because they can contain credential fragments. The `body` property
-retains the original response for explicit inspection; redact it before logging.
-
-Hermes chat run starts retain their deadline and caller signal through response
-parsing. Chat streams remove abort listeners when they settle and dispose their
-subscriptions, including when an event handler throws.
-
-HTTP JSON, blob, file, and batch-result reads retain the request timeout and
-caller cancellation until body consumption settles. Caller cancellation keeps
-its original reason; timeout failures use `HttpApiError`. Other body/parser
-failures retain their existing error contract.
-Raw HTTP responses transfer body ownership to their caller, so the request
-deadline does not bound a long-lived SSE stream.
-
-HTTP subclasses can use the protected `requestWithResponse(path, init, consume)`
-method to keep a body consumer inside the request lifetime. The callback must
-await its body read. Claude, Codex, and AGY stream calls detach their caller
-abort listeners when they settle, including transport and handler failures.
+Use the [HTTP integration guide](docs/api-client/source/pages/guides/http.md)
+for response ownership, deadlines, cancellation, typed errors, credentials,
+Fetch controls, and runnable development-package tests. It distinguishes the
+published reference from unreleased transport behavior.
 
 The next major release removes Gemini's provider and file entries. See
 [migration guidance](MIGRATION.md#remove-gemini-integrations-next-major-release).
