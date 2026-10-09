@@ -26,6 +26,13 @@ export type HttpApiRequestInit = {
   credentials?: RequestCredentials;
   /** Fetch redirect policy; omitted requests retain Fetch's default follow behavior. */
   redirect?: RequestRedirect;
+  /** Standard Fetch controls, forwarded without overriding platform defaults. */
+  integrity?: string;
+  keepalive?: boolean;
+  mode?: RequestMode;
+  priority?: "high" | "low" | "auto";
+  referrer?: string;
+  referrerPolicy?: ReferrerPolicy;
 };
 
 export type HttpApiTrace = {

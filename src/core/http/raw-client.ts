@@ -66,5 +66,11 @@ export function toHttpRequestInit(
     cache: init?.cache ?? undefined,
     credentials: init?.credentials ?? undefined,
     redirect: init?.redirect ?? undefined,
+    integrity: init?.integrity,
+    keepalive: init?.keepalive,
+    mode: init?.mode,
+    priority: init?.priority,
+    referrer: init?.referrer,
+    referrerPolicy: init?.referrerPolicy,
   };
 }

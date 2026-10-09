@@ -181,6 +181,12 @@ export class BaseHttpApiClient {
       cache: init?.cache ?? this.cache,
       credentials: init?.credentials ?? this.credentials,
       redirect: init?.redirect,
+      integrity: init?.integrity,
+      keepalive: init?.keepalive,
+      mode: init?.mode,
+      priority: init?.priority,
+      referrer: init?.referrer,
+      referrerPolicy: init?.referrerPolicy,
       signal,
     };
     // Node Fetch requires half-duplex for readable request bodies.
