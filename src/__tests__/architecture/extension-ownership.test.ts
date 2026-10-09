@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -37,7 +38,9 @@ function relative(filePath: string): string {
   return path.relative(packageRoot, filePath).split(path.sep).join("/");
 }
 
-function sourceImports(filePath: string): string[] {
+function sourceImports(filePath: string, cache?: Map<string, string[]>): string[] {
+  const cached = cache?.get(filePath);
+  if (cached) return cached;
   const source = ts.createSourceFile(
     filePath,
     readFileSync(filePath, "utf8"),
@@ -64,16 +67,33 @@ function sourceImports(filePath: string): string[] {
     ts.forEachChild(node, visit);
   }
   visit(source);
+  cache?.set(filePath, imports);
   return imports;
 }
 
-function resolveDependency(containingFile: string, specifier: string): string | undefined {
+function resolveDependency(
+  containingFile: string,
+  specifier: string,
+  cache?: ts.ModuleResolutionCache,
+): string | undefined {
   return ts.resolveModuleName(
     specifier,
     containingFile,
     parsedTsConfig.options,
     ts.sys,
+    cache,
   ).resolvedModule?.resolvedFileName;
+}
+
+function createOwnershipScan() {
+  return {
+    imports: new Map<string, string[]>(),
+    resolutions: ts.createModuleResolutionCache(
+      packageRoot,
+      (filePath) => ts.sys.useCaseSensitiveFileNames ? filePath : filePath.toLowerCase(),
+      parsedTsConfig.options,
+    ),
+  };
 }
 
 type ImplementationOwner = "core" | "cavi";
@@ -99,11 +119,12 @@ function implementationConcern(filePath: string, owner: ImplementationOwner): st
 function resolvedOwnerTargets(
   containingFile: string,
   visited = new Set<string>(),
+  scan = createOwnershipScan(),
 ): Array<{ concern: string; owner: ImplementationOwner }> {
   if (visited.has(containingFile)) return [];
   visited.add(containingFile);
-  return sourceImports(containingFile).flatMap((specifier) => {
-    const resolved = resolveDependency(containingFile, specifier);
+  return sourceImports(containingFile, scan.imports).flatMap((specifier) => {
+    const resolved = resolveDependency(containingFile, specifier, scan.resolutions);
     if (!resolved || !resolved.startsWith(srcRoot)) return [];
     const owner = implementationOwner(resolved);
     if (owner) {
@@ -112,13 +133,13 @@ function resolvedOwnerTargets(
         owner,
       }];
     }
-    return resolvedOwnerTargets(resolved, visited);
+    return resolvedOwnerTargets(resolved, visited, scan);
   });
 }
 
-function hasMixedCoreCaviConcern(filePath: string): boolean {
+function hasMixedCoreCaviConcern(filePath: string, scan = createOwnershipScan()): boolean {
   const ownersByConcern = new Map<string, Set<ImplementationOwner>>();
-  for (const target of resolvedOwnerTargets(filePath)) {
+  for (const target of resolvedOwnerTargets(filePath, new Set<string>(), scan)) {
     const owners = ownersByConcern.get(target.concern) ?? new Set<ImplementationOwner>();
     owners.add(target.owner);
     ownersByConcern.set(target.concern, owners);
@@ -298,15 +319,32 @@ describe("CAVI extension ownership", () => {
     expect(hasMixedCoreCaviConcern(mixedAliasesFixture)).toBe(true);
   });
 
+  it("observes changed dependencies in a fresh ownership scan", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "cavi-ownership-scan-"));
+    const filePath = path.join(directory, "consumer.ts");
+    const aliases = path.dirname(mixedAliasesFixture);
+    const coreImport = `import ${JSON.stringify(path.join(aliases, "core-contracts-alias.js"))};\n`;
+    const caviImport = `import ${JSON.stringify(path.join(aliases, "cavi-contracts-alias.js"))};\n`;
+    try {
+      writeFileSync(filePath, coreImport);
+      expect(hasMixedCoreCaviConcern(filePath, createOwnershipScan())).toBe(false);
+      writeFileSync(filePath, coreImport + caviImport);
+      expect(hasMixedCoreCaviConcern(filePath, createOwnershipScan())).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("keeps core below extensions and limits provider compatibility imports", () => {
+    const scan = createOwnershipScan();
     const productionFiles = walk(srcRoot)
       .filter((filePath) => /\.[cm]?[jt]sx?$/u.test(filePath))
       .filter((filePath) => !relative(filePath).includes("/__tests__/"))
       .filter((filePath) => !statSync(filePath).isDirectory());
     const providerExtensionImports = productionFiles
       .filter((filePath) => relative(filePath).startsWith("src/providers/"))
-      .filter((filePath) => sourceImports(filePath).some((specifier) => {
-        const resolved = resolveDependency(filePath, specifier);
+      .filter((filePath) => sourceImports(filePath, scan.imports).some((specifier) => {
+        const resolved = resolveDependency(filePath, specifier, scan.resolutions);
         return resolved ? implementationOwner(resolved) === "cavi" : false;
       }))
       .map(relative);
@@ -315,8 +353,8 @@ describe("CAVI extension ownership", () => {
     const coreExtensionImports = productionFiles
       .filter((filePath) => relative(filePath).startsWith("src/core/")
         || relative(filePath).startsWith("src/contracts/"))
-      .filter((filePath) => sourceImports(filePath).some((specifier) => {
-        const resolved = resolveDependency(filePath, specifier);
+      .filter((filePath) => sourceImports(filePath, scan.imports).some((specifier) => {
+        const resolved = resolveDependency(filePath, specifier, scan.resolutions);
         return resolved ? implementationOwner(resolved) === "cavi" : false;
       }))
       .map(relative);
@@ -326,10 +364,11 @@ describe("CAVI extension ownership", () => {
   });
 
   it("does not mix core and CAVI implementations for the same concern", () => {
+    const scan = createOwnershipScan();
     const offenders = walk(srcRoot)
       .filter((filePath) => /\.[cm]?[jt]sx?$/u.test(filePath))
       .filter((filePath) => !relative(filePath).includes("/__tests__/"))
-      .filter(hasMixedCoreCaviConcern)
+      .filter((filePath) => hasMixedCoreCaviConcern(filePath, scan))
       .map(relative);
 
     expect(offenders).toEqual([]);

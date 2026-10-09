@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reuse dependency parsing and resolution within ownership guardrail scans to
+  reduce scan timeouts. Each scan uses fresh caches; boundary assertions and
+  timeout limits are unchanged.
+
 - Merge HTTP header names case-insensitively. Request overrides replace client
   defaults, configured credentials retain precedence, and explicit idempotency
   keys and content types no longer become comma-joined duplicates.
