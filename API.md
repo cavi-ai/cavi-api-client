@@ -93,6 +93,14 @@ HTTP clients accept `HEAD` and `OPTIONS` alongside `GET`, `POST`, `PUT`, `PATCH`
 and `DELETE`. `toHttpRequestInit` normalizes casing and surrounding whitespace
 while preserving these methods on the wire.
 
+## Unreleased streamed HTTP uploads
+
+Core HTTP clients and gateway Fetch helpers accept `ReadableStream` request
+bodies through `rawBody` or Fetch's `body` option. The transport supplies
+`duplex: "half"` for these streams, as required by native Node Fetch, without
+buffering them into a string or adding duplex settings to other body types.
+Browser support and Fetch restrictions still apply.
+
 ## Unreleased HTTP query composition
 
 `withQuery` appends parameters to an existing query string and inserts them

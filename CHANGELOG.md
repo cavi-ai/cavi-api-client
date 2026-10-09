@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Configure half-duplex for `ReadableStream` HTTP request bodies so native Node
+  Fetch can send streamed uploads through core and gateway clients.
 - Forward Fetch integrity, keepalive, mode, priority, referrer, and referrer-policy
   controls through core and gateway HTTP requests instead of silently discarding
   them. Add optional matching fields to `HttpApiRequestInit`.
