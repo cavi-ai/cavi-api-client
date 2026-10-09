@@ -61,6 +61,12 @@ Partial text does not change a failed or incomplete run into a successful one.
 The versioned docs still describe the pinned published package. Check the
 [changelog](CHANGELOG.md#unreleased) before relying on this development change.
 
+## Unreleased Hermes chat headers
+
+`streamHermesChatRun` and its `streamGatewayChatRun` alias forward `headers` to
+both the run-start request and the event stream. Set gateway routing or tenant
+headers once on the streaming call so both requests use the same configuration.
+
 ## Unreleased HTTP and stream lifetimes
 
 Hermes chat run starts retain their deadline and caller signal through response

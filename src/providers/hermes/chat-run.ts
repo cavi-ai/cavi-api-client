@@ -381,6 +381,7 @@ export async function streamHermesChatRun(
     httpBase: params.httpBase,
     authToken: params.authToken,
     clientId: params.clientId,
+    headers: params.headers,
     input: params.input,
     sessionId: params.sessionId,
     sessionKey,
