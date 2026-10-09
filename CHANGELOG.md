@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pin patched development dependencies for Dependabot alerts #40–#42:
+  `source-map-js` 1.2.2, `katex` 0.18.2, and `smol-toml` 1.9.0.
+
 - Include the versioned offline documentation tree in the npm package.
 
 - Codex run statuses, successful batch responses, and completed stream events
