@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `RawHttpApiClient.consumeResponse` for consuming a response while retaining
+  caller cancellation and the HTTP request deadline.
+
 - Optional `RuntimeRunErrorDetails` on run statuses, failed stream events, and
   facade stream outcomes, carrying observed provider code/type/reason strings.
   Codex response/stream and Claude Messages stream mappings preserve available
@@ -43,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remain in versioned references.
 
 ### Fixed
+
+- Keep gateway JSON, blob, and form-data response body reads inside the HTTP
+  request lifetime so caller cancellation and deadlines remain active. Raw
+  gateway responses retain caller-owned stream lifetimes.
 
 - Preserve Fetch `RequestInit.headers` when converting with `toHttpRequestInit`,
   including records, tuple lists, and `Headers` instances. An explicit second

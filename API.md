@@ -81,6 +81,14 @@ headers once on the streaming call so both requests use the same configuration.
 
 ## Unreleased HTTP and stream lifetimes
 
+`fetchGatewayJson`, `fetchGatewayBlob`, and `fetchGatewayFormDataJson` retain
+caller cancellation and the HTTP deadline through response body consumption.
+`requestGatewayRaw` continues to transfer body ownership to its caller.
+
+`RawHttpApiClient.consumeResponse(path, init, consume)` keeps an asynchronous
+response consumer inside the request lifetime. Await body reads inside the
+callback so cancellation and deadlines remain active until consumption settles.
+
 Invalid JSON responses throw `HttpApiError` with the response status, content
 type, and a redacted body preview in the message. Engine parser messages are
 omitted because they can contain credential fragments. The `body` property
