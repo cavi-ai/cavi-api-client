@@ -73,6 +73,13 @@ only when no content type is already supplied.
 list, or `Headers` instance. Its optional second argument replaces those headers,
 including when an empty record is supplied.
 
+## Unreleased HTTP redirect policy
+
+HTTP requests and `toHttpRequestInit` preserve Fetch's `redirect` option.
+Use `redirect: "error"` to reject redirects or `redirect: "manual"` to prevent
+following them. Existing non-success response handling applies to manual
+redirect responses. Omitting the option retains Fetch's default follow behavior.
+Gateway Fetch helpers forward the same option.
 HTTP clients accept `HEAD` and `OPTIONS` alongside `GET`, `POST`, `PUT`, `PATCH`,
 and `DELETE`. `toHttpRequestInit` normalizes casing and surrounding whitespace
 while preserving these methods on the wire.

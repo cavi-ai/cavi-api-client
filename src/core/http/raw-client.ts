@@ -65,5 +65,6 @@ export function toHttpRequestInit(
     signal: init?.signal ?? undefined,
     cache: init?.cache ?? undefined,
     credentials: init?.credentials ?? undefined,
+    redirect: init?.redirect ?? undefined,
   };
 }

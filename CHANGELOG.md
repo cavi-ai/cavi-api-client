@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preserve existing query strings and URL fragments in `withQuery` instead of
   adding a second `?` or placing request parameters after the fragment.
+- Preserve Fetch's `redirect` policy through core and gateway HTTP requests,
+  so explicit `manual` and `error` policies prevent following redirects.
 
 - Preserve `HEAD` and `OPTIONS` when converting Fetch requests instead of
   silently sending `GET`. Extend `HttpApiHttpMethod` with both methods.

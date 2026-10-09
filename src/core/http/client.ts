@@ -180,6 +180,7 @@ export class BaseHttpApiClient {
       body,
       cache: init?.cache ?? this.cache,
       credentials: init?.credentials ?? this.credentials,
+      redirect: init?.redirect,
       signal,
     };
   }
