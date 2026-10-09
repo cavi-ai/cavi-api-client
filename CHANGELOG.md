@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve Fetch's `redirect` policy through core and gateway HTTP requests,
+  so explicit `manual` and `error` policies prevent following redirects.
+
 - Preserve `HEAD` and `OPTIONS` when converting Fetch requests instead of
   silently sending `GET`. Extend `HttpApiHttpMethod` with both methods.
 - Release unread successful response bodies in Claude Managed Agents environment,
