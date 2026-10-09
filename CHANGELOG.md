@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Publish a fresh tarball from the verified release checkout rather than the
+  pinned documentation reference artifact. Keep stable docs verification and
+  npm publication inputs separate.
+
 - Keep HTTP timeouts and caller cancellation active through JSON, blob, file,
   and batch-result body reads. Raw responses retain caller-owned stream lifetimes.
 - Detach Claude, Codex, and AGY stream abort listeners on completion and failure.
