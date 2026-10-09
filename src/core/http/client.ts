@@ -302,13 +302,13 @@ export class BaseHttpApiClient {
       }
       try {
         return JSON.parse(text) as TResponse;
-      } catch (error) {
+      } catch {
         const contentType = response.headers.get("content-type") ?? "unknown";
         const preview = previewErrorBody(text.trim());
-        const parseMessage = getErrorMessage(error);
         const safePath = previewTraceText(this.resolvePath(path));
+        // Parser messages may contain unredacted, truncated response excerpts.
         throw new HttpApiError({
-          message: `${init?.method ?? "GET"} ${safePath} returned invalid JSON (${parseMessage}; content-type=${contentType}; preview=${preview})`,
+          message: `${init?.method ?? "GET"} ${safePath} returned invalid JSON (content-type=${contentType}; preview=${preview})`,
           path: this.resolvePath(path),
           url: this.resolveUrl(path),
           method: init?.method ?? "GET",
