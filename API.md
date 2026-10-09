@@ -82,6 +82,10 @@ are retained; omitted options use the Fetch implementation's defaults.
 The Fetch implementation enforces integrity and platform-specific restrictions,
 including browser CORS and referrer behavior.
 
+Gateway JSON and form-data helpers recognize `application/json` regardless of
+media-type casing, including values such as `Application/JSON; charset=utf-8`.
+Malformed JSON still produces the existing typed invalid-JSON error.
+
 ## Unreleased HTTP redirect policy
 
 HTTP requests and `toHttpRequestInit` preserve Fetch's `redirect` option.

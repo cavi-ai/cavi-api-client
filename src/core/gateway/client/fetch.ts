@@ -69,7 +69,7 @@ async function parseGatewayJsonResponse<T>(
     });
   }
 
-  if (!contentType.includes("application/json")) {
+  if (!contentType.toLowerCase().includes("application/json")) {
     const trimmed = text.trimStart().toLowerCase();
     const htmlHint =
       trimmed.startsWith("<!doctype") || trimmed.startsWith("<html")
