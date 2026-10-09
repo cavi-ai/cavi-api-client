@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Forward Fetch integrity, keepalive, mode, priority, referrer, and referrer-policy
+  controls through core and gateway HTTP requests instead of silently discarding
+  them. Add optional matching fields to `HttpApiRequestInit`.
+
 - Preserve existing query strings and URL fragments in `withQuery` instead of
   adding a second `?` or placing request parameters after the fragment.
 - Preserve Fetch's `redirect` policy through core and gateway HTTP requests,
