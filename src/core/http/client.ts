@@ -174,7 +174,7 @@ export class BaseHttpApiClient {
     signal: AbortSignal,
     init?: HttpApiRequestInit,
   ): RequestInit {
-    return {
+    const request: RequestInit & { duplex?: "half" } = {
       method,
       headers,
       body,
@@ -189,6 +189,11 @@ export class BaseHttpApiClient {
       referrerPolicy: init?.referrerPolicy,
       signal,
     };
+    // Node Fetch requires half-duplex for readable request bodies.
+    if (body !== null && typeof body === "object" && "getReader" in body && typeof body.getReader === "function") {
+      request.duplex = "half";
+    }
+    return request;
   }
 
   protected emitTrace(trace: HttpApiTrace): void {
