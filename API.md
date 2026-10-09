@@ -80,6 +80,9 @@ Use `redirect: "error"` to reject redirects or `redirect: "manual"` to prevent
 following them. Existing non-success response handling applies to manual
 redirect responses. Omitting the option retains Fetch's default follow behavior.
 Gateway Fetch helpers forward the same option.
+HTTP clients accept `HEAD` and `OPTIONS` alongside `GET`, `POST`, `PUT`, `PATCH`,
+and `DELETE`. `toHttpRequestInit` normalizes casing and surrounding whitespace
+while preserving these methods on the wire.
 
 ## Unreleased Hermes chat headers
 
