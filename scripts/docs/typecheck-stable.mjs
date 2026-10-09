@@ -6,6 +6,7 @@ import path from "node:path";
 import { resolveStableTarball } from "./fetch-stable.mjs";
 import { DOCUMENTED_TAG } from "./types.mjs";
 import { verifyConsumerTestsExample, verifyBatchCollectorExample, verifyStreamingExample, verifyFileExample } from "./consumer-tests-example.mjs";
+import { verifyReactExample } from "./react-example.mjs";
 
 // The pinned version and its sha256 live in types.mjs; obtaining + verifying the
 // artifact lives in fetch-stable.mjs. Validate declarations and the runnable
@@ -64,6 +65,7 @@ try {
   verifyBatchCollectorExample(testOptions);
   verifyStreamingExample(testOptions);
   verifyFileExample(testOptions);
+  verifyReactExample(testOptions);
 } finally {
   rmSync(workspace, { recursive: true, force: true });
 }
