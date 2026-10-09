@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Configure half-duplex for `ReadableStream` HTTP request bodies so native Node
+  Fetch can send streamed uploads through core and gateway clients.
+
 - Preserve existing query strings and URL fragments in `withQuery` instead of
   adding a second `?` or placing request parameters after the fragment.
 - Preserve Fetch's `redirect` policy through core and gateway HTTP requests,
