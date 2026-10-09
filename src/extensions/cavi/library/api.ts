@@ -60,7 +60,7 @@ export async function fetchLibraryApiJson<T>(
     clientId,
     credentials,
   });
-  const response = await client.raw(
+  return client.consumeResponse<T>(
     resolveLibraryApiPath(path),
     toHttpRequestInit(
       {
@@ -69,6 +69,14 @@ export async function fetchLibraryApiJson<T>(
       },
       headers,
     ),
+    async (response) => {
+      const raw = await response.text();
+      const payload = parseLibraryApiPayload(raw, response.status);
+      if (payload === null) {
+        throw protocolError(ApiClientErrorType.Http, "Empty response.");
+      }
+      return payload as T;
+    },
   ).catch((error: unknown) => {
     if (error instanceof HttpApiError && error.status > 0) {
       const payload = parseLibraryApiPayload(error.body, error.status);
@@ -83,15 +91,6 @@ export async function fetchLibraryApiJson<T>(
     }
     throw error;
   });
-  const raw = await response.text();
-
-  const payload = parseLibraryApiPayload(raw, response.status);
-
-  if (payload === null) {
-    throw protocolError(ApiClientErrorType.Http, "Empty response.");
-  }
-
-  return payload as T;
 }
 
 export async function requestLibraryApiJson<T>(

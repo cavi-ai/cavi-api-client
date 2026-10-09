@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep library JSON response body reads inside the HTTP request lifetime so
+  caller cancellation and deadlines remain active during consumption.
+
 - Keep gateway JSON, blob, and form-data response body reads inside the HTTP
   request lifetime so caller cancellation and deadlines remain active. Raw
   gateway responses retain caller-owned stream lifetimes.
