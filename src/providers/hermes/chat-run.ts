@@ -329,7 +329,7 @@ export async function resolveHermesChatRunApproval(
   if (params.sessionKey?.trim()) {
     headers["X-Hermes-Session-Key"] = params.sessionKey.trim();
   }
-  await createHermesChatRunHttpClient(params).raw(
+  await createHermesChatRunHttpClient(params).consumeResponse(
     HERMES_API_ENDPOINTS.runApproval(params.runId),
     {
       method: "POST",
@@ -337,6 +337,10 @@ export async function resolveHermesChatRunApproval(
       body: { choice: params.choice },
       cache: "no-store",
       signal: params.signal,
+    },
+    async (response) => {
+      // Disposal failures must not replace a successful acknowledgement.
+      await response.body?.cancel().catch(() => undefined);
     },
   );
 }

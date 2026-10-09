@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Release unread successful response bodies in gateway status acknowledgements
+  and Hermes approval resolution, including its gateway alias. Body cleanup
+  preserves successful acknowledgements and caller-owned raw streams.
+
 - Keep library JSON response body reads inside the HTTP request lifetime so
   caller cancellation and deadlines remain active during consumption.
 
