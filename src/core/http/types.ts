@@ -16,6 +16,7 @@ export type HttpApiRequestInit = {
   method?: HttpApiHttpMethod;
   body?: unknown;
   rawBody?: BodyInit;
+  /** Case-insensitive overrides of client defaults; configured credentials take precedence. */
   headers?: Record<string, string>;
   signal?: AbortSignal;
   /** Request deadline, including owned body reads; raw responses transfer body ownership. */
@@ -56,6 +57,7 @@ export type HttpApiClientOptions = {
   baseUrl: string;
   basePath?: string;
   allowRelativeBaseUrl?: boolean;
+  /** Header names are matched case-insensitively when applying request overrides. */
   defaultHeaders?: Record<string, string>;
   /** Send the X-Portal-Client-Id header. Default true; set false for non-gateway backends. */
   includePortalClientIdHeader?: boolean;

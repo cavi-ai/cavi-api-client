@@ -129,23 +129,36 @@ export class BaseHttpApiClient {
   }
 
   protected buildHeaders(init?: HttpApiRequestInit): Record<string, string> {
-    const headers: Record<string, string> = {
+    const headers: Record<string, string> = {};
+    const names = new Map<string, string>();
+    const mergeHeaders = (values: Record<string, string>): void => {
+      for (const [name, value] of Object.entries(values)) {
+        const normalized = name.toLowerCase();
+        const previous = names.get(normalized);
+        if (previous !== undefined && previous !== name) delete headers[previous];
+        Object.defineProperty(headers, name, {
+          value, enumerable: true, configurable: true, writable: true,
+        });
+        names.set(normalized, name);
+      }
+    };
+    mergeHeaders({
       Accept: "application/json",
       ...(this.sendsPortalClientId ? { [PORTAL_CLIENT_ID_HEADER]: this.clientId } : {}),
-      ...this.defaultHeaders,
-      ...(init?.headers ?? {}),
-    };
+    });
+    mergeHeaders(this.defaultHeaders);
+    mergeHeaders(init?.headers ?? {});
 
     if (this.resolveAuthHeaders) {
-      Object.assign(headers, this.resolveAuthHeaders());
+      mergeHeaders(this.resolveAuthHeaders());
     } else if (this.authToken) {
-      headers.Authorization = `Bearer ${this.authToken}`;
+      mergeHeaders({ Authorization: `Bearer ${this.authToken}` });
     }
     if (init?.idempotencyKey) {
-      headers[IDEMPOTENCY_KEY_HEADER] = init.idempotencyKey;
+      mergeHeaders({ [IDEMPOTENCY_KEY_HEADER]: init.idempotencyKey });
     }
-    if (init && "body" in init && init.body !== undefined) {
-      headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
+    if (init && "body" in init && init.body !== undefined && !names.has("content-type")) {
+      mergeHeaders({ "Content-Type": "application/json" });
     }
     return headers;
   }

@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Merge HTTP header names case-insensitively. Request overrides replace client
+  defaults, configured credentials retain precedence, and explicit idempotency
+  keys and content types no longer become comma-joined duplicates.
+
 - Forward caller headers to the run-start request in `streamHermesChatRun`
   and its `streamGatewayChatRun` alias, keeping routing and tenant headers
   consistent with the subsequent event stream.

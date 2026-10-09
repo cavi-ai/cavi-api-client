@@ -61,6 +61,14 @@ Partial text does not change a failed or incomplete run into a successful one.
 The versioned docs still describe the pinned published package. Check the
 [changelog](CHANGELOG.md#unreleased) before relying on this development change.
 
+## Unreleased HTTP header precedence
+
+HTTP header names match case-insensitively. Per-request `headers` override
+`defaultHeaders`; configured bearer credentials or credential-resolver headers
+take precedence over both. An explicit `idempotencyKey` overrides a same-named
+header regardless of casing. JSON requests add `Content-Type: application/json`
+only when no content type is already supplied.
+
 ## Unreleased Hermes chat headers
 
 `streamHermesChatRun` and its `streamGatewayChatRun` alias forward `headers` to
