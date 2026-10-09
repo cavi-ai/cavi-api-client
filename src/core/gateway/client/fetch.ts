@@ -141,6 +141,9 @@ async function requestGatewayResponse<T>(
       consume,
     );
   } catch (error) {
+    if (options.signal?.aborted && error === options.signal.reason) {
+      throw error;
+    }
     if (error instanceof HttpApiError && error.status > 0) {
       throwGatewayHttpErrorFromCore(error, apiLabel);
     }

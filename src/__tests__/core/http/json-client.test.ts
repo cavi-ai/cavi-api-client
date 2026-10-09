@@ -205,6 +205,17 @@ describe("json HTTP client", () => {
       });
     });
 
+    it.each([401, 429, 503])("keeps HTTP %s errors typed when the path resembles a parse diagnostic", async (status) => {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(
+        '{"error":{"message":"backend rejected request","code":"backend_rejected"}}',
+        { status, headers: { "content-type": "application/json" } },
+      )));
+      const requestJson = createJsonHttpRequest({ surface: "test", httpBase: "", authToken: null });
+      const error = await requestJson("/items?search=returned invalid JSON").catch((reason: unknown) => reason);
+      expect(error).toBeInstanceOf(GatewayHttpError);
+      expect(error).toMatchObject({ status, code: "backend_rejected" });
+    });
+
     it("reports content type and body preview when a successful response is not JSON", async () => {
       vi.stubGlobal(
         "fetch",

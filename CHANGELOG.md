@@ -47,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve caller-supplied `HttpApiError` cancellation reasons through JSON and
+  gateway Fetch helpers instead of converting them into `GatewayHttpError`.
+
+- Classify JSON HTTP failures by parse-error identity instead of diagnostic
+  message text. Paths containing `returned invalid JSON` no longer bypass
+  `GatewayHttpError` status and backend-code handling.
+
 - Accept mixed-case JSON content types in gateway JSON and form-data response
   parsing instead of rejecting valid JSON responses as protocol mismatches.
 

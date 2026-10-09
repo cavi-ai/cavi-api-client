@@ -86,6 +86,10 @@ Gateway JSON and form-data helpers recognize `application/json` regardless of
 media-type casing, including values such as `Application/JSON; charset=utf-8`.
 Malformed JSON still produces the existing typed invalid-JSON error.
 
+`JsonHttpApiClient` reports non-success responses as `GatewayHttpError` with
+the response status and backend error code. Malformed successful responses
+remain `HttpApiError`. Request-path text does not alter that classification.
+
 ## Unreleased HTTP redirect policy
 
 HTTP requests and `toHttpRequestInit` preserve Fetch's `redirect` option.
@@ -123,6 +127,8 @@ headers once on the streaming call so both requests use the same configuration.
 
 While awaiting an HTTP response, caller cancellation preserves the original
 `AbortSignal.reason`, including string, number, boolean, and null reasons.
+Caller-supplied `HttpApiError` reasons also retain their original identity,
+status, code, and body through JSON clients and gateway Fetch helpers.
 Transport failures and timeouts retain their `HttpApiError` classification;
 a late caller cancellation does not replace an earlier failure or timeout.
 
