@@ -10,7 +10,7 @@ export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key" as const;
 // leaked domain names into core.)
 export type HttpApiClientSurface = string;
 
-export type HttpApiHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type HttpApiHttpMethod = "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
 
 export type HttpApiRequestInit = {
   method?: HttpApiHttpMethod;

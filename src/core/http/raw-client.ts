@@ -5,7 +5,7 @@ import type {
   HttpApiTrace,
 } from "./types.js";
 
-const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+const HTTP_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 
 function normalizeHttpMethod(method: string | undefined): HttpApiHttpMethod | undefined {
   const normalized = method?.trim().toUpperCase();

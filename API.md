@@ -73,6 +73,10 @@ only when no content type is already supplied.
 list, or `Headers` instance. Its optional second argument replaces those headers,
 including when an empty record is supplied.
 
+HTTP clients accept `HEAD` and `OPTIONS` alongside `GET`, `POST`, `PUT`, `PATCH`,
+and `DELETE`. `toHttpRequestInit` normalizes casing and surrounding whitespace
+while preserving these methods on the wire.
+
 ## Unreleased Hermes chat headers
 
 `streamHermesChatRun` and its `streamGatewayChatRun` alias forward `headers` to
