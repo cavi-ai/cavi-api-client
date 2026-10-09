@@ -7,14 +7,14 @@ export async function streamText(
   signal: AbortSignal,
   reportError?: (error: unknown) => void,
 ) {
-  let text = "";
+  let text: string | undefined;
   let terminalText: string | undefined;
   let runError: string | undefined;
   let transportError: unknown;
   const result = await client.streamRun(body, {
     onEvent(event) {
       if (event.event === "message.delta") {
-        text += event.delta;
+        text = (text ?? "") + event.delta;
         write(event.delta);
       }
       if (event.event === "run.completed") terminalText = event.output;
@@ -35,5 +35,11 @@ export async function streamText(
       type: "run", code, cause: { ...result.data, error: runError, transportError },
     });
   }
-  return { ...result.data, text: terminalText ?? text };
+  const answer = terminalText ?? text;
+  if (answer === undefined) {
+    throw new ApiClientError("Stream completed without a text answer.", {
+      type: "run", code: "run_output_missing", cause: result.data,
+    });
+  }
+  return { ...result.data, text: answer };
 }

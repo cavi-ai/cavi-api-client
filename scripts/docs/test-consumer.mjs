@@ -7,7 +7,7 @@ import { transpileModule, ModuleKind, ScriptTarget } from "typescript";
 import { validateMarkdownLinks } from "./links.mjs";
 import { verifyRunResultExamples } from "./run-result-examples.mjs";
 import { verifyOwnedRunExample } from "./owned-run-example.mjs";
-import { verifyConsumerTestsExample, verifyBatchCollectorExample } from "./consumer-tests-example.mjs";
+import { verifyConsumerTestsExample, verifyBatchCollectorExample, verifyStreamingExample } from "./consumer-tests-example.mjs";
 
 const root = path.resolve(".");
 const temporary = mkdtempSync(path.join(tmpdir(), "cavi-docs-consumer-"));
@@ -162,9 +162,13 @@ await activeClient.dispose();
 const registry = createRuntimeProviderRegistry({ modules: [createClaudeProviderModule({ apiKey: "fixture-key" })] });
 const client = createApiClient("claude", { registry });
 let text = "";
-const streamed = await streamText(client, { model: "fixture-model", input: "Validate", dryRun: true }, (delta) => { text += delta; }, AbortSignal.timeout(1_000));
-assert.equal(streamed.outcome, "completed");
-assert.equal(typeof streamed.text, "string");
+await assert.rejects(streamText(client, { model: "fixture-model", input: "Validate", dryRun: true }, (delta) => { text += delta; }, AbortSignal.timeout(1_000)), (error) => {
+  assert.ok(isApiClientError(error));
+  assert.equal(error.code, "run_output_missing");
+  assert.equal(error.cause.outcome, "completed", "dry-run completion must not invent an answer");
+  return true;
+});
+assert.equal(text, "");
 const sessions = await listGatewaySessions(client);
 assert.equal(sessions.kind, "unavailable");
 assert.ok(sessions.gap);
@@ -285,6 +289,7 @@ await unsupported.dispose();
   verifyOwnedRunExample({ root, consumer, command });
   verifyConsumerTestsExample({ root, installed, consumer, command });
   verifyBatchCollectorExample({ root, installed, consumer, command });
+  verifyStreamingExample({ root, installed, consumer, command });
   process.stdout.write("packed documentation quickstart and fixture journeys passed\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });

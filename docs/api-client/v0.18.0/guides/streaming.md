@@ -21,14 +21,14 @@ export async function streamText(
   signal: AbortSignal,
   reportError?: (error: unknown) => void,
 ) {
-  let text = "";
+  let text: string | undefined;
   let terminalText: string | undefined;
   let runError: string | undefined;
   let transportError: unknown;
   const result = await client.streamRun(body, {
     onEvent(event) {
       if (event.event === "message.delta") {
-        text += event.delta;
+        text = (text ?? "") + event.delta;
         write(event.delta);
       }
       if (event.event === "run.completed") terminalText = event.output;
@@ -49,7 +49,13 @@ export async function streamText(
       type: "run", code, cause: { ...result.data, error: runError, transportError },
     });
   }
-  return { ...result.data, text: terminalText ?? text };
+  const answer = terminalText ?? text;
+  if (answer === undefined) {
+    throw new ApiClientError("Stream completed without a text answer.", {
+      type: "run", code: "run_output_missing", cause: result.data,
+    });
+  }
+  return { ...result.data, text: answer };
 }
 ```
 
@@ -58,13 +64,43 @@ Use the optional `reportError` callback for server diagnostics; it must not
 throw. It observes parse/transport errors, including recoverable malformed
 frames. A `run.failed` event is captured separately. The typed exception retains
 the run ID, outcome, run error, and any transport error in `cause`; callers
-branch on `run_failed`, `run_cancelled`, or `run_incomplete`. The enum aliases
+branch on `run_failed`, `run_cancelled`, `run_incomplete`, or
+`run_output_missing`. The enum aliases
 are unreleased, so the example uses compatible string values.
 
 The returned `text` uses a terminal output snapshot when one is supplied,
 otherwise the accumulated deltas. Do not append a terminal snapshot as another
 delta: that can duplicate the answer. Partial deltas can already be visible
 when a run fails; retain them as partial output, not a successful answer.
+
+Completion without an observed text delta or snapshot throws
+`run_output_missing`; the helper does not invent an empty answer. Dry-run
+completion does not supply a text answer. An explicitly
+supplied empty normalized snapshot remains a valid string. Provider
+normalization can omit empty native text: the pinned Codex adapter does so.
+For tool-only workflows, consume the events and outcome directly instead of
+requiring a text answer.
+
+## Run the streaming tests
+
+Download [streaming-tests.ts](../examples/streaming-tests.ts) beside
+[runtime-streaming.ts](../examples/runtime-streaming.ts) in `examples/`.
+Use the ESM workspace and package installation from [consumer testing](testing.md),
+then compile and run:
+
+```sh
+npx tsc --target ES2022 --module NodeNext --moduleResolution NodeNext \
+  --strict --skipLibCheck --types node --outDir .stream-tests \
+  examples/streaming-tests.ts examples/runtime-streaming.ts
+node --test .stream-tests/streaming-tests.js
+```
+
+Expected result: seven passing tests without provider credentials or network
+calls. Native Codex SSE fixtures exercise snapshots, deltas, missing output,
+failed/cancelled/incomplete streams, availability gaps, and authentication.
+A normalized event fixture checks explicit empty snapshots independently of
+provider normalization. Tests reuse the borrowed client and dispose it through
+the test cleanup hook. A failed stream is submitted once, without replay.
 
 Unreleased development builds add `requireCompletedStream` and
 `requireStreamText` for applications that require completed output. The

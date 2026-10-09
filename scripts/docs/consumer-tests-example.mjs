@@ -26,6 +26,18 @@ export function verifyBatchCollectorExample({ root, installed, consumer, command
   compileAndRun({ root, consumer, command, docs, names: ["batch-tests", "batch-collector"] });
 }
 
+/** Verify text-stream decisions and cleanup through installed entry points. */
+export function verifyStreamingExample({ root, installed, consumer, command, docsRoot }) {
+  const version = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
+  const docs = docsRoot ?? path.join(installed, `docs/api-client/v${version}`);
+  const guide = readFileSync(path.join(docs, "guides/streaming.md"), "utf8");
+  const snippet = [...guide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
+  assert.ok(snippet, "streaming guide must include its text helper");
+  const example = readFileSync(path.join(docs, "examples/runtime-streaming.ts"), "utf8");
+  assert.equal(snippet[1].trim(), example.trim(), "downloadable helper must match the streaming guide");
+  compileAndRun({ root, consumer, command, docs, names: ["streaming-tests", "runtime-streaming"] });
+}
+
 function compileAndRun({ root, consumer, command, docs, names }) {
   const directory = path.join(consumer, "application-tests");
   mkdirSync(directory, { recursive: true });
