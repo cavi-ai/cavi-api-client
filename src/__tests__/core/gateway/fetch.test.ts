@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGatewayAuthHeaders,
   fetchGatewayExpectOk,
+  fetchGatewayFormDataJson,
   fetchGatewayJson,
   resolveGatewayRequestCredentials,
 } from "../../../core/gateway/client/fetch";
@@ -9,6 +10,31 @@ import { PORTAL_CLIENT_ID_HEADER } from "../../../core/http/client-id";
 import { REDACTION_PLACEHOLDER } from "../../../core/http/redaction";
 
 describe("gateway fetch helpers", () => {
+  it.each([
+    { helper: "json", contentType: "Application/JSON" },
+    { helper: "json", contentType: "APPLICATION/JSON; charset=utf-8" },
+    { helper: "form-data", contentType: "Application/JSON" },
+    { helper: "form-data", contentType: "APPLICATION/JSON; charset=utf-8" },
+  ])("accepts $contentType through $helper", async ({ helper, contentType }) => {
+    const options = {
+      httpBaseUrl: "https://gateway.example", clientId: "test-client", authToken: null, apiLabel: "Gateway API",
+      fetchImpl: (async () => new Response('{"value":42}', {
+        headers: { "content-type": contentType },
+      })) satisfies typeof fetch,
+    };
+    const result = helper === "json"
+      ? await fetchGatewayJson("/response", options)
+      : await fetchGatewayFormDataJson("/response", { ...options, body: new FormData() });
+    expect(result).toEqual({ value: 42 });
+  });
+
+  it("reports invalid JSON with a mixed-case JSON content type", async () => {
+    await expect(fetchGatewayJson("/response", {
+      httpBaseUrl: "https://gateway.example", clientId: "test-client", authToken: null, apiLabel: "Gateway API",
+      fetchImpl: async () => new Response("{", { headers: { "content-type": "Application/JSON" } }),
+    })).rejects.toMatchObject({ message: "Invalid JSON from /response." });
+  });
+
   it("builds gateway auth headers without hardcoding a provider", () => {
     expect(buildGatewayAuthHeaders("client-1", "token-1")).toEqual({
       Accept: "application/json",
