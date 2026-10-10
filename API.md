@@ -28,7 +28,7 @@ contract; the generated release manifest identifies the documented surface.
 
 Consumer guidance lives in `docs/api-client/source/pages`; edit it there and
 regenerate the versioned artifact. The built tree lives under
-`docs/api-client/v<package.json version>`. Repository provider guides are
+`docs/api-client/v<documented version>`. Repository provider guides are
 pointers into that consumer guidance; maintainer procedures remain separate.
 
 The docs site ingests the GitHub release asset
@@ -49,9 +49,9 @@ transport calls and built path helpers. Gateway and CAVI pages retain static
 prefix checks. These checks do not validate query parameters, wire schemas,
 or live backend compatibility.
 
-## Unreleased Codex normalization
+## Codex normalization (0.19.0)
 
-Development builds preserve an explicit string `output_text`, including an
+Version 0.19.0 preserves an explicit string `output_text`, including an
 empty string. Otherwise, run statuses, successful batch responses, and completed
 stream events concatenate `output_text` content from native `message` items in
 wire order, without inserted separators. Tool calls, reasoning, refusals, and
@@ -60,19 +60,19 @@ no observed text remains an absent normalized `output`.
 Partial text does not change a failed or incomplete run into a successful one.
 
 The versioned docs still describe the pinned published package. Check the
-[changelog](CHANGELOG.md#unreleased) before relying on this development change.
+[changelog](CHANGELOG.md#0190---2026-10-09) before upgrading.
 
 ## HTTP integration
 
 Use the [HTTP integration guide](docs/api-client/source/pages/guides/http.md)
 for response ownership, deadlines, cancellation, typed errors, credentials,
-Fetch controls, and runnable development-package tests. It distinguishes the
-published reference from unreleased transport behavior.
+Fetch controls, and runnable packed-package tests. Check the changelog for
+behavior changes before using the guide with an older package.
 
-The next major release removes Gemini's provider and file entries. See
-[migration guidance](MIGRATION.md#remove-gemini-integrations-next-major-release).
+Version 0.19.0 removes Gemini's provider and file entries. See
+[migration guidance](MIGRATION.md#remove-gemini-integrations-0190).
 
-## Unreleased run outcome errors
+## Run outcome errors (0.19.0)
 
 `ApiClientErrorType.Run` and `ApiClientErrorCode.RunFailed`, `RunCancelled`,
 `RunIncomplete`, and `RunOutputMissing` are additive exports from the root and
@@ -94,7 +94,7 @@ returning lifecycle states; these codes do not automatically turn a run into
 a thrown exception. Versioned examples use the matching string values to stay
 compatible with the pinned release.
 
-## Unreleased result helpers
+## Result helpers (0.19.0)
 
 The root and `core/runtime` export `requireCompletedRun`, `requireRunText`,
 `requireCompletedStream`, and `requireStreamText`. Completion helpers return
@@ -110,9 +110,9 @@ stream outcomes, and `dry_run` run states. The original input is retained in
 retries, cancellation, or disposal. Existing client methods are unchanged.
 
 See [complete development examples](docs/guides/run-results.md) for service and
-streaming integration. These helpers are not in the pinned published release.
+streaming integration. These helpers require 0.19.0 or later.
 
-## Unreleased bounded run wait
+## Bounded run wait (0.19.0)
 
 `waitForRun(client, initialRun, options)` and its `RunWaitOptions` and
 `RunWaitResult` types are exported from the root and `contracts`. The client
@@ -138,7 +138,7 @@ are safely ignored. Set transport timeouts separately. See
 The [authorized background workflow](docs/guides/owned-background-runs.md)
 demonstrates read/cancel permissions and authorization before every poll.
 
-## Unreleased execution failure details
+## Execution failure details (0.19.0)
 
 `RuntimeRunErrorDetails` is exported from the root and `core/runtime`.
 `RuntimeRunStatus`, `run.failed` events, and `RunStreamOutcome` accept optional

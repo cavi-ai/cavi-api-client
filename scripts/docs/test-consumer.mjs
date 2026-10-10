@@ -51,8 +51,8 @@ globalThis.fetch = async (input, init) => {
   return response();
 };
 `;
-  const packageVersion = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).version;
-  const quickstart = readFileSync(path.join(installed, `docs/api-client/v${packageVersion}/introduction/quickstart.md`), "utf8");
+  const documentedVersion = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).documentation.version;
+  const quickstart = readFileSync(path.join(installed, `docs/api-client/v${documentedVersion}/introduction/quickstart.md`), "utf8");
   const quickstartSnippet = [...quickstart.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
   assert.equal(quickstartSnippet?.[1], snippets[0][1], "README and quickstart must teach the same application service");
   const serviceSource = readFileSync(path.join(root, "docs/examples/text-service.ts"), "utf8");
@@ -104,7 +104,7 @@ await assistant.dispose();
     const compiled = transpileModule(source, { compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 } }).outputText;
     writeFileSync(path.join(consumer, `${name}.mjs`), compiled);
   }
-  const batchGuide = readFileSync(path.join(installed, `docs/api-client/v${packageVersion}/guides/batching.md`), "utf8");
+  const batchGuide = readFileSync(path.join(installed, `docs/api-client/v${documentedVersion}/guides/batching.md`), "utf8");
   const collectionSnippet = [...batchGuide.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
   assert.ok(collectionSnippet, "batch guide must include its collection function");
   writeFileSync(path.join(consumer, "batch-collector.mjs"), transpileModule(collectionSnippet[1], {

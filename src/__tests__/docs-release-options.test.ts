@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { inspectReleaseFixtureForTest } from "../../scripts/release/inspect-release.mjs";
 import { buildDocumentationInTemporaryRoot } from "../../scripts/docs/build.mjs";
+import { loadContracts } from "../../scripts/docs/contracts.mjs";
 import { renderDocumentation } from "../../scripts/docs/render.mjs";
 import {
   DOCUMENTED_OUTPUT_DIRECTORY,
@@ -198,6 +199,57 @@ describe("documentation release options", () => {
 
     await expect(readFile(path.join(workspace, "generated/contracts/runtime.md"), "utf8"))
       .resolves.toContain("Version: 0.15.0");
+  });
+
+  it("builds a new release without a pre-existing source manifest", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-release-options-"));
+    temporaryDirectories.push(workspace);
+    await createCuratedContractFixture(workspace);
+    const manifestPath = path.join(workspace, "docs/api-client/source/releases/0.15.0-manifest.json");
+    await rm(manifestPath);
+    const release = await explicitFixtureRelease();
+
+    await buildDocumentationInTemporaryRoot([
+      "--tarball", release.tarball, "--out", "generated", "--root", workspace,
+      "--version", release.version, "--tag", release.tag,
+      "--repository", release.repository, "--commit", release.commit,
+      "--npm-integrity", release.npmIntegrity, "--tarball-sha256", release.tarballSha256,
+    ], workspace);
+
+    const contract = await readFile(path.join(workspace, "generated/contracts/runtime.md"), "utf8");
+    expect(contract).toContain("declaration: `docs/api-client/v0.15.0/reference/index.md`");
+    expect(contract).not.toContain("source/releases/0.15.0-manifest.json");
+    await expect(readFile(manifestPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    const reference = await readFile(path.join(workspace, "generated/reference/index.md"), "utf8");
+    expect(reference).toContain("RuntimeClient");
+  });
+
+  it.each(["declaration", "fixture"])("still rejects missing %s evidence outside the selected manifest", async (type) => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-release-options-"));
+    temporaryDirectories.push(workspace);
+    await createCuratedContractFixture(workspace);
+    const recordPath = path.join(workspace, "docs/api-client/source/contracts/runtime.json");
+    const record = JSON.parse(await readFile(recordPath, "utf8"));
+    record.evidence.find((item: { type: string }) => item.type === type).path = "missing-evidence.ts";
+    await writeFile(recordPath, JSON.stringify(record));
+    const release = await explicitFixtureRelease();
+
+    await expect(buildDocumentationInTemporaryRoot([
+      "--tarball", release.tarball, "--out", "generated", "--root", workspace,
+      "--version", release.version, "--tag", release.tag,
+      "--repository", release.repository, "--commit", release.commit,
+      "--npm-integrity", release.npmIntegrity, "--tarball-sha256", release.tarballSha256,
+    ], workspace)).rejects.toThrow("evidence file missing-evidence.ts to exist");
+  });
+
+  it.each(["version", "tag", "commit", "sha256"])("binds declaration evidence to the selected release %s", async (field) => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cavi-docs-release-options-"));
+    temporaryDirectories.push(workspace);
+    await createCuratedContractFixture(workspace);
+    const release = resolveDocumentationRelease(await explicitFixtureRelease());
+    const manifest = await inspectReleaseFixtureForTest(release.tarball, release);
+    await expect(loadContracts(workspace, { ...manifest, [field]: "wrong" }, release))
+      .rejects.toThrow(`manifest ${field} to equal selected release`);
   });
 
   it("renders contract package headers from the selected release", () => {

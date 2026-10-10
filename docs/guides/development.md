@@ -20,16 +20,20 @@ downloads; those imports are resolved and checked alongside the snippet.
 
 That artifact is provisioned for you: the documentation scripts fetch it into a
 gitignored `.cache/docs-stable/` and verify it against the sha256 from the
-source release manifest for `package.json` `version`, so `pnpm run verify`
+source release manifest for `package.json` `documentation.version`, so `pnpm run verify`
 works with no setup. Run `pnpm run docs:stable` to fetch it up front. To use an
 artifact you already have, point `CAVI_API_CLIENT_STABLE_TARBALL` at it — a
 supplied tarball is digest-checked too, and never trusted blindly.
 
-The documented release version is `package.json` `version`. Commit, tarball
+The documented release version is `package.json` `documentation.version`,
+pinned independently of the working package version. Commit, tarball
 digest, and `sourceDateEpoch` are read from
 `docs/api-client/source/releases/<version>-manifest.json` via
 `scripts/docs/types.mjs`. Output paths and workflows derive from that identity;
-`docs-pins.test.ts` fails the build if they drift from `package.json`.
+`docs-pins.test.ts` fails the build if the baseline pin and its manifest disagree.
+Advance this pin only after publication, using the exact npm artifact and release
+commit. The release workflow uses explicit release identity to build the new docs
+asset without changing or replacing historical pins.
 
 Release orchestration lives under `scripts/release/`. Docs build/check stays
 under `scripts/docs/`. Maintainer release evidence is local-only under
@@ -63,7 +67,7 @@ Hosts follow [the consumer contract](../api-client/CONSUMER.md) and validate wit
 `pnpm run docs:host-ingest-check`.
 
 The current committed artifact is
-`docs/api-client/v<package.json version>`.
+`docs/api-client/v<documented version>`.
 
 ## Guardrails
 

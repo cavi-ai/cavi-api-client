@@ -37,12 +37,15 @@ const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const packageJson = require(path.join(PACKAGE_ROOT, "package.json"));
 
 /**
- * Canonical package identity comes from package.json. Commit + tarball digest
- * come from the checked-in source manifest for that version so verify stays
- * hermetic. `docs-pins` / drift tests fail if these disagree.
+ * The published documentation baseline is pinned separately from the working
+ * package version, so release candidates can verify without claiming unpublished
+ * artifacts. Commit, digest, and timestamp come from its checked-in manifest.
  */
 export const DOCUMENTED_PACKAGE = packageJson.name;
-export const DOCUMENTED_VERSION = packageJson.version;
+export const DOCUMENTED_VERSION = packageJson.documentation?.version;
+if (typeof DOCUMENTED_VERSION !== "string" || !/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(DOCUMENTED_VERSION)) {
+  throw new Error("package.json documentation.version must pin a stable release version");
+}
 export const DOCUMENTED_TAG = `v${DOCUMENTED_VERSION}`;
 export const DOCUMENTED_REPOSITORY = "cavi-ai/cavi-api-client";
 /** Canonical output directory for the generated reference, relative to the repo root. */
@@ -57,7 +60,7 @@ const SOURCE_MANIFEST_PATH = path.join(
 function loadSourceManifestIdentity() {
   if (!existsSync(SOURCE_MANIFEST_PATH)) {
     throw new Error(
-      `missing source release manifest for package.json version ${DOCUMENTED_VERSION}: ${path.relative(PACKAGE_ROOT, SOURCE_MANIFEST_PATH)}`,
+      `missing source release manifest for documented version ${DOCUMENTED_VERSION}: ${path.relative(PACKAGE_ROOT, SOURCE_MANIFEST_PATH)}`,
     );
   }
   const manifest = JSON.parse(readFileSync(SOURCE_MANIFEST_PATH, "utf8"));

@@ -57,7 +57,7 @@ Run the package helper (from a checkout with the unpacked tree or archive):
 ```bash
 pnpm run docs:host-ingest-check --dir path/to/unpacked-docs
 # or
-DOCS_VERSION="$(node -p 'require("./package.json").version')"
+DOCS_VERSION="$(node -p 'require("./package.json").documentation.version')"
 pnpm run docs:host-ingest-check --archive "cavi-api-client-docs-v${DOCS_VERSION}.tar.gz"
 ```
 
