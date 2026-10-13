@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,12 +7,13 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const temporary = mkdtempSync(path.join(tmpdir(), "cavi-python-consumer-"));
 try {
-  const output = execFileSync("npm", ["pack", "--ignore-scripts", "--pack-destination", temporary], {
+  execFileSync("npm", ["pack", "--ignore-scripts", "--pack-destination", temporary], {
     cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, npm_config_cache: path.join(temporary, "npm-cache") },
   });
-  const archive = output.trim().split("\n").at(-1);
-  if (!archive || path.basename(archive) !== archive) throw new Error("Invalid package archive name");
+  const archives = readdirSync(temporary).filter((name) => name.endsWith(".tgz"));
+  if (archives.length !== 1) throw new Error("npm pack must create exactly one archive");
+  const archive = archives[0];
   execFileSync("tar", ["-xzf", path.join(temporary, archive), "-C", temporary]);
   const packed = path.join(temporary, "package");
   const manifest = JSON.parse(readFileSync(path.join(packed, "package.json"), "utf8"));
