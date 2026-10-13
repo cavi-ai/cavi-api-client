@@ -3,7 +3,7 @@
   "version": "0.20.0",
   "release": {
     "tag": "v0.20.0",
-    "commit": "623528ca5141f8f0c5072e63e2ed88629398d47e"
+    "commit": "b37ae83acd4ebca935fafa0a954714fbe21c9f93"
   },
   "sourceTarballSha256": "f25a2a0a16d3861910330a16a7f2173fea89ff40cff3f27014bc7420b6cb7770",
   "contentSha256": "a6a23a56c62db632c45641de0642f080aa7bf1216f3901334d0ab98d1df6c35d",
@@ -170,5 +170,5 @@
     }
   ],
   "schemaVersion": 2,
-  "generatedAt": "2026-10-13T20:14:20.000Z"
+  "generatedAt": "2026-10-13T20:43:04.000Z"
 }

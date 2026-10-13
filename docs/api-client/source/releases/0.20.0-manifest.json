@@ -2,7 +2,7 @@
   "package": "@cavi-ai/api-client",
   "version": "0.20.0",
   "tag": "v0.20.0",
-  "commit": "623528ca5141f8f0c5072e63e2ed88629398d47e",
+  "commit": "b37ae83acd4ebca935fafa0a954714fbe21c9f93",
   "sha256": "f25a2a0a16d3861910330a16a7f2173fea89ff40cff3f27014bc7420b6cb7770",
   "exports": [
     {
@@ -11628,5 +11628,5 @@
       "signature": "export type WebSocketTransportConformanceObservation = TransportConformanceSharedObservation & Readonly<{\n    kind: \"websocket\";\n    lifecycle: readonly WebSocketLifecycleObservation[];\n}>;"
     }
   ],
-  "sourceDateEpoch": 1791922460
+  "sourceDateEpoch": 1791924184
 }
