@@ -69,9 +69,9 @@ for response ownership, deadlines, cancellation, typed errors, credentials,
 Fetch controls, and runnable packed-package tests. Check the changelog for
 behavior changes before using the guide with an older package.
 
-## Python runtime access (development)
+## Python runtime access (0.20.0)
 
-Development builds provide [Python runtime access](docs/guides/python-runtime.md)
+Version 0.20.0 provides [Python runtime access](docs/guides/python-runtime.md)
 and `serveRuntimeBridge` from `core/transport/node` for lifecycle calls and
 completion helpers. The bridge exposes actual operations separately from
 backend capabilities; streaming and batch operations are outside its surface.

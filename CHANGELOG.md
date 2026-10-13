@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-13
+
 ### Added
 
 - Async Python runtime lifecycle client and `cavi-runtime-bridge` executable,
@@ -1205,7 +1207,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.16.0...v0.17.0
