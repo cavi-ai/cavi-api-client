@@ -50,3 +50,7 @@ docs/specs/
 
 # Local maintainer evidence (never commit)
 evidence/
+
+# Python bytecode
+__pycache__/
+*.py[cod]

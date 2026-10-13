@@ -69,6 +69,13 @@ for response ownership, deadlines, cancellation, typed errors, credentials,
 Fetch controls, and runnable packed-package tests. Check the changelog for
 behavior changes before using the guide with an older package.
 
+## Python runtime access (development)
+
+Development builds provide [Python runtime access](docs/guides/python-runtime.md)
+and `serveRuntimeBridge` from `core/transport/node` for lifecycle calls and
+completion helpers. The bridge exposes actual operations separately from
+backend capabilities; streaming and batch operations are outside its surface.
+
 Version 0.19.0 removes Gemini's provider and file entries. See
 [migration guidance](MIGRATION.md#remove-gemini-integrations-0190).
 

@@ -44,6 +44,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
       - name: Provision stable documentation artifact
         run: |
           TARBALL="$(node scripts/docs/fetch-stable.mjs)"
@@ -64,6 +69,9 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Validate packed Python runtime consumer
+        run: node scripts/test-python-consumer.mjs
 
       - name: Validate documentation and packed examples
         run: pnpm run docs:check

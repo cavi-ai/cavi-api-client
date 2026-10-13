@@ -48,6 +48,15 @@ src/index.ts
 
 ## Provider Model
 
+The Node-only runtime bridge in `core/transport/node` serves serialized
+lifecycle calls for an explicitly supplied `RuntimeClient`. The async Python
+module owns a persistent subprocess and retains existing adapter semantics.
+Versioned, bounded JSON Lines carry results and safe structured errors;
+framing failure or an active-call timeout closes the Python-owned process.
+Backend cancellation remains an explicit lifecycle operation. Provider
+construction stays in trusted application factories, with no separate Python
+route tables or provider implementations. See [Python runtime access](docs/guides/python-runtime.md).
+
 The contract is tiered. **`RuntimeClient`** is the universal surface every
 provider implements — `getRuntimeCapabilities`, `startRun`, optional
 `getRun`/`cancelRun`, optional `streamRun`, and an optional batch surface

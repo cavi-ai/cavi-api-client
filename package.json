@@ -51,6 +51,11 @@
     "access": "public"
   },
   "files": [
+    "python/cavi_runtime",
+    "!python/**/__pycache__",
+    "!python/**/*.pyc",
+    "examples/runtime-bridge",
+    "docs/guides/python-runtime.md",
     "ARCHITECTURE.md",
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
@@ -76,6 +81,9 @@
     "!src/**/*.test.tsx"
   ],
   "main": "./dist/index.js",
+  "bin": {
+    "cavi-runtime-bridge": "./dist/core/transport/node/runtime-bridge-cli.js"
+  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -248,6 +256,7 @@
     "coverage": "vitest run --coverage",
     "test:docs-consumer": "node scripts/docs/test-consumer.mjs",
     "test:packed-consumer": "node scripts/test-packed-consumer.mjs",
+    "test:python": "pnpm run build && node scripts/test-python-consumer.mjs",
     "test:runtime-control-scenarios": "vitest run src/__tests__/testing/runtime-control-scenarios.test.ts",
     "lint:md": "markdownlint-cli2",
     "typecheck": "tsc --noEmit",

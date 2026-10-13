@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Async Python runtime lifecycle client and `cavi-runtime-bridge` executable,
+  reusing application-owned TypeScript adapters over bounded JSON Lines.
+  Includes operation discovery, completion helpers, structured errors,
+  request deadlines, and subprocess cleanup. Requires Python 3.11+ and Node 20+.
+- `serveRuntimeBridge` and protocol constants from `core/transport/node` for
+  embedding lifecycle access with explicit adapter and stream ownership.
+
 ## [0.19.0] - 2026-10-09
 
 ### Added

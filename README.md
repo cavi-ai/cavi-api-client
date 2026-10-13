@@ -151,6 +151,9 @@ contract directly; its optional methods return raw values and can throw.
 
 ## Project references
 
+Development builds include [Python runtime access](docs/guides/python-runtime.md)
+through existing adapters, with an application-owned Node subprocess.
+
 [Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) ·
 [Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md)
