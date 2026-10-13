@@ -51,7 +51,9 @@
     "access": "public"
   },
   "files": [
-    "python/cavi_runtime",
+    "python/cavi_runtime/**/*.py",
+    "python/cavi_runtime/**/*.pyi",
+    "python/cavi_runtime/py.typed",
     "python/README.md",
     "python/pyproject.toml",
     "docs/guides/python-runtime-bridge.md",

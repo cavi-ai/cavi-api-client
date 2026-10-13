@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Exclude Python bytecode from npm tarballs and documentation artifact pins.
+
 ## [0.20.0] - 2026-10-13
 
 ### Added
