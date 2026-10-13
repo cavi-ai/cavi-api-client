@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cavi-runtime"
+version = "0.20.0"
+description = "Native Python lifecycle clients for agent runtimes"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = ["httpx>=0.28,<1"]
+
+[project.optional-dependencies]
+openclaw = ["websockets>=15,<18"]
+
+[project.urls]
+Repository = "https://github.com/cavi-ai/cavi-api-client"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cavi_runtime*"]
+
+[tool.setuptools.package-data]
+cavi_runtime = ["py.typed"]

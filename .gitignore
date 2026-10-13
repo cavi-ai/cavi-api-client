@@ -54,3 +54,6 @@ evidence/
 # Python bytecode
 __pycache__/
 *.py[cod]
+python/build/
+python/*.egg-info/
+python/dist/

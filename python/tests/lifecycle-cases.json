@@ -1,0 +1,23 @@
+[
+  {
+    "provider": "claude-sdk",
+    "body": {"input": "hello", "model": "model", "instructions": "system", "metadata": {"max_tokens": 7}},
+    "request": {"model": "model", "max_tokens": 7, "messages": [{"role": "user", "content": "hello"}], "system": "system"},
+    "response": {"id": "msg_1", "stop_reason": "end_turn", "content": [{"type": "text", "text": "answer"}]},
+    "run": {"run_id": "msg_1", "status": "completed", "output": "answer"}
+  },
+  {
+    "provider": "codex-responses",
+    "body": {"input": "hello", "model": "model", "metadata": {"owner": "one"}},
+    "request": {"input": "hello", "model": "model", "background": true, "store": true, "metadata": {"owner": "one"}},
+    "response": {"id": "resp_1", "status": "completed", "output_text": ""},
+    "run": {"run_id": "resp_1", "status": "completed", "output": ""}
+  },
+  {
+    "provider": "agy",
+    "body": {"input": [{"role": "user", "content": "hello"}], "model": "model"},
+    "request": {"agent_id": "model", "stream": false, "context": {"messages": [{"role": "user", "content": "hello"}]}},
+    "response": {"run_id": "agy_1", "status": "completed", "result": {"output": "answer"}},
+    "run": {"run_id": "agy_1", "status": "completed", "model": "model", "output": "answer"}
+  }
+]

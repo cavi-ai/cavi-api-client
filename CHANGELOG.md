@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Native Python lifecycle clients for Claude, Claude Managed Agents, Codex,
+  AGY, Hermes, OpenClaw, and OpenCode. Install independently of Node/npm;
+  HTTPX is required and WebSocket support is an optional OpenClaw extra.
+- Python 3.11 and 3.14 CI jobs build and test the installed wheel without Node.
 - Async Python runtime lifecycle client and `cavi-runtime-bridge` executable,
   reusing application-owned TypeScript adapters over bounded JSON Lines.
   Includes operation discovery, completion helpers, structured errors,

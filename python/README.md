@@ -1,0 +1,38 @@
+# CAVI runtime for Python
+
+Native async lifecycle clients for Claude Messages, Claude Managed Agents,
+Codex Responses, AGY, Hermes, OpenCode, and OpenClaw. Python 3.11+ is required.
+Native clients connect directly to provider servers; Node and npm are unnecessary.
+
+Install from this repository before the first PyPI release:
+
+```sh
+python -m pip install ./python
+```
+
+HTTPX handles HTTP transport. OpenClaw additionally requires the optional
+WebSocket transport: `python -m pip install './python[openclaw]'`.
+
+```python
+import asyncio
+import os
+from cavi_runtime import create_runtime_client
+
+async def main():
+    async with create_runtime_client(
+        "codex-responses", api_key=os.environ["OPENAI_API_KEY"],
+        default_model="YOUR_MODEL",
+    ) as client:
+        run = await client.start_run({"input": "Explain this code"})
+        print(run["run_id"], run["status"])
+
+asyncio.run(main())
+```
+
+Runs may remain active. Retrieve them with `get_run`; use `cancel_run` only for
+explicit backend cancellation. `require_run_text` accepts completed text and
+preserves explicit empty output. Native clients expose lifecycle operations,
+not streaming, batches, or provider control planes.
+
+The optional `RuntimeClient.connect` bridge remains available for existing
+applications using a TypeScript adapter; only that mode requires Node.

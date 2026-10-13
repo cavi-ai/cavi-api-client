@@ -9,23 +9,10 @@ import math
 from typing import Any
 
 from ._process import BridgeProcess, spawn_bridge
+from .errors import ApiClientError, BridgeError
 
 _VERSION = 1
 _MAX_FRAME_BYTES = 1_048_576
-
-
-class BridgeError(Exception):
-    """The local bridge is unavailable or violated its protocol."""
-
-
-class ApiClientError(Exception):
-    """Structured runtime failure, without provider messages or raw causes."""
-
-    def __init__(self, error: dict[str, Any]):
-        super().__init__(error["message"])
-        self.code: str = error["code"]
-        self.type: str = error["type"]
-        self.status: int | float | None = error.get("status")
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:

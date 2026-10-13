@@ -26,7 +26,7 @@ try {
   cpSync(path.join(root, "python/tests"), path.join(packed, "python/tests"), {
     recursive: true, filter: (entry) => !entry.includes("__pycache__"),
   });
-  execFileSync(process.env.PYTHON ?? "python3", ["-m", "unittest", "discover", "-s", "python/tests", "-v"], {
+  execFileSync(process.env.PYTHON ?? "python3", ["-m", "unittest", "discover", "-s", "python/tests", "-p", "test_runtime.py", "-v"], {
     cwd: packed, stdio: "inherit", env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
   });
   process.stdout.write(`Packed Python runtime consumer passed for ${manifest.name}@${manifest.version}\n`);
