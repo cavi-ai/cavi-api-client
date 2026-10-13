@@ -59,7 +59,7 @@ malformed items are excluded. An observed empty text string remains `output: ""`
 no observed text remains an absent normalized `output`.
 Partial text does not change a failed or incomplete run into a successful one.
 
-The versioned docs still describe the pinned published package. Check the
+The versioned docs describe the pinned 0.20.0 artifact. Check the
 [changelog](CHANGELOG.md#0190---2026-10-09) before upgrading.
 
 ## HTTP integration
@@ -72,9 +72,11 @@ behavior changes before using the guide with an older package.
 ## Python runtime access (0.20.0)
 
 Version 0.20.0 provides [Python runtime access](docs/guides/python-runtime.md)
-and `serveRuntimeBridge` from `core/transport/node` for lifecycle calls and
-completion helpers. The bridge exposes actual operations separately from
-backend capabilities; streaming and batch operations are outside its surface.
+through native clients for all seven providers, installed with pip independently
+of Node/npm. Python includes lifecycle calls and completion helpers; streaming,
+batches, and control planes remain outside that surface. `serveRuntimeBridge`
+from `core/transport/node` supports application-owned TypeScript adapters;
+only bridge mode requires Node.
 
 Version 0.19.0 removes Gemini's provider and file entries. See
 [migration guidance](MIGRATION.md#remove-gemini-integrations-0190).

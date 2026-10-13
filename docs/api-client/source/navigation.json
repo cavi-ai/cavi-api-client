@@ -31,6 +31,10 @@
       "title": "Run and integrate",
       "pages": [
         {
+          "title": "Python",
+          "path": "guides/python.md"
+        },
+        {
           "title": "Server requests",
           "path": "guides/server.md"
         },

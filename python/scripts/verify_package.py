@@ -34,6 +34,18 @@ with tempfile.TemporaryDirectory(prefix="cavi-python-package-") as temporary:
     venv.create(environment, with_pip=True)
     scripts = environment / ("Scripts" if os.name == "nt" else "bin")
     python = scripts / ("python.exe" if os.name == "nt" else "python")
+    run([str(python), "-m", "pip", "install", str(wheels[0])])
+    run(
+        [
+            str(python),
+            "-c",
+            "import importlib.util; from cavi_runtime import create_runtime_client; "
+            "assert importlib.util.find_spec('websockets') is None; "
+            "client = create_runtime_client('codex-responses', api_key='test'); "
+            "import asyncio; asyncio.run(client.close())",
+        ],
+        cwd=temporary,
+    )
     run([str(python), "-m", "pip", "install", str(wheels[0]) + "[openclaw]"])
     tests = temporary / "tests"
     tests.mkdir()
