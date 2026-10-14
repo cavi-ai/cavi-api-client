@@ -56,6 +56,7 @@ import {
 } from "./paths.js";
 import { appendHttpQuery } from "../../../contracts/paths.js";
 import { isTerminalRunStreamEvent, mapManagedAgentStreamEvent } from "./stream.js";
+import { ManagedAgentLifecycle, managedLifecycleProtocolError } from "./lifecycle.js";
 
 /**
  * Connect timeout (time-to-first-byte) for opening an SSE stream. BaseHttpApiClient
@@ -70,6 +71,8 @@ async function discardDeletionResponse(response: Response): Promise<void> {
 }
 
 export type ClaudeManagedAgentClientOptions = {
+  /** Require observed end_turn after all workflows end; retain legacy status mapping by default. */
+  observeRunCompletion?: boolean;
   /** Developer Platform API key — sent as `x-api-key`. Provide this or `authToken`. */
   apiKey?: string;
   /**
@@ -489,6 +492,8 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   private readonly environmentId?: string;
   private readonly streamTimeoutMs: number;
   private readonly betaVersion: string;
+  private readonly observeRunCompletion: boolean;
+  private readonly lifecycleTimeoutMs: number;
 
   constructor(options: ClaudeManagedAgentClientOptions) {
     const version = options.anthropicVersion?.trim() || CLAUDE_DEFAULT_ANTHROPIC_VERSION;
@@ -523,6 +528,8 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     this.environmentId = options.environmentId;
     this.streamTimeoutMs = options.streamTimeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS;
     this.betaVersion = CLAUDE_MANAGED_AGENTS_BETA;
+    this.observeRunCompletion = options.observeRunCompletion === true;
+    this.lifecycleTimeoutMs = options.defaultTimeoutMs ?? 60_000;
   }
 
   async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
@@ -786,6 +793,30 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
       { method: "GET" },
     );
     return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** Ordered, bounded full history for workflow-aware replay and reconnect. */
+  async listAllEvents(sessionId: string, signal?: AbortSignal): Promise<ManagedAgentEvent[]> {
+    const deadline = AbortSignal.any([
+      AbortSignal.timeout(this.lifecycleTimeoutMs), ...(signal ? [signal] : []),
+    ]);
+    const events: ManagedAgentEvent[] = [];
+    const seen = new Set<string>();
+    let page: string | undefined;
+    let bytes = 0;
+    for (let count = 0; count < 100; count++) {
+      const path = appendHttpQuery(claudeSessionEventsPath(sessionId), { order: "asc", ...(page ? { page } : {}) });
+      const response = await this.request<{ data?: ManagedAgentEvent[]; next_page?: unknown }>(path, { method: "GET", signal: deadline });
+      if (!response || !Array.isArray(response.data) || response.data.some(event => !event || typeof event !== "object" || Array.isArray(event))) throw managedLifecycleProtocolError();
+      bytes += new TextEncoder().encode(JSON.stringify(response.data)).length;
+      if (bytes > 4_194_304) throw managedLifecycleProtocolError();
+      events.push(...response.data);
+      if (response.next_page === null || response.next_page === undefined) return events;
+      if (typeof response.next_page !== "string" || !response.next_page.trim() || seen.has(response.next_page)) throw managedLifecycleProtocolError();
+      page = response.next_page;
+      seen.add(page);
+    }
+    throw managedLifecycleProtocolError();
   }
 
   /** Answer an `always_ask` tool call. Wire shape verified live: `tool_use_id` + `result`. */
@@ -1265,6 +1296,20 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
 
   /** Poll a run by session id — maps the live session status to a RuntimeRunState. */
   async getRun(runId: string): Promise<RuntimeRunStatus> {
+    if (this.observeRunCompletion) {
+      const signal = AbortSignal.timeout(this.lifecycleTimeoutMs);
+      const session = await this.request<ManagedAgentSession>(claudeSessionPath(runId), { method: "GET", signal });
+      if (session.id !== runId) throw managedLifecycleProtocolError();
+      const lifecycle = new ManagedAgentLifecycle();
+      for (const event of await this.listAllEvents(runId, signal)) lifecycle.accept(event);
+      const status = session.status === "running" || session.status === "rescheduling" ? "running"
+        : session.status === "idle" ? lifecycle.status : "unknown";
+      return { run_id: runId, status,
+        ...(session.model ? { model: session.model } : {}),
+        ...(session.usage ? { usage: session.usage } : {}),
+        ...(status === "completed" && lifecycle.output !== undefined ? { output: lifecycle.output } : {}),
+      };
+    }
     const session = await this.getSession(runId);
     return {
       run_id: session.id,
@@ -1277,7 +1322,7 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
   /** Cancel a run by interrupting the session (graceful; session stays reusable). */
   async cancelRun(runId: string): Promise<{ status: string }> {
     await this.interruptSession(runId);
-    return { status: "cancelled" };
+    return { status: this.observeRunCompletion ? "stopping" : "cancelled" };
   }
 
   /**
@@ -1310,27 +1355,56 @@ export class ClaudeManagedAgentClient extends BaseHttpApiClient implements Runti
     kickoff: RuntimeRunInput | null,
   ): Promise<void> {
     const controller = new AbortController();
+    let streamBody: ReadableStream<Uint8Array> | undefined;
+    let consumed = false;
+    const lifecycle = this.observeRunCompletion ? new ManagedAgentLifecycle() : undefined;
+    const onAbort = (): void => controller.abort();
     if (options.signal) {
       if (options.signal.aborted) controller.abort();
-      else options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+      else options.signal.addEventListener("abort", onAbort, { once: true });
     }
 
     try {
       const body = await this.openEventStream(sessionId, controller.signal);
+      streamBody = body;
+
+      if (lifecycle && kickoff === null) {
+        for (const event of await this.listAllEvents(sessionId, controller.signal)) lifecycle.accept(event);
+        if (lifecycle.status === "completed") {
+          await body.cancel();
+          handlers.onEvent({ event: "run.completed", runId: sessionId });
+          handlers.onComplete?.();
+          return;
+        }
+      }
 
       // Stream is open — now send the kickoff so its events arrive on this stream.
       if (kickoff !== null) await this.sendMessage(sessionId, kickoff);
 
+      consumed = true;
       await consumeSseStream(body, controller.signal, (sse) => {
-        const event = mapManagedAgentStreamEvent(sse, sessionId);
+        let event = mapManagedAgentStreamEvent(sse, sessionId);
+        if (lifecycle) {
+          let raw: Record<string, unknown>;
+          try { raw = JSON.parse(sse.data); } catch { throw managedLifecycleProtocolError(); }
+          if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw managedLifecycleProtocolError();
+          lifecycle.accept(raw);
+          if (event && isTerminalRunStreamEvent(event)) event = null;
+          if (lifecycle.status === "completed") event = { event: "run.completed", runId: sessionId };
+        }
         if (!event) return;
         handlers.onEvent(event);
         if (isTerminalRunStreamEvent(event)) controller.abort();
       });
+      if (lifecycle && lifecycle.status !== "completed" && !options.signal?.aborted) throw managedLifecycleProtocolError();
       handlers.onComplete?.();
     } catch (error) {
       if (handlers.onError) handlers.onError(error);
       else throw error;
+    } finally {
+      controller.abort();
+      options.signal?.removeEventListener("abort", onAbort);
+      if (!consumed) await streamBody?.cancel().catch(() => undefined);
     }
   }
 

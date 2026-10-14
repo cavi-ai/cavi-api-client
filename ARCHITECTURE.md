@@ -144,7 +144,12 @@ next added harness rather than an AGY replacement. OpenCode supports `runs` and
 message, while `getRun` reconciles server session/status/history, `cancelRun`
 uses session abort, and streaming subscribes to SSE before sending
 `prompt_async`. It does not reconnect or replay, and caller abort performs
-best-effort cleanup. Each ships a `RuntimeClient` + provider module and passes
+best-effort cleanup. The separate `OpenCodeV2ApiClient` and
+`createOpenCodeV2ProviderModule` use location-scoped v2 sessions, prompt admission,
+explicit session outcomes, bounded message pagination, and interrupts. They
+advertise polling only. Both clients reuse the authenticated HTTP transport;
+v2 does not invoke legacy health checks or lifecycle routes.
+Each ships a `RuntimeClient` + provider module and passes
 the shared conformance kit. CAVI Control
 and plugin/operator behavior belongs in `extensions/cavi`. Keeping these planes
 separate lets each provider track its own API without turning the core package
@@ -260,6 +265,12 @@ for channel unavailability, while detail remains REST. Dashboard events require
 only the channel and are JSON-RPC notifications. API Server SSE is installed
 only when the caller supplies an existing run id, session key, and client
 identity; no run mutation is invented.
+Dashboard profiles are explicit (`dashboardProfile`): REST uses a profile query
+and structured session RPC uses a profile parameter. An explicit dashboard token
+authenticates owned WebSockets through the native token query; existing URL
+credentials remain authoritative. Native API session listing is selected only
+when the capability document advertises its endpoint. Its offset cursor is
+bounded; native session usage remains unavailable.
 The facade owns every active SSE subscription, suppresses delivery after
 disposal, and aborts streams exactly once. API Server resolved authentication
 and explicit dashboard-token authentication remain origin-scoped and cannot

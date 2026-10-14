@@ -29,6 +29,7 @@ import { createHermesSessionClient } from "./sessions.js";
 import { createHermesUsageClient } from "./usage.js";
 import { createHermesApiServerControlPlane } from "./api-server-rest.js";
 import { createHermesApiServerEventClient } from "./api-server-events.js";
+import { hermesDashboardSocketUrl, hermesProfilePath } from "./dashboard-paths.js";
 
 export interface HermesApiServerRunEventBinding {
   runId: string;
@@ -45,6 +46,8 @@ export interface HermesRuntimeControlOptions {
   dashboardBaseUrl?: string;
   dashboardWebSocketUrl?: string;
   dashboardToken?: string;
+  /** Named dashboard profile; independent of the API Server's /p/<profile> base URL. */
+  dashboardProfile?: string;
   fetch?: typeof globalThis.fetch;
   channel?: TransportMessageChannel<unknown>;
   ownsChannel?: boolean;
@@ -191,6 +194,7 @@ export async function createHermesRuntimeControlClient(
           : null,
         defaultHeaders: dashboardHeaders,
         fetchImpl: options.fetch,
+        profile: options.dashboardProfile,
       });
     // The kanban plugin mounts on the dashboard and shares its session-token
     // auth, so it rides the same base URL and headers as the REST client above.
@@ -210,7 +214,7 @@ export async function createHermesRuntimeControlClient(
       });
     const kanbanRest: HermesKanbanRequest | undefined = kanbanHttp === undefined
       ? undefined
-      : (path, init) => kanbanHttp.request(path, init);
+      : (path, init) => kanbanHttp.request(hermesProfilePath(path, options.dashboardProfile), init);
     if (apiServerBaseUrl.length > 0) {
       const apiServer = createHermesApiServerControlPlane({
         baseUrl: apiServerBaseUrl,
@@ -242,7 +246,7 @@ export async function createHermesRuntimeControlClient(
     }
     if (!channel && dashboardWebSocketUrl.length > 0) {
       const internal = createWebSocketTransport({ onLifecycleEvent: options.trace }).connect({
-        url: dashboardWebSocketUrl,
+        url: hermesDashboardSocketUrl(dashboardWebSocketUrl, options.dashboardToken),
         signal: options.signal,
       });
       channel = internal;
@@ -284,7 +288,7 @@ export async function createHermesRuntimeControlClient(
       rawGateway = channelRawGateway;
       cleanup.register(() => channelRawGateway.dispose());
       events = createHermesRuntimeEventClient(rpc);
-      if (rest && apiServerBaseUrl.length === 0) sessions = createHermesSessionClient(createHermesSessionOperations({ rpc, rest }));
+      if (rest && apiServerBaseUrl.length === 0) sessions = createHermesSessionClient(createHermesSessionOperations({ rpc, rest, profile: options.dashboardProfile }));
     }
     if (kanbanRest) tasks = createHermesTaskClient(kanbanRest);
     if (options.overrides?.tasks) tasks = options.overrides.tasks;

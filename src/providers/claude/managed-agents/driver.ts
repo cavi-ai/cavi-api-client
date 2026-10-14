@@ -1,4 +1,5 @@
 import { parseSseBlock, takeNextSseBlock } from "../../../core/sse/index.js";
+import { ManagedAgentLifecycle, managedLifecycleProtocolError } from "./lifecycle.js";
 import type {
   ConfirmToolParams,
   ManagedAgentEvent,
@@ -44,6 +45,7 @@ type ThreadEvent =
 export interface ManagedAgentDriverClient {
   openEventStream(sessionId: string, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>>;
   listEvents(sessionId: string): Promise<ManagedAgentEvent[]>;
+  listAllEvents?(sessionId: string, signal?: AbortSignal): Promise<ManagedAgentEvent[]>;
   confirmTool(sessionId: string, params: ConfirmToolParams): Promise<void>;
   respondCustomTool(sessionId: string, params: RespondCustomToolParams): Promise<void>;
 }
@@ -78,6 +80,8 @@ export type ManagedAgentDriverHandlers = {
 };
 
 export type ManagedAgentDriverOptions = {
+  /** Require complete history and workflow-aware end_turn observation. */
+  observeRunCompletion?: boolean;
   signal?: AbortSignal;
   /** Reconnect attempts after a dropped stream before giving up. Default 2. */
   maxReconnects?: number;
@@ -139,6 +143,8 @@ async function readSseStream(
     }
   } finally {
     signal?.removeEventListener("abort", onAbort);
+    try { await reader.cancel(); } catch { /* Preserve the original stream or handler failure. */ }
+    reader.releaseLock();
   }
 }
 
@@ -159,6 +165,8 @@ export async function driveManagedAgentSession(
   const dispatched = new Set<string>();
   const responded = new Set<string>();
   let reconnects = 0;
+  const lifecycle = options.observeRunCompletion ? new ManagedAgentLifecycle() : undefined;
+  if (lifecycle && !client.listAllEvents) throw managedLifecycleProtocolError();
 
   const answerConfirmation = async (event: ManagedAgentToolUseEvent): Promise<void> => {
     if (!event.id || responded.has(event.id)) return;
@@ -189,7 +197,8 @@ export async function driveManagedAgentSession(
   };
 
   // Returns true when the event ends the run.
-  const handleEvent = async (event: ManagedAgentSessionEvent): Promise<boolean> => {
+  const handleEvent = async (event: ManagedAgentSessionEvent, raw?: ManagedAgentEvent): Promise<boolean> => {
+    if (lifecycle && raw) lifecycle.accept(raw);
     const fresh = !event.id || !dispatched.has(event.id);
     if (fresh) {
       if (event.id) dispatched.add(event.id);
@@ -202,7 +211,7 @@ export async function driveManagedAgentSession(
     // again after a mid-send reconnect still gets answered.
     if (sessionEventNeedsConfirmation(event)) await answerConfirmation(event);
     else if (isCustomToolUseEvent(event)) await answerCustomTool(event);
-    return isTerminalSessionEvent(event);
+    return lifecycle ? lifecycle.status === "completed" : isTerminalSessionEvent(event);
   };
 
   while (true) {
@@ -212,17 +221,23 @@ export async function driveManagedAgentSession(
       let consumed = false;
       try {
         // History first (covers any gap before the stream attached); deduped.
-        for (const raw of await client.listEvents(sessionId)) {
+        const history = lifecycle ? await client.listAllEvents!(sessionId, signal) : await client.listEvents(sessionId);
+        for (const raw of history) {
           const event = parseSessionEvent(raw);
-          if (event && (await handleEvent(event))) {
+          const terminal = event ? await handleEvent(event, raw) : false;
+          if (!lifecycle && terminal) {
             handlers.onComplete?.();
             return;
           }
         }
+        if (lifecycle?.status === "completed") {
+          handlers.onComplete?.();
+          return;
+        }
         consumed = true;
         const terminal = await readSseStream(body, signal, (sse) => {
           const event = parseSessionEventData(sse);
-          return event ? handleEvent(event) : Promise.resolve(false);
+          return event ? handleEvent(event, lifecycle ? JSON.parse(sse.data) : undefined) : Promise.resolve(false);
         });
         if (terminal) {
           handlers.onComplete?.();
@@ -240,6 +255,7 @@ export async function driveManagedAgentSession(
       // Stream closed without a terminal event.
       if (signal?.aborted) return;
       if (reconnects++ >= maxReconnects) {
+        if (lifecycle) throw managedLifecycleProtocolError();
         handlers.onComplete?.();
         return;
       }

@@ -8,6 +8,7 @@ import type { SessionClient, RuntimeSessionSummary } from "../../../core/runtime
 import type { UsageClient } from "../../../core/runtime/control-plane/usage.js";
 import { CapabilityUnavailable } from "../../../core/runtime/control-plane/runtime-control-client.js";
 import { requireHermesSafeJsonRecord } from "./dashboard-rest.js";
+import { HERMES_NATIVE_SESSIONS_PATH, hermesNativeSessionsPath } from "./api-server-paths.js";
 
 type RequestOptions = Readonly<{
   baseUrl: string;
@@ -58,15 +59,25 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
     fetchImpl: options.fetchImpl,
   });
   const get = <T>(path: string, signal?: AbortSignal) => http.request<T>(path, { method: "GET", signal });
+  let nativeSessions = false;
 
   const sessions: SessionClient = {
     async listSessions(query = {}) {
-      if (query.cursor !== undefined) throw new CapabilityUnavailable("hermes", "controlPlane.sessions.cursor");
-      const value = await withOptionalSurface("controlPlane.sessions.list", () => get<unknown>(GATEWAY_SESSION_API_PATHS.list, query.signal));
+      if (!nativeSessions && query.cursor !== undefined) throw new CapabilityUnavailable("hermes", "controlPlane.sessions.cursor");
+      const pageLimit = query.limit ?? 50;
+      const offset = query.cursor === undefined ? 0 : /^hermes-offset:\d+$/u.test(query.cursor) ? Number(query.cursor.slice(14)) : NaN;
+      if (nativeSessions && (!Number.isSafeInteger(pageLimit) || pageLimit < 0 || pageLimit > 200
+        || !Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000)) {
+        throw new TypeError("Hermes session pagination requires a limit from 0 to 200 and a valid cursor");
+      }
+      const path = nativeSessions ? hermesNativeSessionsPath(pageLimit, offset) : GATEWAY_SESSION_API_PATHS.list;
+      const value = await withOptionalSurface("controlPlane.sessions.list", () => get<unknown>(path, query.signal));
       const payload = requireHermesSafeJsonRecord(value, "API Server sessions");
-      if (!Array.isArray(payload.sessions)) throw protocolError(ApiClientErrorType.Http, "Hermes API Server sessions response failed schema validation");
-      const limit = query.limit === undefined ? payload.sessions.length : Math.max(0, query.limit);
-      const data = payload.sessions.slice(0, limit).map((entry): RuntimeSessionSummary => {
+      const rows = nativeSessions ? payload.data : payload.sessions;
+      if (!Array.isArray(rows) || (nativeSessions && (payload.object !== "list" || typeof payload.has_more !== "boolean"
+        || payload.limit !== pageLimit || payload.offset !== offset))) throw protocolError(ApiClientErrorType.Http, "Hermes API Server sessions response failed schema validation");
+      const limit = query.limit === undefined ? rows.length : Math.max(0, query.limit);
+      const data = (nativeSessions ? rows : rows.slice(0, limit)).map((entry): RuntimeSessionSummary => {
         const row = requireHermesSafeJsonRecord(entry, "API Server session row");
         const id = typeof row.key === "string" ? row.key : typeof row.id === "string" ? row.id : "";
         if (!id) throw protocolError(ApiClientErrorType.Http, "Hermes API Server session row response failed schema validation");
@@ -83,7 +94,11 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
           providerKind: "hermes", metadata: metadata("sessions.list"),
         };
       });
-      return { data };
+      if (nativeSessions && payload.has_more && offset + pageLimit > 1_000_000) {
+        throw protocolError(ApiClientErrorType.Http, "Hermes session pagination limit exceeded");
+      }
+      return { data, ...(nativeSessions && payload.has_more && pageLimit > 0
+        ? { nextCursor: `hermes-offset:${offset + pageLimit}` } : {}) };
     },
     getSession: () => Promise.reject(new CapabilityUnavailable("hermes", "controlPlane.sessions.get")),
     cancelSession: () => Promise.reject(new CapabilityUnavailable("hermes", "controlPlane.sessions.cancel")),
@@ -94,6 +109,14 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
       const value = requireHermesSafeJsonRecord(await get<unknown>(HERMES_API_ENDPOINTS.capabilities), "API Server capabilities");
       if (value.object !== "hermes.api_server.capabilities" || value.platform !== "hermes-agent") {
         throw protocolError(ApiClientErrorType.Http, "Hermes API Server capabilities response failed schema validation");
+      }
+      nativeSessions = false;
+      if (value.endpoints !== undefined) {
+        const endpoints = requireHermesSafeJsonRecord(value.endpoints, "API Server endpoints");
+        if (endpoints.sessions !== undefined) {
+          const endpoint = requireHermesSafeJsonRecord(endpoints.sessions, "API Server sessions endpoint");
+          nativeSessions = endpoint.method === "GET" && endpoint.path === HERMES_NATIVE_SESSIONS_PATH;
+        }
       }
     },
     models: {
@@ -112,6 +135,7 @@ export function createHermesApiServerControlPlane(options: RequestOptions): {
     sessions,
     usage: {
       async getUsage() {
+        if (nativeSessions) throw new CapabilityUnavailable("hermes", "controlPlane.usage.get");
         const value = await withOptionalSurface("controlPlane.usage.get", () => get<unknown>(GATEWAY_SESSION_API_PATHS.usage));
         const payload = requireHermesSafeJsonRecord(value, "API Server session usage");
         if (!Array.isArray(payload.sessions)) throw protocolError(ApiClientErrorType.Http, "Hermes API Server session usage response failed schema validation");

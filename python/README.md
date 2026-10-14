@@ -4,6 +4,11 @@ Native async lifecycle clients for Claude Messages, Claude Managed Agents,
 Codex Responses, AGY, Hermes, OpenCode, and OpenClaw. Python 3.11+ is required.
 Native clients connect directly to provider servers; Node and npm are unnecessary.
 
+Unreleased additions include OpenCode `api_version=2` and Managed Agents
+`observe_run_completion=True`. See the
+[provider compatibility guide](../docs/guides/provider-compatibility.md) for setup
+and supported operations.
+
 Install from this repository before the first PyPI release:
 
 ```sh

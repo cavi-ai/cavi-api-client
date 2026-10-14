@@ -9,6 +9,21 @@ MANAGED_SESSIONS = "/v1/sessions"
 OPENCODE_HEALTH = "/global/health"
 OPENCODE_SESSIONS = "/session"
 OPENCODE_VERSION = "1.18.27"
+OPENCODE_V2_SESSIONS = "/api/session"
+
+
+def opencode_v2_path(identifier=None, operation=None, cursor=None):
+    route = OPENCODE_V2_SESSIONS
+    if identifier is not None:
+        if not isinstance(identifier, str) or not identifier.startswith("ses_"):
+            raise ValueError("OpenCode session IDs must begin with ses_")
+        route = resource(route, identifier)
+    if operation is not None:
+        route += "/" + operation
+    if operation == "message":
+        query = {"limit": "100", **({"cursor": cursor} if cursor else {"order": "asc"})}
+        route += "?" + urlencode(query)
+    return route
 
 
 def segment(value: str) -> str:
@@ -21,8 +36,8 @@ def resource(collection: str, identifier: str, suffix: str = "") -> str:
     return collection + "/" + segment(identifier) + suffix
 
 
-def managed_events_path(identifier: str, page: str | None = None) -> str:
-    query = {"order": "asc", "types[]": "agent.message"}
+def managed_events_path(identifier: str, page: str | None = None, *, all_events=False) -> str:
+    query = {"order": "asc", **({} if all_events else {"types[]": "agent.message"})}
     if page is not None:
         query["page"] = page
     return resource(MANAGED_SESSIONS, identifier, "/events") + "?" + urlencode(query)
