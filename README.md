@@ -151,6 +151,10 @@ contract directly; its optional methods return raw values and can throw.
 
 ## Project references
 
+Version 0.20.0 adds [Python runtime access](docs/guides/python-runtime.md)
+for all seven runtime providers. Native installation requires no Node/npm;
+the optional bridge supports application-owned TypeScript adapters.
+
 [Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) ·
 [Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md)

@@ -15,6 +15,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  python:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install build tools
+        run: python -m pip install build ruff
+      - name: Check Python source
+        run: ruff check python --select F
+      - name: Validate installed Python artifacts without Node
+        run: python python/scripts/verify_package.py
+
   test:
     name: Node ${{ matrix.node-version }}
     runs-on: ubuntu-latest
@@ -44,6 +65,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
       - name: Provision stable documentation artifact
         run: |
           TARBALL="$(node scripts/docs/fetch-stable.mjs)"
@@ -64,6 +90,9 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Validate packed Python runtime consumer
+        run: node scripts/test-python-consumer.mjs
 
       - name: Validate documentation and packed examples
         run: pnpm run docs:check

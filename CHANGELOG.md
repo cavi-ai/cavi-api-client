@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Exclude Python bytecode from npm tarballs and documentation artifact pins.
+
+## [0.20.0] - 2026-10-13
+
+### Added
+
+- Native Python lifecycle clients for Claude, Claude Managed Agents, Codex,
+  AGY, Hermes, OpenClaw, and OpenCode. Install independently of Node/npm;
+  HTTPX is required and WebSocket support is an optional OpenClaw extra.
+- Python 3.11 and 3.14 CI jobs build and test the installed wheel without Node.
+- Generated 0.20.0 API reference and native Python setup guide.
+- Async Python runtime lifecycle client and `cavi-runtime-bridge` executable,
+  reusing application-owned TypeScript adapters over bounded JSON Lines.
+  Includes operation discovery, completion helpers, structured errors,
+  request deadlines, and subprocess cleanup. Requires Python 3.11+ and Node 20+.
+- `serveRuntimeBridge` and protocol constants from `core/transport/node` for
+  embedding lifecycle access with explicit adapter and stream ownership.
+
 ## [0.19.0] - 2026-10-09
 
 ### Added
@@ -1196,7 +1216,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.16.0...v0.17.0
