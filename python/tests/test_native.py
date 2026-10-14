@@ -11,6 +11,44 @@ from cavi_runtime import ApiClientError, create_runtime_client
 
 
 class NativeClients(unittest.IsolatedAsyncioTestCase):
+    async def test_opencode_v2_lifecycle_and_exact_paginated_text(self):
+        session = {"data": {"id": "ses_v2", "location": {"directory": "/project"}}}
+        self.replies.extend([
+            (200, session),
+            (200, {"data": {"id": "msg_1", "sessionID": "ses_v2", "type": "user"}}),
+            (200, {"data": {**session["data"], "outcome": "succeeded"}}),
+            (200, {"data": [{"type": "assistant", "content": [{"type": "text", "text": "earlier"}]}], "cursor": {"next": "cursor/+"}}),
+            (200, {"data": [{"type": "assistant", "content": [{"type": "text", "text": "  answer\n"}]}], "cursor": {"next": None}}),
+            (200, {"interrupted": False}),
+        ])
+        async with create_runtime_client("opencode", api_version=2, base_url=self.base, directory="/project", password="secret", default_model="local/model") as client:
+            self.assertEqual(await client.start_run({"input": "hello"}), {"run_id": "ses_v2", "status": "started"})
+            run = await client.get_run("ses_v2")
+            self.assertEqual(await client.require_run_text(run), "  answer\n")
+            self.assertEqual(await client.cancel_run("ses_v2"), {"status": "unknown"})
+        self.assertEqual(self.requests[0][1], "/api/session")
+        self.assertEqual(self.requests[0][3], {"location": {"directory": "/project"}, "model": {"providerID": "local", "id": "model"}})
+        self.assertIn("cursor=cursor%2F%2B", self.requests[4][1])
+
+    async def test_managed_agents_observed_completion_waits_for_workflow_and_end_turn(self):
+        for final_event, expected in [
+            ({"type": "session.status_idle", "stop_reason": {"type": "budget_reached"}}, "paused"),
+            ({"type": "session.status_idle", "stop_reason": {"type": "end_turn"}}, "completed"),
+        ]:
+            self.replies.extend([
+                (200, {"id": "sess_observed", "status": "idle"}),
+                (200, {"data": [{"type": "workflow_run.created", "workflow_run_id": "wrun_1"}, {"type": "session.status_idle", "stop_reason": {"type": "end_turn"}}], "next_page": "next"}),
+                (200, {"data": [{"type": "workflow_run.status_ended", "workflow_run_id": "wrun_1"}, {"type": "agent.message", "content": [{"type": "text", "text": " exact "}]}, final_event], "next_page": None}),
+            ])
+            async with self.client("claude-managed-agents", observe_run_completion=True) as client:
+                run = await client.get_run("sess_observed")
+                self.assertEqual(run["status"], expected)
+                if expected == "completed":
+                    self.assertEqual(await client.require_run_text(run), " exact ")
+                else:
+                    self.assertNotIn("output", run)
+            self.assertNotIn("types%5B%5D", self.requests[-1][1])
+
     async def test_managed_agents_completed_text_uses_paginated_agent_events(self):
         self.replies.extend(
             [

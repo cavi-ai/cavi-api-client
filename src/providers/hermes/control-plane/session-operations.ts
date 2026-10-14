@@ -136,12 +136,13 @@ function parseInterrupt(id: string, value: unknown): GatewaySessionCancelResult 
 export function createHermesSessionOperations(options: {
   rpc: HermesDashboardJsonRpcClient;
   rest: HermesDashboardRestClient;
+  profile?: string;
 }): GatewaySessionOperations {
   const operations: GatewaySessionOperations = {
     async list(input, requestOptions) {
       throwIfAborted(requestOptions);
       try {
-        const value = await options.rpc.request<unknown>("session.list", input, requestOptions);
+        const value = await options.rpc.request<unknown>("session.list", { ...input, ...(options.profile === undefined ? {} : { profile: options.profile }) }, requestOptions);
         return parseRpcList(value, input.limit);
       } catch (error) {
         if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
@@ -152,7 +153,7 @@ export function createHermesSessionOperations(options: {
     async usage(input, requestOptions) {
       throwIfAborted(requestOptions);
       try {
-        const value = await options.rpc.request<unknown>("session.usage", input, requestOptions);
+        const value = await options.rpc.request<unknown>("session.usage", { ...input, ...(options.profile === undefined ? {} : { profile: options.profile }) }, requestOptions);
         return parseUsage(value);
       } catch (error) {
         if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
@@ -174,7 +175,7 @@ export function createHermesSessionOperations(options: {
     async cancel(id, requestOptions) {
       throwIfAborted(requestOptions);
       try {
-        return parseInterrupt(id, await options.rpc.request<unknown>("session.interrupt", { session_id: id }, requestOptions));
+        return parseInterrupt(id, await options.rpc.request<unknown>("session.interrupt", { session_id: id, ...(options.profile === undefined ? {} : { profile: options.profile }) }, requestOptions));
       } catch (error) {
         if (requestOptions?.signal?.aborted) throw normalizeTransportAbort(requestOptions.signal, error);
         throw error;

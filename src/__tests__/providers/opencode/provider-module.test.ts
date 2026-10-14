@@ -78,7 +78,9 @@ describe("OpenCode provider module", () => {
       "OPENCODE_RUNTIME_SUPPORT",
       "OPENCODE_SERVER_VERSION",
       "OpenCodeApiClient",
+      "OpenCodeV2ApiClient",
       "createOpenCodeProviderModule",
+      "createOpenCodeV2ProviderModule",
       "encodeOpenCodeSessionId",
       "validateOpenCodeScope",
     ]);

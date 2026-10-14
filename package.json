@@ -61,6 +61,7 @@
     "!python/**/*.pyc",
     "examples/runtime-bridge",
     "docs/guides/python-runtime.md",
+    "docs/guides/provider-compatibility.md",
     "ARCHITECTURE.md",
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",

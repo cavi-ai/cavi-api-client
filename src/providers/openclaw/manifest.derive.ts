@@ -49,6 +49,8 @@ export type OpenClawCapabilities = GatewayCapabilities & {
 };
 
 export type OpenClawRunStatus = GatewayRunStatus & {
+  /** Native outcome retained when normalizeRunStatus is enabled. */
+  provider_status?: string;
   object?: "openclaw.run" | string;
 };
 

@@ -34,6 +34,8 @@ export type OpenClawRpcTransport = {
 };
 
 export type OpenClawApiClientOptions = HttpApiClientOptions & {
+  /** Opt in to canonical outcomes and exact output text; retain native status in provider_status. */
+  normalizeRunStatus?: boolean;
   wsUrl?: string;
   rpcClient?: OpenClawRpcTransport | null;
   rpcClientOptions?: OpenClawWebSocketClientOptions;
@@ -186,6 +188,7 @@ function normalizeOpenClawRunStatus(
     status: string;
     sessionId?: string;
   },
+  canonical = false,
 ): OpenClawRunStatus {
   const record = isRecord(payload) ? payload : {};
   const runId = readString(record, "run_id", "runId", "id") ?? fallback.runId;
@@ -195,6 +198,16 @@ function normalizeOpenClawRunStatus(
     run_id: runId,
     status,
   };
+  if (canonical) {
+    result.provider_status = status;
+    switch (status) {
+      case "ok": result.status = "completed"; break;
+      case "error": result.status = "failed"; break;
+      case "pending":
+      case "timeout": result.status = "running"; break;
+      case "aborted": result.status = "cancelled"; break;
+    }
+  }
   const sessionId =
     readString(record, "session_id", "sessionId", "sessionKey", "key") ??
     fallback.sessionId;
@@ -203,6 +216,16 @@ function normalizeOpenClawRunStatus(
   if (output) result.output = output;
   const response = readString(record, "response", "message");
   if (response) result.response = response;
+  if (canonical) {
+    for (const [target, keys] of [["output", ["output", "text"]], ["response", ["response", "message"]]] as const) {
+      for (const key of keys) {
+        if (typeof record[key] === "string") {
+          result[target] = record[key];
+          break;
+        }
+      }
+    }
+  }
   const error = readString(record, "error", "errorMessage");
   if (error) result.error = error;
   const usage = normalizeNumberRecord(record.usage);
@@ -223,12 +246,14 @@ export class OpenClawApiClient extends GatewayApiClient {
   private readonly rpcClientOverride: OpenClawRpcTransport | null;
   private readonly rpcClientOptions?: OpenClawWebSocketClientOptions;
   private rpcClient: OpenClawRpcTransport | null = null;
+  private readonly canonicalRunStatus: boolean;
 
   constructor(options: OpenClawApiClientOptions) {
     super(options, "openclaw-api");
     this.wsUrl = options.wsUrl;
     this.rpcClientOverride = options.rpcClient ?? null;
     this.rpcClientOptions = options.rpcClientOptions;
+    this.canonicalRunStatus = options.normalizeRunStatus === true;
   }
 
   override getCapabilities(): Promise<OpenClawCapabilities> {
@@ -262,7 +287,7 @@ export class OpenClawApiClient extends GatewayApiClient {
       runId: readString(params, "idempotencyKey") ?? nextRunIdempotencyKey(),
       status: "started",
       sessionId: readString(params, "sessionId", "sessionKey"),
-    });
+    }, this.canonicalRunStatus);
   }
 
   override async getRun(runId: string): Promise<OpenClawRunStatus> {
@@ -282,7 +307,7 @@ export class OpenClawApiClient extends GatewayApiClient {
     return normalizeOpenClawRunStatus(payload, {
       runId: normalizedRunId,
       status: "unknown",
-    });
+    }, this.canonicalRunStatus);
   }
 
   override async stopRun(runId: string): Promise<{ status: string }> {

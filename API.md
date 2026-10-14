@@ -64,6 +64,12 @@ The versioned docs describe the pinned 0.20.0 artifact. Check the
 
 ## HTTP integration
 
+Unreleased provider additions are described in the
+[provider compatibility guide](docs/guides/provider-compatibility.md):
+`OpenCodeV2ApiClient` / `createOpenCodeV2ProviderModule`, Hermes
+`dashboardProfile`, Managed Agents `observeRunCompletion` and `listAllEvents`,
+and OpenClaw `normalizeRunStatus`. Existing defaults remain compatible.
+
 Use the [HTTP integration guide](docs/api-client/source/pages/guides/http.md)
 for response ownership, deadlines, cancellation, typed errors, credentials,
 Fetch controls, and runnable packed-package tests. Check the changelog for

@@ -605,8 +605,12 @@ class ManagedAgentsClient(HttpRuntimeClient):
         environment_id=None,
         default_model=None,
         anthropic_version="2023-06-01",
+        observe_run_completion=False,
         **options,
     ):
+        if type(observe_run_completion) is not bool:
+            raise failure("invalid_config", "configuration")
+        self.observe_run_completion = observe_run_completion
         self.agent_id, self.environment_id = agent_id, environment_id
         auth = (
             {"Authorization": "Bearer " + auth_token}
@@ -686,6 +690,20 @@ class ManagedAgentsClient(HttpRuntimeClient):
         state = raw.get("status") or "running"
         if not isinstance(state, str):
             raise failure("transport_protocol_error")
+        if self.observe_run_completion:
+            from .managed_lifecycle import observe
+
+            if raw.get("id") != run_id:
+                raise failure("transport_protocol_error")
+            observed, output = observe(await self._all_events(run_id), self.max_response_bytes)
+            status = "running" if state in ("running", "rescheduling") else observed if state == "idle" else "unknown"
+            run = {"run_id": run_id, "status": status}
+            for key in ("model", "usage"):
+                if raw.get(key):
+                    run[key] = raw[key]
+            if status == "completed" and output is not None:
+                run["output"] = output
+            return run
         run = {
             "run_id": raw.get("id"),
             "status": {
@@ -702,6 +720,23 @@ class ManagedAgentsClient(HttpRuntimeClient):
             if output is not None:
                 run["output"] = output
         return validate_run(run)
+
+    async def _all_events(self, run_id):
+        events, seen, page, size = [], set(), None, 0
+        for _ in range(100):
+            response = record(await self._request("GET", paths.managed_events_path(run_id, page, all_events=True)))
+            data = response_array(response.get("data"))
+            size += len(json.dumps(data).encode("utf-8"))
+            if size > self.max_response_bytes * 4:
+                raise failure("transport_protocol_error")
+            events.extend(data)
+            page = response.get("next_page")
+            if page is None:
+                return events
+            if not isinstance(page, str) or not page.strip() or page in seen:
+                raise failure("transport_protocol_error")
+            seen.add(page)
+        raise failure("transport_protocol_error")
 
     async def _session_text(self, run_id: str) -> str | None:
         parts, seen = [], set()
@@ -742,7 +777,7 @@ class ManagedAgentsClient(HttpRuntimeClient):
             paths.resource(paths.MANAGED_SESSIONS, run_id, "/events"),
             {"events": [{"type": "user.interrupt"}]},
         )
-        return {"status": "cancelled"}
+        return {"status": "stopping" if self.observe_run_completion else "cancelled"}
 
 
 def create_runtime_client(provider_kind: str, **options) -> NativeRuntimeClient:
@@ -755,6 +790,15 @@ def create_runtime_client(provider_kind: str, **options) -> NativeRuntimeClient:
         "claude-managed-agents": ManagedAgentsClient,
     }
     if provider_kind == "opencode":
+        version = options.pop("api_version", 1)
+        if type(version) is not int:
+            raise failure("invalid_config", "configuration")
+        if version == 2:
+            from .opencode_v2 import OpenCodeV2Client
+
+            return OpenCodeV2Client(**options)
+        if version != 1:
+            raise failure("invalid_config", "configuration")
         from .opencode import OpenCodeClient
 
         return OpenCodeClient(**options)

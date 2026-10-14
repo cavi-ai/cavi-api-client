@@ -6,7 +6,7 @@ import { HttpApiError } from "../../../core/http/errors.js";
 import { redactPreviewText, stringifyRedacted } from "../../../core/http/redaction.js";
 import type { CredentialResolver } from "../../../core/http/credentials.js";
 import type { HttpApiRequestInit } from "../../../core/http/types.js";
-import { HERMES_DASHBOARD_PATHS } from "./dashboard-paths.js";
+import { HERMES_DASHBOARD_PATHS, hermesProfilePath } from "./dashboard-paths.js";
 
 type JsonRecord = Record<string, unknown>;
 export type HermesDashboardJsonValue =
@@ -48,6 +48,7 @@ export interface HermesDashboardRestFallback {
 }
 
 export type HermesDashboardRestOptions = Readonly<{
+  profile?: string;
   baseUrl: string;
   authToken: string | null;
   defaultHeaders?: Record<string, string>;
@@ -341,6 +342,9 @@ function parseDelete(value: unknown): HermesDashboardDeleteResult {
 export function createHermesDashboardRestClient(
   options: HermesDashboardRestOptions,
 ): HermesDashboardRestClient {
+  if (options.profile !== undefined && (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/u.test(options.profile))) {
+    throw new TypeError("Hermes dashboard profile must be a nonblank profile name");
+  }
   const http = new JsonHttpApiClient("hermes-dashboard-rest", {
     baseUrl: options.baseUrl,
     allowRelativeBaseUrl: true,
@@ -359,7 +363,7 @@ export function createHermesDashboardRestClient(
     init?: HttpApiRequestInit,
   ): Promise<T> => {
     try {
-      return parser(await http.request<unknown>(path, init));
+      return parser(await http.request<unknown>(hermesProfilePath(path, options.profile), init));
     } catch (error) {
       if (error instanceof HttpApiError && error.status > 0) {
         throw invalidJsonError(ApiClientErrorType.Http,
@@ -382,7 +386,7 @@ export function createHermesDashboardRestClient(
       if (!options.fallback || !isFallbackStatus(error) || requestOptions?.signal?.aborted) throw error;
       const value = await options.fallback.request<unknown>(
         HERMES_DASHBOARD_REST_FALLBACKS[operation],
-        undefined,
+        options.profile === undefined ? undefined : { profile: options.profile },
         requestOptions,
       );
       return parser(value);

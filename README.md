@@ -30,6 +30,12 @@ dependencies, and keeps React optional. Models, credentials, native tools,
 and persistence still belong to the provider. Installing the package does not
 install a runtime.
 
+Development additions under `[Unreleased]` include explicit OpenCode v2 polling
+clients, profile-aware Hermes dashboard control, and opt-in observed completion
+for Managed Agents and canonical OpenClaw outcomes. See the
+[provider compatibility guide](docs/guides/provider-compatibility.md) for setup
+and supported boundaries.
+
 If your application only needs one provider's native API and no shared workflow,
 its direct SDK may be simpler. This package is useful when the integration
 boundary needs to survive another backend.

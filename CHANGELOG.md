@@ -10,8 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- OpenCode v2 polling clients: `OpenCodeV2ApiClient`,
+  `createOpenCodeV2ProviderModule`, and Python `api_version=2`. Existing v1
+  clients retain their routes and behavior. V2 streaming is unsupported.
+- Opt-in observed completion for Managed Agents polling, streaming, and the
+  interactive driver, with bounded full event history and workflow tracking.
+- Opt-in canonical OpenClaw TypeScript outcomes and exact response text through
+  `normalizeRunStatus`, retaining the native `provider_status`.
+
 ### Fixed
 
+- Route Hermes dashboard REST and RPC calls to an explicit `dashboardProfile`,
+  authenticate owned dashboard WebSockets with `dashboardToken`, and use
+  advertised native API Server session pagination. Native API Servers report
+  session usage as unavailable rather than calling an absent route.
 - Normalize native Python OpenClaw completion and failure outcomes while retaining
   provider status and exact response text.
 - Retrieve completed Managed Agents text from paginated session events in Python.
