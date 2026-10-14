@@ -822,4 +822,11 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
             ["connect", "chat.send", "agent.wait", "sessions.abort"],
         )
         self.assertEqual(frames[0]["params"]["auth"]["token"], "test-secret")
+        from importlib import metadata
+
+        try:
+            expected_version = metadata.version("cavi-api-client")
+        except metadata.PackageNotFoundError:
+            expected_version = "development"
+        self.assertEqual(frames[0]["params"]["client"]["version"], expected_version)
         self.assertEqual(frames[1]["params"]["sessionKey"], "main")

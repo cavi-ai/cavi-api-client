@@ -10,8 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-14
+
 ### Added
 
+- Native Python lifecycle clients for all seven providers as `cavi-api-client`
+  and an optional TypeScript adapter bridge. Native installation requires no
+  Node/npm.
+- Independent PyPI release workflow that publishes validated Python
+  distributions through Trusted Publishing.
 - Export the Hermes runtime control factory and options from the provider
   subpath for typed dashboard and profile configuration.
 - OpenCode v2 polling clients: `OpenCodeV2ApiClient`,
@@ -24,13 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Provision Git documentation snapshots independently of same-version npm
+  artifacts while retaining commit and digest verification.
+- Advertise the installed Python package version in OpenClaw connections.
 - Release AGY SSE responses after upstream completion or failure without waiting
   for the server to close the connection.
 - Clarify AGY HTTP versus native CLI/SDK interfaces and distinguish OpenCode v1
   streaming from the opt-in v2 polling adapter in provider documentation.
 - Include the required agent selector type when Python creates Managed Agents
   sessions, including sessions pinned with `metadata.agent_version`.
-- Link provider and Python references to unreleased compatibility options and
+- Link provider and Python references to versioned compatibility options and
   document their opt-in defaults consistently across language guides.
 - Route Hermes dashboard REST and RPC calls to an explicit `dashboardProfile`,
   authenticate owned dashboard WebSockets with `dashboardToken`, and use
@@ -44,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exclude Python bytecode from npm tarballs and documentation artifact pins.
 
 ## [0.20.0] - 2026-10-13
+
+Unpublished source snapshot; these changes are included in 0.21.0.
 
 ### Added
 
@@ -1245,8 +1257,9 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.20.0...HEAD
-[0.20.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...v0.20.0
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...v0.21.0
+[0.20.0]: https://github.com/cavi-ai/cavi-api-client/commit/b37ae83acd4ebca935fafa0a954714fbe21c9f93
 [0.19.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.16.0...v0.17.0

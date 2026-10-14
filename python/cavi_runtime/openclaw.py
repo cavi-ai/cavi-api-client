@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+from importlib import metadata
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -52,12 +53,16 @@ class OpenClawClient(NativeRuntimeClient):
         ):
             raise failure("invalid_config", "configuration")
         self._url = ws_url
+        try:
+            client_version = metadata.version("cavi-api-client")
+        except metadata.PackageNotFoundError:
+            client_version = "development"
         self._profile = {
             "minProtocol": protocol_version,
             "maxProtocol": protocol_version,
             "client": {
                 "id": client_id,
-                "version": "0.20.0",
+                "version": client_version,
                 "platform": "python",
                 "mode": client_mode,
             },

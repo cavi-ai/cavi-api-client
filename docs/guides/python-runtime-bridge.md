@@ -1,6 +1,6 @@
 # Python runtime access
 
-Version 0.20.0 includes an async Python client for application-owned
+Version 0.21.0 includes an async Python client for application-owned
 `RuntimeClient` adapters. It requires Python 3.11+ and Node 20+. Python uses a
 persistent subprocess, preserving adapter state and provider mappings. The
 Python module ships with the npm package under `python/cavi_runtime`; it has

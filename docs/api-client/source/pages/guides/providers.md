@@ -8,11 +8,11 @@ Construct clients at your application's configuration boundary. Pass the
 resulting `CapabilityClient` into your run, stream, or batch functions.
 Those functions should accept application input, not provider credentials.
 
-This reference describes the pinned release artifact. For the unreleased
+This reference describes the selected documentation artifact. For the
 OpenCode v2 polling adapter, Hermes profile routing, Managed Agents observed
 completion, and OpenClaw normalization options, see the
-[development compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md).
-The examples below retain the release's existing defaults.
+[provider compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md).
+That guide states the version requirements; the examples below retain existing defaults.
 
 | Provider | Execution lifecycle | Batch | Required configuration |
 | --- | --- | --- | --- |
@@ -161,9 +161,9 @@ it is not a sandbox guarantee.
 The v1 adapter provides runs and streaming, without batch or gateway resources.
 Streaming subscribes before submission and has no reconnect/replay.
 Cancellation requests a server session abort.
-The separate unreleased v2 adapter uses HTTP polling and does not support
+The separate v2 adapter uses HTTP polling and does not support
 streaming; see the
-[development compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md#opencode-v2).
+[provider compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md#opencode-v2).
 
 [OpenCode operations](../operations/providers/opencode.md)
 

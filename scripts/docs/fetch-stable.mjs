@@ -1,21 +1,9 @@
 #!/usr/bin/env node
 /**
- * Provision and verify the pinned stable release tarball.
- *
- * The documentation gates (`typecheck:docs`, `docs:check`) type-check the
- * published examples against the real `.d.ts` of the last published release.
- * That artifact is pinned by version + sha256 in `types.mjs`.
- *
- * Historically the fetch lived only as inline YAML in the CI workflows, so a
- * local `pnpm verify` (which the pre-push hook runs) failed with a bare
- * "CAVI_API_CLIENT_STABLE_TARBALL is required" unless the developer happened to
- * know the exact pinned version and packed it by hand. This module is the one
- * place that knows how to obtain it, for CI and local runs alike.
- *
- * Resolution order: an explicit env var wins (CI supplies one), otherwise the
- * artifact is fetched into a gitignored cache and digest-verified. When the
- * registry does not yet have the documented version, rebuild its pinned source
- * commit and digest-check the result. Working changes cannot alter the baseline.
+ * Provision and digest-check the pinned documentation baseline. Git snapshots
+ * are rebuilt from their immutable commit without consulting npm. Published npm
+ * baselines retain registry provisioning and the pinned-source fallback on a
+ * download failure. Neither path accepts a different artifact digest.
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -23,7 +11,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSy
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { APPROVED_RELEASE_SHA256, DOCUMENTED_COMMIT, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+import { APPROVED_RELEASE_SHA256, DOCUMENTED_ARTIFACT_SOURCE, DOCUMENTED_COMMIT, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
 
 /**
  * npm/pnpm pack writes a platform-specific gzip OS byte (macOS often 19, Linux
@@ -126,7 +114,7 @@ export function packWorkspaceTarball(sourceRoot = PACKAGE_ROOT) {
   return normalizePackedTarballGzipOs(target);
 }
 
-/** Rebuild an unpublished baseline from its pinned commit, independent of working changes. */
+/** Rebuild a baseline from its pinned commit, independent of working changes. */
 export function packPinnedSourceTarball() {
   mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
   const temporary = mkdtempSync(path.join(STABLE_CACHE_DIRECTORY, "pinned-source-"));
@@ -173,14 +161,14 @@ function fetchRegistryTarball(target) {
 
 /**
  * Ensure the pinned stable tarball exists in the cache and matches its digest.
- * Re-uses a cached copy when it already verifies; otherwise downloads it from the
- * public npm registry over HTTPS. On registry miss, rebuilds the pinned commit and
- * digest-checks that artifact. Returns the absolute path.
+ * Re-use a digest-verified cache or provision from the configured source. A Git
+ * baseline never competes with an npm artifact sharing its version number.
  */
 export function ensureStableTarball() {
   const target = stableTarballPath();
   if (existsSync(target) && sha256(target) === APPROVED_RELEASE_SHA256) return target;
   mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
+  if (DOCUMENTED_ARTIFACT_SOURCE === "git") return packPinnedSourceTarball();
   try {
     fetchRegistryTarball(target);
   } catch (error) {

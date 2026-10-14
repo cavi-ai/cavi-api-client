@@ -37,12 +37,16 @@ const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const packageJson = require(path.join(PACKAGE_ROOT, "package.json"));
 
 /**
- * The published documentation baseline is pinned separately from the working
- * package version, so release candidates can verify without claiming unpublished
- * artifacts. Commit, digest, and timestamp come from its checked-in manifest.
+ * The documentation baseline is pinned separately from the working package.
+ * Its source distinguishes a published npm artifact from a Git snapshot.
+ * Commit, digest, and timestamp come from its checked-in manifest.
  */
 export const DOCUMENTED_PACKAGE = packageJson.name;
 export const DOCUMENTED_VERSION = packageJson.documentation?.version;
+export const DOCUMENTED_ARTIFACT_SOURCE = packageJson.documentation?.source ?? "npm";
+if (DOCUMENTED_ARTIFACT_SOURCE !== "npm" && DOCUMENTED_ARTIFACT_SOURCE !== "git") {
+  throw new Error("package.json documentation.source must be npm or git");
+}
 if (typeof DOCUMENTED_VERSION !== "string" || !/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(DOCUMENTED_VERSION)) {
   throw new Error("package.json documentation.version must pin a stable release version");
 }

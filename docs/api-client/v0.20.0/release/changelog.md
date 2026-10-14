@@ -12,6 +12,8 @@ or error-handling assumptions.
 
 ## [0.20.0] - 2026-10-13
 
+Unpublished source snapshot; these changes are included in 0.21.0.
+
 ### Added
 
 - Native Python lifecycle clients for Claude, Claude Managed Agents, Codex,
