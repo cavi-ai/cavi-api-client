@@ -86,6 +86,13 @@ Their cancellation cannot stop a finished response. Other providers retrieve
 backend state. OpenCode requires matching server/session version and directory;
 idle status alone does not establish a completed assistant message.
 
+OpenClaw maps native `ok`/`error` outcomes to `completed`/`failed` and retains
+the original value as `provider_status`; unknown outcomes remain incomplete.
+Response text preserves whitespace and explicit empty strings. Managed Agents
+retrieves chronological `agent.message` text for completed sessions, excluding
+user and tool events. Retrieval follows at most 100 event pages within one
+request deadline and bounds accumulated text by `max_response_bytes`.
+
 `dryRun: True` validates without starting backend work. Unknown, dry-run, and
 incomplete states remain incomplete. Text helpers require successful completion.
 Native clients cover lifecycle and completion helpers; streaming, batches, files,
@@ -98,6 +105,10 @@ OpenCode also attempts to abort a newly created session when prompt submission
 fails or is cancelled; other request deadlines and caller cancellations do not
 cancel backend work. OpenClaw disconnects after failed or cancelled RPCs and reconnects
 only on a subsequent explicit operation.
+
+Closing OpenCode cancels active local submissions, attempts to abort their
+newly created sessions, and then closes client-owned HTTP. Cancelling the
+`close` call leaves cleanup running; call `close` again to wait for shutdown.
 
 ## Optional TypeScript bridge
 

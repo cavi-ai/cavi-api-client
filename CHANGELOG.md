@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Normalize native Python OpenClaw completion and failure outcomes while retaining
+  provider status and exact response text.
+- Retrieve completed Managed Agents text from paginated session events in Python.
+- Abort active OpenCode prompts before closing Python-owned HTTP transport.
+- Rebuild unavailable documentation baselines from their pinned source commit.
 - Exclude Python bytecode from npm tarballs and documentation artifact pins.
 
 ## [0.20.0] - 2026-10-13

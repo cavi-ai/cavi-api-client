@@ -78,6 +78,11 @@ batches, and control planes remain outside that surface. `serveRuntimeBridge`
 from `core/transport/node` supports application-owned TypeScript adapters;
 only bridge mode requires Node.
 
+Native Python OpenClaw outcomes normalize `ok`/`error` to `completed`/`failed`
+and retain `provider_status`. Completed Managed Agents sessions expose text from
+paginated agent-message events. OpenCode completes abort cleanup for active
+submissions before closing its transport. See the [Python package guide](python/README.md).
+
 Version 0.19.0 removes Gemini's provider and file entries. See
 [migration guidance](MIGRATION.md#remove-gemini-integrations-0190).
 

@@ -14,16 +14,16 @@
  *
  * Resolution order: an explicit env var wins (CI supplies one), otherwise the
  * artifact is fetched into a gitignored cache and digest-verified. When the
- * registry does not yet have the package.json version (release cut before
- * publish), fall back to `pnpm pack` of the workspace and digest-check that.
+ * registry does not yet have the documented version, rebuild its pinned source
+ * commit and digest-check the result. Working changes cannot alter the baseline.
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { APPROVED_RELEASE_SHA256, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
+import { APPROVED_RELEASE_SHA256, DOCUMENTED_COMMIT, DOCUMENTED_PACKAGE, DOCUMENTED_VERSION } from "./types.mjs";
 
 /**
  * npm/pnpm pack writes a platform-specific gzip OS byte (macOS often 19, Linux
@@ -78,8 +78,8 @@ export function assertApprovedDigest(tarball) {
  * stays stable while those trees are regenerated from the same declarations.
  * The docs site ingest uses the GitHub release docs asset, not the npm mirror.
  */
-function withVersionedDocsStashed(fn) {
-  const docsRoot = path.join(PACKAGE_ROOT, "docs/api-client");
+function withVersionedDocsStashed(fn, sourceRoot = PACKAGE_ROOT) {
+  const docsRoot = path.join(sourceRoot, "docs/api-client");
   const stashRoot = path.join(STABLE_CACHE_DIRECTORY, "stash-versioned-docs");
   rmSync(stashRoot, { recursive: true, force: true });
   mkdirSync(stashRoot, { recursive: true });
@@ -110,20 +110,50 @@ function withVersionedDocsStashed(fn) {
  * does not churn the approved digest.
  * @returns {string} Absolute path to the packed tarball in the cache.
  */
-export function packWorkspaceTarball() {
+export function packWorkspaceTarball(sourceRoot = PACKAGE_ROOT) {
   mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
   const target = stableTarballPath();
   if (existsSync(target)) rmSync(target);
   withVersionedDocsStashed(() => {
     execFileSync("pnpm", ["pack", "--pack-destination", STABLE_CACHE_DIRECTORY], {
-      cwd: PACKAGE_ROOT,
+      cwd: sourceRoot,
       stdio: ["ignore", "ignore", "inherit"],
     });
-  });
+  }, sourceRoot);
   if (!existsSync(target)) {
     throw new Error(`pnpm pack did not produce the expected artifact at ${target}`);
   }
   return normalizePackedTarballGzipOs(target);
+}
+
+/** Rebuild an unpublished baseline from its pinned commit, independent of working changes. */
+export function packPinnedSourceTarball() {
+  mkdirSync(STABLE_CACHE_DIRECTORY, { recursive: true });
+  const temporary = mkdtempSync(path.join(STABLE_CACHE_DIRECTORY, "pinned-source-"));
+  const sourceRoot = path.join(temporary, "package");
+  const archive = path.join(temporary, "source.tar");
+  try {
+    try {
+      execFileSync("git", ["cat-file", "-e", `${DOCUMENTED_COMMIT}^{commit}`], {
+        cwd: PACKAGE_ROOT, stdio: "ignore",
+      });
+    } catch {
+      execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", DOCUMENTED_COMMIT], {
+        cwd: PACKAGE_ROOT, stdio: ["ignore", "ignore", "inherit"],
+      });
+    }
+    execFileSync("git", ["archive", "--format=tar", `--output=${archive}`, DOCUMENTED_COMMIT], {
+      cwd: PACKAGE_ROOT, stdio: "ignore",
+    });
+    mkdirSync(sourceRoot);
+    execFileSync("tar", ["-xf", archive, "-C", sourceRoot]);
+    execFileSync("pnpm", ["install", "--frozen-lockfile"], {
+      cwd: sourceRoot, stdio: ["ignore", 2, 2],
+    });
+    return assertApprovedDigest(packWorkspaceTarball(sourceRoot));
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 }
 
 function fetchRegistryTarball(target) {
@@ -144,7 +174,7 @@ function fetchRegistryTarball(target) {
 /**
  * Ensure the pinned stable tarball exists in the cache and matches its digest.
  * Re-uses a cached copy when it already verifies; otherwise downloads it from the
- * public npm registry over HTTPS. On registry miss, packs the workspace and
+ * public npm registry over HTTPS. On registry miss, rebuilds the pinned commit and
  * digest-checks that artifact. Returns the absolute path.
  */
 export function ensureStableTarball() {
@@ -156,10 +186,10 @@ export function ensureStableTarball() {
   } catch (error) {
     if (existsSync(target)) rmSync(target);
     try {
-      packWorkspaceTarball();
+      packPinnedSourceTarball();
     } catch (packError) {
       throw new Error(
-        `failed to fetch stable tarball from registry and workspace pack fallback failed: ${String(error)}`,
+        `failed to fetch stable tarball from registry and pinned source rebuild failed: ${String(error)}`,
         { cause: packError },
       );
     }

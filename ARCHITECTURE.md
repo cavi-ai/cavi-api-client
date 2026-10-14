@@ -54,6 +54,12 @@ WebSocket dependency. Explicit configuration owns credentials and server
 addresses. Routes live in `python/cavi_runtime/paths.py`; shared fixtures check
 Claude, Codex, and AGY mappings against TypeScript adapters.
 
+Python OpenClaw preserves native outcome status separately from canonical
+completion status. Managed Agents retrieves completed text from bounded,
+paginated session events. OpenCode owns active submission tasks and drains
+their abort cleanup before closing HTTP; a shared shutdown task survives caller
+cancellation.
+
 The optional Node-only runtime bridge in `core/transport/node` serves serialized
 lifecycle calls for an explicitly supplied `RuntimeClient`. The async Python
 module owns a persistent subprocess and retains existing adapter semantics.
