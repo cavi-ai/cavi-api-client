@@ -44,6 +44,9 @@ original value as `provider_status`. Text preserves whitespace and empty strings
 Managed Agents retrieves chronological `agent.message` text for completed
 sessions across at most 100 event pages, bounded by the request deadline and
 the response byte limit for accumulated text. Tool and user events are excluded.
+Managed Agents requires existing `agent_id` and `environment_id` configuration.
+Set `metadata.agent_version` on `start_run` to pin a version; omitting it selects
+the latest agent version when the session is created.
 OpenCode closes by stopping active submissions and attempting session aborts
 before releasing its HTTP transport. Cancelling `close` does not cancel cleanup;
 call `close` again to wait for it.

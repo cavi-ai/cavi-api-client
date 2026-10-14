@@ -63,8 +63,33 @@ surface; use an explicitly configured dashboard for analytics.
 For the separate dashboard connection, set `dashboardProfile: "research"`
 alongside `dashboardBaseUrl`, `dashboardWebSocketUrl`, and `dashboardToken`. REST calls
 send `profile` in the query; structured session RPC calls send it in params.
+
+```ts
+import { createHermesRuntimeControlClient } from "@cavi-ai/api-client/providers/hermes";
+
+export function createProfileControl(config: {
+  apiServerUrl: string; apiServerKey: string; dashboardUrl: string;
+  dashboardWebSocketUrl: string; dashboardToken: string; profile: string;
+}) {
+  return createHermesRuntimeControlClient({
+    baseUrl: config.apiServerUrl,
+    token: config.apiServerKey,
+    dashboardBaseUrl: config.dashboardUrl,
+    dashboardWebSocketUrl: config.dashboardWebSocketUrl,
+    dashboardToken: config.dashboardToken,
+    dashboardProfile: config.profile,
+  });
+}
+```
+
+Use the profile-prefixed API Server URL for `apiServerUrl` and the matching
+dashboard profile. API Server and dashboard credentials are independent.
 Owned WebSockets send the explicit dashboard token in the native `token` query.
 URLs already containing `token`, `ticket`, or `internal` keep their credential.
+Loopback dashboards accept their session token. Auth-gated dashboards require a
+user session access token or a preauthenticated ticket URL; the dashboard's
+process-local session token does not grant access through that gate. Tickets
+are short-lived and single-use, so obtain a fresh ticket before reconnecting.
 Use TLS and avoid logging authenticated WebSocket URLs. Borrowed channels and
 raw RPC calls remain caller-configured.
 

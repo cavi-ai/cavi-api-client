@@ -60,6 +60,15 @@ paginated session events. OpenCode owns active submission tasks and drains
 their abort cleanup before closing HTTP; a shared shutdown task survives caller
 cancellation.
 
+Native Python selects OpenCode v2 explicitly through `api_version=2`; the
+default remains the v1 lifecycle. Managed Agents enables workflow-aware
+completion with `observe_run_completion=True` in Python and
+`observeRunCompletion: true` in TypeScript. Both rebuild the latest turn from
+bounded, ordered history. TypeScript streams and the interactive driver apply
+the same observed completion rules when enabled; the driver's option is
+configured separately. OpenClaw's TypeScript `normalizeRunStatus` option
+preserves native status alongside canonical outcomes and exact text.
+
 The optional Node-only runtime bridge in `core/transport/node` serves serialized
 lifecycle calls for an explicitly supplied `RuntimeClient`. The async Python
 module owns a persistent subprocess and retains existing adapter semantics.

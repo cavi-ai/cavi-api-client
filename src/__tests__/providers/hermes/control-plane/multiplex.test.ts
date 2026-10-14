@@ -4,10 +4,17 @@ import { createHermesDashboardRestClient } from "../../../../providers/hermes/co
 import { createHermesSessionOperations } from "../../../../providers/hermes/control-plane/session-operations.js";
 import type { HermesDashboardJsonRpcClient } from "../../../../providers/hermes/control-plane/types.js";
 import { hermesDashboardSocketUrl } from "../../../../providers/hermes/control-plane/dashboard-paths.js";
+import * as Hermes from "../../../../providers/hermes/index.js";
+import type { HermesRuntimeControlOptions } from "../../../../providers/hermes/index.js";
 
 const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
 
 describe("Hermes multiplex control", () => {
+  it("exports the provider-specific control factory from the public subpath", () => {
+    expect(Hermes).toHaveProperty("createHermesRuntimeControlClient", expect.any(Function));
+    const options = { dashboardProfile: "research" } satisfies HermesRuntimeControlOptions;
+    expect(options.dashboardProfile).toBe("research");
+  });
   it("encodes dashboard credentials without replacing preauthenticated URLs", () => {
     expect(hermesDashboardSocketUrl("wss://dashboard.test/api/ws", "a/+? secret")).toBe("wss://dashboard.test/api/ws?token=a%2F%2B%3F+secret");
     for (const credential of ["token", "ticket", "internal"]) {

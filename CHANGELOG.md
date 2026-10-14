@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Export the Hermes runtime control factory and options from the provider
+  subpath for typed dashboard and profile configuration.
 - OpenCode v2 polling clients: `OpenCodeV2ApiClient`,
   `createOpenCodeV2ProviderModule`, and Python `api_version=2`. Existing v1
   clients retain their routes and behavior. V2 streaming is unsupported.
@@ -22,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Include the required agent selector type when Python creates Managed Agents
+  sessions, including sessions pinned with `metadata.agent_version`.
+- Link provider and Python references to unreleased compatibility options and
+  document their opt-in defaults consistently across language guides.
 - Route Hermes dashboard REST and RPC calls to an explicit `dashboardProfile`,
   authenticate owned dashboard WebSockets with `dashboardToken`, and use
   advertised native API Server session pagination. Native API Servers report
