@@ -7,6 +7,9 @@ documentedVersion: {{documentedVersion}}
 Use [OpenCode setup](../../guides/providers.md#opencode) to register the opt-in
 provider. It targets the server version declared by `OPENCODE_SERVER_VERSION` and the `legacy-http-sse` endpoint family;
 runs and streaming are supported, batch and gateway resources are not.
+This page describes the default v1 adapter. The separate unreleased v2 adapter
+uses different routes and supports polling only; see the
+[v2 compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md#opencode-v2).
 [Public declarations](../../reference/providers-opencode.md)
 
 This page describes raw runtime methods. The facade wraps their values in

@@ -26,8 +26,8 @@ src/index.ts
 - `providers/*` adapt a concrete backend to the shared client interfaces. Gateway
   providers (Hermes, OpenClaw) implement `GatewayApiClient`; runtime-only providers
   (Claude / Anthropic, Codex / OpenAI Responses, AGY / Antigravity,
-  OpenCode) implement `RuntimeClient`. AGY supports compatible orchestration
-  integrations. OpenCode is the next added harness, not an AGY replacement. They
+  OpenCode) implement `RuntimeClient`. AGY connects to compatible HTTP
+  orchestration services; the adapter does not launch the native CLI or SDK. They
   may customize endpoint maps, headers, auth scheme, default surfaces, and
   transport method mapping, but they reuse the core transports and error handling.
 - `extensions/cavi/` owns CAVI-specific product adapters, plugin contracts,
@@ -146,9 +146,9 @@ outcomes, threads, memory, vaults, session resources, scheduled deployments,
 webhook verification, and a `TeamManifest`→teams mapper. It is additive and re-exported from the same `providers/claude` entry, so
 the stateless Messages-API client is unchanged. Codex (`providers/codex`, OpenAI
 Responses, default `gpt-5-codex`), and OpenCode (`providers/opencode`, server `1.18.27`,
-`legacy-http-sse`) are additional runtime-only providers. AGY (`providers/agy`) is the active successor
-direction for new compatible orchestration integrations, and OpenCode is the
-next added harness rather than an AGY replacement. OpenCode supports `runs` and
+`legacy-http-sse`) are additional runtime-only providers. AGY (`providers/agy`)
+requires an application-provided HTTP orchestration service. Native CLI login
+and JSON/NDJSON are separate from this adapter's HTTP contract. OpenCode v1 supports `runs` and
 `streaming` only: its lifecycle is health → scoped session → synchronous
 message, while `getRun` reconciles server session/status/history, `cancelRun`
 uses session abort, and streaming subscribes to SSE before sending

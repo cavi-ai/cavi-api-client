@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Release AGY SSE responses after upstream completion or failure without waiting
+  for the server to close the connection.
+- Clarify AGY HTTP versus native CLI/SDK interfaces and distinguish OpenCode v1
+  streaming from the opt-in v2 polling adapter in provider documentation.
 - Include the required agent selector type when Python creates Managed Agents
   sessions, including sessions pinned with `metadata.agent_version`.
 - Link provider and Python references to unreleased compatibility options and
