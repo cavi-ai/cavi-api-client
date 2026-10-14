@@ -35,6 +35,30 @@ function client(fetchImpl: typeof fetch): AgyApiClient {
 }
 
 describe("AgyApiClient.streamRun", () => {
+  it.each(["completed", "failed"])("releases an open SSE body after %s", async (status) => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(sseFrame(JSON.stringify({ run_id: "agy-terminal", status })));
+      },
+      cancel,
+    });
+    const onComplete = vi.fn();
+    const events: RunStreamEvent[] = [];
+    const timeout = AbortSignal.timeout(1000);
+    await client(streamFetch(body)).streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      { onEvent: (event) => events.push(event), onComplete },
+      { signal: timeout },
+    );
+    expect(timeout.aborted).toBe(false);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(events.map((event) => event.event)).toEqual([
+      status === "completed" ? RUN_STREAM_EVENT_NAMES.RUN_COMPLETED : RUN_STREAM_EVENT_NAMES.RUN_FAILED,
+    ]);
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
   it("emits ordered deltas and one completed event", async () => {
     const fetchImpl = streamFetch(sseStream([
       JSON.stringify({ status: "running", result: { output: "first" } }),

@@ -104,8 +104,10 @@ Those operations are not universal facade resources.
 
 ## AGY
 
-Supply the orchestration service URL. Set the run's `model` to the configured
-agent ID, or configure a module `defaultModel`.
+Supply an application-provided HTTP orchestration service implementing the
+documented routes and authentication. This adapter does not launch the `agy`
+CLI or Antigravity SDK, and CLI JSON/NDJSON is not its wire format. Set the run's
+`model` to the service's configured agent ID, or configure a module `defaultModel`.
 
 ```ts
 import { createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
@@ -121,14 +123,14 @@ export function createAgyBackend(config: { baseUrl: string; apiKey: string }) {
 
 Runs are synchronous; retrieval and cancellation use remembered terminal state.
 Streaming distinguishes upstream failed runs from transport errors and does
-not infer completion from premature EOF. AGY is the active successor direction
-for new compatible orchestration integrations.
+not infer completion from premature EOF. The HTTP response contract exposes
+available output and upstream status, without normalized token usage.
 
 [AGY operations](../operations/providers/agy.md)
 
 ## OpenCode
 
-Run the server separately. The adapter targets `OPENCODE_SERVER_VERSION` and
+Run the server separately. The default v1 adapter targets `OPENCODE_SERVER_VERSION` and
 the `legacy-http-sse` endpoint family. Supply an absolute HTTP(S) URL without
 embedded credentials, query, or fragment, and an absolute project directory.
 
@@ -156,9 +158,12 @@ A password enables Basic authentication; username defaults to `opencode`.
 Username alone does not enable authentication. Scoping selects server resources;
 it is not a sandbox guarantee.
 
-OpenCode provides runs and streaming, without batch or gateway resources.
+The v1 adapter provides runs and streaming, without batch or gateway resources.
 Streaming subscribes before submission and has no reconnect/replay.
 Cancellation requests a server session abort.
+The separate unreleased v2 adapter uses HTTP polling and does not support
+streaming; see the
+[development compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md#opencode-v2).
 
 [OpenCode operations](../operations/providers/opencode.md)
 

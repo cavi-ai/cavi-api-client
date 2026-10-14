@@ -4,11 +4,14 @@ documentedVersion: {{documentedVersion}}
 
 # Antigravity (AGY) operations
 
-Runtime-only provider over the Antigravity orchestration API. Auth:
+Runtime-only provider over an application-provided AGY HTTP orchestration API. Auth:
 `x-agy-api-key`. `baseUrl` is required. Runs are synchronous request/response
 (`POST /v1/agents/run`); `getRun`/`cancelRun` return the client-remembered
 terminal status via `SynchronousRunStore` (same pattern as Claude Messages). Streaming uses `POST /v1/agents/stream` (SSE). Batch is not supported
 in the initial surface.
+
+The native `agy` CLI and Antigravity SDK use separate transports. This adapter
+does not launch them or consume their JSON/NDJSON output or cached login.
 
 Capability (`AGY_RUNTIME_SUPPORT`): runs ✅ · getRun ✅ (client-local) ·
 cancelRun ✅ (client-local) · streamRun ✅ · batch ❌.
@@ -19,8 +22,9 @@ cancelRun ✅ (client-local) · streamRun ✅ · batch ❌.
 **HTTP** `POST /v1/agents/run`
 **Capability** `supports.runs`
 
-Maps the universal body to an Antigravity run request and normalizes
-`output`/`tokens` from the response. See
+Maps the universal body to an orchestration run request and returns the upstream
+status and available `result.output` text. This response contract does not
+expose normalized token usage. See
 [runtime · startRun](../runtime.md#startrun) for the full field tables.
 
 For application construction, see [provider setup](../../guides/providers.md#agy);

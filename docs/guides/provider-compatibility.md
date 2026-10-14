@@ -3,6 +3,16 @@
 These additions are under `[Unreleased]`. Existing provider defaults and the
 published documentation baseline remain unchanged.
 
+## AGY stream ownership
+
+The HTTP adapter releases its SSE response after observing `completed` or
+`failed`, even when the server keeps the connection open. It delivers one
+terminal event, then calls `onComplete`. Caller cancellation still stops local
+streaming without synthesizing completion or cancelling backend work.
+
+This applies to the compatible HTTP orchestration service; the native `agy`
+CLI and Antigravity SDK use separate interfaces. See the [AGY setup guide](agy.md).
+
 ## OpenCode v2
 
 Select v2 explicitly. `OpenCodeApiClient` and `createOpenCodeProviderModule`

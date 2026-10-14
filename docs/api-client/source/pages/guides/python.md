@@ -52,6 +52,10 @@ instructions, and tools on the provisioned agent. Session metadata supports
 `vault_ids`. OpenCode accepts string input, instructions, and `provider/model`
 model IDs; nonempty tools and metadata are rejected.
 
+AGY connects to an application-provided HTTP orchestration service. Native
+`agy` CLI JSON/NDJSON and Antigravity SDK sessions are separate interfaces;
+the native Python HTTP client does not launch either runtime.
+
 OpenClaw defaults to protocol 4, operator role, and no scopes. Configure
 `client_id`, `client_mode`, `scopes`, and `auth_token` accepted by your gateway.
 For gateways requiring device identity, supply
