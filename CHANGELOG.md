@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Include the required agent selector type when Python creates Managed Agents
+  sessions, including sessions pinned with `metadata.agent_version`.
 - Link provider and Python references to unreleased compatibility options and
   document their opt-in defaults consistently across language guides.
 - Route Hermes dashboard REST and RPC calls to an explicit `dashboardProfile`,

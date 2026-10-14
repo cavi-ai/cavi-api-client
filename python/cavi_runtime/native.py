@@ -631,7 +631,10 @@ class ManagedAgentsClient(HttpRuntimeClient):
         self._check_open()
         body = validate_body(body)
         metadata = body.get("metadata", {})
-        agent = {"id": required(metadata.get("agent_id", self.agent_id), "agent_id")}
+        agent = {
+            "type": "agent",
+            "id": required(metadata.get("agent_id", self.agent_id), "agent_id"),
+        }
         if numeric(metadata.get("agent_version")):
             agent["version"] = metadata["agent_version"]
         payload = {

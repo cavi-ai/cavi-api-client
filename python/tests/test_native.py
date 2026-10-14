@@ -641,7 +641,8 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await c.get_run("sess_1"))["status"], "completed")
             self.assertEqual(await c.cancel_run("sess_1"), {"status": "cancelled"})
         self.assertEqual(
-            self.requests[0][3], {"agent": {"id": "agent_1"}, "environment_id": "env_1"}
+            self.requests[0][3],
+            {"agent": {"type": "agent", "id": "agent_1"}, "environment_id": "env_1"},
         )
         self.assertEqual(
             self.requests[1][3],
@@ -658,6 +659,21 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             self.requests[0][2]["anthropic-beta"], "managed-agents-2026-04-01"
         )
+
+    async def test_managed_agents_pinned_agent_selector(self):
+        self.replies.extend([(200, {"id": "sess_pinned"}), (200, {})])
+        async with self.client(
+            "claude-managed-agents", agent_id="agent_default", environment_id="env_1"
+        ) as client:
+            started = await client.start_run({
+                "input": "hello",
+                "metadata": {"agent_id": "agent_pinned", "agent_version": 3},
+            })
+            self.assertEqual(started, {"run_id": "sess_pinned", "status": "started"})
+        self.assertEqual(self.requests[0][3], {
+            "agent": {"type": "agent", "id": "agent_pinned", "version": 3},
+            "environment_id": "env_1",
+        })
 
     async def test_opencode_scoped_session_and_resume(self):
         session = {"id": "ses_1", "directory": "/repo space", "version": "1.18.27"}
