@@ -1,7 +1,8 @@
 # Provider compatibility additions
 
-These additions are under `[Unreleased]`. Existing provider defaults and the
-published documentation baseline remain unchanged.
+These additions require version 0.21.0 or newer. Existing provider defaults remain
+compatible. The checked-in reference uses an independently pinned source snapshot;
+published release documentation is built from that release's npm artifact.
 
 ## AGY stream ownership
 

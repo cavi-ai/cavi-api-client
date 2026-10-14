@@ -3,8 +3,8 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cavi-runtime"
-version = "0.20.0"
+name = "cavi-api-client"
+version = "0.21.0"
 description = "Native Python lifecycle clients for agent runtimes"
 readme = "README.md"
 requires-python = ">=3.11"

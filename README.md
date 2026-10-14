@@ -30,7 +30,7 @@ dependencies, and keeps React optional. Models, credentials, native tools,
 and persistence still belong to the provider. Installing the package does not
 install a runtime.
 
-Development additions under `[Unreleased]` include explicit OpenCode v2 polling
+Version 0.21.0 includes explicit OpenCode v2 polling
 clients, profile-aware Hermes dashboard control, and opt-in observed completion
 for Managed Agents and canonical OpenClaw outcomes. See the
 [provider compatibility guide](docs/guides/provider-compatibility.md) for setup
@@ -157,7 +157,7 @@ contract directly; its optional methods return raw values and can throw.
 
 ## Project references
 
-Version 0.20.0 adds [Python runtime access](docs/guides/python-runtime.md)
+Version 0.21.0 includes [Python runtime access](docs/guides/python-runtime.md)
 for all seven runtime providers. Native installation requires no Node/npm;
 the optional bridge supports application-owned TypeScript adapters.
 

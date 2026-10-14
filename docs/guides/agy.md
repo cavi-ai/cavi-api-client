@@ -11,7 +11,7 @@ to this HTTP adapter. See Google's [headless CLI documentation](https://www.anti
 for that transport.
 
 The HTTP adapter supports runs and streaming, without batch or gateway resources.
-Unreleased stream cleanup behavior is described in the
+Stream cleanup behavior in 0.21.0 is described in the
 [provider compatibility guide](provider-compatibility.md#agy-stream-ownership).
 
 See [AGY operations](../api-client/source/pages/operations/providers/agy.md)

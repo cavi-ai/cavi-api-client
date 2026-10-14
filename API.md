@@ -59,12 +59,13 @@ malformed items are excluded. An observed empty text string remains `output: ""`
 no observed text remains an absent normalized `output`.
 Partial text does not change a failed or incomplete run into a successful one.
 
-The versioned docs describe the pinned 0.20.0 artifact. Check the
-[changelog](CHANGELOG.md#0190---2026-10-09) before upgrading.
+The checked-in reference describes the pinned 0.20.0 source snapshot. Published
+release documentation is built from the exact npm artifact. Check the
+[changelog](CHANGELOG.md#0210---2026-10-14) before upgrading.
 
 ## HTTP integration
 
-Unreleased provider additions are described in the
+Provider additions in 0.21.0 are described in the
 [provider compatibility guide](docs/guides/provider-compatibility.md):
 `OpenCodeV2ApiClient` / `createOpenCodeV2ProviderModule`, Hermes
 `dashboardProfile`, Managed Agents `observeRunCompletion` and `listAllEvents`,
@@ -77,9 +78,9 @@ for response ownership, deadlines, cancellation, typed errors, credentials,
 Fetch controls, and runnable packed-package tests. Check the changelog for
 behavior changes before using the guide with an older package.
 
-## Python runtime access (0.20.0)
+## Python runtime access (0.21.0)
 
-Version 0.20.0 provides [Python runtime access](docs/guides/python-runtime.md)
+Version 0.21.0 provides [Python runtime access](docs/guides/python-runtime.md)
 through native clients for all seven providers, installed with pip independently
 of Node/npm. Python includes lifecycle calls and completion helpers; streaming,
 batches, and control planes remain outside that surface. `serveRuntimeBridge`

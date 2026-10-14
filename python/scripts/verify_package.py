@@ -1,5 +1,6 @@
 """Build and install Python artifacts, then test with no Node/npm on PATH."""
 
+import argparse
 from pathlib import Path
 import os
 import shutil
@@ -10,6 +11,11 @@ import venv
 import zipfile
 
 root = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--artifacts-dir", type=Path, help="Save verified wheel and source archive")
+options = parser.parse_args()
+if options.artifacts_dir is not None and options.artifacts_dir.exists():
+    parser.error("--artifacts-dir must not already exist")
 
 
 def run(command, **options):
@@ -39,7 +45,9 @@ with tempfile.TemporaryDirectory(prefix="cavi-python-package-") as temporary:
         [
             str(python),
             "-c",
-            "import importlib.util; from cavi_runtime import create_runtime_client; "
+            "import importlib.util; from importlib import metadata; "
+            "from cavi_runtime import create_runtime_client; "
+            "assert metadata.metadata('cavi-api-client')['Name'] == 'cavi-api-client'; "
             "assert importlib.util.find_spec('websockets') is None; "
             "client = create_runtime_client('codex-responses', api_key='test'); "
             "import asyncio; asyncio.run(client.close())",
@@ -63,4 +71,8 @@ with tempfile.TemporaryDirectory(prefix="cavi-python-package-") as temporary:
         cwd=temporary,
         env=env,
     )
+    if options.artifacts_dir is not None:
+        options.artifacts_dir.mkdir(parents=True)
+        for artifact in [wheels[0], archives[0]]:
+            shutil.copy2(artifact, options.artifacts_dir / artifact.name)
     print("Installed Python wheel passed without Node or npm")

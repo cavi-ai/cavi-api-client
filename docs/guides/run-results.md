@@ -1,8 +1,7 @@
 # Require completed output in an application
 
-These APIs are **unreleased**. They are available in development builds; the
-versioned site examples remain compatible with the pinned npm release.
-Check the [changelog](../../CHANGELOG.md#unreleased) before adopting them.
+These APIs require version 0.19.0 or newer.
+Check the [changelog](../../CHANGELOG.md) before adopting them.
 
 The client returns execution state without imposing an application's success
 policy. A tool-oriented workflow can accept a completed run with no text; an

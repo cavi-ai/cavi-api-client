@@ -1,8 +1,7 @@
 # Resume a background run for its authorized owner
 
-This is application example code using **unreleased** `waitForRun`. It is
-available in development builds, not the pinned npm release. See the
-[run result guide](run-results.md) and [Unreleased changelog](../../CHANGELOG.md#unreleased).
+This application example uses `waitForRun`, available in version 0.19.0 or newer.
+See the [run result guide](run-results.md) and [changelog](../../CHANGELOG.md).
 
 A worker or request handler should resume known work through retrieval rather
 than submit the same input again. Before retrieval or cancellation, authorize
