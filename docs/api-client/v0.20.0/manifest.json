@@ -6,7 +6,7 @@
     "commit": "b37ae83acd4ebca935fafa0a954714fbe21c9f93"
   },
   "sourceTarballSha256": "f25a2a0a16d3861910330a16a7f2173fea89ff40cff3f27014bc7420b6cb7770",
-  "contentSha256": "a6a23a56c62db632c45641de0642f080aa7bf1216f3901334d0ab98d1df6c35d",
+  "contentSha256": "a1365083f205f5c532478580888fd2eb23bd4b1f3855ef35362c87afdefe2ad1",
   "publicExports": [
     {
       "subpath": ".",

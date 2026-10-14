@@ -11,6 +11,275 @@ from cavi_runtime import ApiClientError, create_runtime_client
 
 
 class NativeClients(unittest.IsolatedAsyncioTestCase):
+    async def test_managed_agents_completed_text_uses_paginated_agent_events(self):
+        self.replies.extend(
+            [
+                (200, {"id": "sess_text", "status": "idle"}),
+                (
+                    200,
+                    {
+                        "data": [
+                            {
+                                "type": "user.message",
+                                "content": [{"type": "text", "text": "echo"}],
+                            },
+                            {
+                                "type": "agent.message",
+                                "content": [{"type": "text", "text": "  answer"}],
+                            },
+                            {
+                                "type": "agent.tool_result",
+                                "content": [{"type": "text", "text": "tool"}],
+                            },
+                        ],
+                        "next_page": "cursor/+",
+                    },
+                ),
+                (
+                    200,
+                    {
+                        "data": [
+                            {
+                                "type": "agent.message",
+                                "content": [
+                                    {"type": "text", "text": "  "},
+                                    {"type": "text", "text": ""},
+                                ],
+                            }
+                        ],
+                        "next_page": None,
+                    },
+                ),
+            ]
+        )
+        async with self.client("claude-managed-agents") as client:
+            run = await client.get_run("sess_text")
+            self.assertEqual(await client.require_run_text(run), "  answer  ")
+        self.assertIn("page=cursor%2F%2B", self.requests[-1][1])
+
+    async def test_managed_agents_text_is_bounded_and_preserves_empty_output(self):
+        for pages, expected in (
+            (
+                [
+                    {
+                        "data": [
+                            {
+                                "type": "agent.message",
+                                "content": [{"type": "text", "text": ""}],
+                            }
+                        ]
+                    }
+                ],
+                "",
+            ),
+            ([{"data": []}], "run_output_missing"),
+            (
+                [
+                    {
+                        "data": [
+                            {
+                                "type": "agent.message",
+                                "content": [{"type": "text", "text": None}],
+                            }
+                        ]
+                    }
+                ],
+                "transport_protocol_error",
+            ),
+            (
+                [
+                    {"data": [], "next_page": "repeat"},
+                    {"data": [], "next_page": "repeat"},
+                ],
+                "transport_protocol_error",
+            ),
+        ):
+            self.replies.extend(
+                [(200, {"id": "sess_text", "status": "terminated"})]
+                + [(200, page) for page in pages]
+            )
+            async with self.client("claude-managed-agents") as client:
+                try:
+                    output = await client.require_run_text(
+                        await client.get_run("sess_text")
+                    )
+                except ApiClientError as error:
+                    self.assertEqual(error.code, expected)
+                else:
+                    self.assertEqual(output, expected)
+
+        self.replies.extend(
+            [
+                (200, {"id": "sess_text", "status": "idle"}),
+                (
+                    200,
+                    {
+                        "data": [
+                            {
+                                "type": "agent.message",
+                                "content": [{"type": "text", "text": "x" * 200}],
+                            }
+                        ],
+                        "next_page": "next",
+                    },
+                ),
+                (
+                    200,
+                    {
+                        "data": [
+                            {
+                                "type": "agent.message",
+                                "content": [{"type": "text", "text": "x" * 200}],
+                            }
+                        ]
+                    },
+                ),
+            ]
+        )
+        async with self.client(
+            "claude-managed-agents", max_response_bytes=350
+        ) as client:
+            with self.assertRaises(ApiClientError) as caught:
+                await client.get_run("sess_text")
+            self.assertEqual(caught.exception.code, "transport_protocol_error")
+
+    async def test_opencode_close_aborts_active_prompt_before_transport_shutdown(self):
+        arrived, release = asyncio.Event(), asyncio.Event()
+
+        async def prompt_pending():
+            arrived.set()
+            await release.wait()
+            return {}
+
+        self.replies.extend(
+            [
+                (200, {"healthy": True, "version": "1.18.27"}),
+                (200, {"id": "ses_close", "directory": "/repo", "version": "1.18.27"}),
+                (200, prompt_pending),
+                (200, True),
+            ]
+        )
+        client = self.client("opencode", directory="/repo")
+        pending = asyncio.create_task(
+            client.start_run({"input": "hello", "model": "test/model"})
+        )
+        try:
+            await asyncio.wait_for(arrived.wait(), 2)
+            await asyncio.wait_for(client.close(), 2)
+            await asyncio.wait_for(asyncio.gather(pending, return_exceptions=True), 2)
+            self.assertTrue(any("/ses_close/abort?" in r[1] for r in self.requests))
+            with self.assertRaises(ApiClientError):
+                await client.start_run({"input": "closed"})
+        finally:
+            release.set()
+            await client.close()
+            await asyncio.gather(pending, return_exceptions=True)
+
+    async def test_opencode_cancelled_close_finishes_abort_cleanup(self):
+        prompt_arrived, abort_arrived = asyncio.Event(), asyncio.Event()
+        prompt_release, abort_release = asyncio.Event(), asyncio.Event()
+
+        async def hold_prompt():
+            prompt_arrived.set()
+            await prompt_release.wait()
+            return {}
+
+        async def hold_abort():
+            abort_arrived.set()
+            await abort_release.wait()
+            return True
+
+        self.replies.extend(
+            [
+                (200, {"healthy": True, "version": "1.18.27"}),
+                (200, {"id": "ses_close", "directory": "/repo", "version": "1.18.27"}),
+                (200, hold_prompt),
+                (200, hold_abort),
+            ]
+        )
+        client = self.client("opencode", directory="/repo")
+        pending = asyncio.create_task(
+            client.start_run({"input": "hello", "model": "test/model"})
+        )
+        try:
+            await asyncio.wait_for(prompt_arrived.wait(), 2)
+            closing = asyncio.create_task(client.close())
+            await asyncio.wait_for(abort_arrived.wait(), 2)
+            closing.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await closing
+            with self.assertRaises(ApiClientError):
+                await client.start_run({"input": "closing"})
+            abort_release.set()
+            await asyncio.wait_for(client.close(), 2)
+            with self.assertRaises(asyncio.CancelledError):
+                await pending
+        finally:
+            prompt_release.set()
+            abort_release.set()
+            await client.close()
+            await asyncio.gather(pending, return_exceptions=True)
+
+    async def test_openclaw_native_wait_outcomes_and_exact_text(self):
+        from websockets.asyncio.server import serve
+
+        replies = [
+            {"runId": "run_ok", "status": "ok", "text": "  answer  "},
+            {"runId": "run_empty", "status": "ok", "text": ""},
+            {"runId": "run_error", "status": "error", "error": "failed"},
+            {"runId": "run_pending", "status": "timeout"},
+        ]
+
+        async def handler(ws):
+            await ws.send(
+                json.dumps(
+                    {
+                        "type": "event",
+                        "event": "connect.challenge",
+                        "payload": {"nonce": "n"},
+                    }
+                )
+            )
+            async for data in ws:
+                frame = json.loads(data)
+                payload = (
+                    {"type": "hello-ok", "protocol": 4}
+                    if frame["method"] == "connect"
+                    else replies.pop(0)
+                )
+                await ws.send(
+                    json.dumps(
+                        {
+                            "type": "res",
+                            "id": frame["id"],
+                            "ok": True,
+                            "payload": payload,
+                        }
+                    )
+                )
+
+        async with serve(handler, "127.0.0.1", 0) as server:
+            url = "ws://127.0.0.1:" + str(server.sockets[0].getsockname()[1])
+            async with create_runtime_client(
+                "openclaw", ws_url=url, client_id="test"
+            ) as client:
+                run = await client.get_run("run_ok")
+                self.assertEqual(run["status"], "completed")
+                self.assertEqual(run["provider_status"], "ok")
+                self.assertEqual(await client.require_run_text(run), "  answer  ")
+                self.assertEqual(
+                    await client.require_run_text(await client.get_run("run_empty")), ""
+                )
+                for identifier, code in (
+                    ("run_error", "run_failed"),
+                    ("run_pending", "run_incomplete"),
+                ):
+                    with self.assertRaises(ApiClientError) as caught:
+                        await client.require_completed_run(
+                            await client.get_run(identifier)
+                        )
+                    self.assertEqual(caught.exception.code, code)
+
     async def test_http_client_ownership_and_resumable_close(self):
         import httpx
 
@@ -321,6 +590,7 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
                 (200, {"id": "sess_1"}),
                 (200, {}),
                 (200, {"id": "sess_1", "status": "idle"}),
+                (200, {"data": [], "next_page": None}),
                 (200, {}),
             ]
         )

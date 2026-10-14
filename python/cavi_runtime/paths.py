@@ -21,6 +21,13 @@ def resource(collection: str, identifier: str, suffix: str = "") -> str:
     return collection + "/" + segment(identifier) + suffix
 
 
+def managed_events_path(identifier: str, page: str | None = None) -> str:
+    query = {"order": "asc", "types[]": "agent.message"}
+    if page is not None:
+        query["page"] = page
+    return resource(MANAGED_SESSIONS, identifier, "/events") + "?" + urlencode(query)
+
+
 def opencode_path(directory: str, workspace: str | None, identifier: str | None = None, suffix: str = "") -> str:
     route = OPENCODE_SESSIONS
     if identifier is not None:

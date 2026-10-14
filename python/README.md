@@ -34,5 +34,14 @@ explicit backend cancellation. `require_run_text` accepts completed text and
 preserves explicit empty output. Native clients expose lifecycle operations,
 not streaming, batches, or provider control planes.
 
+OpenClaw normalizes `ok` to `completed` and `error` to `failed`, retaining the
+original value as `provider_status`. Text preserves whitespace and empty strings.
+Managed Agents retrieves chronological `agent.message` text for completed
+sessions across at most 100 event pages, bounded by the request deadline and
+the response byte limit for accumulated text. Tool and user events are excluded.
+OpenCode closes by stopping active submissions and attempting session aborts
+before releasing its HTTP transport. Cancelling `close` does not cancel cleanup;
+call `close` again to wait for it.
+
 The optional `RuntimeClient.connect` bridge remains available for existing
 applications using a TypeScript adapter; only that mode requires Node.

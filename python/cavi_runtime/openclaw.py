@@ -291,13 +291,22 @@ class OpenClawClient(NativeRuntimeClient):
             "status": string("status", "state", "phase") or default,
             "object": string("object") or "openclaw.run",
         }
+        state = run["status"]
+        normalized = {"ok": "completed", "error": "failed"}.get(state, state)
+        if normalized != state:
+            run["provider_status"] = state
+            run["status"] = normalized
         for field, keys in (
             ("session_id", ("session_id", "sessionId", "sessionKey", "key")),
             ("output", ("output", "text")),
             ("response", ("response", "message")),
             ("error", ("error", "errorMessage")),
         ):
-            value = string(*keys)
-            if value:
+            value = (
+                next((raw[k] for k in keys if isinstance(raw.get(k), str)), None)
+                if field in ("output", "response")
+                else string(*keys)
+            )
+            if value is not None:
                 run[field] = value
         return validate_run(add_usage(run, raw.get("usage")))

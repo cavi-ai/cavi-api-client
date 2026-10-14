@@ -676,6 +676,10 @@ class ManagedAgentsClient(HttpRuntimeClient):
         }
 
     async def get_run(self, run_id: str):
+        async with asyncio.timeout(self.timeout):
+            return await self._get_session_run(run_id)
+
+    async def _get_session_run(self, run_id: str):
         raw = record(
             await self._request("GET", paths.resource(paths.MANAGED_SESSIONS, run_id))
         )
@@ -693,7 +697,44 @@ class ManagedAgentsClient(HttpRuntimeClient):
         for key in ("model", "usage"):
             if raw.get(key):
                 run[key] = raw[key]
+        if run["status"] == "completed":
+            output = await self._session_text(run_id)
+            if output is not None:
+                run["output"] = output
         return validate_run(run)
+
+    async def _session_text(self, run_id: str) -> str | None:
+        parts, seen = [], set()
+        page, size = None, 0
+        for _ in range(100):
+            raw = record(
+                await self._request("GET", paths.managed_events_path(run_id, page))
+            )
+            for event in response_array(raw.get("data", [])):
+                event = record(event)
+                if event.get("type") != "agent.message":
+                    continue
+                for block in response_array(event.get("content")):
+                    block = record(block)
+                    if block.get("type") != "text":
+                        continue
+                    text = block.get("text")
+                    if not isinstance(text, str):
+                        raise failure("transport_protocol_error")
+                    try:
+                        size += len(text.encode("utf-8"))
+                    except UnicodeError:
+                        raise failure("transport_protocol_error") from None
+                    if size > self.max_response_bytes:
+                        raise failure("transport_protocol_error")
+                    parts.append(text)
+            page = raw.get("next_page")
+            if page is None:
+                return "".join(parts) if parts else None
+            if not isinstance(page, str) or not page.strip() or page in seen:
+                raise failure("transport_protocol_error")
+            seen.add(page)
+        raise failure("transport_protocol_error")
 
     async def cancel_run(self, run_id: str):
         await self._request(

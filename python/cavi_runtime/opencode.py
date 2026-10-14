@@ -168,6 +168,9 @@ class OpenCodeClient(HttpRuntimeClient):
         self._healthy = False
         self._health_lock = asyncio.Lock()
         self._cleanup_tasks = set()
+        self._submissions = set()
+        self._closing = False
+        self._shutdown_task = None
 
     async def _health(self):
         async with self._health_lock:
@@ -190,13 +193,38 @@ class OpenCodeClient(HttpRuntimeClient):
         except (ApiClientError, TimeoutError, asyncio.CancelledError):
             pass
 
+    def _check_accepting(self):
+        self._check_open()
+        if self._closing:
+            raise failure("invalid_config", "configuration")
+
+    async def _shutdown(self):
+        try:
+            submissions = tuple(self._submissions)
+            for task in submissions:
+                task.cancel()
+            await asyncio.gather(*submissions, return_exceptions=True)
+            if self._cleanup_tasks:
+                await asyncio.gather(*self._cleanup_tasks, return_exceptions=True)
+        finally:
+            await super().close()
+
     async def close(self):
-        if self._cleanup_tasks:
-            await asyncio.gather(*self._cleanup_tasks, return_exceptions=True)
-        await super().close()
+        if self._shutdown_task is None:
+            self._closing = True
+            self._shutdown_task = asyncio.create_task(self._shutdown())
+        await asyncio.shield(self._shutdown_task)
 
     async def start_run(self, body):
-        self._check_open()
+        self._check_accepting()
+        task = asyncio.create_task(self._start_run(body))
+        self._submissions.add(task)
+        try:
+            return await task
+        finally:
+            self._submissions.discard(task)
+
+    async def _start_run(self, body):
         payload = prompt(body, self.default_model)
         if body.get("dryRun"):
             model = payload.get("model")
@@ -223,7 +251,7 @@ class OpenCodeClient(HttpRuntimeClient):
             raise
 
     async def get_run(self, run_id):
-        self._check_open()
+        self._check_accepting()
         route = self._route(run_id)
         if run_id in self._runs:
             from copy import deepcopy
@@ -299,6 +327,7 @@ class OpenCodeClient(HttpRuntimeClient):
         return self._remember(parse_message(latest, run_id))
 
     async def cancel_run(self, run_id):
+        self._check_accepting()
         route = self._route(run_id, "/abort")
         await self._health()
         raw = await self._request("POST", route)
