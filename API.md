@@ -69,6 +69,8 @@ Unreleased provider additions are described in the
 `OpenCodeV2ApiClient` / `createOpenCodeV2ProviderModule`, Hermes
 `dashboardProfile`, Managed Agents `observeRunCompletion` and `listAllEvents`,
 and OpenClaw `normalizeRunStatus`. Existing defaults remain compatible.
+The Hermes provider subpath exports `createHermesRuntimeControlClient` and
+`HermesRuntimeControlOptions` for typed dashboard/profile configuration.
 
 Use the [HTTP integration guide](docs/api-client/source/pages/guides/http.md)
 for response ownership, deadlines, cancellation, typed errors, credentials,

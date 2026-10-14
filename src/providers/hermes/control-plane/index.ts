@@ -5,6 +5,7 @@ export * from "./dashboard-json-rpc.js";
 export * from "./dashboard-paths.js";
 export * from "./dashboard-rest.js";
 export * from "./events.js";
+export { createHermesRuntimeControlClient, type HermesRuntimeControlOptions } from "./factory.js";
 export * from "./models.js";
 export * from "./raw-gateway.js";
 export * from "./session-operations.js";

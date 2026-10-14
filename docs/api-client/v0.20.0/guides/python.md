@@ -8,6 +8,12 @@ Python 3.11+ can use all seven runtime providers directly. Native clients requir
 neither Node nor npm. HTTPX supplies HTTP transport; OpenClaw adds an optional
 WebSocket dependency.
 
+This reference describes the pinned release artifact. The unreleased native
+OpenCode `api_version=2` and Managed Agents `observe_run_completion=True`
+options are documented in the
+[development compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md).
+Existing installs retain their current defaults.
+
 ## Install
 
 From a checkout of this repository:
