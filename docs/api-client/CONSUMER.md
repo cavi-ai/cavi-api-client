@@ -18,7 +18,11 @@ Do **not** treat the npm package as the site ingest authority.
 
 ### Convenience mirror (non-authoritative)
 
-The npm package may include `docs/api-client/v{VERSION}/` for offline reading.
+The npm package includes only the offline snapshot selected by
+`package.json`'s `documentation.version`. The `files` entry for that snapshot
+must be updated with `documentation.version`; the packaging tests enforce this
+agreement and exclude archived versions. Historical docs remain available as
+GitHub Release artifacts.
 Hosts may preview from a checkout or `node_modules`, but production promotion
 must use the GitHub release docs artifact for that version.
 
