@@ -9,7 +9,7 @@ it("packs only the documented snapshot when archived versions exist", () => {
   const manifest = JSON.parse(readFileSync(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf8"));
   const root = mkdtempSync(path.join(tmpdir(), "api-client-docs-pack-"));
   try {
-    writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
+    writeFileSync(path.join(root, "package.json"), JSON.stringify({ ...manifest, scripts: {} }));
     for (const version of [manifest.documentation.version, "0.0.1", "99.0.0"]) {
       const directory = path.join(root, "docs/api-client", `v${version}`);
       mkdirSync(directory, { recursive: true });
