@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import OrderedDict
+from collections.abc import Mapping
 from copy import deepcopy
 import json
 import math
@@ -14,6 +15,7 @@ from uuid import uuid4
 import httpx
 
 from .errors import ApiClientError
+from .wait import RunWaitResult, wait_for_run as _wait_for_run
 from . import paths
 
 
@@ -202,6 +204,16 @@ class NativeRuntimeClient:
             "supports": {"runs": True, "streaming": False, "batch": False},
         }
 
+    async def wait_for_run(
+        self, initial_run: Mapping[str, Any], *, max_polls: int = 60,
+        poll_interval: float = 1.0, max_wait: float = 60.0,
+        cancel_event: asyncio.Event | None = None,
+    ) -> RunWaitResult:
+        return await _wait_for_run(
+            self, initial_run, max_polls=max_polls, poll_interval=poll_interval,
+            max_wait=max_wait, cancel_event=cancel_event,
+        )
+
     async def require_completed_run(self, run: dict) -> dict:
         validate_run(run)
         state = run["status"]
@@ -338,7 +350,7 @@ class SynchronousClient(HttpRuntimeClient):
     async def cancel_run(self, run_id: str):
         self._check_open()
         required(run_id, "run_id")
-        return {"status": self._runs.get(run_id, {}).get("status", "completed")}
+        return {"status": self._runs.get(run_id, {}).get("status", "unknown")}
 
 
 class ClaudeClient(SynchronousClient):

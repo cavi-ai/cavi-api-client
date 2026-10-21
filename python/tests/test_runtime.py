@@ -14,6 +14,20 @@ from cavi_runtime import RuntimeClient, ApiClientError, BridgeError
 
 
 class RuntimeIntegration(unittest.IsolatedAsyncioTestCase):
+    async def test_wait_for_run_observes_a_background_response_through_the_bridge(self):
+        self.env["TEST_PROVIDER"] = "codex"
+        client = await self.connect()
+        run = await client.start_run({"input": "background"})
+        self.assertEqual(run["status"], "started")
+        result = await client.wait_for_run(run, poll_interval=0)
+        self.assertEqual(result["reason"], "terminal")
+        self.assertEqual(result["polls"], 1)
+        self.assertEqual(await client.require_run_text(result["run"]), "Background answer")
+        self.assertEqual([(r[0], r[1]) for r in self.requests], [
+            ("POST", "/v1/responses"), ("GET", "/v1/responses/resp-1"),
+        ])
+        self.assertFalse(client.closed)
+
     async def asyncSetUp(self):
         self.requests = []
         self.connections = set()

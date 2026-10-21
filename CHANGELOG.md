@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded Python `wait_for_run` for native and bridge clients, with typed results,
+  local cancellation, and preserved in-flight retrieval ownership.
+
 ### Fixed
 
 - Reject truncated Claude and Codex streams, release terminal stream readers,

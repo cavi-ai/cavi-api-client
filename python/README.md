@@ -42,6 +42,20 @@ explicit backend cancellation. `require_run_text` accepts completed text and
 preserves explicit empty output. Native clients expose lifecycle operations,
 not streaming, batches, or provider control planes.
 
+Development source provides `wait_for_run` on native and bridge clients, plus a
+standalone `cavi_runtime.wait_for_run(client, run, ...)` helper. The result
+contains `reason`, the last observed `run`, and the retrieval count `polls`.
+Defaults are 60 polls, a one-second delay before each poll, and a 60-second local
+deadline including in-flight retrievals. Configure `max_polls`, `poll_interval`,
+and `max_wait` in seconds. Terminal results include failed and cancelled runs;
+use `require_run_text` only when your application requires successful text.
+
+An optional `cancel_event=asyncio.Event()` stops the local wait with
+`reason: "aborted"`. Cancelling the waiting task propagates `CancelledError`.
+Neither action cancels backend work or an in-flight retrieval. Keep the client
+open for its request to finish; provider errors after the local wait ends are
+consumed. Explicit backend cancellation remains `cancel_run`.
+
 OpenClaw normalizes `ok` to `completed` and `error` to `failed`, retaining the
 original value as `provider_status`. Text preserves whitespace and empty strings.
 Managed Agents retrieves chronological `agent.message` text for completed

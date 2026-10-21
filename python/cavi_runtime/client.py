@@ -10,6 +10,7 @@ from typing import Any
 
 from ._process import BridgeProcess, spawn_bridge
 from .errors import ApiClientError, BridgeError
+from .wait import RunWaitResult, wait_for_run as _wait_for_run
 
 _VERSION = 1
 _MAX_FRAME_BYTES = 1_048_576
@@ -181,6 +182,16 @@ class RuntimeClient:
 
     async def require_completed_run(self, run: Mapping[str, Any]) -> dict[str, Any]:
         return await self._request("requireCompletedRun", dict(run))
+
+    async def wait_for_run(
+        self, initial_run: Mapping[str, Any], *, max_polls: int = 60,
+        poll_interval: float = 1.0, max_wait: float = 60.0,
+        cancel_event: asyncio.Event | None = None,
+    ) -> RunWaitResult:
+        return await _wait_for_run(
+            self, initial_run, max_polls=max_polls, poll_interval=poll_interval,
+            max_wait=max_wait, cancel_event=cancel_event,
+        )
 
     async def require_run_text(self, run: Mapping[str, Any]) -> str:
         return await self._request("requireRunText", dict(run))

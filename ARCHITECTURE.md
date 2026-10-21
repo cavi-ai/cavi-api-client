@@ -60,6 +60,12 @@ paginated session events. OpenCode owns active submission tasks and drains
 their abort cleanup before closing HTTP; a shared shutdown task survives caller
 cancellation.
 
+Python native and bridge clients share a local `wait_for_run` implementation.
+Poll count and a monotonic deadline bound observation, including pending reads.
+Event-based abort and task cancellation leave the client and retrieval owned by
+the application; retained observations consume late errors when they settle.
+The helper performs no submission, backend cancellation, retry, or client close.
+
 Native Python selects OpenCode v2 explicitly through `api_version=2`; the
 default remains the v1 lifecycle. Managed Agents enables workflow-aware
 completion with `observe_run_completion=True` in Python and
