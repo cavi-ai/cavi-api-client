@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Update Vite and markdown-it development dependencies to patched releases for
+  editor command injection and Markdown parsing denial-of-service vulnerabilities.
 - Include only the selected offline documentation snapshot in npm packages,
   excluding archived documentation versions.
 
