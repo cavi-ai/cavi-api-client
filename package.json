@@ -290,6 +290,7 @@
   },
   "pnpm": {
     "overrides": {
+      "markdownlint-cli2>markdown-it": "15.0.3",
       "smol-toml": "1.9.0",
       "katex": "0.18.2",
       "source-map-js": "1.2.2",
@@ -307,7 +308,7 @@
     "react": "^19.2.6",
     "react-dom": "19.2.6",
     "typescript": "^6.0.3",
-    "vite": "^8.2.2",
+    "vite": "^8.2.4",
     "vitest": "^4.1.11"
   },
   "peerDependencies": {

@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Decode fragmented JSON Lines and Content-Length frames with linear copying,
   retaining UTF-8 validation and frame limits. Deduplicate normalized provider
   self-aliases consistently across gateway and runtime registries.
+- Update Vite and markdown-it development dependencies to patched releases for
+  editor command injection and Markdown parsing denial-of-service vulnerabilities.
 - Include only the selected offline documentation snapshot in npm packages,
   excluding archived documentation versions.
 
