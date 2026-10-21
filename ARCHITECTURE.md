@@ -159,6 +159,11 @@ Framed transports grow reusable buffers geometrically and scan only new bytes;
 fragmentation does not repeatedly copy or rescan the accumulated frame. Gateway
 and runtime registries share registration logic and deduplicate each module's
 normalized aliases. Gateway-only `generic` normalization remains at its wrapper.
+OpenClaw profile configuration projects the selected agent through the gateway's
+JSON schema. Mutations send only agent-specific fields with the observed config
+hash, preserving shared defaults, other agents, and server-side secret handling.
+Stale revisions, changed sources, readonly fields, and redacted values fail
+before mutation. The adapter supports keyed and legacy array agent rosters.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (full agent/environment/session lifecycle) with SSE steering,

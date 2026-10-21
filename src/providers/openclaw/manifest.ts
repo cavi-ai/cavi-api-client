@@ -24,6 +24,7 @@ import type {
 } from "../../core/gateway/providers/manifest.types.js";
 
 const SHAPE_VERIFIED_METHODS = new Set([
+  "config.get", "config.schema", "config.patch",
   "agents.list", "models.list", "models.authStatus", "usage.status", "usage.cost",
   "sessions.list", "sessions.describe", "sessions.abort",
   "tasks.list", "tasks.get", "tasks.cancel",

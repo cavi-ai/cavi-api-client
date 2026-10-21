@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bounded Python `wait_for_run` for native and bridge clients, with typed results,
   local cancellation, and preserved in-flight retrieval ownership.
+- OpenClaw profile configuration reads and revision-guarded RPC patches for
+  keyed and legacy agent rosters, preserving shared defaults and other agents.
 
 ### Fixed
 
