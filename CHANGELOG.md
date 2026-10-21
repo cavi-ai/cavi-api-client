@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject truncated Claude and Codex streams, release terminal stream readers,
+  and settle caller cancellation independently of backend cleanup.
 - Include only the selected offline documentation snapshot in npm packages,
   excluding archived documentation versions.
 

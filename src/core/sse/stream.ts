@@ -107,12 +107,13 @@ export async function consumeSseStream(
   let buffer = "";
   let bufferedBytes = 0;
   const appendDecoded = (decoded: string): void => {
-    if (decoded.length === 0) return;
+    if (decoded.length === 0 || signal.aborted) return;
     buffer += decoded;
     bufferedBytes += encoder.encode(decoded).byteLength;
 
     let next = takeNextSseBlock(buffer);
     while (next) {
+      if (signal.aborted) return;
       const blockBytes = encoder.encode(next.block).byteLength;
       if (blockBytes > maxBufferBytes) {
         throw new SseBufferLimitError("SSE buffer exceeds the configured size limit");
@@ -131,31 +132,35 @@ export async function consumeSseStream(
   };
   const onAbort = (): void => {
     try {
-      void reader.cancel();
+      void reader.cancel().catch(() => undefined);
     } catch {
       // best effort
     }
   };
   signal.addEventListener("abort", onAbort);
   try {
-    while (true) {
+    if (signal.aborted) onAbort();
+    while (!signal.aborted) {
       const { value, done } = await reader.read();
       if (done) {
         appendDecoded(decoder.decode());
         break;
       }
       for (let offset = 0; offset < value.byteLength; offset += decodeChunkBytes) {
+        if (signal.aborted) break;
         appendDecoded(decoder.decode(
           value.subarray(offset, Math.min(value.byteLength, offset + decodeChunkBytes)),
           { stream: true },
         ));
       }
     }
-    const trailing = parseSseBlock(buffer);
-    if (trailing) onMessage(trailing);
+    if (!signal.aborted) {
+      const trailing = parseSseBlock(buffer);
+      if (trailing) onMessage(trailing);
+    }
   } catch (error) {
     try {
-      await reader.cancel(error);
+      void reader.cancel(error).catch(() => undefined);
     } catch {
       // Preserve the decode/handler failure that terminated the stream.
     }

@@ -19,6 +19,25 @@ function streamFromText(text: string): ReadableStream<Uint8Array> {
 }
 
 describe("core SSE stream helpers", () => {
+  it("settles a pre-aborted stream without reading and releases its body", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const cancel = vi.fn();
+    let source!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start(c) { source = c; }, cancel });
+    const onMessage = vi.fn();
+    const pending = consumeSseStream(body, controller.signal, onMessage);
+    try {
+      expect(await Promise.race([pending.then(() => true), new Promise<false>(r => setTimeout(() => r(false), 50))])).toBe(true);
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(onMessage).not.toHaveBeenCalled();
+      expect(body.locked).toBe(false);
+    } finally {
+      if (!cancel.mock.calls.length) source.close();
+      await pending;
+    }
+  });
+
   it("parses SSE blocks with comments, named events, ids, retry, and multi-line data", () => {
     expect(
       parseSseBlock(": heartbeat\nevent: run.delta\nid: evt-1\nretry: 2500\ndata: {\"a\":1}\ndata: {\"b\":2}"),

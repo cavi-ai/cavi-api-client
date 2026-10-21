@@ -204,20 +204,25 @@ export class CodexApiClient extends BaseHttpApiClient implements RuntimeClient {
       }
 
       let runId = "";
+      let terminalSeen = false;
       await consumeSseStream(response.body, signal, (sse) => {
+        if (terminalSeen) return;
         const startId = readOpenAIResponseRunId(sse);
         if (startId) runId = startId;
         const event = mapOpenAIResponseStreamEvent(sse, runId);
         if (!event) return;
-        handlers.onEvent(event);
-        if (
-          event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED ||
+        terminalSeen = event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED ||
           event.event === RUN_STREAM_EVENT_NAMES.RUN_FAILED ||
-          event.event === RUN_STREAM_EVENT_NAMES.RUN_CANCELLED
-        ) {
-          controller.abort();
-        }
+          event.event === RUN_STREAM_EVENT_NAMES.RUN_CANCELLED;
+        handlers.onEvent(event);
+        if (terminalSeen) controller.abort();
       });
+      if (options.signal?.aborted) return;
+      if (!terminalSeen) {
+        throw new ApiClientError("codex-responses: stream ended before a terminal event", {
+          code: ApiClientErrorCode.TransportProtocolError,
+        });
+      }
       handlers.onComplete?.();
     } catch (error) {
       if (handlers.onError) handlers.onError(error);

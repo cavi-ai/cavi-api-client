@@ -139,6 +139,10 @@ Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch
 (JSONL upload → batch creation → poll → download), with results mapped to
 `RuntimeRunStatus` by `customId`; downloaded result JSONL is parsed strictly so
 malformed provider files fail with `invalid_json` instead of silently dropping rows.
+Claude Messages and Codex streams require an observed terminal event. Premature
+EOF reports a protocol error; terminal events release the response reader and
+prevent later frames from changing the outcome. Caller cancellation settles the
+facade independently of best-effort backend cancellation.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (full agent/environment/session lifecycle) with SSE steering,

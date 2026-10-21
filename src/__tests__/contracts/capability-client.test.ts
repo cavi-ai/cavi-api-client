@@ -888,6 +888,22 @@ describe("capability client — unified execution surface", () => {
 });
 
 describe("capability client — unified streamRun semantics (R10)", () => {
+  it("settles caller abort without waiting for a cancellation that never settles", async () => {
+    const controller = new AbortController();
+    const cancelRun = vi.fn(() => new Promise<{ status: string }>(() => {}));
+    const client = createCapabilityClient({
+      providerKind: "test", fallbackSupports: { streaming: true },
+      runtime: { ...runtime, cancelRun, streamRun: async (_body, handlers) => {
+        handlers.onEvent({ event: "message.delta", runId: "run-abort", delta: "partial" });
+        controller.abort();
+      } },
+    });
+    const pending = client.streamRun({ input: "test" }, { onEvent: () => {} }, { signal: controller.signal });
+    const result = await Promise.race([pending, new Promise<null>(r => setTimeout(() => r(null), 50))]);
+    expect(result).toMatchObject({ ok: false, gap: { reason: "request-aborted" } });
+    expect(cancelRun).toHaveBeenCalledWith("run-abort");
+  });
+
   const streamingClient = (
     stream: RuntimeClient["streamRun"],
     extra: Partial<RuntimeClient> = {},
