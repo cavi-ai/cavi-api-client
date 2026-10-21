@@ -1,42 +1,15 @@
-import { invalidConfigError } from "../../error-factories.js";
 import { normalizeRuntimeProviderToken } from "./normalize.js";
+import { createRegistry } from "./registry-internals.js";
 import type {
   CreateRuntimeProviderRegistryOptions,
   RuntimeProviderModule,
   RuntimeProviderRegistry,
 } from "./types.js";
 
-function providerModuleKeys(module: RuntimeProviderModule): readonly string[] {
-  const keys = new Set<string>();
-  for (const key of [module.kind, ...(module.aliases ?? [])]) {
-    const normalized = normalizeRuntimeProviderToken(key);
-    if (normalized) keys.add(normalized);
-  }
-  return [...keys];
-}
-
 export function createProviderRegistry<M extends RuntimeProviderModule>(
   options: CreateRuntimeProviderRegistryOptions<M> = {},
 ): RuntimeProviderRegistry<M> {
-  const modules = [...(options.modules ?? [])];
-  const byKey = new Map<string, M>();
-  for (const module of modules) {
-    for (const key of providerModuleKeys(module)) {
-      if (byKey.has(key) && options.allowOverrides !== true) {
-        throw invalidConfigError(`Duplicate provider key "${key}"`);
-      }
-      byKey.set(key, module);
-    }
-  }
-  return {
-    resolveProvider(provider) {
-      const normalized = normalizeRuntimeProviderToken(provider);
-      return normalized ? (byKey.get(normalized) ?? null) : null;
-    },
-    listProviders() {
-      return [...modules];
-    },
-  };
+  return createRegistry(options, normalizeRuntimeProviderToken);
 }
 
 export function createRuntimeProviderRegistry(

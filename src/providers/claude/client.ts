@@ -142,20 +142,32 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
 
       let runId = "";
       let usageAcc: Record<string, number> = {};
+      let terminalSeen = false;
       await consumeSseStream(response.body, signal, (sse) => {
+        if (terminalSeen) return;
         const startId = readAnthropicRunId(sse);
         if (startId) runId = startId;
         const usageDelta = readAnthropicStreamUsage(sse);
         if (usageDelta) usageAcc = { ...usageAcc, ...usageDelta };
         const event = mapAnthropicStreamEvent(sse, runId);
         if (!event) return;
+        terminalSeen = event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED ||
+          event.event === RUN_STREAM_EVENT_NAMES.RUN_FAILED ||
+          event.event === RUN_STREAM_EVENT_NAMES.RUN_CANCELLED;
         if (event.event === RUN_STREAM_EVENT_NAMES.RUN_COMPLETED) {
           const tokens = normalizeRuntimeUsage(usageAcc, "claude-sdk");
           handlers.onEvent(tokens ? { ...event, usage: tokens } : event);
-          return;
+        } else {
+          handlers.onEvent(event);
         }
-        handlers.onEvent(event);
+        if (terminalSeen) controller.abort();
       });
+      if (options.signal?.aborted) return;
+      if (!terminalSeen) {
+        throw new ApiClientError("claude-sdk: stream ended before a terminal event", {
+          code: ApiClientErrorCode.TransportProtocolError,
+        });
+      }
       handlers.onComplete?.();
     } catch (error) {
       if (handlers.onError) handlers.onError(error);
@@ -173,7 +185,7 @@ export class ClaudeApiClient extends BaseHttpApiClient implements RuntimeClient 
   }
 
   async cancelRun(runId: string): Promise<{ status: string }> {
-    return { status: this.runStore.get(runId)?.status ?? "completed" };
+    return { status: this.runStore.get(runId)?.status ?? "unknown" };
   }
 
   async submitBatch(requests: RuntimeBatchRequest[]): Promise<RuntimeBatchStatus> {

@@ -85,8 +85,14 @@ test("keeps partial output failed, cancelled, or incomplete", async (t) => {
     const app = fixture(t, frames);
     await assert.rejects(app.collect(), (error) => {
       assert.ok(isApiClientError(error));
-      assert.equal(error.code, code);
-      assert.equal((error.cause as { runId: string }).runId, "stream-1");
+      // The pinned release wraps premature EOF as an incomplete outcome.
+      // Development adapters reject it directly as a transport protocol error.
+      if (event === null && error.code === "transport_protocol_error") {
+        assert.match(error.message, /stream ended before a terminal event/u);
+      } else {
+        assert.equal(error.code, code);
+        assert.equal((error.cause as { runId: string }).runId, "stream-1");
+      }
       return true;
     });
     assert.equal(app.partial(), "Partial");

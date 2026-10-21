@@ -76,7 +76,15 @@ retain operator scopes over shared-secret auth.
 **Capability** `supports.agentConfig`
 
 Lists agent profiles over `agents.list`, normalized to `AgentProfileSummary[]`.
-Other agent-config methods remain gated pending shape verification.
+Development source also implements `getProfileConfig` and `patchProfileConfig`
+over `config.get`, `config.schema`, and `config.patch`. Reads project the selected
+agent's declared fields and inherited defaults. Patches accept editable field
+keys from that response and carry its revision through `baseEtag`; a stale edit
+fails with status 409. Pass the returned `sourcePath` to guard source changes.
+The adapter changes only the selected agent override, preserving shared defaults
+and other agents. Both keyed `agents.entries` and legacy `agents.list` layouts
+are supported. Redacted, sensitive, readonly, and unsafe fields are rejected.
+Empty patches perform no mutation. The gateway owns config reload/restart behavior.
 
 ## teams
 

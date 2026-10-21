@@ -141,11 +141,11 @@ describe("ClaudeApiClient", () => {
       expect(got.error).toContain("claude-sdk");
     });
 
-    it("cancelRun is a no-op success that never throws", async () => {
+    it("cancelRun preserves known status and reports unknown for foreign runs", async () => {
       const client = new ClaudeApiClient({ apiKey: "sk-test", fetchImpl: fetchImpl() });
       const started = await client.startRun({ input: "hi", model: "claude-opus-4-8" });
       await expect(client.cancelRun(started.run_id)).resolves.toEqual({ status: started.status });
-      await expect(client.cancelRun("foreign")).resolves.toEqual({ status: "completed" });
+      await expect(client.cancelRun("foreign")).resolves.toEqual({ status: "unknown" });
     });
   });
 });

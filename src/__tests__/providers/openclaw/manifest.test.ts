@@ -39,7 +39,8 @@ describe("OpenClaw manifest conformance", () => {
       .map((entry) => entry.method)
       .sort();
     expect(verified).toEqual([
-      "agents.list", "models.authStatus", "models.list", "sessions.abort",
+      "agents.list", "config.get", "config.patch", "config.schema",
+      "models.authStatus", "models.list", "sessions.abort",
       "sessions.describe", "sessions.list", "tasks.cancel", "tasks.get",
       "tasks.list", "usage.cost", "usage.status",
     ]);

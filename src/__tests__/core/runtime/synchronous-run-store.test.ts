@@ -8,6 +8,27 @@ import type { RuntimeRunStatus } from "../../../core/runtime/run.js";
 const status = (run_id: string, s = "completed"): RuntimeRunStatus => ({ run_id, status: s });
 
 describe("SynchronousRunStore", () => {
+  it("isolates remembered status and nested usage from both writers and readers", () => {
+    const store = new SynchronousRunStore();
+    const original: RuntimeRunStatus = {
+      run_id: "snapshot", status: "completed", output: "original",
+      usage: { input_tokens: 3 }, tokens: { inputTokens: 3, raw: { input_tokens: 3 } },
+      errorDetails: { reason: "original" },
+    };
+    store.remember(original);
+    original.status = "failed";
+    original.tokens!.raw!.input_tokens = 99;
+    const first = store.get("snapshot")!;
+    expect(first.status).toBe("completed");
+    expect(first.tokens!.raw!.input_tokens).toBe(3);
+    first.output = "changed";
+    first.usage!.input_tokens = 99;
+    first.errorDetails!.reason = "changed";
+    expect(store.get("snapshot")).toMatchObject({
+      output: "original", usage: { input_tokens: 3 }, errorDetails: { reason: "original" },
+    });
+  });
+
   it("remembers and returns a run by id", () => {
     const store = new SynchronousRunStore();
     store.remember(status("run_1"));

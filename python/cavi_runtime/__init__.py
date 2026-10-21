@@ -8,10 +8,16 @@ __all__ = [
     "RuntimeClient",
     "NativeRuntimeClient",
     "create_runtime_client",
+    "wait_for_run",
+    "RunWaitResult",
 ]
 
 
 def __getattr__(name):
+    if name in ("wait_for_run", "RunWaitResult"):
+        from .wait import RunWaitResult, wait_for_run
+
+        return {"wait_for_run": wait_for_run, "RunWaitResult": RunWaitResult}[name]
     if name == "RuntimeClient":
         from .client import RuntimeClient
 

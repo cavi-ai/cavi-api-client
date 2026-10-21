@@ -58,6 +58,7 @@ with tempfile.TemporaryDirectory(prefix="cavi-python-package-") as temporary:
     tests = temporary / "tests"
     tests.mkdir()
     shutil.copy2(root / "tests/test_native.py", tests / "test_native.py")
+    shutil.copy2(root / "tests/test_wait.py", tests / "test_wait.py")
     shutil.copy2(root / "tests/lifecycle-cases.json", tests / "lifecycle-cases.json")
     env = {
         **os.environ,

@@ -11,6 +11,13 @@ const module = (kind: string, aliases: readonly string[] = []): RuntimeProviderM
 });
 
 describe("runtime provider registry", () => {
+  it("deduplicates self-aliases without treating generic as a gateway alias", () => {
+    const provider = module("generic", [" GENERIC ", "generic"]);
+    const registry = createRuntimeProviderRegistry({ modules: [provider] });
+    expect(registry.resolveProvider("generic")).toBe(provider);
+    expect(registry.resolveProvider("gateway")).toBeNull();
+  });
+
   it("resolves normalized kinds and aliases", () => {
     const acme = module("Acme", ["acme-runtime"]);
     const registry = createRuntimeProviderRegistry({ modules: [acme] });

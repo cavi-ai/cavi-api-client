@@ -743,7 +743,11 @@ export function createCapabilityClient(
           // rethrow carve-out applies to what the caller asked for (the stream),
           // never to teardown we initiated on their behalf; a failed cancel must
           // not turn an abort into a thrown auth error.
-          await runtime.cancelRun(runId).catch(() => undefined);
+          try {
+            void runtime.cancelRun(runId).catch(() => undefined);
+          } catch {
+            // A synchronous cleanup failure must not prevent abort settlement.
+          }
           cancelNote = `cancel requested for run ${runId}`;
         } else {
           cancelNote = "no cancel issued (run id unknown or cancelRun unsupported)";

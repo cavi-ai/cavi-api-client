@@ -11,6 +11,25 @@ from cavi_runtime import ApiClientError, create_runtime_client
 
 
 class NativeClients(unittest.IsolatedAsyncioTestCase):
+    async def test_native_wait_for_run_observes_http_completion(self):
+        self.replies.extend([
+            (200, {"id": "resp_wait", "status": "in_progress"}),
+            (200, {"id": "resp_wait", "status": "completed", "output_text": " exact "}),
+        ])
+        async with self.client("codex-responses") as client:
+            result = await client.wait_for_run({"run_id": "resp_wait", "status": "started"}, poll_interval=0)
+            self.assertEqual(result["reason"], "terminal")
+            self.assertEqual(result["polls"], 2)
+            self.assertEqual(await client.require_run_text(result["run"]), " exact ")
+        self.assertEqual(len(self.requests), 2)
+
+    async def test_unknown_synchronous_cancellation_stays_unknown(self):
+        for provider in ("claude-sdk", "agy"):
+            async with self.client(provider) as client:
+                self.assertEqual((await client.get_run("foreign"))["status"], "unknown")
+                self.assertEqual(await client.cancel_run("foreign"), {"status": "unknown"})
+        self.assertEqual(self.requests, [])
+
     async def test_opencode_v2_lifecycle_and_exact_paginated_text(self):
         session = {"data": {"id": "ses_v2", "location": {"directory": "/project"}}}
         self.replies.extend([

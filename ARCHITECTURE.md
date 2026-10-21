@@ -60,6 +60,12 @@ paginated session events. OpenCode owns active submission tasks and drains
 their abort cleanup before closing HTTP; a shared shutdown task survives caller
 cancellation.
 
+Python native and bridge clients share a local `wait_for_run` implementation.
+Poll count and a monotonic deadline bound observation, including pending reads.
+Event-based abort and task cancellation leave the client and retrieval owned by
+the application; retained observations consume late errors when they settle.
+The helper performs no submission, backend cancellation, retry, or client close.
+
 Native Python selects OpenCode v2 explicitly through `api_version=2`; the
 default remains the v1 lifecycle. Managed Agents enables workflow-aware
 completion with `observe_run_completion=True` in Python and
@@ -139,6 +145,25 @@ Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch
 (JSONL upload → batch creation → poll → download), with results mapped to
 `RuntimeRunStatus` by `customId`; downloaded result JSONL is parsed strictly so
 malformed provider files fail with `invalid_json` instead of silently dropping rows.
+Claude Messages and Codex streams require an observed terminal event. Premature
+EOF reports a protocol error; terminal events release the response reader and
+prevent later frames from changing the outcome. Caller cancellation settles the
+facade independently of best-effort backend cancellation.
+Synchronous run snapshots isolate nested usage and error metadata from callers;
+retrieval and cancellation of an unremembered run report `unknown`. Gateway
+snapshot caches retain at most 256 settled entries per cache, pruning expired
+entries on access. Live requests remain registered until they settle. Cached
+session reads own their transport request; a caller signal ends that caller's
+local wait without cancelling another observer or the backend request.
+Framed transports grow reusable buffers geometrically and scan only new bytes;
+fragmentation does not repeatedly copy or rescan the accumulated frame. Gateway
+and runtime registries share registration logic and deduplicate each module's
+normalized aliases. Gateway-only `generic` normalization remains at its wrapper.
+OpenClaw profile configuration projects the selected agent through the gateway's
+JSON schema. Mutations send only agent-specific fields with the observed config
+hash, preserving shared defaults, other agents, and server-side secret handling.
+Stale revisions, changed sources, readonly fields, and redacted values fail
+before mutation. The adapter supports keyed and legacy array agent rosters.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (full agent/environment/session lifecycle) with SSE steering,

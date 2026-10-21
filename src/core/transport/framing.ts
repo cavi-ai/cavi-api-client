@@ -51,6 +51,28 @@ function append(left: Uint8Array, right: Uint8Array): Uint8Array {
   return result;
 }
 
+/** Reuse storage and grow geometrically so fragmented input is copied linearly. */
+class FrameBuffer {
+  private storage: Uint8Array = new Uint8Array();
+  length = 0;
+
+  append(chunk: Uint8Array, limit: number, message: string): void {
+    if (chunk.byteLength > limit - this.length) throw decodeError(message);
+    const needed = this.length + chunk.byteLength;
+    if (needed > this.storage.byteLength) {
+      const capacity = Math.min(limit, Math.max(needed, 256, this.storage.byteLength * 2));
+      const next = new Uint8Array(capacity);
+      next.set(this.storage.subarray(0, this.length));
+      this.storage = next;
+    }
+    this.storage.set(chunk, this.length);
+    this.length = needed;
+  }
+
+  bytes(): Uint8Array { return this.storage.subarray(0, this.length); }
+  clear(): void { this.length = 0; }
+}
+
 function validateLimit(value: number | undefined, fallback: number, name: string): number {
   const limit = value ?? fallback;
   if (!Number.isSafeInteger(limit) || limit < 1) throw new TypeError(`${name} must be a positive safe integer`);
@@ -86,37 +108,33 @@ export function jsonLinesCodec<T = unknown>(options: JsonFrameCodecOptions = {})
       return append(body, encoder.encode("\n"));
     },
     createDecoder() {
-      let buffered: Uint8Array = new Uint8Array();
-      const take = (finished: boolean): readonly T[] => {
-        const values: T[] = [];
-        let start = 0;
-        for (let index = 0; index < buffered.byteLength; index += 1) {
-          if (buffered[index] !== 0x0a) continue;
-          let end = index;
-          if (end > start && buffered[end - 1] === 0x0d) end -= 1;
-          if (end - start > maxFrameBytes) throw decodeError("JSON Lines frame exceeds the configured size limit");
-          if (end > start) values.push(parseJson<T>(buffered.subarray(start, end)));
-          start = index + 1;
-        }
-        if (start > 0) buffered = buffered.slice(start);
-        if (buffered.byteLength > maxFrameBytes) throw decodeError("JSON Lines frame exceeds the configured size limit");
-        if (finished && buffered.byteLength > 0) throw decodeError("JSON Lines stream ended with an incomplete frame");
-        return values;
-      };
+      const buffered = new FrameBuffer();
+      const oversized = "JSON Lines frame exceeds the configured size limit";
       return {
-        push(chunk) { buffered = append(buffered, chunk); return take(false); },
-        finish() { return take(true); },
+        push(chunk) {
+          const values: T[] = [];
+          let start = 0;
+          while (start < chunk.byteLength) {
+            const newline = chunk.indexOf(0x0a, start);
+            const end = newline < 0 ? chunk.byteLength : newline;
+            buffered.append(chunk.subarray(start, end), maxFrameBytes + 1, oversized);
+            let frame = buffered.bytes();
+            if (frame[frame.byteLength - 1] === 0x0d) frame = frame.subarray(0, frame.byteLength - 1);
+            if (frame.byteLength > maxFrameBytes) throw decodeError(oversized);
+            if (newline < 0) break;
+            if (frame.byteLength > 0) values.push(parseJson<T>(frame));
+            buffered.clear();
+            start = newline + 1;
+          }
+          return values;
+        },
+        finish() {
+          if (buffered.length > 0) throw decodeError("JSON Lines stream ended with an incomplete frame");
+          return [];
+        },
       };
     },
   };
-}
-
-function headerEnd(buffer: Uint8Array): number {
-  for (let index = 0; index <= buffer.byteLength - 4; index += 1) {
-    if (buffer[index] === 0x0d && buffer[index + 1] === 0x0a &&
-      buffer[index + 2] === 0x0d && buffer[index + 3] === 0x0a) return index;
-  }
-  return -1;
 }
 
 export function contentLengthCodec<T = unknown>(
@@ -131,50 +149,59 @@ export function contentLengthCodec<T = unknown>(
       return append(encoder.encode(`Content-Length: ${body.byteLength}\r\n\r\n`), body);
     },
     createDecoder(): TransportFrameDecoder<T> {
-      let buffered: Uint8Array = new Uint8Array();
+      const buffered = new FrameBuffer();
       let expectedBodyBytes: number | undefined;
-      const read = (): readonly T[] => {
-        const values: T[] = [];
-        while (true) {
-          if (expectedBodyBytes === undefined) {
-            const end = headerEnd(buffered);
-            if (end < 0) {
-              if (buffered.byteLength > maxHeaderBytes) throw decodeError("Content-Length header exceeds the configured size limit");
-              break;
-            }
-            if (end > maxHeaderBytes) throw decodeError("Content-Length header exceeds the configured size limit");
-            let header: string;
-            try {
-              header = new TextDecoder("ascii", { fatal: true }).decode(buffered.subarray(0, end));
-            } catch {
-              throw decodeError("Content-Length header is invalid");
-            }
-            const lines = header.split("\r\n");
-            const lengths = lines.filter((line) => /^content-length\s*:/iu.test(line));
-            if (lengths.length !== 1) throw decodeError("Content-Length header is missing or duplicated");
-            const match = /^content-length\s*:\s*(\d+)\s*$/iu.exec(lengths[0]!);
-            if (!match) throw decodeError("Content-Length header has an invalid length");
-            const length = Number(match[1]);
-            if (!Number.isSafeInteger(length)) throw decodeError("Content-Length header has an invalid length");
-            if (length > maxBodyBytes) throw decodeError("Content-Length body exceeds the configured size limit");
-            expectedBodyBytes = length;
-            buffered = buffered.slice(end + 4);
-          }
-          if (buffered.byteLength < expectedBodyBytes) break;
-          values.push(parseJson<T>(buffered.subarray(0, expectedBodyBytes)));
-          buffered = buffered.slice(expectedBodyBytes);
-          expectedBodyBytes = undefined;
-        }
-        return values;
-      };
+      let boundary = 0;
       return {
-        push(chunk) { buffered = append(buffered, chunk); return read(); },
-        finish() {
-          const values = read();
-          if (expectedBodyBytes !== undefined || buffered.byteLength > 0) {
-            throw decodeError("Content-Length stream ended with an incomplete frame");
+        push(chunk) {
+          const values: T[] = [];
+          let offset = 0;
+          while (offset < chunk.byteLength) {
+            if (expectedBodyBytes === undefined) {
+              const byte = chunk[offset]!;
+              buffered.append(chunk.subarray(offset, offset + 1), maxHeaderBytes + 4,
+                "Content-Length header exceeds the configured size limit");
+              offset += 1;
+              boundary = ((boundary << 8) | byte) >>> 0;
+              if (boundary !== 0x0d0a0d0a) {
+                if (buffered.length > maxHeaderBytes + 3) throw decodeError("Content-Length header exceeds the configured size limit");
+                continue;
+              }
+              let header: string;
+              try {
+                header = new TextDecoder("ascii", { fatal: true }).decode(buffered.bytes().subarray(0, buffered.length - 4));
+              } catch {
+                throw decodeError("Content-Length header is invalid");
+              }
+              const lines = header.split("\r\n");
+              const lengths = lines.filter((line) => /^content-length\s*:/iu.test(line));
+              if (lengths.length !== 1) throw decodeError("Content-Length header is missing or duplicated");
+              const match = /^content-length\s*:\s*(\d+)\s*$/iu.exec(lengths[0]!);
+              if (!match) throw decodeError("Content-Length header has an invalid length");
+              const length = Number(match[1]);
+              if (!Number.isSafeInteger(length)) throw decodeError("Content-Length header has an invalid length");
+              if (length > maxBodyBytes) throw decodeError("Content-Length body exceeds the configured size limit");
+              expectedBodyBytes = length;
+              buffered.clear();
+              boundary = 0;
+            }
+            const size = Math.min(expectedBodyBytes - buffered.length, chunk.byteLength - offset);
+            buffered.append(chunk.subarray(offset, offset + size), maxBodyBytes,
+              "Content-Length body exceeds the configured size limit");
+            offset += size;
+            if (buffered.length === expectedBodyBytes) {
+              values.push(parseJson<T>(buffered.bytes()));
+              buffered.clear();
+              expectedBodyBytes = undefined;
+            }
           }
           return values;
+        },
+        finish() {
+          if (expectedBodyBytes !== undefined || buffered.length > 0) {
+            throw decodeError("Content-Length stream ended with an incomplete frame");
+          }
+          return [];
         },
       };
     },

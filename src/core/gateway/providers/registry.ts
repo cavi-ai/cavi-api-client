@@ -1,5 +1,6 @@
 import { invalidConfigError } from "../../error-factories.js";
 import { normalizeGatewayProviderToken } from "./normalize.js";
+import { createRegistry } from "../../runtime/providers/registry-internals.js";
 import {
   createRuntimeProviderRegistry as createUniversalRuntimeProviderRegistry,
 } from "../../runtime/providers/registry.js";
@@ -17,27 +18,7 @@ import {
 export function createProviderRegistry<M extends RuntimeProviderModule>(
   options: CreateProviderRegistryOptions<M> = {},
 ): ProviderRegistry<M> {
-  const modules = [...(options.modules ?? [])];
-  const byKey = new Map<string, M>();
-  for (const module of modules) {
-    for (const rawKey of [module.kind, ...(module.aliases ?? [])]) {
-      const key = normalizeGatewayProviderToken(rawKey);
-      if (!key) continue;
-      if (byKey.has(key) && options.allowOverrides !== true) {
-        throw invalidConfigError(`Duplicate provider key "${key}"`);
-      }
-      byKey.set(key, module);
-    }
-  }
-  return {
-    resolveProvider(provider) {
-      const normalized = normalizeGatewayProviderToken(provider);
-      return normalized ? (byKey.get(normalized) ?? null) : null;
-    },
-    listProviders() {
-      return [...modules];
-    },
-  };
+  return createRegistry(options, normalizeGatewayProviderToken);
 }
 
 export function createGatewayProviderRegistry(

@@ -19,7 +19,8 @@ import type {
 export type GatewaySessionRequestOptions = {
   /**
    * Prevents dispatch when already aborted. The released legacy RPC and REST
-   * transports cannot cancel a request after it has been dispatched.
+   * transports cannot cancel a request after it has been dispatched. Cached
+   * loaders end only this caller's local wait; the cache owns the shared read.
    */
   signal?: AbortSignal;
 };

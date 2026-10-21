@@ -1,4 +1,5 @@
 import { notConnectedError } from "../../error-factories.js";
+import { pruneCache } from "./cache-internals.js";
 import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
@@ -92,6 +93,7 @@ export function createGatewaySystemLoaders(
       })
       .finally(() => {
         cacheEntry.inFlight = null;
+        pruneCache(healthSnapshotCache);
       });
     return await cacheEntry.inFlight;
   };
@@ -121,6 +123,7 @@ export function createGatewaySystemLoaders(
       })
       .finally(() => {
         cacheEntry.inFlight = null;
+        pruneCache(logsTailCache);
       });
     return await cacheEntry.inFlight;
   };

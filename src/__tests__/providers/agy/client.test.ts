@@ -129,7 +129,7 @@ describe("AgyApiClient", () => {
       await expect(client.getRun(started.run_id)).resolves.toEqual(started);
     });
 
-    it("returns unknown for a foreign run and completed when cancelling either run", async () => {
+    it("returns unknown when retrieving or cancelling a foreign run", async () => {
       const client = new AgyApiClient({
         baseUrl: "https://api.antigravity.google",
         apiKey: "sk-test",
@@ -142,7 +142,7 @@ describe("AgyApiClient", () => {
         status: "unknown",
       });
       await expect(client.cancelRun(started.run_id)).resolves.toEqual({ status: "completed" });
-      await expect(client.cancelRun("agy-foreign")).resolves.toEqual({ status: "completed" });
+      await expect(client.cancelRun("agy-foreign")).resolves.toEqual({ status: "unknown" });
     });
   });
 
