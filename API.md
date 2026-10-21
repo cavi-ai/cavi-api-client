@@ -61,7 +61,7 @@ Partial text does not change a failed or incomplete run into a successful one.
 
 The checked-in reference describes the pinned 0.20.0 source snapshot. Published
 release documentation is built from the exact npm artifact. Check the
-[changelog](CHANGELOG.md#0210---2026-10-14) before upgrading.
+[changelog](CHANGELOG.md#0220---2026-10-21) before upgrading.
 
 ## HTTP integration
 

@@ -1,8 +1,17 @@
 # Provider compatibility additions
 
-These additions require version 0.21.0 or newer. Existing provider defaults remain
-compatible. The checked-in reference uses an independently pinned source snapshot;
+The additions below require version 0.21.0 or newer unless noted. Existing provider
+defaults remain compatible. The checked-in reference uses an independently pinned source snapshot;
 published release documentation is built from that release's npm artifact.
+
+## Runtime lifecycle and profile configuration (0.22.0)
+
+Version 0.22.0 adds bounded Python `wait_for_run` and guarded OpenClaw
+`getProfileConfig` / `patchProfileConfig`. Claude and Codex reject premature
+stream EOF with `transport_protocol_error`. Cancelling an unremembered
+synchronous Claude Messages or AGY run returns `unknown` rather than `completed`.
+See [Python polling](python-runtime.md#bounded-polling-0220) and the
+[OpenClaw configuration reference](../api-client/source/pages/operations/providers/openclaw.md).
 
 ## AGY stream ownership
 

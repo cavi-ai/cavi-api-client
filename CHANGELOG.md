@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-21
+
 ### Added
 
 - Bounded Python `wait_for_run` for native and bridge clients, with typed results,
@@ -1279,7 +1281,8 @@ client for agent runtimes.
 - Public release docs, including contributing, security, architecture, code of
   conduct, issue templates, CI, and trusted npm publishing workflow.
 
-[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/cavi-ai/cavi-api-client/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.19.0...v0.21.0
 [0.20.0]: https://github.com/cavi-ai/cavi-api-client/commit/b37ae83acd4ebca935fafa0a954714fbe21c9f93
 [0.19.0]: https://github.com/cavi-ai/cavi-api-client/compare/v0.18.0...v0.19.0

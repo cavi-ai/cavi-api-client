@@ -80,7 +80,7 @@ Persist server-side run IDs with their application owner so a later worker can
 retrieve or cancel them. Client-local terminal IDs do not survive client/process
 replacement. An unknown status is neither completion nor a reason to poll forever.
 
-In development source, cancelling a synchronous Claude Messages or AGY run that
+In newer packages, cancelling a synchronous Claude Messages or AGY run that
 this client has not remembered returns `status: "unknown"`. Earlier releases
 returned `"completed"` for that case; that value did not establish backend
 completion. Cancellation of remembered runs retains their observed status.

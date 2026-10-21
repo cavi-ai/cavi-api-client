@@ -14,12 +14,12 @@ options have separate version requirements documented in the
 [provider compatibility guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/provider-compatibility.md).
 Existing installs retain their current defaults.
 
-Development source also exposes bounded `client.wait_for_run(run, ...)` and
+Newer packages expose bounded `client.wait_for_run(run, ...)` and
 `cavi_runtime.wait_for_run(client, run, ...)`. Defaults are 60 polls, a
 one-second poll interval, and a 60-second local deadline. `RunWaitResult`
 contains `reason`, the last observed `run`, and `polls`. Local timeout or a
 `cancel_event` does not cancel backend work or the in-flight retrieval. See the
-[development polling guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/python-runtime.md#bounded-polling-in-development-source).
+[polling guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/python-runtime.md#bounded-polling-0220).
 
 ## Install
 
