@@ -68,6 +68,11 @@ branch on `run_failed`, `run_cancelled`, `run_incomplete`, or
 `run_output_missing`. The example uses string values to also support releases
 without the corresponding enum aliases.
 
+Development Claude and Codex adapters reject premature EOF directly with
+`transport_protocol_error`; the pinned release reports an incomplete outcome
+instead. Applications supporting both versions should handle either error and
+retain observed deltas as partial output. The example tests cover both forms.
+
 The returned `text` uses a terminal output snapshot when one is supplied,
 otherwise the accumulated deltas. Do not append a terminal snapshot as another
 delta: that can duplicate the answer. Partial deltas can already be visible
