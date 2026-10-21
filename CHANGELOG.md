@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reject truncated Claude and Codex streams, release terminal stream readers,
   and settle caller cancellation independently of backend cleanup.
+- Isolate remembered run snapshots and report unknown synchronous runs honestly
+  when cancellation cannot observe them. Bound gateway snapshot caches and keep
+  shared reads independent of each caller's cancellation.
 - Include only the selected offline documentation snapshot in npm packages,
   excluding archived documentation versions.
 

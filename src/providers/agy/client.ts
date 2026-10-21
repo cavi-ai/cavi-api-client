@@ -164,6 +164,6 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
   }
 
   async cancelRun(runId: string): Promise<{ status: string }> {
-    return { status: this.runStore.get(runId)?.status ?? "completed" };
+    return { status: this.runStore.get(runId)?.status ?? "unknown" };
   }
 }

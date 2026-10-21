@@ -1,3 +1,5 @@
+import { getCacheEntry } from "./cache-internals.js";
+
 export type TtlCacheEntry<TPayload> = {
   payload: TPayload | null;
   expiresAt: number;
@@ -8,15 +10,9 @@ export function getOrCreateTtlCacheEntry<TPayload>(
   cache: Map<string, TtlCacheEntry<TPayload>>,
   cacheKey: string,
 ): TtlCacheEntry<TPayload> {
-  const existing = cache.get(cacheKey);
-  if (existing) {
-    return existing;
-  }
-  const entry: TtlCacheEntry<TPayload> = {
+  return getCacheEntry(cache, cacheKey, () => ({
     payload: null,
     expiresAt: 0,
     inFlight: null,
-  };
-  cache.set(cacheKey, entry);
-  return entry;
+  }));
 }

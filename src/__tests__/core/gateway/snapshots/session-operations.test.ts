@@ -75,17 +75,18 @@ describe("gateway session operation injection", () => {
       ),
     ).resolves.toBeUndefined();
 
-    expect(operations.list).toHaveBeenCalledWith({ limit: 20 }, requestOptions);
+    const sharedOptions = { signal: undefined };
+    expect(operations.list).toHaveBeenCalledWith({ limit: 20 }, sharedOptions);
     expect(operations.usage).toHaveBeenCalledWith(
       { key: "agent:alpha:main" },
-      requestOptions,
+      sharedOptions,
     );
     expect(operations.preview).toHaveBeenCalledWith({
       keys: ["agent:alpha:main"],
-    }, requestOptions);
+    }, sharedOptions);
     expect(operations.detail).toHaveBeenCalledWith(
       { key: "agent:alpha:main" },
-      requestOptions,
+      sharedOptions,
     );
     expect(operations.patch).toHaveBeenCalledWith(
       { key: "agent:alpha:main", label: "Alpha" },
@@ -96,7 +97,7 @@ describe("gateway session operation injection", () => {
     });
   });
 
-  it("forwards request options through the sessions.list unchanged retry", async () => {
+  it("keeps shared reads independent of the caller signal through the unchanged retry", async () => {
     const requestOptions: GatewaySessionRequestOptions = {
       signal: new AbortController().signal,
     };
@@ -115,8 +116,8 @@ describe("gateway session operation injection", () => {
 
     await loaders.loadSessionsListRaw({ limit: 20 }, requestOptions);
 
-    expect(list).toHaveBeenNthCalledWith(1, { limit: 20 }, requestOptions);
-    expect(list).toHaveBeenNthCalledWith(2, { limit: 20 }, requestOptions);
+    expect(list).toHaveBeenNthCalledWith(1, { limit: 20 }, { signal: undefined });
+    expect(list).toHaveBeenNthCalledWith(2, { limit: 20 }, { signal: undefined });
   });
 
   it.each(["list", "usage", "preview", "detail", "patch"] as const)(

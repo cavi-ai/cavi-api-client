@@ -12,6 +12,7 @@ import type {
   SessionsUsagePayload,
 } from "./transforms.js";
 import type { GatewayRpcClient } from "../rpc/client.js";
+import { checkCacheSignal, getCacheEntry, observeCacheRequest, pruneCache } from "./cache-internals.js";
 import {
   getOrCreateTtlCacheEntry,
   type TtlCacheEntry,
@@ -315,6 +316,9 @@ export function createSessionLoaders(
     TtlCacheEntry<SessionDetailPayload>
   >();
 
+  const readOptions = (value?: GatewaySessionRequestOptions): GatewaySessionRequestOptions | undefined =>
+    value ? { ...value, signal: undefined } : undefined;
+
   const loadSessionsListRaw: SessionLoaders["loadSessionsListRaw"] = async (
     params,
     requestOptions,
@@ -325,18 +329,16 @@ export function createSessionLoaders(
       );
     }
 
+    checkCacheSignal(requestOptions?.signal);
     const cacheKey = canonicalizeSessionsListParams(params);
-    const cacheEntry =
-      sessionsListCache.get(cacheKey) ??
-      ({
+    const cacheEntry = getCacheEntry(sessionsListCache, cacheKey, () => ({
         lastHash: null,
         payload: null,
         inFlight: null,
-      } satisfies SessionsListCacheEntry);
-    sessionsListCache.set(cacheKey, cacheEntry);
+      } satisfies SessionsListCacheEntry));
 
     if (cacheEntry.inFlight) {
-      return await cacheEntry.inFlight;
+      return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
     }
 
     cacheEntry.inFlight = (async () => {
@@ -345,7 +347,7 @@ export function createSessionLoaders(
         requestParams.lastHash = cacheEntry.lastHash;
       }
 
-      let response = await operations.list(requestParams, requestOptions);
+      let response = await operations.list(requestParams, readOptions(requestOptions));
 
       if (isUnchangedSessionsListPayload(response)) {
         if (cacheEntry.payload) {
@@ -364,7 +366,7 @@ export function createSessionLoaders(
           return merged;
         }
 
-        response = await operations.list({ ...params }, requestOptions);
+        response = await operations.list({ ...params }, readOptions(requestOptions));
       }
 
       const normalized = normalizeSessionsListPayload(response);
@@ -376,9 +378,10 @@ export function createSessionLoaders(
       return normalized;
     })().finally(() => {
       cacheEntry.inFlight = null;
+      pruneCache(sessionsListCache);
     });
 
-    return await cacheEntry.inFlight;
+    return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
   };
 
   const loadSessionsUsageRaw: SessionLoaders["loadSessionsUsageRaw"] = async (
@@ -389,17 +392,18 @@ export function createSessionLoaders(
       return await operations.usage(params, requestOptions);
     }
 
+    checkCacheSignal(requestOptions?.signal);
     const cacheKey = canonicalizeSessionsUsageParams(params);
     const cacheEntry = getOrCreateTtlCacheEntry(sessionsUsageCache, cacheKey);
     if (cacheEntry.payload && Date.now() < cacheEntry.expiresAt) {
       return cacheEntry.payload;
     }
     if (cacheEntry.inFlight) {
-      return await cacheEntry.inFlight;
+      return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
     }
 
     cacheEntry.inFlight = operations
-      .usage(params, requestOptions)
+      .usage(params, readOptions(requestOptions))
       .then((payload) => {
         cacheEntry.payload = payload;
         cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -407,8 +411,9 @@ export function createSessionLoaders(
       })
       .finally(() => {
         cacheEntry.inFlight = null;
+        pruneCache(sessionsUsageCache);
       });
-    return await cacheEntry.inFlight;
+    return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
   };
 
   const loadSessionsPreviewRaw: SessionLoaders["loadSessionsPreviewRaw"] =
@@ -417,6 +422,7 @@ export function createSessionLoaders(
         return await operations.preview(params, requestOptions);
       }
 
+      checkCacheSignal(requestOptions?.signal);
       const cacheKey = canonicalizeSessionsPreviewParams(params);
       const cacheEntry = getOrCreateTtlCacheEntry(
         sessionsPreviewCache,
@@ -426,11 +432,11 @@ export function createSessionLoaders(
         return cacheEntry.payload;
       }
       if (cacheEntry.inFlight) {
-        return await cacheEntry.inFlight;
+        return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
       }
 
       cacheEntry.inFlight = operations
-        .preview(params, requestOptions)
+        .preview(params, readOptions(requestOptions))
         .then((payload) => {
           cacheEntry.payload = payload;
           cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -438,8 +444,9 @@ export function createSessionLoaders(
         })
         .finally(() => {
           cacheEntry.inFlight = null;
+          pruneCache(sessionsPreviewCache);
         });
-      return await cacheEntry.inFlight;
+      return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
     };
 
   const loadSessionDetailRaw: SessionLoaders["loadSessionDetailRaw"] = async (
@@ -450,17 +457,18 @@ export function createSessionLoaders(
       return await operations.detail(params, requestOptions);
     }
 
+    checkCacheSignal(requestOptions?.signal);
     const cacheKey = canonicalizeSessionDetailParams(params);
     const cacheEntry = getOrCreateTtlCacheEntry(sessionDetailCache, cacheKey);
     if (cacheEntry.payload && Date.now() < cacheEntry.expiresAt) {
       return cacheEntry.payload;
     }
     if (cacheEntry.inFlight) {
-      return await cacheEntry.inFlight;
+      return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
     }
 
     cacheEntry.inFlight = operations
-      .detail(params, requestOptions)
+      .detail(params, readOptions(requestOptions))
       .then((payload) => {
         cacheEntry.payload = payload;
         cacheEntry.expiresAt = Date.now() + SESSIONS_DETAIL_CACHE_TTL_MS;
@@ -468,8 +476,9 @@ export function createSessionLoaders(
       })
       .finally(() => {
         cacheEntry.inFlight = null;
+        pruneCache(sessionDetailCache);
       });
-    return await cacheEntry.inFlight;
+    return observeCacheRequest(cacheEntry.inFlight, requestOptions?.signal);
   };
 
   const peekSessionsListCache: SessionLoaders["peekSessionsListCache"] = (

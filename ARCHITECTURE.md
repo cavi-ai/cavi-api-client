@@ -143,6 +143,12 @@ Claude Messages and Codex streams require an observed terminal event. Premature
 EOF reports a protocol error; terminal events release the response reader and
 prevent later frames from changing the outcome. Caller cancellation settles the
 facade independently of best-effort backend cancellation.
+Synchronous run snapshots isolate nested usage and error metadata from callers;
+retrieval and cancellation of an unremembered run report `unknown`. Gateway
+snapshot caches retain at most 256 settled entries per cache, pruning expired
+entries on access. Live requests remain registered until they settle. Cached
+session reads own their transport request; a caller signal ends that caller's
+local wait without cancelling another observer or the backend request.
 Claude also carries a `managed-agents/` subtree (beta `managed-agents-2026-04-01`):
 `ClaudeManagedAgentClient` is a second, stateful `RuntimeClient` over Anthropic's
 server-run agents (full agent/environment/session lifecycle) with SSE steering,

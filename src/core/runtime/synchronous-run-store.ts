@@ -2,6 +2,18 @@ import type { RuntimeRunStatus } from "./run.js";
 
 const DEFAULT_CAPACITY = 256;
 
+function snapshot(status: RuntimeRunStatus): RuntimeRunStatus {
+  return {
+    ...status,
+    ...(status.usage ? { usage: { ...status.usage } } : {}),
+    ...(status.errorDetails ? { errorDetails: { ...status.errorDetails } } : {}),
+    ...(status.tokens ? { tokens: {
+      ...status.tokens,
+      ...(status.tokens.raw ? { raw: { ...status.tokens.raw } } : {}),
+    } } : {}),
+  };
+}
+
 /**
  * A small bounded cache of terminal run statuses for synchronous providers
  * (Claude Messages, AGY) whose runs complete during `startRun` and have no
@@ -19,7 +31,7 @@ export class SynchronousRunStore {
   remember(status: RuntimeRunStatus): void {
     if (!status.run_id) return;
     if (this.entries.has(status.run_id)) this.entries.delete(status.run_id);
-    this.entries.set(status.run_id, status);
+    this.entries.set(status.run_id, snapshot(status));
     if (this.entries.size > this.capacity) {
       const oldest = this.entries.keys().next().value as string | undefined;
       if (oldest !== undefined) this.entries.delete(oldest);
@@ -28,7 +40,8 @@ export class SynchronousRunStore {
 
   /** The remembered terminal status for a run this client produced, if any. */
   get(runId: string): RuntimeRunStatus | undefined {
-    return this.entries.get(runId);
+    const status = this.entries.get(runId);
+    return status ? snapshot(status) : undefined;
   }
 }
 
