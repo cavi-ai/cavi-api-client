@@ -17,6 +17,14 @@ const acmeProvider: GatewayProviderModule = {
 };
 
 describe("gateway provider registry", () => {
+  it("deduplicates a module's normalized self-aliases", () => {
+    const provider: GatewayProviderModule = { kind: "gateway", aliases: ["generic", " GATEWAY ", "generic"] };
+    const registry = createGatewayProviderRegistry({ modules: [provider] });
+    expect(registry.resolveProvider("generic")).toBe(provider);
+    expect(registry.resolveProvider("gateway")).toBe(provider);
+    expect(registry.listProviders()).toEqual([provider]);
+  });
+
   it("starts empty and normalizes generic lookup tokens", () => {
     const registry = createGatewayProviderRegistry();
 

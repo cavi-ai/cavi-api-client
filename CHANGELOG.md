@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Isolate remembered run snapshots and report unknown synchronous runs honestly
   when cancellation cannot observe them. Bound gateway snapshot caches and keep
   shared reads independent of each caller's cancellation.
+- Decode fragmented JSON Lines and Content-Length frames with linear copying,
+  retaining UTF-8 validation and frame limits. Deduplicate normalized provider
+  self-aliases consistently across gateway and runtime registries.
 - Include only the selected offline documentation snapshot in npm packages,
   excluding archived documentation versions.
 

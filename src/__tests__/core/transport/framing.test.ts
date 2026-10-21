@@ -48,6 +48,35 @@ function createFakeByteChannel(): TransportByteChannel & {
 }
 
 describe("transport framing", () => {
+  it.each([jsonLinesCodec, contentLengthCodec])("bounds copying for fragmented frames", createCodec => {
+    const codec = createCodec();
+    const payload = { text: "x".repeat(4096) };
+    const encoded = codec.encode(payload);
+    const original = Uint8Array.prototype.set;
+    let copied = 0;
+    const spy = vi.spyOn(Uint8Array.prototype, "set").mockImplementation(function (this: Uint8Array, input, offset) {
+      copied += input.length;
+      original.call(this, input, offset);
+    });
+    const decoded: unknown[] = [];
+    try {
+      const decoder = codec.createDecoder();
+      for (const byte of encoded) decoded.push(...decoder.push(Uint8Array.of(byte)));
+      decoded.push(...decoder.finish());
+    } finally {
+      spy.mockRestore();
+    }
+    expect(decoded).toEqual([payload]);
+    expect(copied).toBeLessThan(encoded.length * 8);
+  });
+
+  it("accepts an exact-limit JSON line with CRLF split across chunks", () => {
+    const decoder = jsonLinesCodec({ maxFrameBytes: 4 }).createDecoder();
+    expect(decoder.push(bytes("null\r"))).toEqual([]);
+    expect(decoder.push(bytes("\n"))).toEqual([null]);
+    expect(decoder.finish()).toEqual([]);
+  });
+
   it("encodes and decodes one JSON value per text chunk", () => {
     const codec = jsonTextCodec<{ ok: boolean }>();
     expect(text(codec.encode({ ok: true }))).toBe('{"ok":true}');
