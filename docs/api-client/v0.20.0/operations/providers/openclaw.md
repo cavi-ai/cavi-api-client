@@ -76,7 +76,7 @@ retain operator scopes over shared-secret auth.
 **Capability** `supports.agentConfig`
 
 Lists agent profiles over `agents.list`, normalized to `AgentProfileSummary[]`.
-Development source also implements `getProfileConfig` and `patchProfileConfig`
+Newer packages implement `getProfileConfig` and `patchProfileConfig`
 over `config.get`, `config.schema`, and `config.patch`. Reads project the selected
 agent's declared fields and inherited defaults. Patches accept editable field
 keys from that response and carry its revision through `baseEtag`; a stale edit

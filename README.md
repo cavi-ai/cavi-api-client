@@ -30,6 +30,8 @@ dependencies, and keeps React optional. Models, credentials, native tools,
 and persistence still belong to the provider. Installing the package does not
 install a runtime.
 
+Version 0.22.0 adds bounded Python run observation and revision-guarded OpenClaw
+profile configuration, plus stream, cancellation, cache, and framing fixes.
 Version 0.21.0 includes explicit OpenCode v2 polling
 clients, profile-aware Hermes dashboard control, and opt-in observed completion
 for Managed Agents and canonical OpenClaw outcomes. See the

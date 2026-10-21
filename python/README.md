@@ -42,7 +42,7 @@ explicit backend cancellation. `require_run_text` accepts completed text and
 preserves explicit empty output. Native clients expose lifecycle operations,
 not streaming, batches, or provider control planes.
 
-Development source provides `wait_for_run` on native and bridge clients, plus a
+Version 0.22.0 provides `wait_for_run` on native and bridge clients, plus a
 standalone `cavi_runtime.wait_for_run(client, run, ...)` helper. The result
 contains `reason`, the last observed `run`, and the retrieval count `polls`.
 Defaults are 60 polls, a one-second delay before each poll, and a 60-second local

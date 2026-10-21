@@ -12,7 +12,7 @@ operations and completion rules.
 Applications owning TypeScript adapters can use the
 [optional runtime bridge](python-runtime-bridge.md), which requires Node 20+.
 
-## Bounded polling in development source
+## Bounded polling (0.22.0)
 
 Native and bridge clients provide `wait_for_run(run, max_polls=60,
 poll_interval=1.0, max_wait=60.0)`. The standalone `cavi_runtime.wait_for_run`
