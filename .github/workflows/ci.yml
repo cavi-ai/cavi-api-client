@@ -15,8 +15,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pin-guard:
+    name: pin-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # Nothing here is pinned by hand. The guard on main judges every pull request.
+      - if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git cat-file -e "$BASE:scripts/pin_guard.py"; then
+            git show "$BASE:scripts/pin_guard.py" > "$RUNNER_TEMP/pin_guard.py"
+          else
+            cp scripts/pin_guard.py "$RUNNER_TEMP/pin_guard.py"
+          fi
+          python3 "$RUNNER_TEMP/pin_guard.py" "$BASE" "$HEAD"
+
   python:
     name: Python ${{ matrix.python-version }}
+    needs: [pin-guard]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -35,9 +59,12 @@ jobs:
         run: ruff check python --select F
       - name: Validate installed Python artifacts without Node
         run: python python/scripts/verify_package.py
+      - name: Test the pin guard
+        run: python -m unittest discover -s scripts -p 'test_pin_guard.py'
 
   test:
     name: Node ${{ matrix.node-version }}
+    needs: [pin-guard]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -102,3 +129,19 @@ jobs:
 
       - name: Validate package tarball
         run: pnpm pack --dry-run
+
+  pin-consumers:
+    # A green main moves the cavi-api-client pin in mlx-agent through its pin-client workflow.
+    needs: [python, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require CONSUMER_DISPATCH_TOKEN
+        env:
+          TOKEN: ${{ secrets.CONSUMER_DISPATCH_TOKEN }}
+        run: test -n "$TOKEN" || { echo "::error::Add the CONSUMER_DISPATCH_TOKEN repository secret"; exit 1; }
+      - name: Dispatch client-merged to mlx-agent
+        env:
+          GH_TOKEN: ${{ secrets.CONSUMER_DISPATCH_TOKEN }}
+        run: gh api repos/cavi-ai/mlx-agent/dispatches --method POST -f event_type=client-merged

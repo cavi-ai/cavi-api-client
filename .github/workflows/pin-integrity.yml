@@ -1,0 +1,21 @@
+name: pin-integrity
+on:
+  pull_request_target:
+permissions:
+  contents: read
+jobs:
+  pin-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # main's guard reads the pull request's commits as data; no pull request code runs here.
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git fetch -q origin "+refs/pull/$NUMBER/head:refs/remotes/pull/head"
+          python3 scripts/pin_guard.py --mechanism "$BASE" "$HEAD"
