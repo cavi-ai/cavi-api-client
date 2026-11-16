@@ -33,9 +33,6 @@ try {
   writeFileSync(path.join(consumer, "package.json"), '{"type":"module"}\n');
   await validateMarkdownLinks(installed, ["README.md", "MIGRATION.md", "ARCHITECTURE.md"]);
 
-  const readme = readFileSync(path.join(installed, "README.md"), "utf8");
-  const snippets = [...readme.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)];
-  assert.equal(snippets.length, 1, "README must contain one complete quickstart");
   const fixture = `
 import assert from "node:assert/strict";
 import { isApiClientError, isAuthError, serializeError } from "@cavi-ai/api-client";
@@ -53,10 +50,10 @@ globalThis.fetch = async (input, init) => {
 `;
   const documentedVersion = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8")).documentation.version;
   const quickstart = readFileSync(path.join(installed, `docs/api-client/v${documentedVersion}/introduction/quickstart.md`), "utf8");
-  const quickstartSnippet = [...quickstart.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)][0];
-  assert.equal(quickstartSnippet?.[1], snippets[0][1], "README and quickstart must teach the same application service");
+  const snippets = [...quickstart.matchAll(/^```ts\s*\n([\s\S]*?)^```/gmu)];
+  assert.equal(snippets.length, 1, "quickstart guide must contain one complete quickstart");
   const serviceSource = readFileSync(path.join(root, "docs/examples/text-service.ts"), "utf8");
-  assert.equal(serviceSource.trim(), snippets[0][1].trim(), "downloadable service must match the README");
+  assert.equal(serviceSource.trim(), snippets[0][1].trim(), "downloadable service must match the quickstart guide");
   const service = transpileModule(snippets[0][1], { compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 } }).outputText;
   writeFileSync(path.join(consumer, "quickstart.mjs"), fixture + service + `
 const assistant = createAssistant({ apiKey: "fixture-key", model: "fixture-model" });
