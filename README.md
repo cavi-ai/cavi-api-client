@@ -2,176 +2,92 @@
   <img src="docs/brand/logo-wordmark.png" alt="@cavi-ai/api-client" width="440">
 </h1>
 
-<p align="center"><strong>One application. Several agent runtimes.</strong></p>
-
+[![npm](https://img.shields.io/npm/v/@cavi-ai/api-client)](https://www.npmjs.com/package/@cavi-ai/api-client)
+[![npm downloads](https://img.shields.io/npm/dm/@cavi-ai/api-client)](https://www.npmjs.com/package/@cavi-ai/api-client)
+[![PyPI](https://img.shields.io/pypi/v/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml/badge.svg)](https://github.com/cavi-ai/cavi-api-client/actions/workflows/ci.yml)
 
-Give users a choice of runtime without writing another progress renderer, batch
-collector, or failure handler for each backend. `@cavi-ai/api-client` adapts
-Claude, Codex, AGY, OpenCode, Hermes, and OpenClaw to shared TypeScript contracts.
+![More agents. Less rewiring. One app. A choice of agents.](docs/assets/api-client-hero.png)
 
-Your application consumes run IDs, statuses, text, token usage, and stream
-events. Provider adapters own the HTTP, SSE, or WebSocket mapping. Capabilities
-tell your application which features to offer; unsuccessful calls carry a
-structured gap.
+Give your users a choice of agent without rebuilding the app around each backend.
 
-## Where it helps
+Cavi API Client brings shared run, status and stream contracts to applications using multiple agent runtimes. Build your user experience around those contracts while adapters handle the backend's HTTP, SSE or WebSocket connection.
 
-| You are building | The package gives you |
+## Keep the app. Add the runtime
+
+Your application consumes run IDs, statuses, text, token usage and stream events. The client handles the provider-specific mapping.
+
+- **One progress experience.** Handle text, tool activity, approvals and terminal events through shared stream contracts.
+- **Background work that stays identifiable.** Retain run IDs for retrieval, bounded observation and explicit cancellation.
+- **Batches you can collect.** Correlate requests by `customId` and handle each item's result.
+- **Features that match the backend.** Consult capabilities before offering runtime-specific tools; unsupported operations return structured gaps.
+
+Adapters cover Claude, Codex, AGY, OpenCode, Hermes and OpenClaw. Connect the runtimes and credentials your application uses; models, native tools and persistence stay with their providers. See [provider compatibility](docs/guides/provider-compatibility.md).
+
+## What are you building?
+
+| Your application | Use the client for |
 | --- | --- |
-| An assistant UI with a runtime selector | One stream event handler for text, tools, approvals, and terminal states |
-| A service that starts background work | A shared run/status contract for retrieval and cancellation |
-| A batch processing job | Request correlation by `customId` and per-item success/failure results |
-| A gateway dashboard | Sessions, models, usage, tasks, and workspace access, gated by the configured backend |
+| An assistant with a runtime selector | Shared progress, tool activity, approvals and outcomes |
+| A service that starts background jobs | Run tracking, retrieval, bounded waits and cancellation |
+| A batch processing pipeline | Request correlation and per-item results |
+| A gateway dashboard | Available sessions, models, usage, tasks and workspace access |
 
-The package is ESM, includes TypeScript declarations, has no runtime
-dependencies, and keeps React optional. Models, credentials, native tools,
-and persistence still belong to the provider. Installing the package does not
-install a runtime.
+## Start with your workflow
 
-Version 0.22.0 adds bounded Python run observation and revision-guarded OpenClaw
-profile configuration, plus stream, cancellation, cache, and framing fixes.
-Version 0.21.0 includes explicit OpenCode v2 polling
-clients, profile-aware Hermes dashboard control, and opt-in observed completion
-for Managed Agents and canonical OpenClaw outcomes. See the
-[provider compatibility guide](docs/guides/provider-compatibility.md) for setup
-and supported boundaries.
+1. Install the [TypeScript or Python SDK](#typescript-and-python-sdks).
+2. [Configure the runtime you want to use](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/providers.md).
+3. Follow the [first-response guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/introduction/quickstart.md), then add the workflow your application needs.
 
-If your application only needs one provider's native API and no shared workflow,
-its direct SDK may be simpler. This package is useful when the integration
-boundary needs to survive another backend.
+Keep credentials in your server configuration. Reuse a client within its credential/configuration scope and dispose of it when its owner shuts down.
 
-## Build an answer service
+## Runs, streams and background jobs
 
-Use Node.js 20 or later and keep provider credentials on your server.
+- [Streaming](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/streaming.md): render progress and handle terminal events.
+- [Background requests](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/requests.md): retain run identity and bound local waits.
+- [Owned background runs](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md): authorize retrieval and explicit cancellation in your application.
+- [Batches](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/batching.md): submit work and collect per-item results.
+- [Run results](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md): turn completed work into a usable answer with completion helpers.
+- [Errors](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/errors.md): handle structured gaps and typed execution failures.
+- [HTTP integration](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/http.md): expose the workflow through an application endpoint.
 
-```sh
-npm install @cavi-ai/api-client
-```
-
-Put this factory in your server application. Supply your Anthropic API key and
-an account-accessible model from server configuration. It creates a reusable
-service that returns text, run identity, and usage to its caller.
-
-```ts
-import { ApiClientError, createApiClient, createRuntimeProviderRegistry } from "@cavi-ai/api-client";
-import { createClaudeProviderModule } from "@cavi-ai/api-client/providers/claude/messages";
-
-export function createAssistant(config: { apiKey: string; model: string }) {
-  const registry = createRuntimeProviderRegistry({
-    modules: [createClaudeProviderModule({ apiKey: config.apiKey })],
-  });
-  const client = createApiClient("claude", { registry, defaultTimeoutMs: 30_000 });
-
-  return {
-    async answer(question: string) {
-      const result = await client.startRun({ model: config.model, input: question });
-      if (!result.ok) return result;
-
-      const run = result.data;
-      if (run.status !== "completed") {
-        const code = run.status === "failed" ? "run_failed"
-          : run.status === "cancelled" ? "run_cancelled" : "run_incomplete";
-        throw new ApiClientError(`Run ${run.run_id} has no completed answer (status: ${run.status})`, {
-          type: "run", code, cause: run,
-        });
-      }
-      const text = run.output ?? run.response;
-      if (text === undefined) {
-        throw new ApiClientError(`Run ${run.run_id} completed with no text`, {
-          type: "run", code: "run_output_missing", cause: run,
-        });
-      }
-      return {
-        ok: true as const,
-        source: result.source,
-        data: { runId: run.run_id, text, tokens: run.tokens },
-      };
-    },
-    dispose: () => client.dispose(),
-  };
-}
-```
-
-Call `assistant.answer(question)` on the service returned by `createAssistant`.
-When `result.ok` is true, use `result.data.text` in your HTTP response, saved
-record, or UI. When it is false, handle `result.gap.reason`; retain the gap for
-diagnostics. Authentication errors, unclassified failures, unsuccessful runs,
-and missing text reject, so use your server's exception boundary.
-
-The service's exceptions use `ApiClientError`: `run_failed`, `run_cancelled`,
-`run_incomplete`, or `run_output_missing`. Narrow with `isApiClientError` and
-branch on `code`; keep `cause` in protected diagnostics for run reconciliation.
-Version 0.19.0 adds `ApiClientErrorCode.Run*` and `ApiClientErrorType.Run`;
-the example uses string values to also support older releases. See [error handling](https://cavi-ai.xyz/docs/api-client/guides/errors)
-for guards and safe application responses.
-
-Version 0.19.0 adds `requireRunText(run)` and `requireStreamText(stream)`
-to replace those execution checks with package APIs. Completion-only helpers
-also support tool-oriented runs without requiring text. See the
-[development guide and complete examples](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md).
-The quickstart above also supports releases without these helpers.
-
-For background workflows, 0.19.0 also provides `waitForRun` with
-time and poll budgets, caller cancellation, and the last observed run retained.
-Stopping a local wait leaves backend work running. The development guide
-includes a complete background answer example.
-The [authorized background workflow](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md)
-shows stored-owner checks for retrieval, polling, and explicit cancellation.
-
-Version 0.19.0 exposes structured execution failure details for Codex
-responses/streams and Claude Messages error streams. Branch on observed
-provider codes or reasons without parsing diagnostic messages; completion
-helpers retain those details in their error causes.
-
-The factory above is example application code, not an exported package API.
-It uses Claude Messages' synchronous lifecycle. Background adapters need
-retrieval; they do not promise an answer when `startRun` returns.
-Create one service per credential/configuration scope, reuse it, and call
-`assistant.dispose()` when its owner shuts down.
-
-## Integrate the workflow you need
-
-- [Test your server integration](https://cavi-ai.xyz/docs/api-client/guides/testing):
-  runnable application tests for answers, progress, validation, and safe failures.
-
-- [First response](https://cavi-ai.xyz/docs/api-client/introduction/quickstart):
-  reusable service and result handling.
-- [Server requests](https://cavi-ai.xyz/docs/api-client/guides/server):
-  validate input and return run state through an application endpoint.
-- [Provider setup](https://cavi-ai.xyz/docs/api-client/guides/providers):
-  credentials, model selection, and backend requirements.
-- [Streaming](https://cavi-ai.xyz/docs/api-client/guides/streaming):
-  send deltas to your UI and distinguish call failure from run failure.
-- [Background runs](https://cavi-ai.xyz/docs/api-client/guides/requests) and
-  [batches](https://cavi-ai.xyz/docs/api-client/guides/batching):
-  bound local waits and preserve IDs for later retrieval.
-- [HTTP integration](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/http.md):
-  response ownership, typed errors, and tested development examples.
-- [Errors](https://cavi-ai.xyz/docs/api-client/guides/errors):
-  gaps, exceptions, and safe retry decisions.
-
-Prefer `createApiClient` for applications. Its `CapabilityClient` keeps
-accessors present and returns `CapabilityResult<T>`. Use the raw
-`RuntimeClient` when implementing an adapter or managing the execution
-contract directly; its optional methods return raw values and can throw.
+Prefer `createApiClient` for TypeScript applications. Its `CapabilityClient` returns `CapabilityResult<T>`. Adapter authors can use the raw `RuntimeClient` contract.
 
 ## Project references
-
-Version 0.21.0 includes [Python runtime access](docs/guides/python-runtime.md)
-for all seven runtime providers. Native installation requires no Node/npm;
-the optional bridge supports application-owned TypeScript adapters.
 
 [Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) ·
 [Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md)
 
-Versioned documentation ships in the package under
-`docs/api-client/v<documented version>` for offline reading. The site ingests
-the GitHub release docs artifact; merging documentation changes alone does not
-refresh an already published release. See the
-[host ingestion contract](docs/api-client/CONSUMER.md).
+[Full documentation](https://cavi-ai.xyz/docs/api-client) ·
+[Documentation hosting contract](docs/api-client/CONSUMER.md)
+
+The npm package includes an offline documentation snapshot at `docs/api-client/v<documented version>`; see the [consumer contract](docs/api-client/CONSUMER.md).
+
+## TypeScript and Python SDKs
+
+### TypeScript
+
+```sh
+npm install @cavi-ai/api-client
+```
+
+Node.js 20 or later. The package is ESM, includes TypeScript declarations and has no runtime dependencies. React integration is optional.
+
+[TypeScript quickstart](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/introduction/quickstart.md) ·
+[Provider setup](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/providers.md)
+
+### Python
+
+```sh
+pip install cavi-api-client
+```
+
+Python 3.11 or later. Import the native client from `cavi_runtime`. HTTPX handles native connections; WebSocket providers have their own optional dependency.
+
+[Python SDK guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/python.md) ·
+[Runtime lifecycle and bounded polling](docs/guides/python-runtime.md)
 
 ## License
 
