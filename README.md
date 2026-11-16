@@ -63,6 +63,8 @@ Prefer `createApiClient` for TypeScript applications. Its `CapabilityClient` ret
 [Full documentation](https://cavi-ai.xyz/docs/api-client) ·
 [Documentation hosting contract](docs/api-client/CONSUMER.md)
 
+The npm package includes an offline documentation snapshot at `docs/api-client/v<documented version>`; see the [consumer contract](docs/api-client/CONSUMER.md).
+
 ## TypeScript and Python SDKs
 
 ### TypeScript
