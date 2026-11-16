@@ -8,7 +8,7 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![More agents. Less rewiring. One app. A choice of agents.](docs/brand/api-client-hero.png)
+![More agents. Less rewiring. One app. A choice of agents.](docs/assets/api-client-hero.png)
 
 Give your users a choice of agent without rebuilding the app around each backend.
 
@@ -37,20 +37,20 @@ Adapters cover Claude, Codex, AGY, OpenCode, Hermes and OpenClaw. Connect the ru
 ## Start with your workflow
 
 1. Install the [TypeScript or Python SDK](#typescript-and-python-sdks).
-2. [Configure the runtime you want to use](docs/api-client/source/pages/guides/providers.md).
-3. Follow the [first-response guide](docs/api-client/source/pages/introduction/quickstart.md), then add the workflow your application needs.
+2. [Configure the runtime you want to use](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/providers.md).
+3. Follow the [first-response guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/introduction/quickstart.md), then add the workflow your application needs.
 
 Keep credentials in your server configuration. Reuse a client within its credential/configuration scope and dispose of it when its owner shuts down.
 
 ## Runs, streams and background jobs
 
-- [Streaming](docs/api-client/source/pages/guides/streaming.md): render progress and handle terminal events.
-- [Background requests](docs/api-client/source/pages/guides/requests.md): retain run identity and bound local waits.
-- [Owned background runs](docs/guides/owned-background-runs.md): authorize retrieval and explicit cancellation in your application.
-- [Batches](docs/api-client/source/pages/guides/batching.md): submit work and collect per-item results.
-- [Run results](docs/guides/run-results.md): turn completed work into a usable answer with completion helpers.
-- [Errors](docs/api-client/source/pages/guides/errors.md): handle structured gaps and typed execution failures.
-- [HTTP integration](docs/api-client/source/pages/guides/http.md): expose the workflow through an application endpoint.
+- [Streaming](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/streaming.md): render progress and handle terminal events.
+- [Background requests](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/requests.md): retain run identity and bound local waits.
+- [Owned background runs](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/owned-background-runs.md): authorize retrieval and explicit cancellation in your application.
+- [Batches](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/batching.md): submit work and collect per-item results.
+- [Run results](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/guides/run-results.md): turn completed work into a usable answer with completion helpers.
+- [Errors](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/errors.md): handle structured gaps and typed execution failures.
+- [HTTP integration](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/http.md): expose the workflow through an application endpoint.
 
 Prefer `createApiClient` for TypeScript applications. Its `CapabilityClient` returns `CapabilityResult<T>`. Adapter authors can use the raw `RuntimeClient` contract.
 
@@ -75,8 +75,8 @@ npm install @cavi-ai/api-client
 
 Node.js 20 or later. The package is ESM, includes TypeScript declarations and has no runtime dependencies. React integration is optional.
 
-[TypeScript quickstart](docs/api-client/source/pages/introduction/quickstart.md) ·
-[Provider setup](docs/api-client/source/pages/guides/providers.md)
+[TypeScript quickstart](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/introduction/quickstart.md) ·
+[Provider setup](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/providers.md)
 
 ### Python
 
@@ -86,7 +86,7 @@ pip install cavi-api-client
 
 Python 3.11 or later. Import the native client from `cavi_runtime`. HTTPX handles native connections; WebSocket providers have their own optional dependency.
 
-[Python SDK guide](docs/api-client/source/pages/guides/python.md) ·
+[Python SDK guide](https://github.com/cavi-ai/cavi-api-client/blob/main/docs/api-client/source/pages/guides/python.md) ·
 [Runtime lifecycle and bounded polling](docs/guides/python-runtime.md)
 
 ## License
