@@ -3,9 +3,9 @@
 </h1>
 
 [![npm](https://img.shields.io/npm/v/@cavi-ai/api-client)](https://www.npmjs.com/package/@cavi-ai/api-client)
-[![npm downloads](https://img.shields.io/npm/dm/@cavi-ai/api-client)](https://www.npmjs.com/package/@cavi-ai/api-client)
+[![TypeScript SDK downloads per week](https://img.shields.io/npm/dw/@cavi-ai/api-client?label=TypeScript%20SDK)](https://www.npmjs.com/package/@cavi-ai/api-client)
 [![PyPI](https://img.shields.io/pypi/v/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
+[![Python SDK downloads per week](https://img.shields.io/pypi/dw/cavi-api-client?label=Python%20SDK)](https://pypi.org/project/cavi-api-client/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ![More agents. Less rewiring. One app. A choice of agents.](docs/assets/api-client-hero.png)
