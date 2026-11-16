@@ -14,7 +14,7 @@ Give your users a choice of agent without rebuilding the app around each backend
 
 Cavi API Client brings shared run, status and stream contracts to applications using multiple agent runtimes. Build your user experience around those contracts while adapters handle the backend's HTTP, SSE or WebSocket connection.
 
-## Keep the app. Add the runtime.
+## Keep the app. Add the runtime
 
 Your application consumes run IDs, statuses, text, token usage and stream events. The client handles the provider-specific mapping.
 
