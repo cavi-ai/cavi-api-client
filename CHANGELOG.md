@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Update Undici and Vitest development dependencies to patched releases.
+
 ## [0.22.0] - 2026-10-21
 
 ### Added
