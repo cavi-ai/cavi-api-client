@@ -6,7 +6,7 @@
 [![TypeScript SDK downloads per week](https://img.shields.io/npm/dw/@cavi-ai/api-client?label=TypeScript%20SDK%2Fweek)](https://www.npmjs.com/package/@cavi-ai/api-client)
 [![PyPI](https://img.shields.io/pypi/v/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
 [![Python SDK downloads per week](https://img.shields.io/pypi/dw/cavi-api-client?label=Python%20SDK%2Fweek)](https://pypi.org/project/cavi-api-client/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/cavi-ai/cavi-api-client?color=yellow)](LICENSE)
 
 ![More agents. Less rewiring. One app. A choice of agents.](docs/assets/api-client-hero.png)
 
