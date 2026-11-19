@@ -2,15 +2,15 @@
   <img src="docs/brand/logo-wordmark.png" alt="@cavi-ai/api-client" width="440">
 </h1>
 
+Give your users a choice of agent without rebuilding the app around each backend.
+
+![More agents. Less rewiring. One app. A choice of agents.](docs/assets/api-client-hero.png)
+
 [![npm](https://img.shields.io/npm/v/@cavi-ai/api-client)](https://www.npmjs.com/package/@cavi-ai/api-client)
 [![TypeScript SDK downloads per week](https://img.shields.io/npm/dw/@cavi-ai/api-client?label=TypeScript%20SDK%2Fweek)](https://www.npmjs.com/package/@cavi-ai/api-client)
 [![PyPI](https://img.shields.io/pypi/v/cavi-api-client)](https://pypi.org/project/cavi-api-client/)
 [![Python SDK downloads per week](https://img.shields.io/pypi/dw/cavi-api-client?label=Python%20SDK%2Fweek)](https://pypi.org/project/cavi-api-client/)
 [![License](https://img.shields.io/github/license/cavi-ai/cavi-api-client?color=yellow)](LICENSE)
-
-![More agents. Less rewiring. One app. A choice of agents.](docs/assets/api-client-hero.png)
-
-Give your users a choice of agent without rebuilding the app around each backend.
 
 Cavi API Client brings shared run, status and stream contracts to applications using multiple agent runtimes. Build your user experience around those contracts while adapters handle the backend's HTTP, SSE or WebSocket connection.
 
