@@ -70,10 +70,116 @@ rules win.** Claude sessions have repo-local skills (`maintainer`,
 - Do not reach out to a host repo using relative imports like `../../registry/...`.
 - Apps choose their repo root at runtime; this package must not assume any specific checkout layout.
 
+## Agent Quickstart & Recipes
+
+Use the single front door `createApiClient` for application consumers so every
+provider exposes the same `CapabilityClient` surface and returns typed
+`CapabilityResult` envelopes.
+
+### OpenClaw (Headless Operator / CLI Mode)
+
+For headless or loopback operator scripts, pass `clientMode: "cli"`, request
+`operator.write` in `requestedScopes` when starting runs, and enable
+`normalizeRunStatus: true` for canonical run outcomes and exact text output:
+
+```ts
+import {
+  createApiClient,
+  requireRunText,
+  waitForRun,
+} from "@cavi-ai/api-client";
+
+const client = createApiClient("openclaw", {
+  baseUrl: process.env.OPENCLAW_URL ?? "http://127.0.0.1:18789",
+  token: process.env.OPENCLAW_TOKEN,
+  clientMode: "cli",
+  requestedScopes: ["operator.read", "operator.write"],
+  normalizeRunStatus: true,
+});
+
+try {
+  const started = await client.startRun({ input: "Summarize status" });
+  if (!started.ok) throw new Error(started.gap.reason);
+
+  const waited = await waitForRun(client, started.data, {
+    maxPolls: 60,
+    pollIntervalMs: 1_000,
+    maxWaitMs: 60_000,
+  });
+  if (waited.reason !== "terminal") {
+    throw new Error(`Run did not reach a terminal state (${waited.reason})`);
+  }
+
+  const text = requireRunText(waited.run);
+  console.log(text);
+} finally {
+  await client.dispose();
+}
+```
+
+### Antigravity (AGY) Orchestration Service
+
+`createApiClient("agy", ...)` connects to a compatible AGY HTTP orchestration
+service (separate from the native `agy` CLI):
+
+```ts
+import {
+  createApiClient,
+  createRuntimeProviderRegistry,
+  requireCompletedRun,
+  requireRunText,
+  requireStreamText,
+} from "@cavi-ai/api-client";
+import { createAgyProviderModule } from "@cavi-ai/api-client/providers/agy";
+
+const agy = createApiClient("agy", {
+  baseUrl: "https://agy-orchestrator.example",
+  registry: createRuntimeProviderRegistry({
+    modules: [
+      createAgyProviderModule({
+        apiKey: process.env.AGY_API_KEY,
+        defaultModel: "agy-default-agent",
+      }),
+    ],
+  }),
+});
+
+try {
+  const started = await agy.startRun({
+    model: "agy-agent-1",
+    input: "Execute the plan.",
+  });
+  if (!started.ok) throw new Error(started.gap.reason);
+
+  const completed = requireCompletedRun(started.data);
+  console.log(requireRunText(completed));
+
+  let deltas = "";
+  let terminalText: string | undefined;
+  const streamed = await agy.streamRun(
+    { model: "agy-agent-1", input: "Stream the plan." },
+    {
+      onEvent: (event) => {
+        if (event.event === "message.delta") deltas += event.delta;
+        if (event.event === "run.completed" && event.output !== undefined) {
+          terminalText = event.output;
+        }
+      },
+    },
+  );
+  if (!streamed.ok) throw new Error(streamed.gap.reason);
+  console.log(requireStreamText({ ...streamed.data, output: terminalText ?? deltas }));
+} finally {
+  await agy.dispose();
+}
+```
+
 ## Tests
 
-- Run `npm test` for package guardrails and API behavior.
-- Run `npm run build` before publishing or linking a changed package.
+- Run `pnpm test` for package guardrails and API behavior.
+- Run `pnpm run build` before publishing or linking a changed package.
+- Run `pnpm run check:runtime-control-ledger` to verify runtime-control ledger invariants.
+- Run `pnpm run verify` as the full release gate (tests, typecheck, markdown lint, build, and pack dry-run).
 - Hardening tests are contract tests. Update them only when the package boundary intentionally changes.
 
 <!-- code-review-graph MCP tools -->

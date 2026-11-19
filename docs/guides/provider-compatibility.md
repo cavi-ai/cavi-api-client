@@ -17,8 +17,10 @@ See [Python polling](python-runtime.md#bounded-polling-0220) and the
 
 The HTTP adapter releases its SSE response after observing `completed` or
 `failed`, even when the server keeps the connection open. It delivers one
-terminal event, then calls `onComplete`. Caller cancellation still stops local
-streaming without synthesizing completion or cancelling backend work.
+terminal event — carrying terminal `output` on `run.completed` and upstream
+`error` / `errorDetails` on `run.failed` — then calls `onComplete`. Premature
+stream EOF reports `transport_protocol_error`. Caller cancellation still stops
+local streaming without synthesizing completion or cancelling backend work.
 
 This applies to the compatible HTTP orchestration service; the native `agy`
 CLI and Antigravity SDK use separate interfaces. See the [AGY setup guide](agy.md).
@@ -138,8 +140,15 @@ See the upstream [workflow completion contract](https://platform.claude.com/docs
 
 ## OpenClaw outcomes
 
-Set `normalizeRunStatus: true` on `OpenClawApiClient` to map native `ok` to
-`completed`, `error` to `failed`, `aborted` to `cancelled`, and `pending` or
-`timeout` to `running`. `provider_status` retains the original status. Text
-preserves whitespace and empty strings. The default retains the existing native
-status and text normalization; native Python already uses canonical outcomes.
+Set `normalizeRunStatus: true` on `OpenClawApiClient` or
+`createApiClient("openclaw", { normalizeRunStatus: true, ... })` to map native
+`ok` to `completed`, `error` and `timed_out` to `failed`, `aborted` /
+`canceled` / `cancelled` (and cancellation `stopReason` values `aborted`,
+`stop`, `rpc`, `restart`, `superseded`) to `cancelled`, and `pending` to
+`running`. A `timeout` status maps to `failed` when `endedAt` or an `error` is
+present (terminal timeout) and to `running` otherwise (poll timeout).
+`provider_status` retains the original status. Output extraction falls back to
+`terminalReply.text` when `terminalReply.disposition === "visible"` and top-level
+`output`/`text` is absent, preserving whitespace and empty strings. The default
+retains the existing native status and text normalization; native Python already
+uses canonical outcomes.
