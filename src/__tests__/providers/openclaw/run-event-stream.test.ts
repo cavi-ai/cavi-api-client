@@ -76,6 +76,67 @@ describe("translateOpenClawRunEvent", () => {
   it("ignores frames for a different run", () => {
     expect(translateOpenClawRunEvent(LIVE.chatDelta1, "other-run")).toBeNull();
   });
+
+  it("extracts errorMessage, error fallback, and structured errorDetails on chat error frames", () => {
+    const withDetails: OpenClawRpcEvent = {
+      event: "chat",
+      payload: {
+        runId: RUN,
+        state: "error",
+        errorMessage: "upstream overloaded",
+        errorDetails: { providerCode: "rate_limit", kind: "quota", reason: "exhausted" },
+      },
+    };
+    expect(translateOpenClawRunEvent(withDetails, RUN)).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
+      runId: RUN,
+      error: "upstream overloaded",
+      errorDetails: { providerCode: "rate_limit", providerType: "quota", reason: "exhausted" },
+    });
+
+    const fallback: OpenClawRpcEvent = {
+      event: "chat",
+      payload: { runId: RUN, state: "error", error: "   " },
+    };
+    expect(translateOpenClawRunEvent(fallback, RUN)).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
+      runId: RUN,
+      error: "run failed",
+    });
+  });
+
+  it("preserves empty string text parts and omits output when no text parts exist", () => {
+    const emptyText: OpenClawRpcEvent = {
+      event: "chat",
+      payload: {
+        runId: RUN,
+        state: "final",
+        message: { role: "assistant", content: [{ type: "text", text: "" }] },
+      },
+    };
+    expect(translateOpenClawRunEvent(emptyText, RUN)).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+      runId: RUN,
+      output: "",
+    });
+
+    const nonText: OpenClawRpcEvent = {
+      event: "chat",
+      payload: {
+        runId: RUN,
+        state: "final",
+        message: { role: "assistant", content: [{ type: "image", url: "https://example.test/a.png" }] },
+      },
+    };
+    expect(translateOpenClawRunEvent(nonText, RUN)).toEqual({
+      event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+      runId: RUN,
+    });
+  });
+
+  it("rejects array payloads safely", () => {
+    expect(translateOpenClawRunEvent({ event: "chat", payload: [] }, RUN)).toBeNull();
+  });
 });
 
 describe("createOpenClawRunNativeEventStream", () => {

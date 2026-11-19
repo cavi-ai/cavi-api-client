@@ -160,4 +160,68 @@ describe("AgyApiClient", () => {
     expect(status.status).toBe("dry_run");
     expect(status.model).toBe("agy-test");
   });
+
+  it("trims model and defaultModel and rejects whitespace-only model", async () => {
+    const fetchImpl = mockFetch(
+      { run_id: "agy_trim_1", status: "completed", result: { output: "" } },
+      { run_id: "agy_trim_2", status: "completed", result: { output: "ok" } },
+    );
+    const client = new AgyApiClient({
+      baseUrl: "https://api.antigravity.google",
+      defaultModel: "  agy-default  ",
+      fetchImpl,
+    });
+
+    const first = await client.startRun({ input: "hi" });
+    expect(first).toEqual({
+      run_id: "agy_trim_1",
+      status: "completed",
+      model: "agy-default",
+      output: "",
+    });
+    expect(JSON.parse(String(fetchImpl.calls[0]!.init?.body)).agent_id).toBe("agy-default");
+
+    const second = await client.startRun({ input: "hi", model: "  agy-override  " });
+    expect(second.model).toBe("agy-override");
+    expect(JSON.parse(String(fetchImpl.calls[1]!.init?.body)).agent_id).toBe("agy-override");
+
+    await expect(client.startRun({ input: "hi", model: "   " })).rejects.toThrow(/agent_id/u);
+  });
+
+  it.each([
+    ["in_progress", "running"],
+    ["queued", "started"],
+    ["canceled", "cancelled"],
+    [undefined, "running"],
+  ])("normalizes AGY status %s to %s", async (rawStatus, expected) => {
+    const client = new AgyApiClient({
+      baseUrl: "https://api.antigravity.google",
+      fetchImpl: mockFetch({ run_id: "agy_state", ...(rawStatus ? { status: rawStatus } : {}) }),
+    });
+    const status = await client.startRun({ input: "hi", model: "agy-1" });
+    expect(status.status).toBe(expected);
+  });
+
+  it("maps error and structured errorDetails on failed AGY responses", async () => {
+    const client = new AgyApiClient({
+      baseUrl: "https://api.antigravity.google",
+      fetchImpl: mockFetch({
+        run_id: "agy_err",
+        status: "failed",
+        error: { message: "quota exceeded", code: "E_QUOTA", type: "rate_limit", reason: "limit" },
+      }),
+    });
+    const status = await client.startRun({ input: "hi", model: "agy-1" });
+    expect(status).toEqual({
+      run_id: "agy_err",
+      status: "failed",
+      model: "agy-1",
+      error: "quota exceeded",
+      errorDetails: {
+        providerCode: "E_QUOTA",
+        providerType: "rate_limit",
+        reason: "limit",
+      },
+    });
+  });
 });

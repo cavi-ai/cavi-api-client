@@ -285,6 +285,18 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
             {"runId": "run_empty", "status": "ok", "text": ""},
             {"runId": "run_error", "status": "error", "error": "failed"},
             {"runId": "run_pending", "status": "timeout"},
+            {"runId": "run_timeout_ended", "status": "timeout", "endedAt": 1700000000},
+            {"runId": "run_stopped", "status": "ok", "stopReason": "superseded"},
+            {
+                "runId": "run_visible_reply",
+                "status": "ok",
+                "terminalReply": {"disposition": "visible", "text": "  reply  "},
+            },
+            {
+                "runId": "run_hidden_reply",
+                "status": "ok",
+                "terminalReply": {"disposition": "silent", "text": "secret"},
+            },
         ]
 
         async def handler(ws):
@@ -330,12 +342,18 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
                 for identifier, code in (
                     ("run_error", "run_failed"),
                     ("run_pending", "run_incomplete"),
+                    ("run_timeout_ended", "run_failed"),
+                    ("run_stopped", "run_cancelled"),
                 ):
                     with self.assertRaises(ApiClientError) as caught:
                         await client.require_completed_run(
                             await client.get_run(identifier)
                         )
                     self.assertEqual(caught.exception.code, code)
+                visible = await client.get_run("run_visible_reply")
+                self.assertEqual(await client.require_run_text(visible), "  reply  ")
+                hidden = await client.get_run("run_hidden_reply")
+                self.assertNotIn("output", hidden)
 
     async def test_http_client_ownership_and_resumable_close(self):
         import httpx
@@ -504,11 +522,12 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
             await writer.wait_closed()
 
     def client(self, provider, **options):
+        default_model = options.pop("default_model", "test-model")
         return create_runtime_client(
             provider,
             base_url=self.base,
             api_key="test-secret",
-            default_model="test-model",
+            default_model=default_model,
             **options,
         )
 
@@ -597,20 +616,68 @@ class NativeClients(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.requests[0][3]["store"])
 
     async def test_agy_mapping(self):
-        self.replies.append(
-            (
-                200,
-                {
-                    "run_id": "agy_1",
-                    "status": "completed",
-                    "result": {"output": "answer"},
-                },
-            )
+        self.replies.extend(
+            [
+                (
+                    200,
+                    {
+                        "run_id": "agy_1",
+                        "status": "completed",
+                        "result": {"output": "answer"},
+                    },
+                ),
+                (
+                    200,
+                    {
+                        "run_id": "agy_2",
+                        "status": "in_progress",
+                        "result": {"output": ""},
+                    },
+                ),
+                (200, {"run_id": "agy_3", "status": "queued"}),
+                (200, {"run_id": "agy_4", "status": "canceled"}),
+                (
+                    200,
+                    {
+                        "run_id": "agy_5",
+                        "status": "failed",
+                        "error": {
+                            "message": "quota exceeded",
+                            "code": "E_QUOTA",
+                            "kind": "rate_limit",
+                            "reason": "limit",
+                        },
+                    },
+                ),
+            ]
         )
-        async with self.client("agy") as c:
+        async with self.client("agy", default_model="  test-model  ") as c:
             run = await c.start_run({"input": "hello", "instructions": "system"})
             self.assertEqual(await c.require_run_text(run), "answer")
             self.assertEqual(await c.get_run(run["run_id"]), run)
+
+            in_progress = await c.start_run({"input": "hi", "model": "  agy-custom  "})
+            self.assertEqual(in_progress["status"], "running")
+            self.assertEqual(in_progress["output"], "")
+            self.assertEqual(in_progress["model"], "agy-custom")
+
+            self.assertEqual((await c.start_run({"input": "hi"}))["status"], "started")
+            self.assertEqual((await c.start_run({"input": "hi"}))["status"], "cancelled")
+
+            failed = await c.start_run({"input": "hi"})
+            self.assertEqual(failed["status"], "failed")
+            self.assertEqual(failed["error"], "quota exceeded")
+            self.assertEqual(
+                failed["errorDetails"],
+                {
+                    "providerCode": "E_QUOTA",
+                    "providerType": "rate_limit",
+                    "reason": "limit",
+                },
+            )
+            with self.assertRaises(ApiClientError) as caught:
+                await c.start_run({"input": "hi", "model": "   "})
+            self.assertEqual(caught.exception.code, "validation_failed")
         self.assertEqual(self.requests[0][1], "/v1/agents/run")
         self.assertEqual(
             self.requests[0][3],

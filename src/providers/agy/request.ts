@@ -21,7 +21,8 @@ export function buildAgyRequestBody(
   defaultAgentId?: string,
   stream: boolean = false,
 ): { agentId: string; payload: AgyRunRequestBody } {
-  const agentId = body.model ?? defaultAgentId;
+  const raw = body.model !== undefined ? body.model : defaultAgentId;
+  const agentId = typeof raw === "string" ? raw.trim() : "";
   if (!agentId) {
     throw new ApiClientError("agy: an agent_id (model) is required (pass body.model or defaultModel)", {
       code: ApiClientErrorCode.ValidationFailed,

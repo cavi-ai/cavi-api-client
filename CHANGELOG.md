@@ -10,6 +10,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Forward `normalizeRunStatus` from `createApiClient("openclaw", ...)` to the
+  OpenClaw runtime client for opt-in canonical run outcomes and exact text.
+- Document agent quickstart recipes for OpenClaw CLI mode and AGY orchestration
+  in `AGENTS.md`.
+
+### Fixed
+
+- Extend `readNativeRunErrorDetails` to project both native wire keys
+  (`code`/`type`/`kind`/`reason`) and canonical `RuntimeRunErrorDetails` keys
+  with prototype-safe own-property reads.
+- Align OpenClaw canonical run normalization in TypeScript and Python across
+  cancellation `stopReason` values, terminal vs. poll `timeout` outcomes, and
+  visible `terminalReply.text` fallback with empty-string preservation.
+- Gate all 14 RPC-method-backed OpenClaw capability keys to `false` when
+  `features.methods` is advertised as an array (including `[]`), and harden
+  OpenClaw run-event stream error extraction, empty text preservation, and array
+  payload rejection.
+- Normalize Antigravity (AGY) run statuses (`in_progress` → `running`,
+  `queued` → `started`, `canceled` → `cancelled`), trim `model`/`defaultModel`,
+  preserve empty output strings, project `error`/`errorDetails`, report
+  `TransportProtocolError` on premature AGY stream EOF in TypeScript, and
+  normalize non-string AGY status with `transport_protocol_error` in Python.
+
 ## [0.22.1] - 2026-11-17
 
 ### Security

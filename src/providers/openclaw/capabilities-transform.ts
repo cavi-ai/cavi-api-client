@@ -54,8 +54,28 @@ const METHOD_PREFIX_CAPABILITIES: readonly (readonly [string, readonly Capabilit
   ["config.", ["agentConfig"]],
 ];
 
+const RPC_METHOD_GATED_KEYS: readonly CapabilityKey[] = [
+  "runs",
+  "streaming",
+  "sessions",
+  "tasks",
+  "models",
+  "usage",
+  "kanban",
+  "workspace",
+  "media",
+  "wiki",
+  "agentConfig",
+  "authStatus",
+  "operator",
+  "discourse",
+];
+
 function supportsFromMethods(methods: readonly string[]): CapabilitySupport {
   const supports: CapabilitySupport = {};
+  for (const key of RPC_METHOD_GATED_KEYS) {
+    supports[key] = false;
+  }
   for (const method of methods) {
     for (const [prefix, keys] of METHOD_PREFIX_CAPABILITIES) {
       if (method.startsWith(prefix)) {
@@ -117,8 +137,9 @@ export function transformOpenClawHello(
   }
 
   const features = isRecord(payload.features) ? payload.features : {};
-  const methods = stringArray(features.methods);
-  const supports = supportsFromMethods(methods);
+  const supports: CapabilitySupport = Array.isArray(features.methods)
+    ? supportsFromMethods(stringArray(features.methods))
+    : {};
   if (stringArray(features.events).length > 0) supports.events = true;
 
   // OpenClaw media/wiki are RPC-backed (tts/talk core methods; the first-party

@@ -143,6 +143,11 @@ export type CreateApiClientOptions = {
    * gateway default (read-only). Request `operator.write` to start runs.
    */
   requestedScopes?: readonly string[];
+  /**
+   * Opt in to canonical run outcomes and exact output text on OpenClaw while
+   * retaining the native status in `provider_status`.
+   */
+  normalizeRunStatus?: boolean;
   /** Manifest team id for this gateway instance. */
   teamId?: string;
   /** Override the auto-wired runtime capability resolver. */
@@ -414,6 +419,9 @@ export function createApiClient(
     // client reads `rpcClient`; core's RuntimeClientOptions stays agnostic, so
     // this rides the same cast rather than leaking naming into core types.
     ...(openClawSocket ? { rpcClient: openClawSocket } : {}),
+    ...(kind === "openclaw" && options.normalizeRunStatus !== undefined
+      ? { normalizeRunStatus: options.normalizeRunStatus }
+      : {}),
   } as RuntimeClientOptions;
   const runtime = createRuntimeClient(provider, { registry, clientOptions });
 

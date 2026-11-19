@@ -145,9 +145,10 @@ Codex also implements the batch surface (`supports.batch`) over the OpenAI Batch
 (JSONL upload → batch creation → poll → download), with results mapped to
 `RuntimeRunStatus` by `customId`; downloaded result JSONL is parsed strictly so
 malformed provider files fail with `invalid_json` instead of silently dropping rows.
-Claude Messages and Codex streams require an observed terminal event. Premature
-EOF reports a protocol error; terminal events release the response reader and
-prevent later frames from changing the outcome. Caller cancellation settles the
+Claude Messages, Codex, and AGY streams require an observed terminal event.
+Premature EOF reports a protocol error (`transport_protocol_error`); terminal
+events release the response reader and prevent later frames from changing the
+outcome. Caller cancellation settles the
 facade independently of best-effort backend cancellation.
 Synchronous run snapshots isolate nested usage and error metadata from callers;
 retrieval and cancellation of an unremembered run report `unknown`. Gateway
@@ -364,11 +365,15 @@ implements a corresponding surface.
 
 API route literals are centralized:
 
-- Global gateway contracts: `src/contracts/paths.ts` and
-  `src/contracts/surfaces.ts`.
-- CAVI extension contracts: `src/extensions/cavi/contracts/paths.ts` and
-  `src/extensions/cavi/contracts/surfaces.ts`.
-- OpenCode routes: `src/providers/opencode/paths.ts` (private to the provider).
+| Scope | Owner File(s) |
+| --- | --- |
+| Global gateway contracts | `src/contracts/paths.ts`, `src/contracts/surfaces.ts` |
+| CAVI extension contracts | `src/extensions/cavi/contracts/paths.ts`, `src/extensions/cavi/contracts/surfaces.ts` |
+| AGY provider routes | `src/providers/agy/paths.ts` |
+| Claude provider routes | `src/providers/claude/paths.ts` |
+| Codex provider routes | `src/providers/codex/paths.ts` |
+| OpenCode provider routes | `src/providers/opencode/paths.ts` |
+| OpenClaw provider manifest | `src/providers/openclaw/manifest.ts` |
 
 Clients, adapters, React hooks, and provider modules should import path constants
 or use resolver helpers instead of assembling paths inline. The hardening tests
@@ -419,8 +424,8 @@ application facade or its gap envelopes.
 `RuntimeRunErrorDetails` carries observed provider error code/type/reason
 strings on run statuses and failed stream events. An internal projection
 copies only non-empty own data properties; it omits arbitrary native payloads
-and infers no retry policy. Codex responses/streams and Claude error streams
-populate details when available. The facade forwards events and retains
+and infers no retry policy. Codex responses/streams, Claude error streams, OpenClaw error streams, and AGY
+responses/streams populate details when available. The facade forwards events and retains
 failed-event details in `RunStreamOutcome`; completion helpers preserve them
 through the original error cause. This execution data is separate from the
 client/transport `RuntimeErrorMetadata` contract.

@@ -6,6 +6,7 @@ import {
   type RunEventStreamSubscription,
   type RunStreamEvent,
 } from "../../core/runtime/run-stream.js";
+import { readNativeRunErrorDetails } from "../../core/runtime/run-error-details.js";
 import type { OpenClawRpc, OpenClawRpcEvent } from "./control-plane/rpc.js";
 
 /**
@@ -61,11 +62,19 @@ export function createOpenClawRunNativeEventStream(
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 /** Concatenate the text parts of an OpenClaw assistant message payload. */
@@ -74,13 +83,16 @@ function messageText(message: unknown): string | undefined {
   const content = record?.content;
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return undefined;
-  const text = content
-    .map((part) => {
-      const p = asRecord(part);
-      return p && p.type === "text" ? optionalString(p.text) ?? "" : "";
-    })
-    .join("");
-  return text || undefined;
+  let hasTextPart = false;
+  let text = "";
+  for (const part of content) {
+    const p = asRecord(part);
+    if (p && p.type === "text" && typeof p.text === "string") {
+      hasTextPart = true;
+      text += p.text;
+    }
+  }
+  return hasTextPart ? text : undefined;
 }
 
 /**
@@ -108,12 +120,21 @@ export function translateOpenClawRunEvent(
           ...(output !== undefined ? { output } : {}),
         };
       }
-      case "error":
+      case "error": {
+        const errorDetails =
+          readNativeRunErrorDetails(payload.errorDetails) ??
+          readNativeRunErrorDetails(payload.error) ??
+          readNativeRunErrorDetails(payload);
         return {
           event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
           runId,
-          error: optionalString(payload.error) ?? "run failed",
+          error:
+            nonEmptyString(payload.errorMessage) ??
+            nonEmptyString(payload.error) ??
+            "run failed",
+          ...(errorDetails ? { errorDetails } : {}),
         };
+      }
       case "cancelled":
       case "canceled":
       case "aborted":

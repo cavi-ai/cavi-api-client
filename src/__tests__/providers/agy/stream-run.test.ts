@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiClientError, ApiClientErrorCode } from "../../../core/errors.js";
 import { AgyApiClient } from "../../../providers/agy/client.js";
 import {
   isNonTerminalStreamError,
@@ -201,9 +202,109 @@ describe("AgyApiClient.streamRun", () => {
     );
 
     expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(ApiClientError);
+    expect((errors[0] as ApiClientError).code).toBe(ApiClientErrorCode.TransportProtocolError);
     expect(isNonTerminalStreamError(errors[0])).toBe(false);
     expect(events.map((event) => event.event)).toEqual([RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA]);
     expect(completeCalls).toBe(0);
+  });
+
+  it("propagates terminal output on completed without duplicating message.delta and error/errorDetails on failed", async () => {
+    const completedFetch = streamFetch(sseStream([
+      JSON.stringify({ run_id: "agy-out", status: "completed", result: { output: "final text" } }),
+    ]));
+    const completedEvents: RunStreamEvent[] = [];
+    await client(completedFetch).streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      { onEvent: (event) => completedEvents.push(event) },
+    );
+    expect(completedEvents).toEqual([
+      { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "agy-out", output: "final text" },
+    ]);
+
+    const emptyOutputFetch = streamFetch(sseStream([
+      JSON.stringify({ run_id: "agy-empty", status: "completed", result: { output: "" } }),
+    ]));
+    const emptyOutputEvents: RunStreamEvent[] = [];
+    await client(emptyOutputFetch).streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      { onEvent: (event) => emptyOutputEvents.push(event) },
+    );
+    expect(emptyOutputEvents).toEqual([
+      { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "agy-empty", output: "" },
+    ]);
+
+    const failedFetch = streamFetch(sseStream([
+      JSON.stringify({
+        run_id: "agy-fail",
+        status: "failed",
+        error: { message: "bad input", code: "E_BAD", kind: "validation", reason: "schema" },
+      }),
+    ]));
+    const failedEvents: RunStreamEvent[] = [];
+    await client(failedFetch).streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      { onEvent: (event) => failedEvents.push(event) },
+    );
+    expect(failedEvents).toEqual([
+      {
+        event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
+        runId: "agy-fail",
+        error: "bad input",
+        errorDetails: {
+          providerCode: "E_BAD",
+          providerType: "validation",
+          reason: "schema",
+        },
+      },
+    ]);
+  });
+
+  it.each(["cancelled", "canceled"])("maps terminal %s status to run.cancelled without message.delta", async (rawStatus) => {
+    const fetchImpl = streamFetch(sseStream([
+      JSON.stringify({ run_id: "agy-cancel", status: rawStatus, result: { output: "ignored" }, error: "user aborted" }),
+    ]));
+    const agyClient = client(fetchImpl);
+    const events: RunStreamEvent[] = [];
+    let completeCalls = 0;
+
+    await agyClient.streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      { onEvent: (event) => events.push(event), onComplete: () => { completeCalls += 1; } },
+    );
+
+    expect(events).toEqual([
+      { event: RUN_STREAM_EVENT_NAMES.RUN_CANCELLED, runId: "agy-cancel", reason: "user aborted" },
+    ]);
+    expect(completeCalls).toBe(1);
+    await expect(agyClient.getRun("agy-cancel")).resolves.toMatchObject({ status: "cancelled" });
+  });
+
+  it("reports non-object JSON frames as non-terminal and continues", async () => {
+    const fetchImpl = streamFetch(sseStream([
+      "null",
+      "[1, 2, 3]",
+      JSON.stringify({ run_id: "agy-after-non-object", status: "completed", result: { output: "ok" } }),
+    ]));
+    const events: RunStreamEvent[] = [];
+    const errors: unknown[] = [];
+    let completeCalls = 0;
+
+    await client(fetchImpl).streamRun(
+      { input: "hi", model: "agy-agent-1" },
+      {
+        onEvent: (event) => events.push(event),
+        onError: (error) => errors.push(error),
+        onComplete: () => { completeCalls += 1; },
+      },
+    );
+
+    expect(errors).toHaveLength(2);
+    expect(errors.every((error) => isNonTerminalStreamError(error))).toBe(true);
+    expect(events).toEqual([
+      { event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: "agy-after-non-object", output: "ok" },
+    ]);
+    expect(completeCalls).toBe(1);
   });
 
   it("surfaces onEvent handler errors through terminal onError", async () => {

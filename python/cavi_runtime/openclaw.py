@@ -13,10 +13,15 @@ from .native import (
     add_usage,
     decode,
     failure,
+    numeric,
     record,
     required,
     validate_body,
     validate_run,
+)
+
+OPENCLAW_CANCELLED_STOP_REASONS = frozenset(
+    {"aborted", "stop", "rpc", "restart", "superseded"}
 )
 
 
@@ -297,7 +302,26 @@ class OpenClawClient(NativeRuntimeClient):
             "object": string("object") or "openclaw.run",
         }
         state = run["status"]
-        normalized = {"ok": "completed", "error": "failed"}.get(state, state)
+        error_msg = string("error", "errorMessage")
+        stop_reason = string("stopReason", "stop_reason")
+        ended_at = raw.get("endedAt") if "endedAt" in raw else raw.get("ended_at")
+        has_ended_at = numeric(ended_at) or (
+            isinstance(ended_at, str) and bool(ended_at.strip())
+        )
+        if stop_reason is not None and stop_reason in OPENCLAW_CANCELLED_STOP_REASONS:
+            normalized = "cancelled"
+        elif state == "timeout":
+            normalized = "failed" if (has_ended_at or error_msg is not None) else "running"
+        else:
+            normalized = {
+                "ok": "completed",
+                "aborted": "cancelled",
+                "canceled": "cancelled",
+                "cancelled": "cancelled",
+                "pending": "running",
+                "timed_out": "failed",
+                "error": "failed",
+            }.get(state, state)
         if normalized != state:
             run["provider_status"] = state
             run["status"] = normalized
@@ -314,4 +338,12 @@ class OpenClawClient(NativeRuntimeClient):
             )
             if value is not None:
                 run[field] = value
+        terminal_reply = raw.get("terminalReply")
+        if (
+            "output" not in run
+            and isinstance(terminal_reply, dict)
+            and terminal_reply.get("disposition") == "visible"
+            and isinstance(terminal_reply.get("text"), str)
+        ):
+            run["output"] = terminal_reply["text"]
         return validate_run(add_usage(run, raw.get("usage")))

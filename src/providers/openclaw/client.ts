@@ -181,6 +181,29 @@ function normalizeEventRecords(value: unknown): Record<string, unknown>[] | unde
   return events.length > 0 ? events : undefined;
 }
 
+const OPENCLAW_CANCELLED_STOP_REASONS = new Set([
+  "aborted",
+  "stop",
+  "rpc",
+  "restart",
+  "superseded",
+]);
+
+function readVisibleTerminalReplyText(record: Record<string, unknown>): string | undefined {
+  if (!isRecord(record.terminalReply) || record.terminalReply.disposition !== "visible") {
+    return undefined;
+  }
+  return typeof record.terminalReply.text === "string" ? record.terminalReply.text : undefined;
+}
+
+function hasEndedAtField(record: Record<string, unknown>): boolean {
+  const endedAt = record.endedAt ?? record.ended_at;
+  return (
+    (typeof endedAt === "number" && Number.isFinite(endedAt)) ||
+    (typeof endedAt === "string" && endedAt.trim().length > 0)
+  );
+}
+
 function normalizeOpenClawRunStatus(
   payload: unknown,
   fallback: {
@@ -193,6 +216,9 @@ function normalizeOpenClawRunStatus(
   const record = isRecord(payload) ? payload : {};
   const runId = readString(record, "run_id", "runId", "id") ?? fallback.runId;
   const status = readString(record, "status", "state", "phase") ?? fallback.status;
+  const error = readString(record, "error", "errorMessage");
+  const stopReason = readString(record, "stopReason", "stop_reason");
+  const hasEndedAt = hasEndedAtField(record);
   const result: OpenClawRunStatus = {
     object: readString(record, "object") ?? "openclaw.run",
     run_id: runId,
@@ -200,22 +226,36 @@ function normalizeOpenClawRunStatus(
   };
   if (canonical) {
     result.provider_status = status;
-    switch (status) {
-      case "ok": result.status = "completed"; break;
-      case "error": result.status = "failed"; break;
-      case "pending":
-      case "timeout": result.status = "running"; break;
-      case "aborted": result.status = "cancelled"; break;
+    if (stopReason !== undefined && OPENCLAW_CANCELLED_STOP_REASONS.has(stopReason)) {
+      result.status = "cancelled";
+    } else {
+      switch (status) {
+        case "ok":
+          result.status = "completed";
+          break;
+        case "aborted":
+        case "canceled":
+        case "cancelled":
+          result.status = "cancelled";
+          break;
+        case "pending":
+          result.status = "running";
+          break;
+        case "timeout":
+          result.status = hasEndedAt || error !== undefined ? "failed" : "running";
+          break;
+        case "timed_out":
+        case "error":
+          result.status = "failed";
+          break;
+      }
     }
   }
   const sessionId =
     readString(record, "session_id", "sessionId", "sessionKey", "key") ??
     fallback.sessionId;
   if (sessionId) result.session_id = sessionId;
-  const output = readString(record, "output", "text");
-  if (output) result.output = output;
-  const response = readString(record, "response", "message");
-  if (response) result.response = response;
+  const terminalReplyText = readVisibleTerminalReplyText(record);
   if (canonical) {
     for (const [target, keys] of [["output", ["output", "text"]], ["response", ["response", "message"]]] as const) {
       for (const key of keys) {
@@ -225,8 +265,17 @@ function normalizeOpenClawRunStatus(
         }
       }
     }
+    if (result.output === undefined && terminalReplyText !== undefined) {
+      result.output = terminalReplyText;
+    }
+  } else {
+    const output =
+      readString(record, "output", "text") ??
+      (terminalReplyText?.trim() ? terminalReplyText.trim() : undefined);
+    if (output) result.output = output;
+    const response = readString(record, "response", "message");
+    if (response) result.response = response;
   }
-  const error = readString(record, "error", "errorMessage");
   if (error) result.error = error;
   const usage = normalizeNumberRecord(record.usage);
   if (usage) {
