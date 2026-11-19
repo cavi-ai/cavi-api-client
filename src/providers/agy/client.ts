@@ -55,7 +55,8 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       onTrace: options.onTrace,
     });
     this.request = this.createTransport();
-    this.defaultModel = options.defaultModel;
+    const trimmedDefaultModel = options.defaultModel?.trim();
+    this.defaultModel = trimmedDefaultModel || undefined;
   }
 
   async getRuntimeCapabilities(): Promise<RuntimeCapabilities> {
@@ -113,33 +114,63 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       let completed = false;
       await consumeSseStream(response.body, signal, (sse) => {
         if (completed) return;
-        let parsed: AgyGenerateResponse;
+        let rawParsed: unknown;
         try {
-          parsed = JSON.parse(sse.data) as AgyGenerateResponse;
+          rawParsed = JSON.parse(sse.data);
         } catch (error) {
           const normalizedError = toError(error);
           handlers.onError?.(markNonTerminalStreamError(normalizedError));
           return;
         }
-        if (parsed.result?.output) {
+        if (!rawParsed || typeof rawParsed !== "object" || Array.isArray(rawParsed)) {
+          handlers.onError?.(
+            markNonTerminalStreamError(
+              new ApiClientError("agy: SSE frame payload must be a JSON object", {
+                code: ApiClientErrorCode.TransportProtocolError,
+              }),
+            ),
+          );
+          return;
+        }
+        const parsed = rawParsed as AgyGenerateResponse;
+        const status = mapAgyResponseToRunStatus(agentId, parsed, runId);
+        const isCancelled =
+          status.status === "cancelled" ||
+          parsed.status === "canceled" ||
+          parsed.status === "cancelled";
+        const isTerminal =
+          status.status === "completed" ||
+          status.status === "failed" ||
+          isCancelled;
+        if (!isTerminal && typeof parsed.result?.output === "string" && parsed.result.output.length > 0) {
           handlers.onEvent({
             event: RUN_STREAM_EVENT_NAMES.MESSAGE_DELTA,
-            runId: parsed.run_id || runId,
+            runId: status.run_id,
             delta: parsed.result.output,
           });
         }
-        if (parsed.status === "completed" || parsed.status === "failed") {
+        if (isTerminal) {
           completed = true;
-          const status = mapAgyResponseToRunStatus(agentId, parsed, runId);
           this.runStore.remember(status);
-          if (parsed.status === "failed") {
+          if (status.status === "failed") {
             handlers.onEvent({
               event: RUN_STREAM_EVENT_NAMES.RUN_FAILED,
               runId: status.run_id,
-              error: "agy: upstream run failed",
+              error: status.error ?? "agy: upstream run failed",
+              ...(status.errorDetails ? { errorDetails: status.errorDetails } : {}),
+            });
+          } else if (isCancelled) {
+            handlers.onEvent({
+              event: RUN_STREAM_EVENT_NAMES.RUN_CANCELLED,
+              runId: status.run_id,
+              ...(status.error !== undefined ? { reason: status.error } : {}),
             });
           } else {
-            handlers.onEvent({ event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED, runId: status.run_id });
+            handlers.onEvent({
+              event: RUN_STREAM_EVENT_NAMES.RUN_COMPLETED,
+              runId: status.run_id,
+              ...(status.output !== undefined ? { output: status.output } : {}),
+            });
           }
           controller.abort();
         }
@@ -147,7 +178,7 @@ export class AgyApiClient extends BaseHttpApiClient implements RuntimeClient {
       if (options.signal?.aborted) return;
       if (!completed) {
         throw new ApiClientError("agy: stream ended before a terminal event", {
-          code: ApiClientErrorCode.RequestFailed,
+          code: ApiClientErrorCode.TransportProtocolError,
         });
       }
       handlers.onComplete?.();

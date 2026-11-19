@@ -521,11 +521,41 @@ class CodexClient(HttpRuntimeClient):
         }
 
 
+def agy_state(state):
+    if state is not None and not isinstance(state, str):
+        raise failure("transport_protocol_error")
+    normalized = state.strip() if isinstance(state, str) else ""
+    return {
+        "in_progress": "running",
+        "queued": "started",
+        "canceled": "cancelled",
+    }.get(normalized, normalized or "running")
+
+
+def read_error_details(value: Any) -> dict[str, str] | None:
+    if not isinstance(value, dict):
+        return None
+    details: dict[str, str] = {}
+    for target, sources in (
+        ("providerCode", ("code", "providerCode")),
+        ("providerType", ("type", "providerType", "kind")),
+        ("reason", ("reason",)),
+    ):
+        for source in sources:
+            field = value.get(source)
+            if isinstance(field, str) and field.strip():
+                details[target] = field
+                break
+    return details or None
+
+
 class AgyClient(SynchronousClient):
     provider_kind = "agy"
 
     def __init__(self, *, base_url: str, api_key=None, default_model=None, **options):
-        self.default_model = default_model
+        self.default_model = (
+            default_model.strip() if isinstance(default_model, str) else default_model
+        )
         super().__init__(
             base_url=base_url,
             headers={"x-agy-api-key": api_key} if api_key else {},
@@ -535,7 +565,8 @@ class AgyClient(SynchronousClient):
     async def start_run(self, body: dict):
         self._check_open()
         body = validate_body(body)
-        model = required(body.get("model", self.default_model), "model")
+        raw_model = body["model"] if "model" in body else self.default_model
+        model = required(raw_model, "model").strip()
         payload = {
             "agent_id": model,
             "stream": False,
@@ -548,15 +579,37 @@ class AgyClient(SynchronousClient):
         if body.get("dryRun"):
             return self._dry_run(model)
         raw = record(await self._request("POST", paths.AGY_RUN, payload))
-        run = {
+        run: dict[str, Any] = {
             "run_id": raw.get("run_id") or "agy-" + str(uuid4()),
-            "status": raw.get("status") or "in_progress",
+            "status": agy_state(raw.get("status")),
             "model": model,
         }
         if isinstance(raw.get("result"), dict) and isinstance(
             raw["result"].get("output"), str
         ):
             run["output"] = raw["result"]["output"]
+        raw_error = raw.get("error")
+        error_message = None
+        if isinstance(raw_error, str) and raw_error.strip():
+            error_message = raw_error.strip()
+        elif (
+            isinstance(raw_error, dict)
+            and isinstance(raw_error.get("message"), str)
+            and raw_error["message"].strip()
+        ):
+            error_message = raw_error["message"].strip()
+        else:
+            for key in ("errorMessage", "error_message"):
+                if isinstance(raw.get(key), str) and raw[key].strip():
+                    error_message = raw[key].strip()
+                    break
+        if error_message is not None:
+            run["error"] = error_message
+        error_details = read_error_details(raw.get("errorDetails")) or read_error_details(
+            raw_error
+        )
+        if error_details is not None:
+            run["errorDetails"] = error_details
         return self._remember(run)
 
 
