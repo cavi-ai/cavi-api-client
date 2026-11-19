@@ -68,7 +68,18 @@ describe("openclaw capability resolver", () => {
     expect(resolved.supports).toEqual({
       runs: true,
       streaming: true,
+      sessions: false,
+      tasks: false,
+      models: false,
+      usage: false,
       kanban: true,
+      workspace: false,
+      media: false,
+      wiki: false,
+      agentConfig: false,
+      authStatus: false,
+      operator: false,
+      discourse: false,
       events: true,
     });
   });

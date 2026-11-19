@@ -55,11 +55,13 @@ describe("openclaw hello-ok transform", () => {
       kanban: true,
       workspace: true,
       media: true,
+      wiki: false,
       agentConfig: true,
+      operator: false,
+      discourse: false,
       events: true,
     });
-    // Unmentioned keys stay undefined so the static fallback decides them.
-    expect(resolved.supports.wiki).toBeUndefined();
+    // Non-RPC-gated keys stay undefined so the static fallback decides them.
     expect(resolved.supports.batch).toBeUndefined();
     expect(resolved.supports.teams).toBeUndefined();
   });
@@ -80,8 +82,35 @@ describe("openclaw hello-ok transform", () => {
     expect(resolved.supports.events).toBeUndefined();
   });
 
-  it("stays minimal when nothing is advertised", () => {
+  it("marks all RPC-method-gated keys false when features.methods is empty", () => {
     const resolved = transformOpenClawHello(helloOk([], []));
+    expect(resolved.supports).toEqual({
+      runs: false,
+      streaming: false,
+      sessions: false,
+      tasks: false,
+      models: false,
+      usage: false,
+      kanban: false,
+      workspace: false,
+      media: false,
+      wiki: false,
+      agentConfig: false,
+      authStatus: false,
+      operator: false,
+      discourse: false,
+    });
+    expect(resolved.supports.events).toBeUndefined();
+    expect(resolved.supports.batch).toBeUndefined();
+    expect(resolved.supports.teams).toBeUndefined();
+  });
+
+  it("leaves supports empty when features.methods is omitted", () => {
+    const resolved = transformOpenClawHello({
+      type: "hello-ok",
+      protocol: 4,
+      features: {},
+    });
     expect(resolved.supports).toEqual({});
   });
 

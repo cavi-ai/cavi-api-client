@@ -483,4 +483,33 @@ describe("createApiClient — the one front door", () => {
     // false) never closes the socket it does not own.
     expect(socket.dispose).toHaveBeenCalledTimes(1);
   });
+
+  it("forwards normalizeRunStatus only to openclaw runtime clients", () => {
+    let openclawReceived: Record<string, unknown> | undefined;
+    let otherReceived: Record<string, unknown> | undefined;
+    const registry = createRuntimeProviderRegistry({
+      modules: [
+        {
+          kind: "openclaw",
+          createClient: (options) => {
+            openclawReceived = options as Record<string, unknown>;
+            return fakeRuntime;
+          },
+        },
+        {
+          kind: "codex",
+          createClient: (options) => {
+            otherReceived = options as Record<string, unknown>;
+            return fakeRuntime;
+          },
+        },
+      ],
+    });
+
+    createApiClient("openclaw", { registry, normalizeRunStatus: true });
+    expect(openclawReceived?.normalizeRunStatus).toBe(true);
+
+    createApiClient("codex", { registry, normalizeRunStatus: true });
+    expect(Object.hasOwn(otherReceived ?? {}, "normalizeRunStatus")).toBe(false);
+  });
 });
